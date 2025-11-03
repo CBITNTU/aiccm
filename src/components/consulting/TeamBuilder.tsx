@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, RefreshCw, Users, Loader2, Crown } from "lucide-react";
+import { Trash2, RefreshCw, Users, Loader2, Crown, Plus } from "lucide-react";
+import { CompanySearchDialog } from "./CompanySearchDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,10 +21,12 @@ interface TeamBuilderProps {
   members: any[];
   onRemoveMember: (memberId: string) => void;
   onRunGroupAnalysis: () => void;
+  onAddCompany: (companyId: string) => Promise<void>;
   analyzing: boolean;
 }
 
-export function TeamBuilder({ members, onRemoveMember, onRunGroupAnalysis, analyzing }: TeamBuilderProps) {
+export function TeamBuilder({ members, onRemoveMember, onRunGroupAnalysis, onAddCompany, analyzing }: TeamBuilderProps) {
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const getRoleBadge = (role: string) => {
     if (role === 'lead') {
       return <Badge className="flex items-center gap-1"><Crown className="h-3 w-3" /> Lead</Badge>;
@@ -41,23 +45,33 @@ export function TeamBuilder({ members, onRemoveMember, onRunGroupAnalysis, analy
             <Users className="h-5 w-5" />
             Team Builder ({members.length})
           </CardTitle>
-          <Button
-            onClick={onRunGroupAnalysis}
-            disabled={analyzing || members.length === 0}
-            size="sm"
-          >
-            {analyzing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                AI Group Analysis
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setSearchDialogOpen(true)}
+              variant="outline"
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Company
+            </Button>
+            <Button
+              onClick={onRunGroupAnalysis}
+              disabled={analyzing || members.length === 0}
+              size="sm"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  AI Group Analysis
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -123,6 +137,13 @@ export function TeamBuilder({ members, onRemoveMember, onRunGroupAnalysis, analy
           </Table>
         )}
       </CardContent>
+
+      <CompanySearchDialog
+        open={searchDialogOpen}
+        onOpenChange={setSearchDialogOpen}
+        onAddCompany={onAddCompany}
+        excludeCompanyIds={members.map(m => m.company_id)}
+      />
     </Card>
   );
 }

@@ -6,14 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, ExternalLink, Users, Target, Lightbulb, Plus, Trash2, Mail, RefreshCw } from "lucide-react";
+import { Loader2, ExternalLink, Users, Target, Lightbulb, Plus, Trash2, Mail, RefreshCw, Briefcase, FolderOpen } from "lucide-react";
 import Header from "@/components/Header";
 import { ProjectSummary } from "@/components/consulting/ProjectSummary";
 import { CoverageMap } from "@/components/consulting/CoverageMap";
 import { RecommendedPartners } from "@/components/consulting/RecommendedPartners";
 import { TeamBuilder } from "@/components/consulting/TeamBuilder";
 import { InvitationManager } from "@/components/consulting/InvitationManager";
+import { ProjectCreationDialog } from "@/components/consulting/ProjectCreationDialog";
 
 interface ProjectAnalysis {
   requiredCompetencies: string[];
@@ -41,13 +44,15 @@ export default function Consulting() {
   
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [tender, setTender] = useState<any>(null);
   const [ownerCompany, setOwnerCompany] = useState<any>(null);
   const [analysis, setAnalysis] = useState<ProjectAnalysis | null>(null);
   const [recommendedPartners, setRecommendedPartners] = useState<RecommendedPartner[]>([]);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Get tender ID from route state
   const tenderId = location.state?.tenderId;
@@ -57,13 +62,69 @@ export default function Consulting() {
     if (!user) return;
     
     if (tenderId) {
-      initializeProject();
+      initializeProjectFromTender();
     } else {
-      setLoading(false);
+      loadUserProjects();
     }
   }, [user, tenderId]);
 
-  const initializeProject = async () => {
+  useEffect(() => {
+    if (selectedProject) {
+      loadProjectData(selectedProject.id);
+    }
+  }, [selectedProject]);
+
+  const loadUserProjects = async () => {
+    try {
+      setLoading(true);
+
+      // Get owner company
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (companyError) throw companyError;
+      setOwnerCompany(companyData);
+
+      if (!companyData) {
+        setLoading(false);
+        return;
+      }
+
+      // Load user's projects
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('virtual_organizations')
+        .select(`
+          *,
+          tenders:target_tender_id (
+            id,
+            title,
+            buyer,
+            deadline
+          )
+        `)
+        .eq('lead_company_id', companyData.id)
+        .order('created_at', { ascending: false });
+
+      if (projectsError) throw projectsError;
+      setProjects(projectsData || []);
+
+      // Auto-select first project if any
+      if (projectsData && projectsData.length > 0) {
+        setSelectedProject(projectsData[0]);
+      }
+    } catch (error: any) {
+      console.error('Error loading projects:', error);
+      toast.error('Failed to load projects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializeProjectFromTender = async () => {
     try {
       setLoading(true);
 
@@ -94,10 +155,13 @@ export default function Consulting() {
         .select('*')
         .eq('target_tender_id', tenderId)
         .eq('lead_company_id', companyData.id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (existingProject) {
-        setProjectId(existingProject.id);
+        setSelectedProject(existingProject);
+        setProjects([existingProject]);
         await loadProjectData(existingProject.id);
       } else {
         // Create new project
@@ -124,7 +188,8 @@ export default function Consulting() {
             role: 'lead'
           });
 
-        setProjectId(newProject.id);
+        setSelectedProject(newProject);
+        setProjects([newProject]);
         
         // Run initial analysis
         await runDeepAnalysis(newProject.id, companyData, tenderData);
@@ -135,6 +200,16 @@ export default function Consulting() {
       toast.error('Failed to initialize project');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleProjectCreated = async (projectId: string) => {
+    await loadUserProjects();
+    
+    // Select the newly created project
+    const newProject = projects.find(p => p.id === projectId);
+    if (newProject) {
+      setSelectedProject(newProject);
     }
   };
 
@@ -152,8 +227,19 @@ export default function Consulting() {
       if (membersError) throw membersError;
       setTeamMembers(members || []);
 
-      // Load existing analysis if any
-      // (We'll store this in the virtual_organizations table or create a separate analysis table)
+      // Load tender if associated
+      const project = projects.find(p => p.id === voId) || selectedProject;
+      if (project?.target_tender_id) {
+        const { data: tenderData } = await supabase
+          .from('tenders')
+          .select('*')
+          .eq('id', project.target_tender_id)
+          .maybeSingle();
+        
+        setTender(tenderData);
+      } else {
+        setTender(null);
+      }
       
     } catch (error: any) {
       console.error('Error loading project data:', error);
@@ -189,20 +275,33 @@ export default function Consulting() {
   };
 
   const handleAddPartner = async (partnerId: string) => {
-    if (!projectId) return;
+    if (!selectedProject) return;
 
     try {
+      // Check if already a member
+      const { data: existing } = await supabase
+        .from('vo_members')
+        .select('id')
+        .eq('vo_id', selectedProject.id)
+        .eq('company_id', partnerId)
+        .maybeSingle();
+
+      if (existing) {
+        toast.error('Company is already a team member');
+        return;
+      }
+
       const { error } = await supabase
         .from('vo_members')
         .insert({
-          vo_id: projectId,
+          vo_id: selectedProject.id,
           company_id: partnerId,
           role: 'invited'
         });
 
       if (error) throw error;
 
-      await loadProjectData(projectId);
+      await loadProjectData(selectedProject.id);
       toast.success('Partner added to team');
     } catch (error: any) {
       console.error('Error adding partner:', error);
@@ -219,8 +318,8 @@ export default function Consulting() {
 
       if (error) throw error;
 
-      if (projectId) {
-        await loadProjectData(projectId);
+      if (selectedProject) {
+        await loadProjectData(selectedProject.id);
       }
       toast.success('Partner removed from team');
     } catch (error: any) {
@@ -230,8 +329,14 @@ export default function Consulting() {
   };
 
   const handleRunGroupAnalysis = async () => {
-    if (!projectId || !ownerCompany || !tender) return;
-    await runDeepAnalysis(projectId, ownerCompany, tender);
+    if (!selectedProject || !ownerCompany) return;
+    
+    if (!tender) {
+      toast.error('Please select a tender for this project first');
+      return;
+    }
+    
+    await runDeepAnalysis(selectedProject.id, ownerCompany, tender);
   };
 
   const handleSendInvitations = async (selectedPartnerIds: string[]) => {
@@ -240,7 +345,7 @@ export default function Consulting() {
 
       const { data, error } = await supabase.functions.invoke('send-project-invitations', {
         body: {
-          projectId,
+          projectId: selectedProject?.id,
           tenderTitle: tender?.title,
           partnerIds: selectedPartnerIds
         }
@@ -266,24 +371,42 @@ export default function Consulting() {
     );
   }
 
-  if (!tenderId) {
+  if (!tenderId && (!ownerCompany || projects.length === 0) && !loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>No Tender Selected</CardTitle>
-              <CardDescription>
-                Please select a tender from the matching results to build a consulting team.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => navigate('/tenders')}>
-                Go to Tenders
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">Build Your Consulting Team</h1>
+              <p className="text-muted-foreground mt-2">
+                Create projects, analyze tenders, and form winning consortiums
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Briefcase className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Projects Yet</h3>
+                <p className="text-muted-foreground text-center mb-6 max-w-md">
+                  Start by creating a consulting project. You can link it to a tender and build your team.
+                </p>
+                <Button onClick={() => setCreateDialogOpen(true)} size="lg">
+                  <Plus className="h-5 w-5 mr-2" />
+                  Create Your First Project
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {ownerCompany && (
+            <ProjectCreationDialog
+              open={createDialogOpen}
+              onOpenChange={setCreateDialogOpen}
+              onProjectCreated={handleProjectCreated}
+              companyId={ownerCompany.id}
+            />
+          )}
         </div>
       </div>
     );
@@ -295,12 +418,52 @@ export default function Consulting() {
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           {/* Page Header */}
-          <div>
-            <h1 className="text-3xl font-bold">Build Your Consulting Team</h1>
-            <p className="text-muted-foreground mt-2">
-              Analyze requirements, find partners, and build winning consortiums
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Build Your Consulting Team</h1>
+              <p className="text-muted-foreground mt-2">
+                Analyze requirements, find partners, and build winning consortiums
+              </p>
+            </div>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-5 w-5 mr-2" />
+              New Project
+            </Button>
           </div>
+
+          {/* Project Selector */}
+          {!tenderId && projects.length > 1 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <FolderOpen className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex-1">
+                    <Label htmlFor="project-select">Select Project:</Label>
+                    <Select
+                      value={selectedProject?.id || ""}
+                      onValueChange={(value) => {
+                        const project = projects.find(p => p.id === value);
+                        setSelectedProject(project || null);
+                      }}
+                    >
+                      <SelectTrigger className="w-full mt-2">
+                        <SelectValue placeholder="Select a project">
+                          {selectedProject ? selectedProject.name : "Select a project"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name} {project.tenders && `- ${project.tenders.title}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Project Summary */}
           {tender && (
@@ -370,6 +533,7 @@ export default function Consulting() {
           <TeamBuilder 
             members={teamMembers}
             onRemoveMember={handleRemovePartner}
+            onAddCompany={handleAddPartner}
             onRunGroupAnalysis={handleRunGroupAnalysis}
             analyzing={analyzing}
           />
@@ -380,9 +544,19 @@ export default function Consulting() {
           <InvitationManager 
             members={teamMembers}
             onSendInvitations={handleSendInvitations}
-            projectTitle={tender?.title}
+            projectTitle={tender?.title || selectedProject?.name}
           />
         </div>
+
+        {/* Project Creation Dialog */}
+        {ownerCompany && (
+          <ProjectCreationDialog
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+            onProjectCreated={handleProjectCreated}
+            companyId={ownerCompany.id}
+          />
+        )}
       </div>
     </div>
   );

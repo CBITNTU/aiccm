@@ -78,18 +78,21 @@ export default function Consulting() {
     try {
       setLoading(true);
 
-      // Get owner company
+      // Get owner company - get the first active company
       const { data: companyData, error: companyError } = await supabase
         .from('companies')
         .select('*')
         .eq('user_id', user?.id)
         .eq('status', 'active')
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (companyError) throw companyError;
-      setOwnerCompany(companyData);
+      
+      const firstCompany = companyData?.[0] || null;
+      setOwnerCompany(firstCompany);
 
-      if (!companyData) {
+      if (!firstCompany) {
         setLoading(false);
         return;
       }
@@ -106,7 +109,7 @@ export default function Consulting() {
             deadline
           )
         `)
-        .eq('lead_company_id', companyData.id)
+        .eq('lead_company_id', firstCompany.id)
         .order('created_at', { ascending: false });
 
       if (projectsError) throw projectsError;
@@ -128,18 +131,28 @@ export default function Consulting() {
     try {
       setLoading(true);
 
-      // Get owner company
+      console.log('Initializing project from tender:', tenderId);
+
+      // Get owner company - get the first active company
       const { data: companyData, error: companyError } = await supabase
         .from('companies')
         .select('*')
         .eq('user_id', user?.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
 
       if (companyError) throw companyError;
-      setOwnerCompany(companyData);
+      
+      const firstCompany = companyData?.[0] || null;
+      if (!firstCompany) {
+        toast.error('No company found. Please create a company profile first.');
+        setLoading(false);
+        return;
+      }
+      
+      setOwnerCompany(firstCompany);
+      console.log('Owner company loaded:', firstCompany.company_name);
 
       // Get tender details
       const { data: tenderData, error: tenderError } = await supabase
@@ -148,56 +161,66 @@ export default function Consulting() {
         .eq('id', tenderId)
         .single();
 
-      if (tenderError) throw tenderError;
+      if (tenderError) {
+        console.error('Error loading tender:', tenderError);
+        throw new Error('Tender not found');
+      }
+      
       setTender(tenderData);
+      console.log('Tender loaded:', tenderData.title);
 
-      // Check if project already exists for this tender
-      const { data: existingProject, error: projectCheckError } = await supabase
-        .from('virtual_organizations')
-        .select('*')
-        .eq('target_tender_id', tenderId)
-        .eq('lead_company_id', companyData.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Try to find existing project - use simple query to avoid RLS recursion
+      let existingProject = null;
+      try {
+        const { data: projectsData } = await supabase
+          .from('virtual_organizations')
+          .select('*')
+          .eq('target_tender_id', tenderId)
+          .eq('lead_company_id', firstCompany.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        existingProject = projectsData?.[0] || null;
+        console.log('Existing project check:', existingProject ? 'Found' : 'Not found');
+      } catch (checkError) {
+        console.warn('Could not check for existing project (will create new):', checkError);
+      }
 
       if (existingProject) {
+        console.log('Using existing project:', existingProject.id);
         setSelectedProject(existingProject);
         setProjects([existingProject]);
         await loadProjectData(existingProject.id);
+        toast.success('Project loaded successfully');
       } else {
         // Create new project
+        console.log('Creating new project for tender:', tenderData.title);
         const { data: newProject, error: createError } = await supabase
           .from('virtual_organizations')
           .insert({
             name: `Project: ${tenderData.title}`,
             description: `Consulting team for tender: ${tenderData.title}`,
-            lead_company_id: companyData.id,
+            lead_company_id: firstCompany.id,
             target_tender_id: tenderId,
             status: 'draft'
           })
           .select()
           .single();
 
-        if (createError) throw createError;
+        if (createError) {
+          console.error('Error creating project:', createError);
+          throw new Error('Failed to create project');
+        }
 
-        // Add owner as lead member (temporarily disable to avoid RLS recursion)
-        // We'll add this later after fixing the RLS policy
-        /*
-        await supabase
-          .from('vo_members')
-          .insert({
-            vo_id: newProject.id,
-            company_id: companyData.id,
-            role: 'lead'
-          });
-        */
-
+        console.log('New project created:', newProject.id);
         setSelectedProject(newProject);
         setProjects([newProject]);
         
-        // Run initial analysis without waiting for member insert
-        await runDeepAnalysis(newProject.id, companyData, tenderData);
+        toast.success('Project created successfully');
+        
+        // Run initial analysis automatically
+        console.log('Starting automatic analysis...');
+        await runDeepAnalysis(newProject.id, firstCompany, tenderData);
       }
 
     } catch (error: any) {

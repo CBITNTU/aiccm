@@ -383,7 +383,7 @@ const Dashboard = () => {
                   Company Overview
                 </CardTitle>
                 <CardDescription>
-                  Key information about your company
+                  Key information and business insights
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -400,11 +400,16 @@ const Dashboard = () => {
                       </Badge>
                     </div>}
                   
-                   {selectedCompany.digital_maturity && <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                  {selectedCompany.digital_maturity && <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                       <span className="text-sm font-medium">Digital Maturity</span>
                       <Badge variant="default" className="rounded-none bg-black">
                         {selectedCompany.digital_maturity}
                       </Badge>
+                    </div>}
+
+                  {selectedCompany.market_position && <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                      <span className="text-sm font-medium">Market Position</span>
+                      <span className="text-sm">{selectedCompany.market_position}</span>
                     </div>}
                   
                   {/* Financial Data */}

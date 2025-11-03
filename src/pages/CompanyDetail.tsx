@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Globe, Mail, Phone, MapPin, Award, Wrench, Users, FileText, Edit2, RefreshCw, ArrowLeft } from "lucide-react";
+import { Building2, Globe, Mail, Phone, MapPin, Award, Wrench, Users, FileText, Edit2, RefreshCw, ArrowLeft, DollarSign, TrendingUp } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { hasOpenAIKey } from "@/lib/openai";
 import OpenAIKeyDialog from "@/components/OpenAIKeyDialog";
 import { TenderMatching } from "@/components/TenderMatching";
@@ -228,9 +229,10 @@ const CompanyDetail = () => {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
+            <TabsTrigger value="financial">Financial</TabsTrigger>
+            <TabsTrigger value="capabilities">Equipment</TabsTrigger>
             <TabsTrigger value="certifications">Certifications</TabsTrigger>
             <TabsTrigger value="projects">Past Projects</TabsTrigger>
             <TabsTrigger value="tenders">Tender Matches</TabsTrigger>
@@ -289,41 +291,67 @@ const CompanyDetail = () => {
                 </CardHeader>
                  <CardContent>
                    <div className="space-y-4">
-                     <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                       <div>
-                         <p className="text-sm font-medium">Digital Maturity</p>
-                         <p className="text-xs text-muted-foreground">
-                           {companyData.digital_maturity || 'Not assessed yet'}
-                         </p>
+                     {/* Business Metrics */}
+                     <div className="grid md:grid-cols-2 gap-3">
+                       <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                         <div>
+                           <p className="text-sm font-medium">Digital Maturity</p>
+                           <p className="text-xs text-muted-foreground">
+                             {companyData.digital_maturity || 'Not assessed yet'}
+                           </p>
+                         </div>
+                       </div>
+                       <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                         <div>
+                           <p className="text-sm font-medium">Market Position</p>
+                           <p className="text-xs text-muted-foreground">
+                             {companyData.market_position || 'Not assessed yet'}
+                           </p>
+                         </div>
+                       </div>
+                       <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                         <div>
+                           <p className="text-sm font-medium">Safety Rating</p>
+                           <p className="text-xs text-muted-foreground">
+                             {companyData.safety_rating || 'Not assessed yet'}
+                           </p>
+                         </div>
                        </div>
                      </div>
-                     <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                       <div>
-                         <p className="text-sm font-medium">Market Position</p>
-                         <p className="text-xs text-muted-foreground">
-                           {companyData.market_position || 'Not assessed yet'}
-                         </p>
-                       </div>
-                     </div>
-                     <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                       <div>
-                         <p className="text-sm font-medium">Safety Rating</p>
-                         <p className="text-xs text-muted-foreground">
-                           {companyData.safety_rating || 'Not assessed yet'}
-                         </p>
-                       </div>
-                     </div>
+
+                     <Separator />
+
+                     {/* AI Analysis Section */}
                      {analysis && (
-                       <div className="p-3 border border-border rounded-lg bg-card">
-                         <p className="text-sm font-medium mb-2">Latest AI Analysis</p>
-                         <p className="text-xs text-muted-foreground">{analysis.analysis}</p>
-                         <div className="mt-2">
+                       <div className="p-4 border border-border rounded-lg bg-card">
+                         <div className="flex items-center justify-between mb-3">
+                           <p className="text-sm font-semibold flex items-center gap-2">
+                             <TrendingUp className="w-4 h-4 text-primary" />
+                             Latest AI Analysis
+                           </p>
                            <Badge variant="outline">Overall Score: {analysis.overallScore}/100</Badge>
+                         </div>
+                         <p className="text-xs text-muted-foreground leading-relaxed">{analysis.analysis}</p>
+                         
+                         {/* Performance Metrics */}
+                         <div className="grid grid-cols-3 gap-2 mt-3">
+                           <div className="text-center p-2 bg-secondary/30 rounded">
+                             <div className="text-xs text-muted-foreground">Technical</div>
+                             <div className="text-sm font-bold">{analysis.technicalExpertise}/100</div>
+                           </div>
+                           <div className="text-center p-2 bg-secondary/30 rounded">
+                             <div className="text-xs text-muted-foreground">Innovation</div>
+                             <div className="text-sm font-bold">{analysis.innovation}/100</div>
+                           </div>
+                           <div className="text-center p-2 bg-secondary/30 rounded">
+                             <div className="text-xs text-muted-foreground">Experience</div>
+                             <div className="text-sm font-bold">{analysis.projectExperience}/100</div>
+                           </div>
                          </div>
                        </div>
                      )}
                      {!analysis && (
-                       <div className="p-3 border border-dashed border-border rounded-lg bg-muted/50 text-center">
+                       <div className="p-4 border border-dashed border-border rounded-lg bg-muted/50 text-center">
                          <p className="text-sm text-muted-foreground">No AI analysis available yet</p>
                          <p className="text-xs text-muted-foreground mt-1">Click "Analyze Company" to generate insights</p>
                        </div>
@@ -334,7 +362,50 @@ const CompanyDetail = () => {
             </div>
           </TabsContent>
 
+          {/* New Financial Tab */}
+          <TabsContent value="financial" className="space-y-6">
+            {companyData.financial_data && Object.keys(companyData.financial_data as any).length > 0 ? (
+              <Card className="card-professional">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <DollarSign className="w-5 h-5" />
+                    <span>Financial Information</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-3 gap-6">
+                    {Object.entries(companyData.financial_data as any).map(([key, field]: [string, any]) => (
+                      <div key={key} className="p-6 bg-gradient-to-br from-secondary/30 to-secondary/10 rounded-lg border border-border">
+                        <div className="text-sm font-medium text-muted-foreground capitalize mb-2">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                        </div>
+                        <div className="text-3xl font-bold text-foreground mb-2">
+                          {field.value?.toLocaleString() || 'N/A'}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                          {field.confidence >= 80 ? '🟢' : field.confidence >= 50 ? '🟡' : '⚪'}
+                          Confidence: {field.confidence}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="card-professional">
+                <CardContent className="text-center py-12">
+                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Financial Data</h3>
+                  <p className="text-muted-foreground">
+                    Financial data was not extracted during onboarding. Add it manually or re-run the analysis.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
           <TabsContent value="capabilities" className="space-y-6">
+            {/* Equipment & Resources Section */}
             <Card className="card-professional">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">

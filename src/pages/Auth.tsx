@@ -159,7 +159,7 @@ const Auth = () => {
       } else {
         toast({
           title: "Account Created!",
-          description: "Welcome to EMCCA Collaborative Commerce Marketplace! You can now set up your company profile.",
+          description: "Welcome to AI-Powered CCM! You can now set up your company profile.",
         });
       }
 
@@ -218,7 +218,7 @@ const Auth = () => {
           <div className="w-16 h-16 gradient-hero rounded-lg mx-auto mb-4 flex items-center justify-center">
             <Building2 className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Welcome to EMCCA Collaborative Commerce Marketplace</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Welcome to AI-Powered CCM</h1>
           <p className="text-muted-foreground">Access your tender dashboard</p>
         </div>
 

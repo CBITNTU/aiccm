@@ -45,7 +45,7 @@ const Admin = () => {
     { service: "Company Data Extraction", status: "Operational", uptime: 99.9 },
     { service: "Tender Matching Engine", status: "Operational", uptime: 99.7 },
     { service: "VO Composer", status: "Operational", uptime: 98.9 },
-    { service: "EMCCA Tender Feed", status: "Issues", uptime: 95.2 },
+    { service: "CCM Tender Feed", status: "Issues", uptime: 95.2 },
     { service: "OpenAI API", status: "Operational", uptime: 99.8 },
   ];
 

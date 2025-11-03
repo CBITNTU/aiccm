@@ -259,7 +259,7 @@ const CompanyOnboardingStep1 = ({ onNext }: CompanyOnboardingStep1Props) => {
               htmlFor="consent"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              I allow EMCCA-CCM to fetch public data to prefill my profile{" "}
+              I allow AI-Powered CCM to fetch public data to prefill my profile{" "}
               <span className="text-destructive">*</span>
             </label>
             <p className="text-xs text-muted-foreground">

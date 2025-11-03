@@ -313,18 +313,85 @@ export default function Consulting() {
         memberCount: teamMembers.length
       });
 
-      const { data, error } = await supabase.functions.invoke('analyze-project', {
-        body: {
-          projectId: voId,
-          companyId: company.id,
-          tenderId: tenderData.id,
-          members: teamMembers
+      // Direct OpenAI analysis instead of edge function
+      const openaiKey = localStorage.getItem('openai_api_key');
+      if (!openaiKey) {
+        const key = window.prompt('Please enter your OpenAI API key to run AI analysis:');
+        if (!key) {
+          throw new Error('OpenAI API key is required for analysis');
         }
+        localStorage.setItem('openai_api_key', key);
+      }
+
+      const finalKey = localStorage.getItem('openai_api_key');
+
+      const allCompanies = [company, ...teamMembers.map((m: any) => m.companies)].filter(Boolean);
+      const companiesText = allCompanies.map(c => 
+        `Company: ${c.company_name}\nCapabilities: ${c.key_capabilities || 'N/A'}\nCertifications: ${c.certifications || 'N/A'}`
+      ).join('\n\n');
+
+      const prompt = `Analyze this tender and team:\n\nTENDER:\nTitle: ${tenderData.title}\nDescription: ${tenderData.description || 'N/A'}\nLocation: ${tenderData.location || 'N/A'}\n\nTEAM:\n${companiesText}\n\nProvide analysis as JSON with:\n- requiredCompetencies: array of strings\n- companyCompetencies: array of strings\n- missingCompetencies: array of strings\n- coveragePercentage: number (0-100)\n- readinessScore: number (0-100)\n- risks: array of strings\n\nRespond with valid JSON only, no markdown.`;
+
+      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${finalKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are a tender analysis expert. Respond with valid JSON only.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
       });
 
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to connect to analysis service');
+      if (!aiResponse.ok) {
+        throw new Error(`OpenAI API error: ${aiResponse.status}`);
+      }
+
+      const aiData = await aiResponse.json();
+      const content = aiData.choices[0].message.content;
+      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const analysis = JSON.parse(cleanContent);
+
+      // Get partner recommendations
+      const missingComps = analysis.missingCompetencies || [];
+      let data: any = { analysis, recommendedPartners: [] };
+
+      if (missingComps.length > 0) {
+        const { data: companies } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('status', 'active')
+          .neq('id', company.id)
+          .limit(50);
+
+        if (companies) {
+          const scored = companies.map((c: any) => {
+            const text = `${c.key_capabilities || ''} ${c.certifications || ''}`.toLowerCase();
+            const matches = missingComps.filter((comp: string) => 
+              text.includes(comp.toLowerCase())
+            );
+            return {
+              id: c.id,
+              company_name: c.company_name,
+              key_capabilities: c.key_capabilities,
+              certifications: c.certifications,
+              location: c.postcode || 'N/A',
+              relevanceScore: Math.round((matches.length / missingComps.length) * 100),
+              matchingCompetencies: matches
+            };
+          });
+
+          data.recommendedPartners = scored
+            .filter((c: any) => c.relevanceScore > 0)
+            .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
+            .slice(0, 10);
+        }
       }
 
       console.log('Analysis results received:', {

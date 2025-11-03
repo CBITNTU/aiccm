@@ -13,8 +13,11 @@ serve(async (req) => {
   }
 
   try {
+    console.log('analyze-project function invoked');
+    
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('No authorization header provided');
       return new Response(JSON.stringify({ error: 'Authorization required' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -32,6 +35,7 @@ serve(async (req) => {
     );
 
     const { projectId, companyId, tenderId, members } = await req.json();
+    console.log('Request received:', { projectId, companyId, tenderId, memberCount: members?.length });
 
     // Get tender details
     const { data: tender, error: tenderError } = await supabaseClient
@@ -69,8 +73,10 @@ serve(async (req) => {
     // Run AI analysis
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
+      console.error('OpenAI API key not configured in environment');
       throw new Error('OpenAI API key not configured');
     }
+    console.log('Starting AI analysis...');
 
     const analysis = await analyzeProjectMatch(
       openAIApiKey,
@@ -80,6 +86,7 @@ serve(async (req) => {
     );
 
     // Get partner recommendations
+    console.log('Getting partner recommendations for missing competencies:', analysis.missingCompetencies);
     const recommendations = await getPartnerRecommendations(
       supabaseClient,
       analysis.missingCompetencies,
@@ -87,6 +94,7 @@ serve(async (req) => {
       companyId
     );
 
+    console.log('Analysis complete, returning results');
     return new Response(JSON.stringify({
       analysis,
       recommendedPartners: recommendations

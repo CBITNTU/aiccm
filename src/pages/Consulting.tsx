@@ -324,16 +324,7 @@ export default function Consulting() {
 
       if (error) {
         console.error('Edge function error:', error);
-        
-        // Check if it's a deployment issue
-        if (error.message?.includes('Failed to fetch') || error.message?.includes('Failed to send')) {
-          throw new Error(
-            'The AI analysis service is not available yet. Edge functions are being deployed. ' +
-            'Please wait a moment and try again. If the issue persists, try refreshing the page.'
-          );
-        }
-        
-        throw new Error(error.message || 'Analysis failed');
+        throw new Error(error.message || 'Failed to connect to analysis service');
       }
 
       console.log('Analysis results received:', {
@@ -368,10 +359,10 @@ export default function Consulting() {
       
       // Provide more helpful error messages
       let errorMessage = 'Failed to run analysis';
-      if (error.message?.includes('OpenAI')) {
-        errorMessage = 'AI service error. Please check your OpenAI API key.';
-      } else if (error.message?.includes('not available') || error.message?.includes('deployed')) {
-        errorMessage = error.message;
+      if (error.message?.includes('OpenAI API key')) {
+        errorMessage = 'OpenAI API key is not configured. Please add it in the Cloud settings.';
+      } else if (error.message?.includes('Failed to connect')) {
+        errorMessage = 'Cannot connect to analysis service. The edge function may not be deployed yet. Please try again in a moment or contact support.';
       } else if (error.message) {
         errorMessage = `Analysis failed: ${error.message}`;
       }

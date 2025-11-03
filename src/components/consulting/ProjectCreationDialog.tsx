@@ -72,36 +72,34 @@ export function ProjectCreationDialog({
     try {
       setLoading(true);
 
-      console.log('Creating project via edge function...', {
+      console.log('Creating project...', {
         name: formData.name,
         companyId,
         tender: formData.target_tender_id
       });
 
-      // Call edge function which uses service role to bypass RLS
-      const { data, error } = await supabase.functions.invoke('create-project', {
-        body: {
+      // Create project directly - RLS policies now use security definer functions
+      const { data: project, error: projectError } = await supabase
+        .from('virtual_organizations')
+        .insert({
           name: formData.name,
           description: formData.description,
-          target_tender_id: formData.target_tender_id === 'none' ? null : formData.target_tender_id,
-          company_id: companyId
-        }
-      });
+          lead_company_id: companyId,
+          target_tender_id: formData.target_tender_id === 'none' ? null : (formData.target_tender_id || null),
+          status: 'draft'
+        })
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Edge function invocation error:', error);
-        throw new Error(error.message || 'Failed to call edge function');
+      if (projectError) {
+        console.error('Project creation error:', projectError);
+        throw new Error(projectError.message);
       }
 
-      if (!data || !data.project) {
-        console.error('Invalid response from edge function:', data);
-        throw new Error(data?.error || 'No project data returned from server');
-      }
-
-      console.log('Project created successfully:', data.project.id);
+      console.log('Project created successfully:', project.id);
       
       toast.success('Consulting project created!');
-      onProjectCreated(data.project.id);
+      onProjectCreated(project.id);
       onOpenChange(false);
       
       // Reset form

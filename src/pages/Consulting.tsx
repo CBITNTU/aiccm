@@ -248,6 +248,13 @@ export default function Consulting() {
       setAnalyzing(true);
       toast.info('Running AI analysis...');
 
+      console.log('Starting analysis with:', {
+        projectId: voId,
+        companyId: company.id,
+        tenderId: tenderData.id,
+        memberCount: teamMembers.length
+      });
+
       const { data, error } = await supabase.functions.invoke('analyze-project', {
         body: {
           projectId: voId,
@@ -257,15 +264,31 @@ export default function Consulting() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Analysis error:', error);
+        throw error;
+      }
+
+      console.log('Analysis results:', data);
+
+      if (!data?.analysis) {
+        console.error('Invalid response structure:', data);
+        throw new Error('No analysis data returned from AI');
+      }
 
       setAnalysis(data.analysis);
-      setRecommendedPartners(data.recommendedPartners);
+      setRecommendedPartners(data.recommendedPartners || []);
       
-      toast.success('Analysis complete!');
+      const partnerCount = data.recommendedPartners?.length || 0;
+      const gaps = data.analysis.missingCompetencies?.length || 0;
+      
+      toast.success(
+        `Analysis complete! Coverage: ${data.analysis.coveragePercentage}%, ` +
+        `${gaps} gaps found, ${partnerCount} partners recommended`
+      );
     } catch (error: any) {
       console.error('Error running analysis:', error);
-      toast.error('Failed to run analysis');
+      toast.error(`Failed to run analysis: ${error.message || 'Unknown error'}`);
     } finally {
       setAnalyzing(false);
     }
@@ -495,16 +518,17 @@ export default function Consulting() {
                 <Button 
                   onClick={handleRunGroupAnalysis}
                   disabled={analyzing}
+                  size="lg"
                 >
                   {analyzing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Analyzing...
+                      Analyzing with AI...
                     </>
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      {analysis ? 'Re-run Analysis' : 'Run Analysis'}
+                      {analysis ? 'Re-run AI Analysis' : 'Run AI Analysis'}
                     </>
                   )}
                 </Button>
@@ -529,9 +553,11 @@ export default function Consulting() {
             {tender && analyzing && (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    Analyzing tender requirements and your company capabilities...
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                  <h3 className="font-semibold mb-2">AI Analysis in Progress</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Analyzing tender requirements, comparing with your team's competencies, 
+                    identifying gaps, and searching for recommended partners from the database...
                   </p>
                 </CardContent>
               </Card>

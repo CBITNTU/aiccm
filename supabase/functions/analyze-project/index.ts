@@ -120,27 +120,38 @@ async function analyzeProjectMatch(
   `).join('\n\n');
 
   const prompt = `
-You are an expert in construction tender analysis and team formation. Analyze this tender and the proposed team.
+You are an expert in tender analysis and team formation for construction and consulting projects. Carefully analyze this tender and the proposed team.
 
 TENDER DETAILS:
 - Title: ${tender.title}
 - Description: ${tender.description || 'Not provided'}
-- Requirements: ${JSON.stringify(tender.requirements) || 'Not provided'}
+- Requirements: ${tender.requirements || 'Not provided'}
+- Standards Required: ${tender.standards_required || 'Not provided'}
 - CPV Codes: ${tender.cpv_codes?.join(', ') || 'Not provided'}
+- Capacity Required: ${tender.capacity_required || 'Not specified'}
 - Budget: ${tender.budget_min && tender.budget_max ? `£${tender.budget_min} - £${tender.budget_max}` : 'Not specified'}
+- Location: ${tender.location || 'Not specified'}
 
-PROPOSED TEAM:
+CURRENT TEAM MEMBERS:
 ${companiesDescription}
 
-Please provide a detailed analysis with:
-1. Required competencies list (extract from tender requirements)
-2. Current team competencies (what the team collectively has)
-3. Missing competencies (gaps that need to be filled)
-4. Coverage percentage (0-100)
-5. Readiness score (0-100, overall bid readiness)
-6. Key risks or concerns
+TASK:
+1. Extract ALL required competencies from the tender (technical skills, certifications, equipment, capacity, experience)
+2. List ALL competencies the current team collectively possesses
+3. Identify MISSING competencies (what the team lacks to fully meet tender requirements)
+4. Calculate coverage percentage: (team competencies / required competencies) * 100
+5. Calculate readiness score considering: competency coverage, certifications, past experience, capacity, location match
+6. Identify key risks (e.g., lack of certifications, insufficient capacity, missing specializations)
 
-Respond in valid JSON format only:
+IMPORTANT: Be thorough in extracting tender requirements. Look for:
+- Technical capabilities mentioned
+- Required certifications and standards (ISO, etc.)
+- Specific equipment or technology needs
+- Experience requirements
+- Capacity/volume requirements
+- Geographic/location requirements
+
+Respond ONLY with valid JSON (no markdown, no additional text):
 {
   "requiredCompetencies": ["competency1", "competency2", ...],
   "companyCompetencies": ["competency1", "competency2", ...],
@@ -158,28 +169,33 @@ Respond in valid JSON format only:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-mini-2025-08-07',
       messages: [
         {
           role: 'system',
-          content: 'You are a construction industry expert. Always respond with valid JSON only.'
+          content: 'You are an expert in analyzing tenders and matching company competencies. Always respond with valid JSON only, no markdown formatting.'
         },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.3,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('OpenAI API error:', response.status, errorText);
+    throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
   const content = data.choices[0].message.content;
 
+  console.log('OpenAI raw response:', content);
+
   try {
-    return JSON.parse(content);
+    // Remove markdown code blocks if present
+    const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleanContent);
   } catch (parseError) {
     console.error('Failed to parse OpenAI response:', content);
     throw new Error('Invalid response format from AI analysis');
@@ -192,30 +208,45 @@ async function getPartnerRecommendations(
   location: string,
   excludeCompanyId: string
 ): Promise<any[]> {
-  // Get all active companies except the current one
+  if (!missingCompetencies || missingCompetencies.length === 0) {
+    console.log('No missing competencies, returning empty recommendations');
+    return [];
+  }
+
+  console.log('Searching for partners with competencies:', missingCompetencies);
+
+  // Get all active companies except the current one and existing team members
   const { data: companies, error } = await supabaseClient
     .from('companies')
     .select('*')
     .eq('status', 'active')
     .neq('id', excludeCompanyId)
-    .limit(20);
+    .limit(50);
 
   if (error || !companies) {
     console.error('Error fetching companies:', error);
     return [];
   }
 
+  console.log(`Found ${companies.length} potential partner companies`);
+
   // Score each company based on missing competencies
   const scoredCompanies = companies.map((company: any) => {
-    const capabilities = company.key_capabilities?.toLowerCase() || '';
-    const certifications = company.certifications?.toLowerCase() || '';
-    const combinedText = `${capabilities} ${certifications}`;
+    const capabilities = (company.key_capabilities?.toLowerCase() || '');
+    const certifications = (company.certifications?.toLowerCase() || '');
+    const pastProjects = (company.past_projects?.toLowerCase() || '');
+    const equipment = (company.equipment?.toLowerCase() || '');
+    const combinedText = `${capabilities} ${certifications} ${pastProjects} ${equipment}`;
 
     let matchCount = 0;
     const matchingCompetencies: string[] = [];
 
     missingCompetencies.forEach(comp => {
-      if (combinedText.includes(comp.toLowerCase())) {
+      const compLower = comp.toLowerCase();
+      // Check for partial matches and related terms
+      if (combinedText.includes(compLower) || 
+          capabilities.includes(compLower) ||
+          certifications.includes(compLower)) {
         matchCount++;
         matchingCompetencies.push(comp);
       }
@@ -226,15 +257,23 @@ async function getPartnerRecommendations(
       : 0;
 
     return {
-      ...company,
+      id: company.id,
+      company_name: company.company_name,
+      key_capabilities: company.key_capabilities,
+      certifications: company.certifications,
+      location: company.postcode || 'N/A',
       relevanceScore,
       matchingCompetencies
     };
   });
 
   // Sort by relevance score and return top matches
-  return scoredCompanies
+  const topMatches = scoredCompanies
     .filter((c: any) => c.relevanceScore > 0)
     .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
     .slice(0, 10);
+
+  console.log(`Returning ${topMatches.length} recommended partners`);
+
+  return topMatches;
 }

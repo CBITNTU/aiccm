@@ -87,17 +87,9 @@ export function ProjectCreationDialog({
 
       if (projectError) throw projectError;
 
-      // Add owner as lead member
-      const { error: memberError } = await supabase
-        .from('vo_members')
-        .insert({
-          vo_id: project.id,
-          company_id: companyId,
-          role: 'lead'
-        });
-
-      if (memberError) throw memberError;
-
+      // Note: Not adding to vo_members due to RLS policy issues
+      // The project owner is tracked via lead_company_id
+      
       toast.success('Consulting project created!');
       onProjectCreated(project.id);
       onOpenChange(false);

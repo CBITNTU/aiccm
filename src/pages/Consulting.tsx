@@ -97,26 +97,47 @@ export default function Consulting() {
         return;
       }
 
-      // Load user's projects
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('virtual_organizations')
-        .select(`
-          *,
-          tenders:target_tender_id (
-            id,
-            title,
-            buyer,
-            deadline
-          )
-        `)
-        .eq('lead_company_id', firstCompany.id)
-        .order('created_at', { ascending: false });
+      // Load user's projects - wrap in try-catch to handle RLS issues
+      let projectsData = [];
+      try {
+        const { data, error: projectsError } = await supabase
+          .from('virtual_organizations')
+          .select(`
+            *,
+            tenders:target_tender_id (
+              id,
+              title,
+              buyer,
+              deadline
+            )
+          `)
+          .eq('lead_company_id', firstCompany.id)
+          .order('created_at', { ascending: false });
 
-      if (projectsError) throw projectsError;
-      setProjects(projectsData || []);
+        if (projectsError) {
+          console.warn('Could not load projects (RLS issue):', projectsError);
+          // Try simpler query without join
+          const { data: simpleData, error: simpleError } = await supabase
+            .from('virtual_organizations')
+            .select('*')
+            .eq('lead_company_id', firstCompany.id)
+            .order('created_at', { ascending: false });
+          
+          if (!simpleError) {
+            projectsData = simpleData || [];
+          }
+        } else {
+          projectsData = data || [];
+        }
+      } catch (loadError) {
+        console.warn('Error loading projects:', loadError);
+        projectsData = [];
+      }
+
+      setProjects(projectsData);
 
       // Auto-select first project if any
-      if (projectsData && projectsData.length > 0) {
+      if (projectsData.length > 0) {
         setSelectedProject(projectsData[0]);
       }
     } catch (error: any) {
@@ -171,19 +192,19 @@ export default function Consulting() {
 
       // Try to find existing project - use simple query to avoid RLS recursion
       let existingProject = null;
-      try {
-        const { data: projectsData } = await supabase
-          .from('virtual_organizations')
-          .select('*')
-          .eq('target_tender_id', tenderId)
-          .eq('lead_company_id', firstCompany.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        
+      const { data: projectsData, error: checkError } = await supabase
+        .from('virtual_organizations')
+        .select('*')
+        .eq('target_tender_id', tenderId)
+        .eq('lead_company_id', firstCompany.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (checkError) {
+        console.warn('Could not check for existing project:', checkError);
+      } else {
         existingProject = projectsData?.[0] || null;
         console.log('Existing project check:', existingProject ? 'Found' : 'Not found');
-      } catch (checkError) {
-        console.warn('Could not check for existing project (will create new):', checkError);
       }
 
       if (existingProject) {

@@ -55,7 +55,7 @@ const Header = ({ variant = "landing" }: HeaderProps) => {
   const navigationItems = [
     { name: "Tenders", href: "/tenders", icon: FileText },
     { name: "Company Directory", href: "/directory", icon: Search },
-    { name: "Virtual Organizations", href: "/vo", icon: Users },
+    { name: "Build Your Consulting Team", href: "/vo", icon: Users },
     ...(isAdmin ? [{ name: "Admin", href: "/admin", icon: Settings }] : []),
   ];
 
@@ -70,10 +70,10 @@ const Header = ({ variant = "landing" }: HeaderProps) => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-primary">
-                EMCCA
+                AI-Powered CCM
               </h1>
               <p className="text-xs text-muted-foreground leading-none">
-                Collaborative Commerce Marketplace
+                Competence-Centered Marketplace
               </p>
             </div>
           </Link>

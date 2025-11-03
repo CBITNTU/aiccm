@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Building2, FileText, Users, Calendar, ArrowRight, Target, Award, Clock } from "lucide-react";
@@ -399,12 +400,32 @@ const Dashboard = () => {
                       </Badge>
                     </div>}
                   
-                  {selectedCompany.digital_maturity && <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                   {selectedCompany.digital_maturity && <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                       <span className="text-sm font-medium">Digital Maturity</span>
                       <Badge variant="default" className="rounded-none bg-black">
                         {selectedCompany.digital_maturity}
                       </Badge>
                     </div>}
+                  
+                  {/* Financial Data */}
+                  {selectedCompany.financial_data && Object.keys(selectedCompany.financial_data).length > 0 && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">Financial Information</h4>
+                        {Object.entries(selectedCompany.financial_data).map(([key, field]: [string, any]) => (
+                          <div key={key} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                            <span className="text-sm font-medium capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </span>
+                            <span className="text-sm font-semibold">
+                              {field.value?.toLocaleString() || 'N/A'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                   
                   <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                     <span className="text-sm font-medium">Status</span>
@@ -572,7 +593,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Form virtual organizations and partnerships</p>
+              <p className="text-muted-foreground">Build consulting teams and partnerships</p>
             </CardContent>
           </Card>
         </div>

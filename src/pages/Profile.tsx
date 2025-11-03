@@ -2,7 +2,8 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Globe, Mail, Phone, MapPin, Plus } from "lucide-react";
+import { Building2, Globe, Mail, Phone, MapPin, Plus, DollarSign } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -174,6 +175,29 @@ const Profile = () => {
                       <Phone className="w-4 h-4 text-muted-foreground" />
                       <span>{company.contact_phone}</span>
                     </div>
+                  )}
+                  
+                  {/* Financial Data */}
+                  {company.financial_data && Object.keys(company.financial_data as any).length > 0 && (
+                    <>
+                      <Separator className="my-3" />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+                          <DollarSign className="w-4 h-4 text-muted-foreground" />
+                          <span>Financial Information</span>
+                        </div>
+                        {Object.entries(company.financial_data as any).slice(0, 3).map(([key, field]: [string, any]) => (
+                          <div key={key} className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </span>
+                            <span className="font-medium">
+                              {field.value?.toLocaleString() || 'N/A'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
                 

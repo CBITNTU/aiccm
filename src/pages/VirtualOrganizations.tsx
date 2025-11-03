@@ -247,12 +247,12 @@ const VirtualOrganizations = () => {
           role: 'lead'
         });
 
-      toast.success('Virtual Organization created successfully!');
+      toast.success('Consulting Team created successfully!');
       setCreateVoDialogOpen(false);
       setVoForm({ name: '', description: '', target_tender_id: '' });
     } catch (error) {
       console.error('Error creating VO:', error);
-      toast.error('Failed to create Virtual Organization');
+      toast.error('Failed to create Consulting Team');
     }
   };
 
@@ -275,7 +275,7 @@ const VirtualOrganizations = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin mr-2" />
-            Loading virtual organizations...
+            Loading consulting teams...
           </div>
         </div>
       </div>
@@ -292,7 +292,7 @@ const VirtualOrganizations = () => {
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No Companies Found</h3>
               <p className="text-muted-foreground mb-4">
-                You need to create a company profile to access virtual organizations
+                You need to create a company profile to build your consulting team
               </p>
               <Button onClick={() => window.location.href = '/onboarding'}>
                 Create Company Profile
@@ -311,9 +311,9 @@ const VirtualOrganizations = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Virtual Organizations</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Build Your Consulting Team</h1>
           <p className="text-muted-foreground">
-            Find potential partners, form consortiums, and collaborate on tenders with other construction companies.
+            Find potential partners, form consortiums, and collaborate on tenders with other companies.
           </p>
         </div>
 
@@ -461,7 +461,7 @@ const VirtualOrganizations = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  My Virtual Organizations
+                  My Consulting Teams
                 </CardTitle>
                 <CardDescription>
                   Consortiums and partnerships you're part of
@@ -473,13 +473,13 @@ const VirtualOrganizations = () => {
               <Card>
                 <CardContent className="text-center py-12">
                   <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No organizations yet</h3>
+                  <h3 className="text-lg font-medium mb-2">No teams yet</h3>
                   <p className="text-muted-foreground mb-4">
-                    Create your first virtual organization to start collaborating
+                    Create your first consulting team to start collaborating
                   </p>
                   <Button onClick={() => setCreateVoDialogOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Create Organization
+                    Create Consulting Team
                   </Button>
                 </CardContent>
               </Card>
@@ -567,7 +567,7 @@ const VirtualOrganizations = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="h-5 w-5" />
-                  Create Virtual Organization
+                  Create Consulting Team
                 </CardTitle>
                 <CardDescription>
                   Form a consortium for collaborative tendering
@@ -612,7 +612,7 @@ const VirtualOrganizations = () => {
 
                 <Button onClick={handleCreateVO} disabled={!voForm.name} className="w-full">
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Virtual Organization
+                  Create Consulting Team
                 </Button>
               </CardContent>
             </Card>

@@ -26,9 +26,9 @@ const Admin = () => {
       color: "text-secondary" 
     },
     { 
-      label: "Virtual Organizations", 
+      label: "Consulting Teams", 
       value: 23, 
-      change: +3, 
+      change: +3,
       icon: Users2, 
       color: "text-accent" 
     },

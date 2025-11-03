@@ -76,16 +76,15 @@ const HeroSection = () => {
           {/* Main Heading */}
           <div className="max-w-5xl mx-auto space-y-6">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-              Boost East Midlands{" "}
+              AI-Powered CCM{" "}
               <span className="relative">
-                <span className="gradient-hero bg-clip-text text-transparent">Regional Economy</span>
+                <span className="gradient-hero bg-clip-text text-transparent">Empowering Collaboration through Competence</span>
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 -z-10" />
               </span>
             </h1>
             
             <p className="text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed font-medium">
-              AI-powered platform connecting regional businesses with opportunities. 
-              Extract competencies, match tenders, and form Virtual Organizations to strengthen local partnerships.
+              Discover your company's strengths, match with tenders, and form winning consortiums with AI.
             </p>
           </div>
 

@@ -56,7 +56,7 @@ const BusinessChatbot: React.FC<BusinessChatbotProps> = ({ companyData }) => {
       Platform Features:
       - Profile Management: Companies can update their profiles, add capabilities, certifications
       - Tender Matching: AI-powered matching with government and private tenders
-      - Virtual Organizations: Partner with other companies for larger opportunities
+      - Consulting Team Builder: Partner with other companies for larger opportunities
       - Partner Recommendations: Find complementary businesses to work with
       
       Your role:

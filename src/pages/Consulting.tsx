@@ -70,9 +70,12 @@ export default function Consulting() {
 
   useEffect(() => {
     if (selectedProject) {
+      // Clear previous analysis when switching projects
+      setAnalysis(null);
+      setRecommendedPartners([]);
       loadProjectData(selectedProject.id);
     }
-  }, [selectedProject]);
+  }, [selectedProject?.id]); // Use selectedProject.id to trigger on change
 
   const loadUserProjects = async () => {
     try {
@@ -313,54 +316,29 @@ export default function Consulting() {
         memberCount: teamMembers.length
       });
 
-      // Direct OpenAI analysis instead of edge function
-      const openaiKey = localStorage.getItem('openai_api_key');
-      if (!openaiKey) {
-        const key = window.prompt('Please enter your OpenAI API key to run AI analysis:');
-        if (!key) {
-          throw new Error('OpenAI API key is required for analysis');
-        }
-        localStorage.setItem('openai_api_key', key);
-      }
-
-      const finalKey = localStorage.getItem('openai_api_key');
-
+      // Use platform OpenAI key via edge function
       const allCompanies = [company, ...teamMembers.map((m: any) => m.companies)].filter(Boolean);
       const companiesText = allCompanies.map(c => 
         `Company: ${c.company_name}\nCapabilities: ${c.key_capabilities || 'N/A'}\nCertifications: ${c.certifications || 'N/A'}`
       ).join('\n\n');
 
-      const prompt = `Analyze this tender and team:\n\nTENDER:\nTitle: ${tenderData.title}\nDescription: ${tenderData.description || 'N/A'}\nLocation: ${tenderData.location || 'N/A'}\n\nTEAM:\n${companiesText}\n\nProvide analysis as JSON with:\n- requiredCompetencies: array of strings\n- companyCompetencies: array of strings\n- missingCompetencies: array of strings\n- coveragePercentage: number (0-100)\n- readinessScore: number (0-100)\n- risks: array of strings\n\nRespond with valid JSON only, no markdown.`;
+      const analysisPrompt = `Analyze this tender and team:\n\nTENDER:\nTitle: ${tenderData.title}\nDescription: ${tenderData.description || 'N/A'}\nLocation: ${tenderData.location || 'N/A'}\n\nTEAM:\n${companiesText}\n\nProvide analysis as JSON with:\n- requiredCompetencies: array of strings\n- companyCompetencies: array of strings\n- missingCompetencies: array of strings\n- coveragePercentage: number (0-100)\n- readinessScore: number (0-100)\n- risks: array of strings\n\nRespond with valid JSON only, no markdown.`;
 
-      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${finalKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: 'You are a tender analysis expert. Respond with valid JSON only.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000,
-        }),
+      const { data: aiData, error: aiError } = await supabase.functions.invoke('analyze-project-simple', {
+        body: { prompt: analysisPrompt }
       });
 
-      if (!aiResponse.ok) {
-        throw new Error(`OpenAI API error: ${aiResponse.status}`);
+      if (aiError) {
+        throw new Error(`AI analysis failed: ${aiError.message}`);
       }
 
-      const aiData = await aiResponse.json();
-      const content = aiData.choices[0].message.content;
-      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const analysis = JSON.parse(cleanContent);
+      const analysis = JSON.parse(aiData.content);
 
-      // Get partner recommendations
+      // Get partner recommendations with better scoring
       const missingComps = analysis.missingCompetencies || [];
-      let data: any = { analysis, recommendedPartners: [] };
+      let recommendations: RecommendedPartner[] = [];
+
+      console.log('Looking for partners to fill competencies:', missingComps);
 
       if (missingComps.length > 0) {
         const { data: companies } = await supabase
@@ -368,31 +346,60 @@ export default function Consulting() {
           .select('*')
           .eq('status', 'active')
           .neq('id', company.id)
-          .limit(50);
+          .limit(100);
 
-        if (companies) {
+        if (companies && companies.length > 0) {
+          console.log(`Evaluating ${companies.length} potential partners`);
+          
           const scored = companies.map((c: any) => {
-            const text = `${c.key_capabilities || ''} ${c.certifications || ''}`.toLowerCase();
-            const matches = missingComps.filter((comp: string) => 
-              text.includes(comp.toLowerCase())
-            );
+            const capText = (c.key_capabilities || '').toLowerCase();
+            const certText = (c.certifications || '').toLowerCase();
+            const projText = (c.past_projects || '').toLowerCase();
+            const descText = (c.description || '').toLowerCase();
+            const allText = `${capText} ${certText} ${projText} ${descText}`;
+
+            const matchingComps: string[] = [];
+            
+            // More lenient matching - check for partial matches
+            missingComps.forEach((comp: string) => {
+              const compLower = comp.toLowerCase();
+              const compWords = compLower.split(/\s+/);
+              
+              // Check if any word from the competency appears in company text
+              const hasMatch = compWords.some(word => 
+                word.length > 3 && allText.includes(word)
+              );
+              
+              if (hasMatch || allText.includes(compLower)) {
+                matchingComps.push(comp);
+              }
+            });
+
+            const relevanceScore = missingComps.length > 0
+              ? Math.round((matchingComps.length / missingComps.length) * 100)
+              : 0;
+
             return {
               id: c.id,
               company_name: c.company_name,
-              key_capabilities: c.key_capabilities,
-              certifications: c.certifications,
-              location: c.postcode || 'N/A',
-              relevanceScore: Math.round((matches.length / missingComps.length) * 100),
-              matchingCompetencies: matches
+              key_capabilities: c.key_capabilities || 'Not specified',
+              certifications: c.certifications || 'Not specified',
+              location: c.postcode || 'Not specified',
+              relevanceScore,
+              matchingCompetencies: matchingComps
             };
           });
 
-          data.recommendedPartners = scored
-            .filter((c: any) => c.relevanceScore > 0)
+          recommendations = scored
+            .filter((c: any) => c.relevanceScore >= 20) // Lower threshold to show more results
             .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
             .slice(0, 10);
+
+          console.log(`Found ${recommendations.length} recommended partners with relevance >= 20%`);
         }
       }
+
+      const data = { analysis, recommendedPartners: recommendations };
 
       console.log('Analysis results received:', {
         hasAnalysis: !!data?.analysis,

@@ -44,6 +44,9 @@ verify_jwt = true
 [functions.analyze-project]
 verify_jwt = true
 
+[functions.analyze-project-simple]
+verify_jwt = false
+
 [functions.send-project-invitations]
 verify_jwt = true
 

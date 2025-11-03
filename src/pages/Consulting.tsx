@@ -624,18 +624,20 @@ Return ONLY valid JSON, no markdown.`;
       const result = await response.json();
       const content = result.choices[0].message.content.trim();
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const data = JSON.parse(cleanContent);
+      const analysis = JSON.parse(cleanContent);
 
-      if (!data.analysis) {
-        console.error('Invalid response structure:', data);
+      console.log('Team analysis received:', analysis);
+
+      if (!analysis || !analysis.requiredCompetencies) {
+        console.error('Invalid response structure:', analysis);
         throw new Error('No analysis data returned from AI');
       }
 
       const teamAnalysisData: TeamAnalysis = {
-        ...data.analysis,
+        ...analysis,
         type: 'team',
         analyzedAt: new Date().toISOString(),
-        teamMembers: data.analysis.teamMembers || []
+        teamMembers: analysis.teamMembers || []
       };
 
       setTeamAnalysis(teamAnalysisData);
@@ -654,10 +656,10 @@ Return ONLY valid JSON, no markdown.`;
         console.log('Team analysis saved successfully');
       }
       
-      const gaps = data.analysis.missingCompetencies?.length || 0;
+      const gaps = analysis.missingCompetencies?.length || 0;
       
       toast.success(
-        `Team analysis complete! Coverage: ${data.analysis.coveragePercentage}%, ` +
+        `Team analysis complete! Coverage: ${analysis.coveragePercentage}%, ` +
         `${gaps} gaps remaining with current team`
       );
     } catch (error: any) {

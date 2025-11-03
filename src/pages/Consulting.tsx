@@ -1062,8 +1062,9 @@ Return ONLY valid JSON, no markdown.`;
             members={teamMembers}
             onRemoveMember={handleRemovePartner}
             onAddCompany={handleAddPartner}
-            onRunGroupAnalysis={handleRunGroupAnalysis}
+            onRunGroupAnalysis={handleRunTeamAnalysis}
             analyzing={analyzing}
+            teamAnalysis={teamAnalysis}
           />
 
           <Separator />

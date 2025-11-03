@@ -25,6 +25,21 @@ interface ProjectAnalysis {
   coveragePercentage: number;
   readinessScore: number;
   risks: string[];
+  recommendations?: string[];
+}
+
+interface GapAnalysis extends ProjectAnalysis {
+  type: 'gap';
+  analyzedAt: string;
+}
+
+interface TeamAnalysis extends ProjectAnalysis {
+  type: 'team';
+  analyzedAt: string;
+  teamMembers: {
+    companyName: string;
+    contribution: string[];
+  }[];
 }
 
 interface RecommendedPartner {
@@ -48,7 +63,8 @@ export default function Consulting() {
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [tender, setTender] = useState<any>(null);
   const [ownerCompany, setOwnerCompany] = useState<any>(null);
-  const [analysis, setAnalysis] = useState<ProjectAnalysis | null>(null);
+  const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
+  const [teamAnalysis, setTeamAnalysis] = useState<TeamAnalysis | null>(null);
   const [recommendedPartners, setRecommendedPartners] = useState<RecommendedPartner[]>([]);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
@@ -71,7 +87,8 @@ export default function Consulting() {
   useEffect(() => {
     if (selectedProject) {
       // Clear previous analysis when switching projects
-      setAnalysis(null);
+      setGapAnalysis(null);
+      setTeamAnalysis(null);
       setRecommendedPartners([]);
       loadProjectData(selectedProject.id);
     }
@@ -242,9 +259,9 @@ export default function Consulting() {
         
         toast.success('Project created successfully');
         
-        // Run initial analysis automatically
-        console.log('Starting automatic analysis...');
-        await runDeepAnalysis(newProject.id, firstCompany, tenderData);
+        // Run initial gap analysis automatically
+        console.log('Starting automatic gap analysis...');
+        await runGapAnalysis(newProject.id, firstCompany, tenderData);
       }
 
     } catch (error: any) {
@@ -269,10 +286,16 @@ export default function Consulting() {
         .eq('id', voId)
         .maybeSingle();
 
-      // Load saved analysis if exists
-      if ((projectDetails as any)?.analysis_data) {
-        console.log('Loading saved analysis from database');
-        setAnalysis((projectDetails as any).analysis_data);
+      // Load saved analyses if they exist
+      if ((projectDetails as any)?.gap_analysis) {
+        console.log('Loading saved gap analysis from database');
+        setGapAnalysis((projectDetails as any).gap_analysis);
+      }
+      if ((projectDetails as any)?.team_analysis) {
+        console.log('Loading saved team analysis from database');
+        setTeamAnalysis((projectDetails as any).team_analysis);
+      }
+      if ((projectDetails as any)?.recommended_partners) {
         setRecommendedPartners((projectDetails as any).recommended_partners || []);
       }
 
@@ -316,18 +339,17 @@ export default function Consulting() {
     }
   };
 
-  const runDeepAnalysis = async (voId: string, company: any, tenderData: any) => {
+  const runGapAnalysis = async (voId: string, company: any, tenderData: any) => {
     try {
       setAnalyzing(true);
-      toast.info('Starting AI analysis...');
+      toast.info('Starting gap analysis...');
 
-      console.log('Starting analysis with:', {
+      console.log('Starting gap analysis with:', {
         projectId: voId,
         companyId: company.id,
         companyName: company.company_name,
         tenderId: tenderData.id,
-        tenderTitle: tenderData.title,
-        memberCount: teamMembers.length
+        tenderTitle: tenderData.title
       });
 
       // Use OpenAI directly (edge function deployment issues)
@@ -347,12 +369,33 @@ export default function Consulting() {
         toast.success('API key saved! Analysis starting...');
       }
 
-      const allCompanies = [company, ...teamMembers.map((m: any) => m.companies)].filter(Boolean);
-      const companiesText = allCompanies.map(c => 
-        `Company: ${c.company_name}\nCapabilities: ${c.key_capabilities || 'N/A'}\nCertifications: ${c.certifications || 'N/A'}`
-      ).join('\n\n');
+      // Only analyze the owner company for gap analysis
 
-      const analysisPrompt = `Analyze this tender and team:\n\nTENDER:\nTitle: ${tenderData.title}\nDescription: ${tenderData.description || 'N/A'}\nLocation: ${tenderData.location || 'N/A'}\n\nTEAM:\n${companiesText}\n\nProvide analysis as JSON with:\n- requiredCompetencies: array of strings\n- companyCompetencies: array of strings\n- missingCompetencies: array of strings\n- coveragePercentage: number (0-100)\n- readinessScore: number (0-100)\n- risks: array of strings\n\nRespond with valid JSON only, no markdown.`;
+      const prompt = `
+You are a tender analysis expert. Analyze this tender requirement against a single company's capabilities to identify gaps.
+
+Tender: ${tenderData.title}
+Description: ${tenderData.description || 'Not provided'}
+Buyer: ${tenderData.buyer_name || 'Not specified'}
+Value: £${tenderData.value?.toLocaleString() || 'Not specified'}
+Location: ${tenderData.region || 'UK'}
+
+Company: ${company.company_name}
+- Capabilities: ${company.key_capabilities || 'Not specified'}
+- Certifications: ${company.certifications || 'None'}
+- Past Projects: ${company.past_projects || 'None'}
+- Description: ${company.description || 'None'}
+
+Provide a detailed JSON analysis with:
+1. requiredCompetencies: Array of key competencies needed for this tender (be specific)
+2. companyCompetencies: Array of what this company currently has
+3. missingCompetencies: Array of gaps that need to be filled
+4. coveragePercentage: Number (0-100) of requirement coverage by this company alone
+5. readinessScore: Number (0-100) company readiness score
+6. risks: Array of potential risks for bidding alone
+7. recommendations: Array of strategic recommendations to fill gaps
+
+Return ONLY valid JSON, no markdown.`;
 
       const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -363,12 +406,12 @@ export default function Consulting() {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'You are a tender analysis expert. Respond with valid JSON only.' },
-            { role: 'user', content: analysisPrompt }
+            { role: 'system', content: 'You are a tender analysis expert. Return only valid JSON.' },
+            { role: 'user', content: prompt }
           ],
           temperature: 0.7,
-          max_tokens: 2000,
-        }),
+          max_tokens: 2000
+        })
       });
 
       if (!aiResponse.ok) {
@@ -456,57 +499,170 @@ export default function Consulting() {
 
       if (!data?.analysis) {
         console.error('Invalid response structure:', data);
-        throw new Error('No analysis data returned from AI. Please check edge function logs.');
+        throw new Error('No analysis data returned from AI');
       }
 
-      setAnalysis(data.analysis);
+      const gapAnalysisData: GapAnalysis = {
+        ...data.analysis,
+        type: 'gap',
+        analyzedAt: new Date().toISOString()
+      };
+
+      setGapAnalysis(gapAnalysisData);
       setRecommendedPartners(data.recommendedPartners || []);
       
-      // Save analysis results to database
+      // Save gap analysis to database
       const { error: saveError } = await supabase
         .from('virtual_organizations')
         .update({
-          analysis_data: data.analysis,
-          recommended_partners: data.recommendedPartners,
-          analyzed_at: new Date().toISOString()
+          gap_analysis: gapAnalysisData,
+          recommended_partners: data.recommendedPartners
         } as any)
         .eq('id', voId);
 
       if (saveError) {
-        console.warn('Could not save analysis to database:', saveError);
-        // Note: Analysis might fail to save if columns don't exist yet
-        // User can manually add: analysis_data (jsonb), recommended_partners (jsonb), analyzed_at (timestamptz)
+        console.warn('Could not save gap analysis:', saveError);
       } else {
-        console.log('Analysis saved to database successfully');
+        console.log('Gap analysis saved successfully');
       }
       
       const partnerCount = data.recommendedPartners?.length || 0;
       const gaps = data.analysis.missingCompetencies?.length || 0;
       
-      console.log('Analysis complete:', {
-        coverage: data.analysis.coveragePercentage,
-        gaps,
-        partners: partnerCount
-      });
-      
       toast.success(
-        `Analysis complete! Coverage: ${data.analysis.coveragePercentage}%, ` +
-        `${gaps} gaps found, ${partnerCount} partners recommended`
+        `Gap analysis complete! Coverage: ${data.analysis.coveragePercentage}%, ` +
+        `${gaps} gaps identified, ${partnerCount} partners recommended`
       );
     } catch (error: any) {
-      console.error('Error running analysis:', error);
+      console.error('Error running gap analysis:', error);
+      toast.error(error.message || 'Failed to run gap analysis');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const runTeamAnalysis = async (voId: string, company: any, tenderData: any, members: any[]) => {
+    try {
+      setAnalyzing(true);
+      toast.info('Starting team analysis...');
+
+      console.log('Starting team analysis with:', {
+        projectId: voId,
+        companyId: company.id,
+        memberCount: members.length
+      });
+
+      let apiKey = localStorage.getItem('openai_api_key');
       
-      // Provide more helpful error messages
-      let errorMessage = 'Failed to run analysis';
-      if (error.message?.includes('OpenAI API key')) {
-        errorMessage = 'OpenAI API key is not configured. Please add it in the Cloud settings.';
-      } else if (error.message?.includes('Failed to connect')) {
-        errorMessage = 'Cannot connect to analysis service. The edge function may not be deployed yet. Please try again in a moment or contact support.';
-      } else if (error.message) {
-        errorMessage = `Analysis failed: ${error.message}`;
+      if (!apiKey) {
+        toast.info('Please enter your OpenAI API key for AI analysis');
+        apiKey = window.prompt('Enter your OpenAI API key (starts with sk-):');
+        
+        if (!apiKey) {
+          throw new Error('OpenAI API key is required for analysis');
+        }
+        
+        localStorage.setItem('openai_api_key', apiKey);
+        toast.success('API key saved! Analysis starting...');
+      }
+
+      const allCompanies = [company, ...members.map((m: any) => m.companies)].filter(Boolean);
+
+      const prompt = `
+You are a tender analysis expert. Analyze this tender against a full consortium team.
+
+Tender: ${tenderData.title}
+Description: ${tenderData.description || 'Not provided'}
+Buyer: ${tenderData.buyer_name || 'Not specified'}
+Value: £${tenderData.value?.toLocaleString() || 'Not specified'}
+Location: ${tenderData.region || 'UK'}
+
+Team Members:
+${allCompanies.map((c: any, idx: number) => `
+${idx + 1}. ${c.company_name} ${idx === 0 ? '(Lead)' : '(Partner)'}
+   - Capabilities: ${c.key_capabilities || 'Not specified'}
+   - Certifications: ${c.certifications || 'None'}
+   - Past Projects: ${c.past_projects || 'None'}
+   - Description: ${c.description || 'None'}
+`).join('\n')}
+
+Provide a detailed JSON analysis with:
+1. requiredCompetencies: Array of key competencies needed
+2. companyCompetencies: Array of combined team capabilities
+3. missingCompetencies: Array of any remaining gaps
+4. coveragePercentage: Number (0-100) of requirement coverage by full team
+5. readinessScore: Number (0-100) team readiness
+6. risks: Array of potential risks
+7. recommendations: Array of strategic recommendations
+8. teamMembers: Array of objects with {companyName: string, contribution: string[]} showing each member's key contributions
+
+Return ONLY valid JSON, no markdown.`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are a tender analysis expert. Return only valid JSON.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenAI API error:', response.status, errorText);
+        throw new Error(`AI analysis failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      const content = result.choices[0].message.content.trim();
+      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const data = JSON.parse(cleanContent);
+
+      if (!data.analysis) {
+        console.error('Invalid response structure:', data);
+        throw new Error('No analysis data returned from AI');
+      }
+
+      const teamAnalysisData: TeamAnalysis = {
+        ...data.analysis,
+        type: 'team',
+        analyzedAt: new Date().toISOString(),
+        teamMembers: data.analysis.teamMembers || []
+      };
+
+      setTeamAnalysis(teamAnalysisData);
+      
+      // Save team analysis to database
+      const { error: saveError } = await supabase
+        .from('virtual_organizations')
+        .update({
+          team_analysis: teamAnalysisData
+        } as any)
+        .eq('id', voId);
+
+      if (saveError) {
+        console.warn('Could not save team analysis:', saveError);
+      } else {
+        console.log('Team analysis saved successfully');
       }
       
-      toast.error(errorMessage);
+      const gaps = data.analysis.missingCompetencies?.length || 0;
+      
+      toast.success(
+        `Team analysis complete! Coverage: ${data.analysis.coveragePercentage}%, ` +
+        `${gaps} gaps remaining with current team`
+      );
+    } catch (error: any) {
+      console.error('Error running team analysis:', error);
+      toast.error(error.message || 'Failed to run team analysis');
     } finally {
       setAnalyzing(false);
     }
@@ -596,7 +752,27 @@ export default function Consulting() {
       return;
     }
     
-    await runDeepAnalysis(selectedProject.id, ownerCompany, tender);
+    await runGapAnalysis(selectedProject.id, ownerCompany, tender);
+  };
+
+  const handleRunGapAnalysis = async () => {
+    if (!selectedProject || !ownerCompany || !tender) {
+      toast.error('Missing project, company, or tender information');
+      return;
+    }
+    await runGapAnalysis(selectedProject.id, ownerCompany, tender);
+  };
+
+  const handleRunTeamAnalysis = async () => {
+    if (!selectedProject || !ownerCompany || !tender) {
+      toast.error('Missing project, company, or tender information');
+      return;
+    }
+    if (teamMembers.length === 0) {
+      toast.error('Add at least one partner before running team analysis');
+      return;
+    }
+    await runTeamAnalysis(selectedProject.id, ownerCompany, tender, teamMembers);
   };
 
   const handleSendInvitations = async (selectedPartnerIds: string[]) => {
@@ -657,7 +833,8 @@ export default function Consulting() {
 
       // Clear state
       setSelectedProject(null);
-      setAnalysis(null);
+      setGapAnalysis(null);
+      setTeamAnalysis(null);
       setRecommendedPartners([]);
       setTeamMembers([]);
       setTender(null);
@@ -808,32 +985,32 @@ export default function Consulting() {
 
           <Separator />
 
-          {/* Deep Analysis Section - Always show button */}
+          {/* Step 1: Gap Analysis Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-semibold flex items-center gap-2">
                   <Target className="h-6 w-6" />
-                  AI Deep Analysis
+                  Step 1: Gap Analysis
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Analyze tender requirements vs your team's competencies and get partner recommendations
+                  Analyze your company's capabilities vs tender requirements
                 </p>
               </div>
               <Button 
-                onClick={handleRunGroupAnalysis}
-                disabled={analyzing || !ownerCompany}
+                onClick={handleRunGapAnalysis}
+                disabled={analyzing || !ownerCompany || !tender}
                 size="lg"
               >
                 {analyzing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing with AI...
+                    Analyzing...
                   </>
                 ) : (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    {analysis ? 'Re-run AI Analysis' : 'Run AI Analysis'}
+                    {gapAnalysis ? 'Re-run Gap Analysis' : 'Run Gap Analysis'}
                   </>
                 )}
               </Button>
@@ -867,9 +1044,9 @@ export default function Consulting() {
               </Card>
             )}
 
-            {tender && analysis && !analyzing && (
+            {tender && (gapAnalysis || teamAnalysis) && !analyzing && (
               <>
-                <CoverageMap analysis={analysis} />
+                <CoverageMap analysis={teamAnalysis || gapAnalysis} />
                 <RecommendedPartners 
                   partners={recommendedPartners}
                   onAddPartner={handleAddPartner}

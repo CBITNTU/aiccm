@@ -153,10 +153,11 @@ Focus on industry standards, UK compliance requirements, and tender readiness.`;
 
   } catch (error) {
     console.error('Error in analyze-company-ai function:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ 
         error: 'Failed to analyze company profile. Please try again.',
-        details: error.message 
+        details: message 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -9,8 +9,29 @@ const corsHeaders = {
 
 const FIND_TENDER_API_BASE = 'https://www.find-tender.service.gov.uk/api/1.0';
 
+interface TenderData {
+  id?: string;
+  ocid?: string;
+  reference_number: string;
+  title: string;
+  buyer: string;
+  cpv_codes: string[];
+  description: string;
+  budget_min: number | null;
+  budget_max: number | null;
+  location: string;
+  deadline: string | null;
+  status: string;
+  publication_date: string;
+  contact_info: any;
+  requirements?: any;
+  documents?: any;
+  external_id?: string;
+  source?: string;
+}
+
 // Transform OCDS release data to our tender format
-function transformOCDSToTender(release: any, ocid: string): any {
+function transformOCDSToTender(release: any, ocid: string): TenderData {
   const tender = release.tender || {};
   const parties = release.parties || [];
   const buyer = parties.find((p: any) => p.roles?.includes('buyer'));
@@ -184,7 +205,7 @@ serve(async (req) => {
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filteredTenders = tenders.filter(tender => 
+      filteredTenders = tenders.filter((tender: TenderData) => 
         tender.title.toLowerCase().includes(searchLower) ||
         tender.description.toLowerCase().includes(searchLower) ||
         tender.buyer.toLowerCase().includes(searchLower) ||
@@ -194,7 +215,7 @@ serve(async (req) => {
     
     // Budget filter
     if (filters?.budgetMin || filters?.budgetMax) {
-      filteredTenders = filteredTenders.filter(tender => {
+      filteredTenders = filteredTenders.filter((tender: TenderData) => {
         const tenderBudget = tender.budget_max || tender.budget_min || 0;
         if (filters.budgetMin && tenderBudget < filters.budgetMin) return false;
         if (filters.budgetMax && tenderBudget > filters.budgetMax) return false;
@@ -206,7 +227,7 @@ serve(async (req) => {
 
     // If admin is importing, also save to database with duplicate prevention
     if (adminImport && isAdmin && filteredTenders.length > 0) {
-      const tendersToInsert = filteredTenders.map(tender => ({
+      const tendersToInsert = filteredTenders.map((tender: TenderData) => ({
         reference_number: tender.reference_number,
         title: tender.title,
         buyer: tender.buyer,
@@ -234,10 +255,10 @@ serve(async (req) => {
       const { data: existingTenders } = await supabase
         .from('tenders')
         .select('reference_number')
-        .in('reference_number', tendersToInsert.map(t => t.reference_number));
+        .in('reference_number', tendersToInsert.map((t: any) => t.reference_number));
       
-      const existingRefs = new Set(existingTenders?.map(t => t.reference_number) || []);
-      const newTenders = tendersToInsert.filter(t => !existingRefs.has(t.reference_number));
+      const existingRefs = new Set(existingTenders?.map((t: any) => t.reference_number) || []);
+      const newTenders = tendersToInsert.filter((t: any) => !existingRefs.has(t.reference_number));
       
       if (newTenders.length > 0) {
         const { error: insertError } = await supabase
@@ -273,9 +294,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in fetch-uk-tenders:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     
     return new Response(JSON.stringify({
-      error: error.message,
+      error: message,
       tenders: [],
       total: 0,
       page: 1,

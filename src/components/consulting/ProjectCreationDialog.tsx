@@ -72,26 +72,34 @@ export function ProjectCreationDialog({
     try {
       setLoading(true);
 
-      // Create project
-      const { data: project, error: projectError } = await supabase
-        .from('virtual_organizations')
-        .insert({
+      console.log('Creating project via edge function...', {
+        name: formData.name,
+        companyId
+      });
+
+      // Use edge function to bypass RLS issues
+      const { data, error } = await supabase.functions.invoke('create-project', {
+        body: {
           name: formData.name,
           description: formData.description,
-          lead_company_id: companyId,
-          target_tender_id: formData.target_tender_id || null,
-          status: 'draft'
-        })
-        .select()
-        .single();
+          target_tender_id: formData.target_tender_id === 'none' ? null : formData.target_tender_id,
+          company_id: companyId
+        }
+      });
 
-      if (projectError) throw projectError;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
 
-      // Note: Not adding to vo_members due to RLS policy issues
-      // The project owner is tracked via lead_company_id
+      if (!data?.project) {
+        throw new Error('No project data returned');
+      }
+
+      console.log('Project created successfully:', data.project.id);
       
       toast.success('Consulting project created!');
-      onProjectCreated(project.id);
+      onProjectCreated(data.project.id);
       onOpenChange(false);
       
       // Reset form
@@ -102,7 +110,7 @@ export function ProjectCreationDialog({
       });
     } catch (error: any) {
       console.error('Error creating project:', error);
-      toast.error('Failed to create project');
+      toast.error(error.message || 'Failed to create project');
     } finally {
       setLoading(false);
     }

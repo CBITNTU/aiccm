@@ -111,7 +111,7 @@ serve(async (req) => {
       throw new Error('No analysis content received from OpenAI');
     }
 
-    let analysis;
+    let analysis: any;
     try {
       // Clean the response by removing markdown code blocks if present
       let cleanedContent = analysisContent.trim();
@@ -138,7 +138,8 @@ serve(async (req) => {
       
     } catch (parseError) {
       console.error('Failed to parse OpenAI response:', analysisContent);
-      console.error('Parse error:', parseError.message);
+      const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown error';
+      console.error('Parse error:', errorMessage);
       // Fallback analysis if parsing fails
       analysis = {
         technicalExpertise: 75,
@@ -175,9 +176,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in analyze-company:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     
     return new Response(JSON.stringify({
-      error: error.message,
+      error: message,
       success: false
     }), {
       status: 500,

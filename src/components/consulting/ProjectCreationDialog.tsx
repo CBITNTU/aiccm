@@ -72,33 +72,36 @@ export function ProjectCreationDialog({
     try {
       setLoading(true);
 
-      console.log('Creating project directly...', {
+      console.log('Creating project via edge function...', {
         name: formData.name,
-        companyId
+        companyId,
+        tender: formData.target_tender_id
       });
 
-      // Create project directly - the INSERT policy allows users to create VOs for their companies
-      const { data: project, error: projectError } = await supabase
-        .from('virtual_organizations')
-        .insert({
+      // Call edge function which uses service role to bypass RLS
+      const { data, error } = await supabase.functions.invoke('create-project', {
+        body: {
           name: formData.name,
           description: formData.description,
-          lead_company_id: companyId,
           target_tender_id: formData.target_tender_id === 'none' ? null : formData.target_tender_id,
-          status: 'draft'
-        })
-        .select()
-        .single();
+          company_id: companyId
+        }
+      });
 
-      if (projectError) {
-        console.error('Project creation error:', projectError);
-        throw new Error(projectError.message);
+      if (error) {
+        console.error('Edge function invocation error:', error);
+        throw new Error(error.message || 'Failed to call edge function');
       }
 
-      console.log('Project created successfully:', project.id);
+      if (!data || !data.project) {
+        console.error('Invalid response from edge function:', data);
+        throw new Error(data?.error || 'No project data returned from server');
+      }
+
+      console.log('Project created successfully:', data.project.id);
       
       toast.success('Consulting project created!');
-      onProjectCreated(project.id);
+      onProjectCreated(data.project.id);
       onOpenChange(false);
       
       // Reset form
@@ -109,7 +112,8 @@ export function ProjectCreationDialog({
       });
     } catch (error: any) {
       console.error('Error creating project:', error);
-      toast.error(error.message || 'Failed to create project');
+      const message = error.message || 'Failed to create project. Please try again.';
+      toast.error(message);
     } finally {
       setLoading(false);
     }

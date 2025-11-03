@@ -246,12 +246,14 @@ export default function Consulting() {
   const runDeepAnalysis = async (voId: string, company: any, tenderData: any) => {
     try {
       setAnalyzing(true);
-      toast.info('Running AI analysis...');
+      toast.info('Starting AI analysis...');
 
       console.log('Starting analysis with:', {
         projectId: voId,
         companyId: company.id,
+        companyName: company.company_name,
         tenderId: tenderData.id,
+        tenderTitle: tenderData.title,
         memberCount: teamMembers.length
       });
 
@@ -265,15 +267,19 @@ export default function Consulting() {
       });
 
       if (error) {
-        console.error('Analysis error:', error);
-        throw error;
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Analysis failed');
       }
 
-      console.log('Analysis results:', data);
+      console.log('Analysis results received:', {
+        hasAnalysis: !!data?.analysis,
+        partnerCount: data?.recommendedPartners?.length,
+        analysis: data?.analysis
+      });
 
       if (!data?.analysis) {
         console.error('Invalid response structure:', data);
-        throw new Error('No analysis data returned from AI');
+        throw new Error('No analysis data returned from AI. Please check edge function logs.');
       }
 
       setAnalysis(data.analysis);
@@ -282,13 +288,28 @@ export default function Consulting() {
       const partnerCount = data.recommendedPartners?.length || 0;
       const gaps = data.analysis.missingCompetencies?.length || 0;
       
+      console.log('Analysis complete:', {
+        coverage: data.analysis.coveragePercentage,
+        gaps,
+        partners: partnerCount
+      });
+      
       toast.success(
         `Analysis complete! Coverage: ${data.analysis.coveragePercentage}%, ` +
         `${gaps} gaps found, ${partnerCount} partners recommended`
       );
     } catch (error: any) {
       console.error('Error running analysis:', error);
-      toast.error(`Failed to run analysis: ${error.message || 'Unknown error'}`);
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Failed to run analysis';
+      if (error.message?.includes('OpenAI')) {
+        errorMessage = 'AI service error. Please check your OpenAI API key.';
+      } else if (error.message) {
+        errorMessage = `Analysis failed: ${error.message}`;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setAnalyzing(false);
     }
@@ -349,10 +370,26 @@ export default function Consulting() {
   };
 
   const handleRunGroupAnalysis = async () => {
-    if (!selectedProject || !ownerCompany) return;
+    console.log('Run analysis clicked', {
+      hasProject: !!selectedProject,
+      hasCompany: !!ownerCompany,
+      hasTender: !!tender,
+      projectId: selectedProject?.id,
+      tenderId: tender?.id
+    });
+
+    if (!ownerCompany) {
+      toast.error('Company information not found. Please refresh the page.');
+      return;
+    }
+
+    if (!selectedProject) {
+      toast.error('No project selected. Please create or select a project first.');
+      return;
+    }
     
     if (!tender) {
-      toast.error('Please select a tender for this project first');
+      toast.error('This project is not linked to a tender. Please select a tender or create a project from the matching results page.');
       return;
     }
     
@@ -514,10 +551,10 @@ export default function Consulting() {
                   AI-powered competency gap analysis and partner recommendations
                 </p>
               </div>
-              {tender && (
+              {tender && selectedProject && (
                 <Button 
                   onClick={handleRunGroupAnalysis}
-                  disabled={analyzing}
+                  disabled={analyzing || !ownerCompany}
                   size="lg"
                 >
                   {analyzing ? (
@@ -531,6 +568,16 @@ export default function Consulting() {
                       {analysis ? 'Re-run AI Analysis' : 'Run AI Analysis'}
                     </>
                   )}
+                </Button>
+              )}
+              {!tender && selectedProject && (
+                <Button 
+                  onClick={() => navigate('/tenders')}
+                  variant="outline"
+                  size="lg"
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Link a Tender
                 </Button>
               )}
             </div>

@@ -75,16 +75,16 @@ serve(async (req) => {
       }
     }
 
-    // Run AI analysis using Lovable AI
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      console.error('LOVABLE_API_KEY not configured in environment');
-      throw new Error('AI service not configured');
+    // Run AI analysis using OpenAI
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      console.error('OPENAI_API_KEY not configured in environment');
+      throw new Error('OpenAI API key not configured');
     }
     
-    console.log('Starting AI analysis...');
+    console.log('Starting AI analysis with OpenAI...');
     const analysis = await analyzeProjectMatch(
-      lovableApiKey,
+      openaiApiKey,
       tender,
       company,
       memberCompanies
@@ -176,14 +176,15 @@ Respond ONLY with valid JSON (no markdown, no additional text):
 `;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    console.log('Calling OpenAI API...');
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -191,27 +192,21 @@ Respond ONLY with valid JSON (no markdown, no additional text):
           },
           { role: 'user', content: prompt }
         ],
+        temperature: 0.7,
+        max_tokens: 2000,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI API error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again in a moment.');
-      }
-      if (response.status === 402) {
-        throw new Error('AI credits exhausted. Please add credits to your Lovable workspace.');
-      }
-      
-      throw new Error(`AI API error: ${response.status} - ${errorText}`);
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0].message.content;
 
-    console.log('Lovable AI raw response:', content);
+    console.log('OpenAI response received, parsing...');
 
     // Remove markdown code blocks if present
     const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

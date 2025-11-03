@@ -11,6 +11,7 @@ import Tenders from "./pages/Tenders";
 import Companies from "./pages/Companies";
 import CompanyManagement from "./pages/CompanyManagement";
 import VirtualOrganizations from "./pages/VirtualOrganizations";
+import Consulting from "./pages/Consulting";
 import Admin from "./pages/Admin";
 import AdminUsers from "./pages/AdminUsers";
 import NotFound from "./pages/NotFound";
@@ -62,6 +63,11 @@ function App() {
         <Route path="/vo" element={
           <ProtectedRoute>
             <VirtualOrganizations />
+          </ProtectedRoute>
+        } />
+        <Route path="/consulting" element={
+          <ProtectedRoute>
+            <Consulting />
           </ProtectedRoute>
         } />
         <Route path="/admin" element={

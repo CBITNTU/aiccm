@@ -2,7 +2,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Award, Lightbulb, MapPin, PoundSterling, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Award, Lightbulb, MapPin, PoundSterling, Calendar, FileText, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface MatchingResult {
   id: string;
@@ -36,6 +38,8 @@ interface TenderDetailDialogProps {
 }
 
 export function TenderDetailDialog({ result, open, onOpenChange }: TenderDetailDialogProps) {
+  const navigate = useNavigate();
+
   if (!result) return null;
 
   const getScoreColor = (score: number) => {
@@ -48,6 +52,17 @@ export function TenderDetailDialog({ result, open, onOpenChange }: TenderDetailD
     if (score >= 80) return 'default';
     if (score >= 60) return 'secondary';
     return 'destructive';
+  };
+
+  const handleApplySolo = () => {
+    // Navigate to tender detail page
+    window.open(`https://www.contractsfinder.service.gov.uk/notice/${result.tender_id}`, '_blank');
+  };
+
+  const handleBuildTeam = () => {
+    // Navigate to consulting page with tender ID
+    onOpenChange(false);
+    navigate('/consulting', { state: { tenderId: result.tender_id, tenderTitle: result.tenders?.title } });
   };
 
   return (
@@ -100,7 +115,21 @@ export function TenderDetailDialog({ result, open, onOpenChange }: TenderDetailD
                   </div>
                 </div>
               </div>
-            )}
+          )}
+          </div>
+
+          <Separator />
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button onClick={handleApplySolo} className="w-full" size="lg">
+              <FileText className="w-4 h-4 mr-2" />
+              Apply Solo
+            </Button>
+            <Button onClick={handleBuildTeam} variant="outline" className="w-full" size="lg">
+              <Users className="w-4 h-4 mr-2" />
+              Build Your Consulting Team
+            </Button>
           </div>
 
           <Separator />

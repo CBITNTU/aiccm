@@ -40,3 +40,9 @@ verify_jwt = false
 
 [functions.prefill-company-data]
 verify_jwt = true
+
+[functions.analyze-project]
+verify_jwt = true
+
+[functions.send-project-invitations]
+verify_jwt = true

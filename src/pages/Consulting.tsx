@@ -134,7 +134,9 @@ export default function Consulting() {
         .select('*')
         .eq('user_id', user?.id)
         .eq('status', 'active')
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (companyError) throw companyError;
       setOwnerCompany(companyData);
@@ -204,13 +206,8 @@ export default function Consulting() {
   };
 
   const handleProjectCreated = async (projectId: string) => {
+    // Reload projects list
     await loadUserProjects();
-    
-    // Select the newly created project
-    const newProject = projects.find(p => p.id === projectId);
-    if (newProject) {
-      setSelectedProject(newProject);
-    }
   };
 
   const loadProjectData = async (voId: string) => {
@@ -391,10 +388,15 @@ export default function Consulting() {
                 <p className="text-muted-foreground text-center mb-6 max-w-md">
                   Start by creating a consulting project. You can link it to a tender and build your team.
                 </p>
-                <Button onClick={() => setCreateDialogOpen(true)} size="lg">
-                  <Plus className="h-5 w-5 mr-2" />
-                  Create Your First Project
-                </Button>
+                <div className="flex gap-3">
+                  <Button onClick={() => setCreateDialogOpen(true)} size="lg">
+                    <Plus className="h-5 w-5 mr-2" />
+                    Create Your First Project
+                  </Button>
+                  <Button onClick={() => navigate('/tenders')} variant="outline" size="lg">
+                    Browse Tenders
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -420,15 +422,17 @@ export default function Consulting() {
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Build Your Consulting Team</h1>
+              <h1 className="text-3xl font-bold">Consulting Team Builder</h1>
               <p className="text-muted-foreground mt-2">
                 Analyze requirements, find partners, and build winning consortiums
               </p>
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-5 w-5 mr-2" />
-              New Project
-            </Button>
+            {!tenderId && (
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="h-5 w-5 mr-2" />
+                New Project
+              </Button>
+            )}
           </div>
 
           {/* Project Selector */}
@@ -487,25 +491,42 @@ export default function Consulting() {
                   AI-powered competency gap analysis and partner recommendations
                 </p>
               </div>
-              <Button 
-                onClick={handleRunGroupAnalysis}
-                disabled={analyzing}
-              >
-                {analyzing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Re-run Analysis
-                  </>
-                )}
-              </Button>
+              {tender && (
+                <Button 
+                  onClick={handleRunGroupAnalysis}
+                  disabled={analyzing}
+                >
+                  {analyzing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      {analysis ? 'Re-run Analysis' : 'Run Analysis'}
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
 
-            {analyzing && (
+            {!tender && selectedProject && (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Tender Selected</h3>
+                  <p className="text-muted-foreground mb-4">
+                    This project is not linked to a tender. Link a tender to run deep analysis.
+                  </p>
+                  <Button onClick={() => navigate('/tenders')} variant="outline">
+                    Browse Tenders
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {tender && analyzing && (
               <Card>
                 <CardContent className="py-8 text-center">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -516,7 +537,7 @@ export default function Consulting() {
               </Card>
             )}
 
-            {analysis && !analyzing && (
+            {tender && analysis && !analyzing && (
               <>
                 <CoverageMap analysis={analysis} />
                 <RecommendedPartners 

@@ -55,7 +55,7 @@ const Header = ({ variant = "landing" }: HeaderProps) => {
   const navigationItems = [
     { name: "Tenders", href: "/tenders", icon: FileText },
     { name: "Company Directory", href: "/directory", icon: Search },
-    { name: "Build Your Consulting Team", href: "/vo", icon: Users },
+    { name: "Consulting Team Builder", href: "/vo", icon: Users },
     ...(isAdmin ? [{ name: "Admin", href: "/admin", icon: Settings }] : []),
   ];
 

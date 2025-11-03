@@ -10,7 +10,6 @@ import CompanyDetail from "./pages/CompanyDetail";
 import Tenders from "./pages/Tenders";
 import Companies from "./pages/Companies";
 import CompanyManagement from "./pages/CompanyManagement";
-import VirtualOrganizations from "./pages/VirtualOrganizations";
 import Consulting from "./pages/Consulting";
 import Admin from "./pages/Admin";
 import AdminUsers from "./pages/AdminUsers";
@@ -61,11 +60,6 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/vo" element={
-          <ProtectedRoute>
-            <VirtualOrganizations />
-          </ProtectedRoute>
-        } />
-        <Route path="/consulting" element={
           <ProtectedRoute>
             <Consulting />
           </ProtectedRoute>

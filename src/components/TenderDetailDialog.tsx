@@ -62,7 +62,7 @@ export function TenderDetailDialog({ result, open, onOpenChange }: TenderDetailD
   const handleBuildTeam = () => {
     // Navigate to consulting page with tender ID
     onOpenChange(false);
-    navigate('/consulting', { state: { tenderId: result.tender_id, tenderTitle: result.tenders?.title } });
+    navigate('/vo', { state: { tenderId: result.tender_id, tenderTitle: result.tenders?.title } });
   };
 
   return (

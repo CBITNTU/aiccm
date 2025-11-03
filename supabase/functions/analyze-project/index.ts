@@ -8,16 +8,14 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { 
-      status: 200,
-      headers: corsHeaders 
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('analyze-project function invoked');
+    console.log('=== analyze-project function START ===');
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -113,8 +111,14 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in analyze-project function:', error);
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
+    console.error('=== FATAL ERROR in analyze-project ===');
+    console.error('Error type:', error?.constructor?.name);
+    console.error('Error message:', (error as Error).message);
+    console.error('Error stack:', (error as Error).stack);
+    return new Response(JSON.stringify({ 
+      error: (error as Error).message,
+      type: error?.constructor?.name 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

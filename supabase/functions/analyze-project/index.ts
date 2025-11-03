@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -44,7 +43,10 @@ serve(async (req) => {
       .eq('id', tenderId)
       .single();
 
-    if (tenderError) throw tenderError;
+    if (tenderError) {
+      console.error('Error fetching tender:', tenderError);
+      throw tenderError;
+    }
 
     // Get company details
     const { data: company, error: companyError } = await supabaseClient
@@ -53,7 +55,10 @@ serve(async (req) => {
       .eq('id', companyId)
       .single();
 
-    if (companyError) throw companyError;
+    if (companyError) {
+      console.error('Error fetching company:', companyError);
+      throw companyError;
+    }
 
     // Get all member companies
     const memberCompanyIds = members?.map((m: any) => m.company_id) || [];
@@ -70,16 +75,16 @@ serve(async (req) => {
       }
     }
 
-    // Run AI analysis
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      console.error('OpenAI API key not configured in environment');
-      throw new Error('OpenAI API key not configured');
+    // Run AI analysis using Lovable AI
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      console.error('LOVABLE_API_KEY not configured in environment');
+      throw new Error('AI service not configured');
     }
+    
     console.log('Starting AI analysis...');
-
     const analysis = await analyzeProjectMatch(
-      openAIApiKey,
+      lovableApiKey,
       tender,
       company,
       memberCompanies
@@ -161,51 +166,58 @@ IMPORTANT: Be thorough in extracting tender requirements. Look for:
 
 Respond ONLY with valid JSON (no markdown, no additional text):
 {
-  "requiredCompetencies": ["competency1", "competency2", ...],
-  "companyCompetencies": ["competency1", "competency2", ...],
-  "missingCompetencies": ["competency1", "competency2", ...],
+  "requiredCompetencies": ["competency1", "competency2"],
+  "companyCompetencies": ["competency1", "competency2"],
+  "missingCompetencies": ["competency1", "competency2"],
   "coveragePercentage": number,
   "readinessScore": number,
-  "risks": ["risk1", "risk2", ...]
+  "risks": ["risk1", "risk2"]
 }
 `;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-5-mini-2025-08-07',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert in analyzing tenders and matching company competencies. Always respond with valid JSON only, no markdown formatting.'
-        },
-        { role: 'user', content: prompt }
-      ],
-      max_completion_tokens: 2000,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('OpenAI API error:', response.status, errorText);
-    throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-
-  console.log('OpenAI raw response:', content);
-
   try {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert in analyzing tenders and matching company competencies. Always respond with valid JSON only, no markdown formatting.'
+          },
+          { role: 'user', content: prompt }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI API error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again in a moment.');
+      }
+      if (response.status === 402) {
+        throw new Error('AI credits exhausted. Please add credits to your Lovable workspace.');
+      }
+      
+      throw new Error(`AI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+
+    console.log('Lovable AI raw response:', content);
+
     // Remove markdown code blocks if present
     const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     return JSON.parse(cleanContent);
   } catch (parseError) {
-    console.error('Failed to parse OpenAI response:', content);
+    console.error('Failed to parse AI response:', parseError);
     throw new Error('Invalid response format from AI analysis');
   }
 }
@@ -223,7 +235,7 @@ async function getPartnerRecommendations(
 
   console.log('Searching for partners with competencies:', missingCompetencies);
 
-  // Get all active companies except the current one and existing team members
+  // Get all active companies except the current one
   const { data: companies, error } = await supabaseClient
     .from('companies')
     .select('*')
@@ -251,7 +263,6 @@ async function getPartnerRecommendations(
 
     missingCompetencies.forEach(comp => {
       const compLower = comp.toLowerCase();
-      // Check for partial matches and related terms
       if (combinedText.includes(compLower) || 
           capabilities.includes(compLower) ||
           certifications.includes(compLower)) {

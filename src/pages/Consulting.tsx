@@ -316,7 +316,23 @@ export default function Consulting() {
         memberCount: teamMembers.length
       });
 
-      // Use platform OpenAI key via edge function
+      // Use OpenAI directly (edge function deployment issues)
+      // Check if key is already saved
+      let apiKey = localStorage.getItem('openai_api_key');
+      
+      if (!apiKey) {
+        // First time - prompt for key
+        toast.info('Please enter your OpenAI API key for AI analysis');
+        apiKey = window.prompt('Enter your OpenAI API key (starts with sk-):');
+        
+        if (!apiKey) {
+          throw new Error('OpenAI API key is required for analysis');
+        }
+        
+        localStorage.setItem('openai_api_key', apiKey);
+        toast.success('API key saved! Analysis starting...');
+      }
+
       const allCompanies = [company, ...teamMembers.map((m: any) => m.companies)].filter(Boolean);
       const companiesText = allCompanies.map(c => 
         `Company: ${c.company_name}\nCapabilities: ${c.key_capabilities || 'N/A'}\nCertifications: ${c.certifications || 'N/A'}`
@@ -324,15 +340,32 @@ export default function Consulting() {
 
       const analysisPrompt = `Analyze this tender and team:\n\nTENDER:\nTitle: ${tenderData.title}\nDescription: ${tenderData.description || 'N/A'}\nLocation: ${tenderData.location || 'N/A'}\n\nTEAM:\n${companiesText}\n\nProvide analysis as JSON with:\n- requiredCompetencies: array of strings\n- companyCompetencies: array of strings\n- missingCompetencies: array of strings\n- coveragePercentage: number (0-100)\n- readinessScore: number (0-100)\n- risks: array of strings\n\nRespond with valid JSON only, no markdown.`;
 
-      const { data: aiData, error: aiError } = await supabase.functions.invoke('analyze-project-simple', {
-        body: { prompt: analysisPrompt }
+      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are a tender analysis expert. Respond with valid JSON only.' },
+            { role: 'user', content: analysisPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
       });
 
-      if (aiError) {
-        throw new Error(`AI analysis failed: ${aiError.message}`);
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        throw new Error(`OpenAI API error: ${aiResponse.status} - ${errorText}`);
       }
 
-      const analysis = JSON.parse(aiData.content);
+      const aiData = await aiResponse.json();
+      const content = aiData.choices[0].message.content;
+      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const analysis = JSON.parse(cleanContent);
 
       // Get partner recommendations with better scoring
       const missingComps = analysis.missingCompetencies || [];

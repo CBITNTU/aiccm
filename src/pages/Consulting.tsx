@@ -262,6 +262,20 @@ export default function Consulting() {
 
   const loadProjectData = async (voId: string) => {
     try {
+      // Load project details to get saved analysis
+      const { data: projectDetails } = await supabase
+        .from('virtual_organizations')
+        .select('*')
+        .eq('id', voId)
+        .maybeSingle();
+
+      // Load saved analysis if exists
+      if ((projectDetails as any)?.analysis_data) {
+        console.log('Loading saved analysis from database');
+        setAnalysis((projectDetails as any).analysis_data);
+        setRecommendedPartners((projectDetails as any).recommended_partners || []);
+      }
+
       // Load team members - skip if RLS policy has issues
       try {
         const { data: members, error: membersError } = await supabase
@@ -448,6 +462,24 @@ export default function Consulting() {
       setAnalysis(data.analysis);
       setRecommendedPartners(data.recommendedPartners || []);
       
+      // Save analysis results to database
+      const { error: saveError } = await supabase
+        .from('virtual_organizations')
+        .update({
+          analysis_data: data.analysis,
+          recommended_partners: data.recommendedPartners,
+          analyzed_at: new Date().toISOString()
+        } as any)
+        .eq('id', voId);
+
+      if (saveError) {
+        console.warn('Could not save analysis to database:', saveError);
+        // Note: Analysis might fail to save if columns don't exist yet
+        // User can manually add: analysis_data (jsonb), recommended_partners (jsonb), analyzed_at (timestamptz)
+      } else {
+        console.log('Analysis saved to database successfully');
+      }
+      
       const partnerCount = data.recommendedPartners?.length || 0;
       const gaps = data.analysis.missingCompetencies?.length || 0;
       
@@ -588,6 +620,60 @@ export default function Consulting() {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!selectedProject) {
+      toast.error('No project selected');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the project "${selectedProject.name}"? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+      toast.info('Deleting project...');
+
+      // Delete team members first (foreign key constraint)
+      const { error: membersError } = await supabase
+        .from('vo_members')
+        .delete()
+        .eq('vo_id', selectedProject.id);
+
+      if (membersError) {
+        console.warn('Error deleting team members:', membersError);
+        // Continue anyway as members might not exist
+      }
+
+      // Delete the project
+      const { error: projectError } = await supabase
+        .from('virtual_organizations')
+        .delete()
+        .eq('id', selectedProject.id);
+
+      if (projectError) throw projectError;
+
+      // Clear state
+      setSelectedProject(null);
+      setAnalysis(null);
+      setRecommendedPartners([]);
+      setTeamMembers([]);
+      setTender(null);
+
+      // Reload projects list
+      await loadUserProjects();
+
+      toast.success('Project deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting project:', error);
+      toast.error('Failed to delete project: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -674,26 +760,38 @@ export default function Consulting() {
                   <FolderOpen className="h-5 w-5 text-muted-foreground" />
                   <div className="flex-1">
                     <Label htmlFor="project-select">Select Project:</Label>
-                    <Select
-                      value={selectedProject?.id || ""}
-                      onValueChange={(value) => {
-                        const project = projects.find(p => p.id === value);
-                        setSelectedProject(project || null);
-                      }}
-                    >
-                      <SelectTrigger className="w-full mt-2">
-                        <SelectValue placeholder="Select a project">
-                          {selectedProject ? selectedProject.name : "Select a project"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name} {project.tenders && `- ${project.tenders.title}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2 mt-2">
+                      <Select
+                        value={selectedProject?.id || ""}
+                        onValueChange={(value) => {
+                          const project = projects.find(p => p.id === value);
+                          setSelectedProject(project || null);
+                        }}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select a project">
+                            {selectedProject ? selectedProject.name : "Select a project"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.name} {project.tenders && `- ${project.tenders.title}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedProject && (
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={handleDeleteProject}
+                          title="Delete project"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>

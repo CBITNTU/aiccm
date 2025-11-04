@@ -867,15 +867,42 @@ Return ONLY valid JSON, no markdown.`;
               </p>
             </div>
 
+            {/* Company Selector */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Select Lead Company
+                </CardTitle>
+                <CardDescription>
+                  Choose which company will be the lead for your consulting projects
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CompanySelector
+                  selectedCompanyId={ownerCompany?.id}
+                  onCompanySelect={handleCompanySelect}
+                  showAddButton={true}
+                />
+              </CardContent>
+            </Card>
+
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Briefcase className="h-16 w-16 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No Projects Yet</h3>
                 <p className="text-muted-foreground text-center mb-6 max-w-md">
-                  Start by creating a consulting project. You can link it to a tender and build your team.
+                  {ownerCompany 
+                    ? "Start by creating a consulting project. You can link it to a tender and build your team."
+                    : "Please select a company above to start creating projects."
+                  }
                 </p>
                 <div className="flex gap-3">
-                  <Button onClick={() => setCreateDialogOpen(true)} size="lg">
+                  <Button 
+                    onClick={() => setCreateDialogOpen(true)} 
+                    size="lg"
+                    disabled={!ownerCompany}
+                  >
                     <Plus className="h-5 w-5 mr-2" />
                     Create Your First Project
                   </Button>

@@ -108,13 +108,6 @@ const CompanyDetail = () => {
   };
 
   const handleRefreshAnalysis = async () => {
-    // Check if OpenAI key is available
-    const openaiKey = localStorage.getItem('openai_api_key');
-    if (!openaiKey) {
-      setShowOpenAIDialog(true);
-      return;
-    }
-
     setIsAnalyzing(true);
     try {
       const { data, error } = await supabase.functions.invoke('analyze-company', {

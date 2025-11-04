@@ -478,16 +478,18 @@ const CompanyDetail = () => {
                 <div className="space-y-2">
                   {companyData.past_projects ? (
                     <Accordion type="single" collapsible className="w-full">
-                      {companyData.past_projects.split(/\n|\.(?=\s[A-Z])/).filter(item => item.trim()).map((project, index) => {
+                      {companyData.past_projects.split(/\n\n+/).filter(item => item.trim()).map((project, index) => {
                         const trimmedProject = project.trim();
-                        const title = trimmedProject.substring(0, 50) + (trimmedProject.length > 50 ? '...' : '');
+                        const lines = trimmedProject.split('\n');
+                        const title = lines[0]; // First line is the title
+                        const details = lines.slice(1).join('\n'); // Rest are details
                         return (
                           <AccordionItem key={index} value={`project-${index}`}>
                             <AccordionTrigger className="text-left">
-                              <span className="font-medium">Project {index + 1}: {title}</span>
+                              <span className="font-medium">{title}</span>
                             </AccordionTrigger>
                             <AccordionContent>
-                              <p className="text-muted-foreground leading-relaxed">{trimmedProject}</p>
+                              <div className="text-muted-foreground leading-relaxed whitespace-pre-line">{details}</div>
                             </AccordionContent>
                           </AccordionItem>
                         );

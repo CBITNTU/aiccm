@@ -16,6 +16,7 @@ interface DashboardStats {
   totalTenders: number;
   matchingResults: number;
   companies: number;
+  projects: number;
   recentMatches: any[];
   tendersByMonth: any[];
   matchScoreDistribution: any[];
@@ -39,6 +40,7 @@ const Dashboard = () => {
     totalTenders: 0,
     matchingResults: 0,
     companies: 0,
+    projects: 0,
     recentMatches: [],
     tendersByMonth: [],
     matchScoreDistribution: []
@@ -170,6 +172,18 @@ const Dashboard = () => {
         ascending: false
       }).limit(5);
 
+      // Fetch projects count (simplified to avoid type inference issues)
+      let projectsCount = 0;
+      if (userCompaniesData && userCompaniesData.length > 0) {
+        // Using type assertion to avoid deep type instantiation error
+        const supabaseClient: any = supabase;
+        const { data: projects } = await supabaseClient
+          .from('virtual_organizations')
+          .select('id')
+          .in('owner_company_id', userCompaniesData.map((c: any) => c.id));
+        projectsCount = projects?.length || 0;
+      }
+
       // Generate mock data for charts
       const tendersByMonth = [{
         month: 'Jan',
@@ -211,6 +225,7 @@ const Dashboard = () => {
         totalTenders: tenderCount || 0,
         matchingResults: matchCount || 0,
         companies: userCompaniesData?.length || 0,
+        projects: projectsCount || 0,
         recentMatches: matchingResults || [],
         tendersByMonth,
         matchScoreDistribution
@@ -246,7 +261,7 @@ const Dashboard = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/tenders')}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Tenders</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
@@ -259,7 +274,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/tenders?tab=matches')}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Matched Opportunities</CardTitle>
               <Target className="h-4 w-4 text-muted-foreground" />
@@ -272,7 +287,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/profile')}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">My Companies</CardTitle>
               <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -285,15 +300,15 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/vo')}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Projects Created</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">24</div>
+              <div className="text-2xl font-bold">{stats.projects}</div>
               <p className="text-xs text-muted-foreground">
-                New opportunities
+                Consulting projects
               </p>
             </CardContent>
           </Card>

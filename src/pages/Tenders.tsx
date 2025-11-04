@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,9 +22,14 @@ const Tenders = () => {
   const { user, session } = useAuth();
   const { role } = useUserRole();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<any>({});
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
+  
+  // Get tab from URL query parameter, default to "tenders"
+  const tabFromUrl = searchParams.get('tab') || 'tenders';
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
 
   // Check and refresh session when component mounts
   useEffect(() => {
@@ -102,7 +108,7 @@ const Tenders = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="tenders" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="tenders" className="flex items-center space-x-2">
               <FileText className="w-4 h-4" />

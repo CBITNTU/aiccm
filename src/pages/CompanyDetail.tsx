@@ -3,6 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Building2, Globe, Mail, Phone, MapPin, Award, Wrench, Users, FileText, Edit2, RefreshCw, ArrowLeft, DollarSign, TrendingUp } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { hasOpenAIKey } from "@/lib/openai";
@@ -469,13 +475,24 @@ const CompanyDetail = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {companyData.past_projects ? (
-                    companyData.past_projects.split(/\n|\.(?=\s[A-Z])/).filter(item => item.trim()).map((project, index) => (
-                      <div key={index} className="p-4 border border-border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                        <p className="text-foreground leading-relaxed">{project.trim()}</p>
-                      </div>
-                    ))
+                    <Accordion type="single" collapsible className="w-full">
+                      {companyData.past_projects.split(/\n|\.(?=\s[A-Z])/).filter(item => item.trim()).map((project, index) => {
+                        const trimmedProject = project.trim();
+                        const title = trimmedProject.substring(0, 50) + (trimmedProject.length > 50 ? '...' : '');
+                        return (
+                          <AccordionItem key={index} value={`project-${index}`}>
+                            <AccordionTrigger className="text-left">
+                              <span className="font-medium">Project {index + 1}: {title}</span>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <p className="text-muted-foreground leading-relaxed">{trimmedProject}</p>
+                            </AccordionContent>
+                          </AccordionItem>
+                        );
+                      })}
+                    </Accordion>
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground">No past projects recorded yet.</p>

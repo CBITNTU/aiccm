@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, ExternalLink, Users, Target, Lightbulb, Plus, Trash2, Mail, RefreshCw, Briefcase, FolderOpen, Archive, CheckCircle2 } from "lucide-react";
@@ -70,6 +71,7 @@ export default function Consulting() {
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [projectFilter, setProjectFilter] = useState<'active' | 'completed' | 'archived' | 'bin'>('active');
 
   // Get tender ID from route state
   const tenderId = location.state?.tenderId;
@@ -81,9 +83,9 @@ export default function Consulting() {
     if (tenderId) {
       initializeProjectFromTender();
     } else {
-      loadUserProjects();
+      loadUserProjects(projectFilter);
     }
-  }, [user, tenderId]);
+  }, [user, tenderId, projectFilter]);
 
   useEffect(() => {
     if (selectedProject) {
@@ -95,7 +97,7 @@ export default function Consulting() {
     }
   }, [selectedProject?.id]); // Use selectedProject.id to trigger on change
 
-  const loadUserProjects = async () => {
+  const loadUserProjects = async (statusFilter: string = 'active') => {
     try {
       setLoading(true);
 
@@ -118,6 +120,11 @@ export default function Consulting() {
         return;
       }
 
+      // Determine which statuses to query based on filter
+      const statusesToQuery = statusFilter === 'active' 
+        ? ['draft', 'active'] 
+        : [statusFilter];
+
       // Load user's projects - wrap in try-catch to handle RLS issues
       let projectsData = [];
       try {
@@ -133,17 +140,17 @@ export default function Consulting() {
             )
           `)
           .eq('lead_company_id', firstCompany.id)
-          .in('status', ['draft', 'active'])
+          .in('status', statusesToQuery)
           .order('created_at', { ascending: false });
 
         if (projectsError) {
           console.warn('Could not load projects (RLS issue):', projectsError);
           // Try simpler query without join
-          const { data: simpleData, error: simpleError } = await supabase
+            const { data: simpleData, error: simpleError } = await supabase
             .from('virtual_organizations')
             .select('*')
             .eq('lead_company_id', firstCompany.id)
-            .in('status', ['draft', 'active']) // Only show active projects
+            .in('status', statusesToQuery)
             .order('created_at', { ascending: false });
           
           if (!simpleError) {
@@ -873,8 +880,32 @@ Return ONLY valid JSON, no markdown.`;
             )}
           </div>
 
+          {/* Project Filter Tabs */}
+          {!tenderId && (
+            <Tabs value={projectFilter} onValueChange={(value: any) => setProjectFilter(value)} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="active">
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Active
+                </TabsTrigger>
+                <TabsTrigger value="completed">
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Completed
+                </TabsTrigger>
+                <TabsTrigger value="archived">
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archived
+                </TabsTrigger>
+                <TabsTrigger value="bin">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Bin
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+
           {/* Project Selector */}
-          {!tenderId && projects.length > 1 && (
+          {!tenderId && projects.length > 0 && (
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">

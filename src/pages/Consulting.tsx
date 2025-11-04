@@ -833,6 +833,10 @@ Return ONLY valid JSON, no markdown.`;
 
       if (projectError) throw projectError;
 
+      // Update projects list by filtering out the deleted project
+      const updatedProjects = projects.filter(p => p.id !== selectedProject.id);
+      setProjects(updatedProjects);
+
       // Clear state
       setSelectedProject(null);
       setGapAnalysis(null);
@@ -840,9 +844,12 @@ Return ONLY valid JSON, no markdown.`;
       setRecommendedPartners([]);
       setTeamMembers([]);
       setTender(null);
+      setInvitations([]);
 
-      // Reload projects list
-      await loadUserProjects();
+      // If there are remaining projects, select the first one
+      if (updatedProjects.length > 0) {
+        setSelectedProject(updatedProjects[0]);
+      }
 
       toast.success('Project deleted successfully');
     } catch (error: any) {

@@ -261,8 +261,28 @@ export default function Consulting() {
   };
 
   const handleProjectCreated = async (projectId: string) => {
-    // Reload projects list
-    await loadUserProjects(projectFilter);
+    try {
+      setLoading(true);
+      
+      // Load the newly created project
+      const { data: newProject, error } = await supabase
+        .from('virtual_organizations')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+      
+      if (error) throw error;
+      
+      // Reload all projects and select the new one
+      await loadUserProjects(projectFilter);
+      setSelectedProject(newProject);
+      await loadProjectData(projectId);
+    } catch (error: any) {
+      console.error('Error loading new project:', error);
+      toast.error('Project created but failed to load');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCompanySelect = (company: Company | null) => {

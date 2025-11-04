@@ -469,15 +469,13 @@ const CompanyDetail = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {companyData.past_projects ? (
-                    <div className="p-4 border border-border rounded-lg">
-                      <ul className="list-disc list-inside space-y-2 text-foreground">
-                        {companyData.past_projects.split(/\n|\.(?=\s[A-Z])/).filter(item => item.trim()).map((project, index) => (
-                          <li key={index} className="leading-relaxed">{project.trim()}</li>
-                        ))}
-                      </ul>
-                    </div>
+                    companyData.past_projects.split(/\n|\.(?=\s[A-Z])/).filter(item => item.trim()).map((project, index) => (
+                      <div key={index} className="p-4 border border-border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                        <p className="text-foreground leading-relaxed">{project.trim()}</p>
+                      </div>
+                    ))
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground">No past projects recorded yet.</p>

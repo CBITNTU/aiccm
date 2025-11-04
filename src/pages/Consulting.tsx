@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, ExternalLink, Users, Target, Lightbulb, Plus, Trash2, Mail, RefreshCw, Briefcase, FolderOpen } from "lucide-react";
+import { Loader2, ExternalLink, Users, Target, Lightbulb, Plus, Trash2, Mail, RefreshCw, Briefcase, FolderOpen, Archive, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
 import { ProjectSummary } from "@/components/consulting/ProjectSummary";
 import { CoverageMap } from "@/components/consulting/CoverageMap";
@@ -141,6 +142,7 @@ export default function Consulting() {
             .from('virtual_organizations')
             .select('*')
             .eq('lead_company_id', firstCompany.id)
+            .in('status', ['draft', 'active']) // Only show active projects
             .order('created_at', { ascending: false });
           
           if (!simpleError) {
@@ -798,48 +800,39 @@ Return ONLY valid JSON, no markdown.`;
     }
   };
 
-  const handleDeleteProject = async () => {
+  const handleMoveProject = async (newStatus: 'bin' | 'archived' | 'completed') => {
     if (!selectedProject) {
       toast.error('No project selected');
       return;
     }
 
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete the project "${selectedProject.name}"? This action cannot be undone.`
+    const statusLabels = {
+      bin: 'move to bin',
+      archived: 'archive',
+      completed: 'mark as completed'
+    };
+    
+    const confirmMove = window.confirm(
+      `Are you sure you want to ${statusLabels[newStatus]} "${selectedProject.name}"?`
     );
 
-    if (!confirmDelete) return;
+    if (!confirmMove) return;
 
     try {
-      toast.info('Deleting project...');
-      console.log('Deleting project:', selectedProject.id);
+      toast.info(`Moving project to ${newStatus}...`);
 
-      // Delete team members first (foreign key constraint)
-      const { error: membersError } = await supabase
-        .from('vo_members')
-        .delete()
-        .eq('vo_id', selectedProject.id);
-
-      if (membersError) {
-        console.error('Error deleting team members:', membersError);
-        throw new Error('Failed to delete team members: ' + membersError.message);
-      }
-
-      // Delete the project
-      const { error: projectError, data: deletedData } = await supabase
+      // Update the project status instead of deleting
+      const { error: projectError } = await supabase
         .from('virtual_organizations')
-        .delete()
-        .eq('id', selectedProject.id)
-        .select();
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', selectedProject.id);
 
       if (projectError) {
-        console.error('Error deleting project:', projectError);
-        throw new Error('Failed to delete project: ' + projectError.message);
+        console.error('Error updating project status:', projectError);
+        throw new Error('Failed to update project status: ' + projectError.message);
       }
 
-      console.log('Project deleted successfully:', deletedData);
-
-      // Update projects list by filtering out the deleted project
+      // Update projects list by filtering out the moved project
       const updatedProjects = projects.filter(p => p.id !== selectedProject.id);
       setProjects(updatedProjects);
 
@@ -858,10 +851,10 @@ Return ONLY valid JSON, no markdown.`;
         setSelectedProject(null);
       }
 
-      toast.success('Project deleted successfully');
+      toast.success(`Project moved to ${newStatus} successfully`);
     } catch (error: any) {
-      console.error('Error deleting project:', error);
-      toast.error(error.message || 'Failed to delete project');
+      console.error('Error moving project:', error);
+      toast.error(error.message || 'Failed to move project');
     }
   };
 
@@ -973,14 +966,31 @@ Return ONLY valid JSON, no markdown.`;
                         </SelectContent>
                       </Select>
                       {selectedProject && projects.length > 0 && (
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={handleDeleteProject}
-                          title="Delete project"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              title="Move project"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleMoveProject('bin')}>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Move to Bin
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleMoveProject('archived')}>
+                              <Archive className="h-4 w-4 mr-2" />
+                              Archive Project
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleMoveProject('completed')}>
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Mark as Completed
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                   </div>

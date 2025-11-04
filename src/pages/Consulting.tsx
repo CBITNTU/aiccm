@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, ExternalLink, Users, Target, Lightbulb, Plus, Trash2, Mail, RefreshCw, Briefcase, FolderOpen, Archive, CheckCircle2 } from "lucide-react";
+import { Loader2, ExternalLink, Users, Target, Lightbulb, Plus, Trash2, Mail, RefreshCw, Briefcase, FolderOpen, Archive, CheckCircle2, Building2 } from "lucide-react";
 import Header from "@/components/Header";
 import { ProjectSummary } from "@/components/consulting/ProjectSummary";
 import { CoverageMap } from "@/components/consulting/CoverageMap";
@@ -1037,98 +1037,147 @@ Return ONLY valid JSON, no markdown.`;
             />
           )}
 
-          <Separator />
+          {/* Only show analysis features for active projects */}
+          {(projectFilter === 'active' || tenderId) && (
+            <>
+              <Separator />
 
-          {/* Step 1: Gap Analysis Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold flex items-center gap-2">
-                  <Target className="h-6 w-6" />
-                  Step 1: Gap Analysis
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Analyze your company's capabilities vs tender requirements
-                </p>
-              </div>
-              <Button 
-                onClick={handleRunGapAnalysis}
-                disabled={analyzing || !ownerCompany || !tender}
-                size="lg"
-              >
-                {analyzing ? (
+              {/* Step 1: Gap Analysis Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold flex items-center gap-2">
+                      <Target className="h-6 w-6" />
+                      Step 1: Gap Analysis
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Analyze your company's capabilities vs tender requirements
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleRunGapAnalysis}
+                    disabled={analyzing || !ownerCompany || !tender}
+                    size="lg"
+                  >
+                    {analyzing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {gapAnalysis ? 'Re-run Gap Analysis' : 'Run Gap Analysis'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {!tender && selectedProject && (
+                  <Card>
+                    <CardContent className="py-8 text-center">
+                      <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Tender Selected</h3>
+                      <p className="text-muted-foreground mb-4">
+                        This project is not linked to a tender. Link a tender to run deep analysis.
+                      </p>
+                      <Button onClick={() => navigate('/tenders')} variant="outline">
+                        Browse Tenders
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {tender && analyzing && (
+                  <Card>
+                    <CardContent className="py-8 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                      <h3 className="font-semibold mb-2">AI Analysis in Progress</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto">
+                        Analyzing tender requirements, comparing with your team's competencies, 
+                        identifying gaps, and searching for recommended partners from the database...
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {tender && (gapAnalysis || teamAnalysis) && !analyzing && (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    {gapAnalysis ? 'Re-run Gap Analysis' : 'Run Gap Analysis'}
+                    <CoverageMap analysis={teamAnalysis || gapAnalysis} />
+                    <RecommendedPartners 
+                      partners={recommendedPartners}
+                      onAddPartner={handleAddPartner}
+                    />
                   </>
                 )}
-              </Button>
-            </div>
+              </div>
 
-            {!tender && selectedProject && (
+              <Separator />
+
+              {/* Team Builder */}
+              <TeamBuilder 
+                members={teamMembers}
+                onRemoveMember={handleRemovePartner}
+                onAddCompany={handleAddPartner}
+                onRunGroupAnalysis={handleRunTeamAnalysis}
+                analyzing={analyzing}
+                teamAnalysis={teamAnalysis}
+              />
+
+              <Separator />
+
+              {/* Invitation Manager */}
+              <InvitationManager 
+                members={teamMembers}
+                onSendInvitations={handleSendInvitations}
+                projectTitle={tender?.title || selectedProject?.name}
+              />
+            </>
+          )}
+
+          {/* Read-only view for completed/archived projects */}
+          {(projectFilter === 'completed' || projectFilter === 'archived') && (
+            <>
+              <Separator />
+              
+              {/* Team Members (Read-only) */}
               <Card>
-                <CardContent className="py-8 text-center">
-                  <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Tender Selected</h3>
-                  <p className="text-muted-foreground mb-4">
-                    This project is not linked to a tender. Link a tender to run deep analysis.
-                  </p>
-                  <Button onClick={() => navigate('/tenders')} variant="outline">
-                    Browse Tenders
-                  </Button>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Team Members
+                  </CardTitle>
+                  <CardDescription>
+                    Companies that were part of this project
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {teamMembers.length > 0 ? (
+                    <div className="space-y-3">
+                      {teamMembers.map((member: any) => (
+                        <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">{member.companies?.company_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {member.companies?.key_capabilities?.substring(0, 100)}...
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="secondary">{member.role}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      No team members were added to this project
+                    </p>
+                  )}
                 </CardContent>
               </Card>
-            )}
-
-            {tender && analyzing && (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                  <h3 className="font-semibold mb-2">AI Analysis in Progress</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    Analyzing tender requirements, comparing with your team's competencies, 
-                    identifying gaps, and searching for recommended partners from the database...
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {tender && (gapAnalysis || teamAnalysis) && !analyzing && (
-              <>
-                <CoverageMap analysis={teamAnalysis || gapAnalysis} />
-                <RecommendedPartners 
-                  partners={recommendedPartners}
-                  onAddPartner={handleAddPartner}
-                />
-              </>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Team Builder */}
-          <TeamBuilder 
-            members={teamMembers}
-            onRemoveMember={handleRemovePartner}
-            onAddCompany={handleAddPartner}
-            onRunGroupAnalysis={handleRunTeamAnalysis}
-            analyzing={analyzing}
-            teamAnalysis={teamAnalysis}
-          />
-
-          <Separator />
-
-          {/* Invitation Manager */}
-          <InvitationManager 
-            members={teamMembers}
-            onSendInvitations={handleSendInvitations}
-            projectTitle={tender?.title || selectedProject?.name}
-          />
+            </>
+          )}
         </div>
 
         {/* Project Creation Dialog */}

@@ -52,6 +52,10 @@ const CompanyOnboardingStep2 = ({ step1Data, prefillData, onBack }: CompanyOnboa
   // Initialize state from prefill data
   const normalized = prefillData?.normalized || {};
   
+  // Also check for existing saved data from database (in case user is editing)
+  const existingFinancial = step1Data?.existingCompany?.financial_data || {};
+  const existingCompliance = step1Data?.existingCompany?.compliance_data || {};
+  
   const [description, setDescription] = useState(normalized.description?.value || "");
   const [capabilities, setCapabilities] = useState<string[]>(
     normalized.capabilities?.map((c: ConfidenceField) => c.value) || []
@@ -76,8 +80,13 @@ const CompanyOnboardingStep2 = ({ step1Data, prefillData, onBack }: CompanyOnboa
   );
   const [newLocation, setNewLocation] = useState("");
 
-  const financial = normalized.financial || {};
-  const compliance = normalized.compliance || {};
+  // Merge prefill data with existing saved data
+  const financial = Object.keys(normalized.financial || {}).length > 0 
+    ? normalized.financial 
+    : existingFinancial;
+  const compliance = Object.keys(normalized.compliance || {}).length > 0 
+    ? normalized.compliance 
+    : existingCompliance;
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return "text-green-600";
@@ -524,7 +533,7 @@ const CompanyOnboardingStep2 = ({ step1Data, prefillData, onBack }: CompanyOnboa
       </div>
 
       {/* Financial Data (Read-only) */}
-      {Object.keys(financial).length > 0 && (
+      {financial && Object.keys(financial).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Financial Information (Read-Only)</CardTitle>
@@ -550,7 +559,7 @@ const CompanyOnboardingStep2 = ({ step1Data, prefillData, onBack }: CompanyOnboa
       )}
 
       {/* Compliance Data (Read-only) */}
-      {Object.keys(compliance).length > 0 && (
+      {compliance && Object.keys(compliance).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Compliance Information (Read-Only)</CardTitle>

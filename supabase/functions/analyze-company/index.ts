@@ -101,7 +101,7 @@ serve(async (req) => {
        - Safety Standards: Evaluate certifications, compliance, and safety culture
        - Innovation & Technology: Rate digital maturity and modern practices
        - Project Experience: Analyze past projects and company maturity
-       - Certifications & Compliance: Review regulatory compliance and industry standards
+       - Certifications & Compliance: Review regulatory compliance and industry standards,output just have the name of the Certifications
        - Market Reputation: Evaluate overall market position and credibility
        - Financial Health: Assess financial stability, assets, and debt ratios
        - Operational Capacity: Evaluate workforce size and resource capacity
@@ -131,9 +131,9 @@ serve(async (req) => {
       "companyInfo": {
         "description": "2-3 sentence company description",
         "key_capabilities": "100-150 word capabilities list",
-        "equipment": "Excavators; Concrete pumps; Tower cranes",
+        "equipment": "Just the name of the equipemtns",
         "certifications": "ISO 9001; ISO 14001; OHSAS 18001",
-        "past_projects": "Brief 2-3 project list (50-100 words total)",
+        "past_projects": "",
         "contact_person": "Contact name or null",
         "contact_email": "Contact email or null",
         "contact_phone": "Contact phone or null",

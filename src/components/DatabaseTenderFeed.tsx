@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
-import { RefreshCw, Search, Calendar, MapPin, Building2, PoundSterling } from "lucide-react";
+import { RefreshCw, Search, Calendar, MapPin, Building2, PoundSterling, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { TenderViewDialog } from './TenderViewDialog';
 
 interface DatabaseTender {
   id: string;
@@ -31,6 +32,7 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
   const [tenders, setTenders] = useState<DatabaseTender[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTender, setSelectedTender] = useState<DatabaseTender | null>(null);
   const { toast } = useToast();
 
   const fetchDatabaseTenders = async (search = '') => {
@@ -196,7 +198,11 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
             <ScrollArea className="h-[600px]">
               <div className="space-y-4">
                 {tenders.map((tender) => (
-                  <Card key={tender.id} className="border-l-4 border-l-primary/20 hover:shadow-md transition-shadow">
+                  <Card 
+                    key={tender.id} 
+                    className="border-l-4 border-l-primary/20 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => setSelectedTender(tender)}
+                  >
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-semibold text-lg text-primary">
@@ -259,13 +265,15 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
                               size="sm"
                               asChild
                               className="text-xs"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <a 
                                 href={`https://www.find-tender.service.gov.uk/Notice/${tender.reference_number}?origin=SearchResults`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                View Details
+                                <ExternalLink className="w-3 h-3 mr-1" />
+                                Go to Original Website
                               </a>
                             </Button>
                           )}
@@ -279,6 +287,13 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
           )}
         </CardContent>
       </Card>
+
+      {/* Tender View Dialog */}
+      <TenderViewDialog
+        tender={selectedTender}
+        open={!!selectedTender}
+        onOpenChange={(open) => !open && setSelectedTender(null)}
+      />
     </div>
   );
 };

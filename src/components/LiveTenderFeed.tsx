@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
-import { ChevronDown, Download, RefreshCw, Search, Shield } from "lucide-react";
+import { ChevronDown, Download, RefreshCw, Search, Shield, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUserRole } from '@/hooks/useUserRole';
 import { TenderFilters } from './TenderFilters';
+import { TenderViewDialog } from './TenderViewDialog';
 
 interface LiveTender {
   id: string;
@@ -47,6 +48,7 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
   const [filters, setFilters] = useState<any>(externalFilters);
   const [totalFetched, setTotalFetched] = useState(0);
   const [duplicatesSkipped, setDuplicatesSkipped] = useState(0);
+  const [selectedTender, setSelectedTender] = useState<LiveTender | null>(null);
   const { toast } = useToast();
   const { role, loading: roleLoading } = useUserRole();
 
@@ -347,7 +349,11 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
           <ScrollArea className="h-[500px]">
             <div className="space-y-4">
               {tenders.map((tender) => (
-                <Card key={tender.id} className="border-l-4 border-l-primary/20 hover:shadow-md transition-shadow">
+                <Card 
+                  key={tender.id} 
+                  className="border-l-4 border-l-primary/20 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setSelectedTender(tender)}
+                >
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold text-lg text-primary">
@@ -400,13 +406,15 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
                           size="sm"
                           asChild
                           className="text-xs"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <a 
                             href={`https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            View Details
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            Go to Original Website
                           </a>
                         </Button>
                       </div>
@@ -444,6 +452,13 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
         )}
       </CardContent>
     </Card>
+
+    {/* Tender View Dialog */}
+    <TenderViewDialog
+      tender={selectedTender}
+      open={!!selectedTender}
+      onOpenChange={(open) => !open && setSelectedTender(null)}
+    />
     </div>
   );
 };

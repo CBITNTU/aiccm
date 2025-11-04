@@ -94,17 +94,13 @@ export default function Consulting() {
       // If no owner company selected yet, just show the selector
       setLoading(false);
     }
-  }, [user, tenderId, projectFilter, ownerCompany]);
+  }, [user?.id, tenderId, projectFilter, ownerCompany?.id]); // Use IDs only to prevent re-render loops
 
   useEffect(() => {
     if (selectedProject) {
-      // Clear previous analysis when switching projects
-      setGapAnalysis(null);
-      setTeamAnalysis(null);
-      setRecommendedPartners([]);
       loadProjectData(selectedProject.id);
     }
-  }, [selectedProject?.id]); // Use selectedProject.id to trigger on change
+  }, [selectedProject?.id]); // Use ID only to prevent re-render loops
 
   const loadUserProjects = async (statusFilter: string = 'active') => {
     try {
@@ -284,6 +280,11 @@ export default function Consulting() {
 
   const loadProjectData = async (voId: string) => {
     try {
+      // Clear previous state first
+      setGapAnalysis(null);
+      setTeamAnalysis(null);
+      setRecommendedPartners([]);
+      
       // Load project details to get saved analysis
       const { data: projectDetails } = await supabase
         .from('virtual_organizations')

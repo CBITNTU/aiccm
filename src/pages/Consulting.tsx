@@ -69,7 +69,6 @@ export default function Consulting() {
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [tender, setTender] = useState<any>(null);
   const [ownerCompany, setOwnerCompany] = useState<Company | null>(null);
-  const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
   const [teamAnalysis, setTeamAnalysis] = useState<TeamAnalysis | null>(null);
   const [recommendedPartners, setRecommendedPartners] = useState<RecommendedPartner[]>([]);
@@ -85,20 +84,17 @@ export default function Consulting() {
   useEffect(() => {
     if (!user) return;
     
-    // Wait for company to be selected before loading projects
-    if (!ownerCompany && !loadingCompanies) {
-      setLoading(false);
-      return;
-    }
-    
     if (ownerCompany) {
       if (tenderId) {
         initializeProjectFromTender();
       } else {
         loadUserProjects(projectFilter);
       }
+    } else {
+      // If no owner company selected yet, just show the selector
+      setLoading(false);
     }
-  }, [user, tenderId, projectFilter, ownerCompany, loadingCompanies]);
+  }, [user, tenderId, projectFilter, ownerCompany]);
 
   useEffect(() => {
     if (selectedProject) {
@@ -276,12 +272,14 @@ export default function Consulting() {
   const handleCompanySelect = (company: Company | null) => {
     setOwnerCompany(company);
     // Clear current projects when company changes
-    setProjects([]);
-    setSelectedProject(null);
-    setGapAnalysis(null);
-    setTeamAnalysis(null);
-    setRecommendedPartners([]);
-    setTeamMembers([]);
+    if (company) {
+      setProjects([]);
+      setSelectedProject(null);
+      setGapAnalysis(null);
+      setTeamAnalysis(null);
+      setRecommendedPartners([]);
+      setTeamMembers([]);
+    }
   };
 
   const loadProjectData = async (voId: string) => {
@@ -937,7 +935,6 @@ Return ONLY valid JSON, no markdown.`;
               <CompanySelector
                 selectedCompanyId={ownerCompany?.id}
                 onCompanySelect={handleCompanySelect}
-                onLoadingChange={setLoadingCompanies}
                 showAddButton={true}
               />
             </CardContent>

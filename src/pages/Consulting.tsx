@@ -77,24 +77,31 @@ export default function Consulting() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState<'active' | 'completed' | 'archived'>('active');
 
-  // Get tender ID from route state
+  // Get tender ID from route state and clear it to prevent re-initialization
   const tenderId = location.state?.tenderId;
   const tenderTitle = location.state?.tenderTitle;
+  
+  // Track if we've already initialized from tender to prevent loops
+  const [initializedTenderId, setInitializedTenderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     
     if (ownerCompany) {
-      if (tenderId) {
+      if (tenderId && tenderId !== initializedTenderId) {
+        // Only initialize from tender once
+        setInitializedTenderId(tenderId);
         initializeProjectFromTender();
-      } else {
+        // Clear the location state to prevent re-initialization
+        navigate(location.pathname, { replace: true, state: {} });
+      } else if (!tenderId) {
         loadUserProjects(projectFilter);
       }
     } else {
       // If no owner company selected yet, just show the selector
       setLoading(false);
     }
-  }, [user?.id, tenderId, projectFilter, ownerCompany?.id]); // Use IDs only to prevent re-render loops
+  }, [user?.id, tenderId, projectFilter, ownerCompany?.id, initializedTenderId]); // Use IDs only to prevent re-render loops
 
   useEffect(() => {
     if (selectedProject) {
@@ -264,6 +271,8 @@ export default function Consulting() {
     try {
       setLoading(true);
       
+      console.log('Loading newly created project:', projectId);
+      
       // Load the newly created project
       const { data: newProject, error } = await supabase
         .from('virtual_organizations')
@@ -271,12 +280,23 @@ export default function Consulting() {
         .eq('id', projectId)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to load new project:', error);
+        throw error;
+      }
       
-      // Reload all projects and select the new one
+      console.log('New project loaded, refreshing list');
+      
+      // Reload all projects 
       await loadUserProjects(projectFilter);
+      
+      // Set the newly created project as selected
       setSelectedProject(newProject);
+      
+      // Load project data
       await loadProjectData(projectId);
+      
+      console.log('Project creation complete');
     } catch (error: any) {
       console.error('Error loading new project:', error);
       toast.error('Project created but failed to load');

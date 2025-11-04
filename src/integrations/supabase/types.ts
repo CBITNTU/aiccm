@@ -425,31 +425,40 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          gap_analysis: Json | null
           id: string
           lead_company_id: string
           name: string
+          recommended_partners: Json | null
           status: string
           target_tender_id: string | null
+          team_analysis: Json | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
+          gap_analysis?: Json | null
           id?: string
           lead_company_id: string
           name: string
+          recommended_partners?: Json | null
           status?: string
           target_tender_id?: string | null
+          team_analysis?: Json | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
+          gap_analysis?: Json | null
           id?: string
           lead_company_id?: string
           name?: string
+          recommended_partners?: Json | null
           status?: string
           target_tender_id?: string | null
+          team_analysis?: Json | null
           updated_at?: string
         }
         Relationships: [

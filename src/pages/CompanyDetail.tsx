@@ -258,11 +258,11 @@ const CompanyDetail = () => {
                  <CardContent>
                    <div className="flex flex-wrap gap-2">
                      {(() => {
-                       // Use AI-generated capabilities if available, otherwise fall back to manual
+                       // Use AI-generated coreCompetencies from analysis if available
                        let capabilities: string[] = [];
                        
-                       if (analysis?.ai_capabilities && Array.isArray(analysis.ai_capabilities)) {
-                         capabilities = analysis.ai_capabilities.filter(cap => typeof cap === 'string') as string[];
+                       if (analysis?.coreCompetencies && Array.isArray(analysis.coreCompetencies)) {
+                         capabilities = analysis.coreCompetencies.filter(cap => typeof cap === 'string') as string[];
                        } else if (companyData.ai_competencies && Array.isArray(companyData.ai_competencies)) {
                          capabilities = companyData.ai_competencies.filter(comp => typeof comp === 'string') as string[];
                        } else if (companyData.key_capabilities) {
@@ -291,32 +291,32 @@ const CompanyDetail = () => {
                  <CardContent>
                    <div className="space-y-4">
                      {/* Business Metrics */}
-                     <div className="grid md:grid-cols-2 gap-3">
-                       <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                         <div>
-                           <p className="text-sm font-medium">Digital Maturity</p>
-                           <p className="text-xs text-muted-foreground">
-                             {companyData.digital_maturity || 'Not assessed yet'}
-                           </p>
-                         </div>
-                       </div>
-                       <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                         <div>
-                           <p className="text-sm font-medium">Market Position</p>
-                           <p className="text-xs text-muted-foreground">
-                             {companyData.market_position || 'Not assessed yet'}
-                           </p>
-                         </div>
-                       </div>
-                       <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                         <div>
-                           <p className="text-sm font-medium">Safety Rating</p>
-                           <p className="text-xs text-muted-foreground">
-                             {companyData.safety_rating || 'Not assessed yet'}
-                           </p>
-                         </div>
-                       </div>
-                     </div>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium">Digital Maturity</p>
+                            <p className="text-xs text-muted-foreground">
+                              {analysis?.digitalMaturity || companyData.digital_maturity || 'Not assessed yet'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium">Market Position</p>
+                            <p className="text-xs text-muted-foreground">
+                              {analysis?.marketPosition || companyData.market_position || 'Not assessed yet'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium">Safety Rating</p>
+                            <p className="text-xs text-muted-foreground">
+                              {analysis?.safetyRating || companyData.safety_rating || 'Not assessed yet'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
 
                      <Separator />
 

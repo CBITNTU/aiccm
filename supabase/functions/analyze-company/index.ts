@@ -79,12 +79,12 @@ serve(async (req) => {
     ANALYSIS REQUIREMENTS:
     
     0. COMPANY INFORMATION ENRICHMENT:
-       For ANY field marked "N/A - FILL THIS", provide comprehensive, detailed information.
-       - description: 3-5 detailed sentences about the company's business, history, and market position
-       - key_capabilities: Comprehensive list of specific technical capabilities, services, and expertise (200+ words)
-       - equipment: Detailed inventory of equipment, machinery, vehicles, tools, and resources
-       - certifications: Full list of certifications, accreditations, quality standards (ISO, safety, industry-specific)
-       - past_projects: Detailed descriptions of 3-5 notable projects with specifics (names, values, locations, outcomes)
+       For ANY field marked "N/A - FILL THIS", provide concise, useful information.
+       - description: 2-3 sentences about the company's business and market position
+       - key_capabilities: List specific technical capabilities and services (100-150 words max)
+       - equipment: Bullet list of equipment only (e.g., "Excavators, Tower cranes, Concrete pumps") - NO descriptions
+       - certifications: Comma-separated list only (e.g., "ISO 9001, ISO 14001, OHSAS 18001") - NO descriptions
+       - past_projects: Brief list of 2-3 notable projects with basic details (50-100 words total)
        - contact_person: Extract contact name if available from website
        - contact_email: Extract contact email if available  
        - contact_phone: Extract contact phone if available
@@ -101,33 +101,33 @@ serve(async (req) => {
        - Operational Capacity: Evaluate workforce size and resource capacity
     
     2. CORE COMPETENCIES:
-       Extract 6-9 specific, actionable core competencies based on actual capabilities.
-       Be specific (e.g., "High-rise concrete construction" not just "Construction").
+       Extract 6-9 SHORT, specific competencies (max 3-4 words each).
+       Examples: "High-rise construction", "Steel fabrication", "Project management"
     
-    3. BUSINESS INSIGHTS:
-       Provide 4-6 strategic insights as SEPARATE ARRAY ITEMS (not one long paragraph).
-       Each insight should be a single, concise sentence covering:
-       - Competitive advantages and unique strengths
-       - Growth opportunities and market positioning
-       - Risk factors and areas for improvement
-       - Financial health assessment
-       - Operational capacity analysis
-       - Recommended focus areas for business development
+    3. ASSESSMENT RATINGS:
+       Provide these specific assessments:
+       - digitalMaturity: Rate as "High", "Medium", "Low", or "Not assessed yet"
+       - safetyRating: Rate as "Excellent", "Good", "Fair", "Poor", or "Not assessed yet"
+       - marketPosition: Brief summary (1 sentence) or "Not assessed yet"
     
-    4. COMPETITIVE POSITIONING:
+    4. BUSINESS INSIGHTS:
+       Provide 3-5 SHORT strategic insights (one sentence each, max 15 words per insight).
+       Cover: strengths, opportunities, risks, financial health, or recommendations.
+    
+    5. COMPETITIVE POSITIONING:
        Rate the company's position: "Market Leader", "Strong Competitor", "Emerging Player", or "Developing"
     
-    5. SWOT SUMMARY:
-       Brief bullets for Strengths, Weaknesses, Opportunities, Threats (2-3 items each)
+    6. SWOT SUMMARY:
+       Brief bullets for Strengths, Weaknesses, Opportunities, Threats (2-3 SHORT items each, max 5 words per item)
     
     Return ONLY a JSON object with this exact structure:
     {
       "companyInfo": {
-        "description": "Detailed 3-5 sentence company description",
-        "key_capabilities": "Comprehensive capabilities list (200+ words)",
-        "equipment": "Detailed equipment inventory",
-        "certifications": "Full certifications list",
-        "past_projects": "Detailed project descriptions",
+        "description": "2-3 sentence company description",
+        "key_capabilities": "100-150 word capabilities list",
+        "equipment": "Comma-separated equipment list only, no descriptions",
+        "certifications": "Comma-separated certifications list only, no descriptions",
+        "past_projects": "Brief 2-3 project list (50-100 words total)",
         "contact_person": "Contact name or null",
         "contact_email": "Contact email or null",
         "contact_phone": "Contact phone or null",
@@ -145,21 +145,24 @@ serve(async (req) => {
         "overallScore": 84
       },
       "coreCompetencies": [
-        "High-rise concrete construction",
-        "Steel fabrication and erection"
+        "High-rise construction",
+        "Steel fabrication"
       ],
+      "digitalMaturity": "Medium",
+      "safetyRating": "Good",
+      "marketPosition": "Established regional contractor with growth potential",
       "businessInsights": [
-        "Strong financial position provides stability",
-        "Opportunity to leverage equipment base"
+        "Strong asset base supports large project bids",
+        "Equipment diversity enables multiple service lines"
       ],
       "competitivePositioning": "Strong Competitor",
       "swotSummary": {
-        "strengths": ["Strong asset base", "Experienced workforce"],
-        "weaknesses": ["Moderate debt levels"],
-        "opportunities": ["Green building market"],
+        "strengths": ["Strong assets", "Experienced team"],
+        "weaknesses": ["Moderate debt"],
+        "opportunities": ["Green building"],
         "threats": ["Economic uncertainty"]
       },
-      "executiveSummary": "2-3 sentence overall assessment"
+      "executiveSummary": "1-2 sentence overall assessment"
     }
     `;
 
@@ -210,7 +213,7 @@ serve(async (req) => {
       analysis = JSON.parse(cleanedContent);
       
       // Validate that we have all required fields
-      const requiredFields = ['companyInfo', 'performanceBenchmark', 'coreCompetencies', 'businessInsights', 'competitivePositioning', 'swotSummary', 'executiveSummary'];
+      const requiredFields = ['companyInfo', 'performanceBenchmark', 'coreCompetencies', 'digitalMaturity', 'safetyRating', 'marketPosition', 'businessInsights', 'competitivePositioning', 'swotSummary', 'executiveSummary'];
       const missingFields = requiredFields.filter(field => analysis[field] === undefined);
       
       if (missingFields.length > 0) {
@@ -240,16 +243,19 @@ serve(async (req) => {
           operationalCapacity: 70,
           overallScore: 69
         },
-        coreCompetencies: ["General construction services"],
-        businessInsights: ["Analysis could not be completed due to data parsing issues. Please try again."],
+        coreCompetencies: ["General construction"],
+        digitalMaturity: "Not assessed yet",
+        safetyRating: "Not assessed yet",
+        marketPosition: "Not assessed yet",
+        businessInsights: ["Analysis incomplete, please try again"],
         competitivePositioning: "Emerging Player",
         swotSummary: {
           strengths: ["Established presence"],
-          weaknesses: ["Limited data available"],
+          weaknesses: ["Limited data"],
           opportunities: ["Market expansion"],
-          threats: ["Competitive market"]
+          threats: ["Competition"]
         },
-        executiveSummary: "Analysis could not be completed. Please ensure all company data is properly filled."
+        executiveSummary: "Analysis could not be completed."
       };
     }
 
@@ -288,6 +294,17 @@ serve(async (req) => {
     }
     if (companyInfo.postcode && !company.postcode) {
       updateData.postcode = companyInfo.postcode;
+    }
+
+    // Update assessment ratings from analysis
+    if (analysis.digitalMaturity) {
+      updateData.digital_maturity = analysis.digitalMaturity;
+    }
+    if (analysis.safetyRating) {
+      updateData.safety_rating = analysis.safetyRating;
+    }
+    if (analysis.marketPosition) {
+      updateData.market_position = analysis.marketPosition;
     }
 
     const { error: updateError } = await supabase

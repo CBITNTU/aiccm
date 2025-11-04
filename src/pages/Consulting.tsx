@@ -354,23 +354,6 @@ export default function Consulting() {
         tenderTitle: tenderData.title
       });
 
-      // Use OpenAI directly (edge function deployment issues)
-      // Check if key is already saved
-      let apiKey = localStorage.getItem('openai_api_key');
-      
-      if (!apiKey) {
-        // First time - prompt for key
-        toast.info('Please enter your OpenAI API key for AI analysis');
-        apiKey = window.prompt('Enter your OpenAI API key (starts with sk-):');
-        
-        if (!apiKey) {
-          throw new Error('OpenAI API key is required for analysis');
-        }
-        
-        localStorage.setItem('openai_api_key', apiKey);
-        toast.success('API key saved! Analysis starting...');
-      }
-
       // Only analyze the owner company for gap analysis
 
       const prompt = `
@@ -399,32 +382,15 @@ Provide a detailed JSON analysis with:
 
 Return ONLY valid JSON, no markdown.`;
 
-      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: 'You are a tender analysis expert. Return only valid JSON.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
+      const { data: aiData, error: aiError } = await supabase.functions.invoke('analyze-project-simple', {
+        body: { prompt }
       });
 
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        throw new Error(`OpenAI API error: ${aiResponse.status} - ${errorText}`);
+      if (aiError) {
+        throw new Error(`AI analysis failed: ${aiError.message}`);
       }
 
-      const aiData = await aiResponse.json();
-      const content = aiData.choices[0].message.content;
-      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const analysis = JSON.parse(cleanContent);
+      const analysis = JSON.parse(aiData.content);
 
       // Get partner recommendations with better scoring
       const missingComps = analysis.missingCompetencies || [];
@@ -554,20 +520,6 @@ Return ONLY valid JSON, no markdown.`;
         memberCount: members.length
       });
 
-      let apiKey = localStorage.getItem('openai_api_key');
-      
-      if (!apiKey) {
-        toast.info('Please enter your OpenAI API key for AI analysis');
-        apiKey = window.prompt('Enter your OpenAI API key (starts with sk-):');
-        
-        if (!apiKey) {
-          throw new Error('OpenAI API key is required for analysis');
-        }
-        
-        localStorage.setItem('openai_api_key', apiKey);
-        toast.success('API key saved! Analysis starting...');
-      }
-
       const allCompanies = [company, ...members.map((m: any) => m.companies)].filter(Boolean);
 
       const prompt = `
@@ -600,33 +552,16 @@ Provide a detailed JSON analysis with:
 
 Return ONLY valid JSON, no markdown.`;
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: 'You are a tender analysis expert. Return only valid JSON.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
+      const { data: result, error: aiError } = await supabase.functions.invoke('analyze-project-simple', {
+        body: { prompt }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('OpenAI API error:', response.status, errorText);
-        throw new Error(`AI analysis failed: ${response.statusText}`);
+      if (aiError) {
+        console.error('AI analysis error:', aiError);
+        throw new Error(`AI analysis failed: ${aiError.message}`);
       }
 
-      const result = await response.json();
-      const content = result.choices[0].message.content.trim();
-      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const analysis = JSON.parse(cleanContent);
+      const analysis = JSON.parse(result.content);
 
       console.log('Team analysis received:', analysis);
 

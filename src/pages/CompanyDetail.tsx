@@ -327,35 +327,45 @@ const CompanyDetail = () => {
 
                      <Separator />
 
-                     {/* AI Analysis Section */}
-                     {analysis && (
-                       <div className="p-4 border border-border rounded-lg bg-card">
-                         <div className="flex items-center justify-between mb-3">
-                           <p className="text-sm font-semibold flex items-center gap-2">
-                             <TrendingUp className="w-4 h-4 text-primary" />
-                             Latest AI Analysis
-                           </p>
-                           <Badge variant="outline">Overall Score: {analysis.overallScore}/100</Badge>
-                         </div>
-                         <p className="text-xs text-muted-foreground leading-relaxed">{analysis.analysis}</p>
-                         
-                         {/* Performance Metrics */}
-                         <div className="grid grid-cols-3 gap-2 mt-3">
-                           <div className="text-center p-2 bg-secondary/30 rounded">
-                             <div className="text-xs text-muted-foreground">Technical</div>
-                             <div className="text-sm font-bold">{analysis.technicalExpertise}/100</div>
-                           </div>
-                           <div className="text-center p-2 bg-secondary/30 rounded">
-                             <div className="text-xs text-muted-foreground">Innovation</div>
-                             <div className="text-sm font-bold">{analysis.innovation}/100</div>
-                           </div>
-                           <div className="text-center p-2 bg-secondary/30 rounded">
-                             <div className="text-xs text-muted-foreground">Experience</div>
-                             <div className="text-sm font-bold">{analysis.projectExperience}/100</div>
-                           </div>
-                         </div>
-                       </div>
-                     )}
+                      {/* AI Analysis Section */}
+                      {analysis && (
+                        <div className="p-4 border border-border rounded-lg bg-card">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm font-semibold flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-primary" />
+                              Latest AI Analysis
+                            </p>
+                            <Badge variant="outline">Overall Score: {analysis.performanceBenchmark?.overallScore}/100</Badge>
+                          </div>
+                          
+                          {/* Business Insights */}
+                          {analysis.businessInsights && Array.isArray(analysis.businessInsights) && analysis.businessInsights.length > 0 && (
+                            <div className="mb-4">
+                              <ul className="list-disc list-inside space-y-2">
+                                {analysis.businessInsights.map((insight: string, index: number) => (
+                                  <li key={index} className="text-xs text-muted-foreground leading-relaxed">{insight}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {/* Performance Metrics */}
+                          <div className="grid grid-cols-3 gap-2 mt-3">
+                            <div className="text-center p-2 bg-secondary/30 rounded">
+                              <div className="text-xs text-muted-foreground">Technical</div>
+                              <div className="text-sm font-bold">{analysis.performanceBenchmark?.technicalExpertise}/100</div>
+                            </div>
+                            <div className="text-center p-2 bg-secondary/30 rounded">
+                              <div className="text-xs text-muted-foreground">Innovation</div>
+                              <div className="text-sm font-bold">{analysis.performanceBenchmark?.innovation}/100</div>
+                            </div>
+                            <div className="text-center p-2 bg-secondary/30 rounded">
+                              <div className="text-xs text-muted-foreground">Experience</div>
+                              <div className="text-sm font-bold">{analysis.performanceBenchmark?.projectExperience}/100</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                      {!analysis && (
                        <div className="p-4 border border-dashed border-border rounded-lg bg-muted/50 text-center">
                          <p className="text-sm text-muted-foreground">No AI analysis available yet</p>

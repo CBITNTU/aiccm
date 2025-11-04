@@ -88,7 +88,8 @@ serve(async (req) => {
        Be specific (e.g., "High-rise concrete construction" not just "Construction").
     
     3. BUSINESS INSIGHTS:
-       Provide 4-6 strategic insights covering:
+       Provide 4-6 strategic insights as SEPARATE ARRAY ITEMS (not one long paragraph).
+       Each insight should be a single, concise sentence covering:
        - Competitive advantages and unique strengths
        - Growth opportunities and market positioning
        - Risk factors and areas for improvement
@@ -124,12 +125,12 @@ serve(async (req) => {
         "Heavy equipment operations"
       ],
       "businessInsights": [
-        "Strong financial position with £3.49M net assets provides stability for large projects",
-        "159 employees indicates significant operational capacity for mid-to-large scale work",
-        "Debt ratio of 0.768 is moderate but requires monitoring for financial flexibility",
-        "Compliance status is current, demonstrating good corporate governance",
+        "Strong financial position provides stability for large projects",
+        "Significant operational capacity for mid-to-large scale work",
+        "Debt ratio requires monitoring for financial flexibility",
+        "Compliance status demonstrates good corporate governance",
         "Opportunity to leverage equipment base for specialized contracts",
-        "Consider diversification into emerging green construction markets"
+        "Consider diversification into emerging markets"
       ],
       "competitivePositioning": "Strong Competitor",
       "swotSummary": {

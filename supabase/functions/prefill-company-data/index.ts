@@ -42,15 +42,23 @@ serve(async (req) => {
       return r;
     };
 
-    const tidyHtml = (html: string, max = 15000) =>
-      html
+    const tidyHtml = (html: string, max = 15000) => {
+      // Remove scripts, styles, but preserve table structure and labels
+      let cleaned = html
         .replace(/<script[\s\S]*?<\/script>/gi, "")
         .replace(/<style[\s\S]*?<\/style>/gi, "")
         .replace(/<svg[\s\S]*?<\/svg>/gi, "")
         .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
-        .replace(/<!--[\s\S]*?-->/g, "")
-        .replace(/\s{2,}/g, " ")
-        .slice(0, max);
+        .replace(/<!--[\s\S]*?-->/g, "");
+      
+      // Preserve table structure by keeping newlines in tables
+      cleaned = cleaned.replace(/(<\/tr>|<\/td>|<\/th>)/gi, "$1\n");
+      
+      // Clean up excessive whitespace but preserve single newlines
+      cleaned = cleaned.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n");
+      
+      return cleaned.slice(0, max);
+    };
 
     // 1) Companies House page (unchanged, optional)
     if (companyNumber && companyNumber.length === 8) {
@@ -110,7 +118,7 @@ serve(async (req) => {
             url: endoleUrl,
             found: true,
             // Give the LLM as much *clean* Endole as possible (finance tables often below the fold)
-            html: tidyHtml(endoleHtml, 14000),
+            html: tidyHtml(endoleHtml, 25000),
           };
           console.log("Endole data fetched");
         } else {
@@ -144,17 +152,22 @@ serve(async (req) => {
     // 4) OpenAI normalization — bias to Endole for finance
     console.log("Starting OpenAI analysis...");
 
-    const systemPrompt = `You are a company data extraction assistant.
+    const systemPrompt = `You are a company data extraction assistant specializing in UK company financial data.
 You will receive (possibly partial) HTML from Companies House, Endole, and the company's website.
-Your task is to extract and normalize the requested fields.
+Your task is to extract and normalize the requested fields with high accuracy.
 
 STRICT RULES (NO HALLUCINATIONS):
-- Base ALL content ONLY on Endole/website/Companies House text provided. If a detail is not present, do NOT infer it.
-- Financials: use Endole as the primary evidence. If Endole does not clearly show a number, leave it as 0 with low confidence.
-- Endole often abbreviates figures (K, M, B). Convert to absolute numbers where obvious; otherwise keep the shown number and note low confidence.
-- Typical Endole finance labels include: "Net Assets", "Total Assets", "Current Assets", "Total Liabilities",
-  "Cash", "Cash at Bank", "Cash & Cash Equivalents", "Creditors", "Average Employees", "Employees", "Debt Ratio (%)".
+- Base ALL content ONLY on text provided. If a detail is not present, do NOT infer it.
+- Financial data is CRITICAL: Look carefully in tables, rows, and labeled data sections.
+- Endole HTML contains financial data in table format. Look for:
+  * Table rows with labels like "Net Assets", "Total Assets", "Current Assets", "Total Liabilities"
+  * "Cash", "Cash at Bank", "Cash & Cash Equivalents", "Creditors"
+  * "Average Employees", "Employees", "Number of Employees"
+  * Values are often formatted with commas (e.g., "1,234,567") or abbreviations (K, M, B)
+- Convert abbreviated figures: K=1000, M=1000000, B=1000000000
+- Remove commas and convert to integers (e.g., "1,234,567" → 1234567)
 - Compute debtRatio = totalLiabilities / totalAssets (round to 3 decimals) when both > 0.
+- Set confidence to 0.9 if data is clearly present, 0.5 if partially present, 0 if missing.
 
 DESCRIPTION REQUIREMENTS (180–250 words):
 Write a single cohesive paragraph (~180–250 words) that covers, in order, using only evidence found:
@@ -212,10 +225,14 @@ Schema to return:
   }
 }
 
-Rules:
-- Finance must be from "endole" when present. If not found, leave zeros with low confidence instead of guessing.
-- Include "evidence" as exactly "endole", "companies_house", or "website".
-- debtRatio must be computed when possible.`;
+EXTRACTION RULES:
+- CAREFULLY scan the entire Endole HTML for financial tables and rows
+- Look for patterns like: <td>Net Assets</td><td>£1,234,567</td> or similar
+- Financial data MUST be from "endole" when present - search thoroughly before marking as 0
+- Strip currency symbols (£, $), commas, and whitespace from numbers
+- Include "evidence" as exactly "endole", "companies_house", or "website"
+- Set confidence=0.9 when data is clearly found, 0 when truly not present
+- debtRatio must be computed when totalAssets and totalLiabilities are both > 0`;
 
     const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -224,15 +241,14 @@ Rules:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        // If you must keep your original model string, swap it here.
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.0,
-        max_completion_tokens: 4000,
+        temperature: 0.1,
+        max_tokens: 4000,
       }),
     });
 

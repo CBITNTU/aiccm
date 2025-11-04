@@ -527,6 +527,10 @@ export type Database = {
         Args: { new_status: string; project_id: string }
         Returns: undefined
       }
+      user_can_view_vo: {
+        Args: { _user_id: string; _vo_id: string }
+        Returns: boolean
+      }
       user_is_vo_member: {
         Args: { _user_id: string; _vo_id: string }
         Returns: boolean

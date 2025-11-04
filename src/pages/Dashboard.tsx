@@ -180,7 +180,7 @@ const Dashboard = () => {
         const { data: projects } = await supabaseClient
           .from('virtual_organizations')
           .select('id')
-          .in('owner_company_id', userCompaniesData.map((c: any) => c.id));
+          .in('lead_company_id', userCompaniesData.map((c: any) => c.id));
         projectsCount = projects?.length || 0;
       }
 

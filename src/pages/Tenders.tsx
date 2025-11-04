@@ -50,7 +50,7 @@ const Tenders = () => {
     checkSession();
   }, [session, toast]);
 
-  // Fetch user companies to determine if we need company selector
+  // Fetch user companies and auto-select the first one
   useEffect(() => {
     const fetchCompanies = async () => {
       if (!user) return;
@@ -64,6 +64,11 @@ const Tenders = () => {
 
         if (error) throw error;
         setCompanies(data || []);
+        
+        // Auto-select the first company if none is selected
+        if (data && data.length > 0 && !selectedCompany) {
+          setSelectedCompany(data[0]);
+        }
       } catch (error) {
         console.error('Error fetching companies:', error);
       }

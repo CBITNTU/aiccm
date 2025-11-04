@@ -25,13 +25,17 @@ export type Database = {
           certifications: string | null
           companies_house_number: string | null
           company_name: string
+          compliance_data: Json | null
+          consent_data_fetch: boolean | null
           contact_email: string | null
+          contact_person: string | null
           contact_phone: string | null
           created_at: string
           description: string | null
           digital_maturity: string | null
           equipment: string | null
           financial_data: Json | null
+          human_verified: Json | null
           id: string
           is_system_company: boolean | null
           key_capabilities: string | null
@@ -40,6 +44,7 @@ export type Database = {
           postcode: string | null
           safety_rating: string | null
           status: string | null
+          system_extracted: Json | null
           updated_at: string
           user_id: string
           website_url: string | null
@@ -54,13 +59,17 @@ export type Database = {
           certifications?: string | null
           companies_house_number?: string | null
           company_name: string
+          compliance_data?: Json | null
+          consent_data_fetch?: boolean | null
           contact_email?: string | null
+          contact_person?: string | null
           contact_phone?: string | null
           created_at?: string
           description?: string | null
           digital_maturity?: string | null
           equipment?: string | null
           financial_data?: Json | null
+          human_verified?: Json | null
           id?: string
           is_system_company?: boolean | null
           key_capabilities?: string | null
@@ -69,6 +78,7 @@ export type Database = {
           postcode?: string | null
           safety_rating?: string | null
           status?: string | null
+          system_extracted?: Json | null
           updated_at?: string
           user_id: string
           website_url?: string | null
@@ -83,13 +93,17 @@ export type Database = {
           certifications?: string | null
           companies_house_number?: string | null
           company_name?: string
+          compliance_data?: Json | null
+          consent_data_fetch?: boolean | null
           contact_email?: string | null
+          contact_person?: string | null
           contact_phone?: string | null
           created_at?: string
           description?: string | null
           digital_maturity?: string | null
           equipment?: string | null
           financial_data?: Json | null
+          human_verified?: Json | null
           id?: string
           is_system_company?: boolean | null
           key_capabilities?: string | null
@@ -98,6 +112,7 @@ export type Database = {
           postcode?: string | null
           safety_rating?: string | null
           status?: string | null
+          system_extracted?: Json | null
           updated_at?: string
           user_id?: string
           website_url?: string | null

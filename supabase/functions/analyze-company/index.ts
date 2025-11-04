@@ -82,8 +82,8 @@ serve(async (req) => {
        For ANY field marked "N/A - FILL THIS", provide concise, useful information.
        - description: 2-3 sentences about the company's business and market position
        - key_capabilities: List specific technical capabilities and services (100-150 words max)
-       - equipment: Bullet list of equipment only (e.g., "Excavators, Tower cranes, Concrete pumps") - NO descriptions
-       - certifications: Comma-separated list only (e.g., "ISO 9001, ISO 14001, OHSAS 18001") - NO descriptions
+       - equipment: ONLY equipment names separated by semicolons (e.g., "Excavators; Tower cranes; Concrete pumps; Bulldozers") - NO descriptions or sentences
+       - certifications: ONLY certifications separated by semicolons (e.g., "ISO 9001; ISO 14001; OHSAS 18001; CITB") - NO descriptions or sentences
        - past_projects: Brief list of 2-3 notable projects with basic details (50-100 words total)
        - contact_person: Extract contact name if available from website
        - contact_email: Extract contact email if available  
@@ -125,8 +125,8 @@ serve(async (req) => {
       "companyInfo": {
         "description": "2-3 sentence company description",
         "key_capabilities": "100-150 word capabilities list",
-        "equipment": "Comma-separated equipment list only, no descriptions",
-        "certifications": "Comma-separated certifications list only, no descriptions",
+        "equipment": "Equipment names only, separated by semicolons (e.g., 'Excavators; Concrete pumps; Tower cranes')",
+        "certifications": "Certifications only, separated by semicolons (e.g., 'ISO 9001; ISO 14001; OHSAS 18001')",
         "past_projects": "Brief 2-3 project list (50-100 words total)",
         "contact_person": "Contact name or null",
         "contact_email": "Contact email or null",

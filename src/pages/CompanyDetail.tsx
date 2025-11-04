@@ -423,13 +423,27 @@ const CompanyDetail = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {(companyData.equipment?.split(', ') || []).map((item: string, index: number) => (
-                    <div key={index} className="flex items-center space-x-3 p-3 bg-secondary-light rounded-lg">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span className="text-foreground">{item}</span>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  {(() => {
+                    if (!companyData.equipment) return <p className="text-muted-foreground">No equipment listed</p>;
+                    
+                    // Split by semicolon or comma
+                    const items = companyData.equipment.includes(';') 
+                      ? companyData.equipment.split(';')
+                      : companyData.equipment.split(',');
+                    
+                    return items.map((item: string, index: number) => {
+                      const trimmedItem = item.trim();
+                      if (!trimmedItem) return null;
+                      
+                      return (
+                        <div key={index} className="flex items-center space-x-3 p-3 bg-secondary/30 rounded-lg">
+                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                          <span className="text-foreground">{trimmedItem}</span>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -444,25 +458,36 @@ const CompanyDetail = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-3">
                   {(() => {
+                    if (!companyData.certifications) return <p className="text-muted-foreground">No certifications listed</p>;
+                    
                     let certifications: string[] = [];
                     
-                    if (Array.isArray(companyData.ai_certifications)) {
-                      certifications = companyData.ai_certifications.filter(cert => typeof cert === 'string') as string[];
-                    } else if (companyData.certifications) {
-                      certifications = companyData.certifications.split(', ');
+                    // Check if ai_certifications exists in ai_analysis
+                    const aiAnalysis = companyData.ai_analysis as any;
+                    if (aiAnalysis?.certifications && Array.isArray(aiAnalysis.certifications)) {
+                      certifications = aiAnalysis.certifications.filter((cert: any) => typeof cert === 'string');
+                    } else if (Array.isArray(companyData.ai_certifications)) {
+                      certifications = (companyData.ai_certifications as any[]).filter(cert => typeof cert === 'string');
+                    } else {
+                      // Split by semicolon or comma
+                      certifications = companyData.certifications.includes(';')
+                        ? companyData.certifications.split(';')
+                        : companyData.certifications.split(',');
                     }
                     
-                    return certifications.map((cert: string, index: number) => (
-                      <div key={index} className="flex items-center space-x-3 p-4 border border-border rounded-lg">
-                        <Award className="w-6 h-6 text-primary" />
-                        <div>
-                          <div className="font-medium text-foreground">{cert}</div>
-                          <div className="text-sm text-muted-foreground">Valid</div>
+                    return certifications.map((cert: string, index: number) => {
+                      const trimmedCert = cert.trim();
+                      if (!trimmedCert) return null;
+                      
+                      return (
+                        <div key={index} className="flex items-center space-x-3 p-4 border border-border rounded-lg bg-card">
+                          <Award className="w-5 h-5 text-primary flex-shrink-0" />
+                          <span className="font-medium text-foreground">{trimmedCert}</span>
                         </div>
-                      </div>
-                    ));
+                      );
+                    });
                   })()}
                 </div>
               </CardContent>

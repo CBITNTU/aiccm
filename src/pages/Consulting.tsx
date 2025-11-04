@@ -85,23 +85,34 @@ export default function Consulting() {
   const [initializedTenderId, setInitializedTenderId] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('Main useEffect triggered:', { 
+      hasUser: !!user, 
+      hasOwnerCompany: !!ownerCompany, 
+      tenderId, 
+      projectFilter,
+      initializedTenderId 
+    });
+    
     if (!user) return;
     
     if (ownerCompany) {
       if (tenderId && tenderId !== initializedTenderId) {
         // Only initialize from tender once
+        console.log('Initializing from tender (first time)');
         setInitializedTenderId(tenderId);
         initializeProjectFromTender();
         // Clear the location state to prevent re-initialization
         navigate(location.pathname, { replace: true, state: {} });
-      } else if (!tenderId) {
+      } else if (!tenderId || tenderId === initializedTenderId) {
+        console.log('Loading user projects');
         loadUserProjects(projectFilter);
       }
     } else {
       // If no owner company selected yet, just show the selector
+      console.log('No owner company, showing selector');
       setLoading(false);
     }
-  }, [user?.id, tenderId, projectFilter, ownerCompany?.id, initializedTenderId]); // Use IDs only to prevent re-render loops
+  }, [user?.id, tenderId, projectFilter, ownerCompany?.id]); // Use IDs only to prevent re-render loops
 
   useEffect(() => {
     if (selectedProject) {
@@ -114,9 +125,12 @@ export default function Consulting() {
       setLoading(true);
 
       if (!ownerCompany) {
+        console.log('No owner company, skipping project load');
         setLoading(false);
         return;
       }
+
+      console.log('Loading projects for company:', ownerCompany.id, 'filter:', statusFilter);
 
       // Determine which statuses to query based on filter
       const statusesToQuery = statusFilter === 'active' 
@@ -162,11 +176,15 @@ export default function Consulting() {
         projectsData = [];
       }
 
+      console.log('Projects loaded:', projectsData.length, 'projects');
       setProjects(projectsData);
 
       // Auto-select first project if any
       if (projectsData.length > 0) {
+        console.log('Auto-selecting first project:', projectsData[0].id);
         setSelectedProject(projectsData[0]);
+      } else {
+        console.log('No projects found to select');
       }
     } catch (error: any) {
       console.error('Error loading projects:', error);
@@ -273,7 +291,10 @@ export default function Consulting() {
       
       console.log('Loading newly created project:', projectId);
       
-      // Load the newly created project
+      // First, reload all projects to get the updated list
+      await loadUserProjects(projectFilter);
+      
+      // Then load the specific project
       const { data: newProject, error } = await supabase
         .from('virtual_organizations')
         .select('*')
@@ -285,18 +306,15 @@ export default function Consulting() {
         throw error;
       }
       
-      console.log('New project loaded, refreshing list');
+      console.log('Setting selected project to:', newProject.name);
       
-      // Reload all projects 
-      await loadUserProjects(projectFilter);
-      
-      // Set the newly created project as selected
+      // Set the newly created project as selected AFTER loading the list
       setSelectedProject(newProject);
       
       // Load project data
       await loadProjectData(projectId);
       
-      console.log('Project creation complete');
+      console.log('Project creation complete, selected project:', newProject.id);
     } catch (error: any) {
       console.error('Error loading new project:', error);
       toast.error('Project created but failed to load');
@@ -306,9 +324,11 @@ export default function Consulting() {
   };
 
   const handleCompanySelect = (company: Company | null) => {
+    console.log('Company selected:', company?.company_name || 'None');
     setOwnerCompany(company);
     // Clear current projects when company changes
     if (company) {
+      console.log('Clearing state for new company');
       setProjects([]);
       setSelectedProject(null);
       setGapAnalysis(null);

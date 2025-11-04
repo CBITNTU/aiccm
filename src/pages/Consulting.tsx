@@ -325,9 +325,14 @@ export default function Consulting() {
 
   const handleCompanySelect = (company: Company | null) => {
     console.log('Company selected:', company?.company_name || 'None');
+    
+    // Only clear state if the company actually changed
+    const companyChanged = ownerCompany?.id !== company?.id;
+    
     setOwnerCompany(company);
-    // Clear current projects when company changes
-    if (company) {
+    
+    // Clear current projects only when company changes, not when re-selecting same company
+    if (company && companyChanged) {
       console.log('Clearing state for new company');
       setProjects([]);
       setSelectedProject(null);

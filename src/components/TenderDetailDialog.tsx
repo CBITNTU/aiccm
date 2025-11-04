@@ -45,16 +45,16 @@ export function TenderDetailDialog({ result, open, onOpenChange, companyId }: Te
   const navigate = useNavigate();
   const [tenderDetails, setTenderDetails] = React.useState<any>(null);
 
-  // Fetch full tender details to get reference_number for external link
+  // Fetch full tender details to get external_id for the correct link
   React.useEffect(() => {
     const fetchTenderDetails = async () => {
       if (!result?.tender_id) return;
       
       const { data, error } = await supabase
         .from('tenders')
-        .select('reference_number, external_id')
+        .select('reference_number, documents')
         .eq('id', result.tender_id)
-        .single();
+        .maybeSingle();
       
       if (!error && data) {
         setTenderDetails(data);
@@ -81,9 +81,17 @@ export function TenderDetailDialog({ result, open, onOpenChange, companyId }: Te
   };
 
   const handleApplySolo = () => {
-    // Use the tender's reference number or external_id for the original website
-    const referenceNumber = tenderDetails?.reference_number || tenderDetails?.external_id || result.tender_id;
-    window.open(`https://www.find-tender.service.gov.uk/Notice/${referenceNumber}?origin=SearchResults&p=1`, '_blank');
+    // Use the same URL format as the tender feed pages
+    // Try to get the application URL from documents, otherwise construct from reference_number
+    const applicationUrl = tenderDetails?.documents?.application_url;
+    const referenceNumber = tenderDetails?.reference_number;
+    
+    const externalUrl = applicationUrl || 
+      (referenceNumber ? `https://www.find-tender.service.gov.uk/Notice/${referenceNumber}?origin=SearchResults&p=1` : null);
+    
+    if (externalUrl) {
+      window.open(externalUrl, '_blank');
+    }
   };
 
   const handleBuildTeam = () => {

@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       companies: {
         Row: {
+          ai_analysis: Json | null
           ai_capabilities: Json | null
           ai_certifications: Json | null
           ai_competencies: Json | null
@@ -30,7 +31,9 @@ export type Database = {
           description: string | null
           digital_maturity: string | null
           equipment: string | null
+          financial_data: Json | null
           id: string
+          is_system_company: boolean | null
           key_capabilities: string | null
           market_position: string | null
           past_projects: string | null
@@ -42,6 +45,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          ai_analysis?: Json | null
           ai_capabilities?: Json | null
           ai_certifications?: Json | null
           ai_competencies?: Json | null
@@ -56,7 +60,9 @@ export type Database = {
           description?: string | null
           digital_maturity?: string | null
           equipment?: string | null
+          financial_data?: Json | null
           id?: string
+          is_system_company?: boolean | null
           key_capabilities?: string | null
           market_position?: string | null
           past_projects?: string | null
@@ -68,6 +74,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          ai_analysis?: Json | null
           ai_capabilities?: Json | null
           ai_certifications?: Json | null
           ai_competencies?: Json | null
@@ -82,7 +89,9 @@ export type Database = {
           description?: string | null
           digital_maturity?: string | null
           equipment?: string | null
+          financial_data?: Json | null
           id?: string
+          is_system_company?: boolean | null
           key_capabilities?: string | null
           market_position?: string | null
           past_projects?: string | null

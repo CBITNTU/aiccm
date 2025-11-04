@@ -71,7 +71,7 @@ export default function Consulting() {
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [projectFilter, setProjectFilter] = useState<'active' | 'completed' | 'archived' | 'bin'>('active');
+  const [projectFilter, setProjectFilter] = useState<'active' | 'completed' | 'archived'>('active');
 
   // Get tender ID from route state
   const tenderId = location.state?.tenderId;
@@ -743,26 +743,26 @@ Return ONLY valid JSON, no markdown.`;
     }
   };
 
-  const handleMoveProject = async (newStatus: 'bin' | 'archived' | 'completed') => {
+  const handleMoveProject = async (newStatus: 'delete' | 'archived' | 'completed') => {
     if (!selectedProject) {
       toast.error('No project selected');
       return;
     }
 
     const statusLabels = {
-      bin: 'delete',
+      delete: 'delete',
       archived: 'archive',
       completed: 'mark as completed'
     };
     
     const confirmMove = window.confirm(
-      `Are you sure you want to ${statusLabels[newStatus]} "${selectedProject.name}"? ${newStatus === 'bin' ? 'This action cannot be undone.' : ''}`
+      `Are you sure you want to ${statusLabels[newStatus]} "${selectedProject.name}"? ${newStatus === 'delete' ? 'This action cannot be undone.' : ''}`
     );
 
     if (!confirmMove) return;
 
     try {
-      if (newStatus === 'bin') {
+      if (newStatus === 'delete') {
         // Delete project permanently
         toast.info('Deleting project...');
         
@@ -928,7 +928,7 @@ Return ONLY valid JSON, no markdown.`;
           {/* Project Filter Tabs */}
           {!tenderId && (
             <Tabs value={projectFilter} onValueChange={(value: any) => setProjectFilter(value)} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="active">
                   <Briefcase className="h-4 w-4 mr-2" />
                   Active
@@ -941,10 +941,6 @@ Return ONLY valid JSON, no markdown.`;
                   <Archive className="h-4 w-4 mr-2" />
                   Archived
                 </TabsTrigger>
-                <TabsTrigger value="bin">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Bin
-                </TabsTrigger>
               </TabsList>
             </Tabs>
           )}
@@ -955,7 +951,6 @@ Return ONLY valid JSON, no markdown.`;
               <CardContent className="flex flex-col items-center justify-center py-12">
                 {projectFilter === 'completed' && <CheckCircle2 className="h-16 w-16 text-muted-foreground mb-4" />}
                 {projectFilter === 'archived' && <Archive className="h-16 w-16 text-muted-foreground mb-4" />}
-                {projectFilter === 'bin' && <Trash2 className="h-16 w-16 text-muted-foreground mb-4" />}
                 <h3 className="text-xl font-semibold mb-2">
                   No {projectFilter.charAt(0).toUpperCase() + projectFilter.slice(1)} Projects
                 </h3>
@@ -1001,13 +996,13 @@ Return ONLY valid JSON, no markdown.`;
                             <Button
                               variant="destructive"
                               size="icon"
-                              title="Move project"
+                              title="Project actions"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleMoveProject('bin')}>
+                            <DropdownMenuItem onClick={() => handleMoveProject('delete')}>
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete Project
                             </DropdownMenuItem>

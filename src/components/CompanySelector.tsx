@@ -16,13 +16,15 @@ interface CompanySelectorProps {
   onCompanySelect?: (company: Company | null) => void;
   showAddButton?: boolean;
   className?: string;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 export function CompanySelector({ 
   selectedCompanyId, 
   onCompanySelect, 
   showAddButton = true, 
-  className = "" 
+  className = "",
+  onLoadingChange
 }: CompanySelectorProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -67,6 +69,7 @@ export function CompanySelector({
         setCompanies([]);
       } finally {
         setLoading(false);
+        onLoadingChange?.(false);
       }
     };
 

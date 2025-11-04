@@ -19,6 +19,10 @@ import { RecommendedPartners } from "@/components/consulting/RecommendedPartners
 import { TeamBuilder } from "@/components/consulting/TeamBuilder";
 import { InvitationManager } from "@/components/consulting/InvitationManager";
 import { ProjectCreationDialog } from "@/components/consulting/ProjectCreationDialog";
+import { CompanySelector } from "@/components/CompanySelector";
+import type { Database } from "@/integrations/supabase/types";
+
+type Company = Database['public']['Tables']['companies']['Row'];
 
 interface ProjectAnalysis {
   requiredCompetencies: string[];
@@ -64,7 +68,8 @@ export default function Consulting() {
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [tender, setTender] = useState<any>(null);
-  const [ownerCompany, setOwnerCompany] = useState<any>(null);
+  const [ownerCompany, setOwnerCompany] = useState<Company | null>(null);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
   const [teamAnalysis, setTeamAnalysis] = useState<TeamAnalysis | null>(null);
   const [recommendedPartners, setRecommendedPartners] = useState<RecommendedPartner[]>([]);
@@ -80,12 +85,20 @@ export default function Consulting() {
   useEffect(() => {
     if (!user) return;
     
-    if (tenderId) {
-      initializeProjectFromTender();
-    } else {
-      loadUserProjects(projectFilter);
+    // Wait for company to be selected before loading projects
+    if (!ownerCompany && !loadingCompanies) {
+      setLoading(false);
+      return;
     }
-  }, [user, tenderId, projectFilter]);
+    
+    if (ownerCompany) {
+      if (tenderId) {
+        initializeProjectFromTender();
+      } else {
+        loadUserProjects(projectFilter);
+      }
+    }
+  }, [user, tenderId, projectFilter, ownerCompany, loadingCompanies]);
 
   useEffect(() => {
     if (selectedProject) {
@@ -101,21 +114,7 @@ export default function Consulting() {
     try {
       setLoading(true);
 
-      // Get owner company - get the first active company
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (companyError) throw companyError;
-      
-      const firstCompany = companyData?.[0] || null;
-      setOwnerCompany(firstCompany);
-
-      if (!firstCompany) {
+      if (!ownerCompany) {
         setLoading(false);
         return;
       }
@@ -139,7 +138,7 @@ export default function Consulting() {
               deadline
             )
           `)
-          .eq('lead_company_id', firstCompany.id)
+          .eq('lead_company_id', ownerCompany.id)
           .in('status', statusesToQuery)
           .order('created_at', { ascending: false });
 
@@ -149,7 +148,7 @@ export default function Consulting() {
             const { data: simpleData, error: simpleError } = await supabase
             .from('virtual_organizations')
             .select('*')
-            .eq('lead_company_id', firstCompany.id)
+            .eq('lead_company_id', ownerCompany.id)
             .in('status', statusesToQuery)
             .order('created_at', { ascending: false });
           
@@ -184,26 +183,13 @@ export default function Consulting() {
 
       console.log('Initializing project from tender:', tenderId);
 
-      // Get owner company - get the first active company
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (companyError) throw companyError;
-      
-      const firstCompany = companyData?.[0] || null;
-      if (!firstCompany) {
+      if (!ownerCompany) {
         toast.error('No company found. Please create a company profile first.');
         setLoading(false);
         return;
       }
       
-      setOwnerCompany(firstCompany);
-      console.log('Owner company loaded:', firstCompany.company_name);
+      console.log('Owner company loaded:', ownerCompany.company_name);
 
       // Get tender details
       const { data: tenderData, error: tenderError } = await supabase
@@ -226,7 +212,7 @@ export default function Consulting() {
         .from('virtual_organizations')
         .select('*')
         .eq('target_tender_id', tenderId)
-        .eq('lead_company_id', firstCompany.id)
+        .eq('lead_company_id', ownerCompany.id)
         .order('created_at', { ascending: false })
         .limit(1);
       
@@ -251,7 +237,7 @@ export default function Consulting() {
           .insert({
             name: `Project: ${tenderData.title}`,
             description: `Consulting team for tender: ${tenderData.title}`,
-            lead_company_id: firstCompany.id,
+            lead_company_id: ownerCompany.id,
             target_tender_id: tenderId,
             status: 'draft'
           })
@@ -271,7 +257,7 @@ export default function Consulting() {
         
         // Run initial gap analysis automatically
         console.log('Starting automatic gap analysis...');
-        await runGapAnalysis(newProject.id, firstCompany, tenderData);
+        await runGapAnalysis(newProject.id, ownerCompany, tenderData);
       }
 
     } catch (error: any) {
@@ -284,7 +270,18 @@ export default function Consulting() {
 
   const handleProjectCreated = async (projectId: string) => {
     // Reload projects list
-    await loadUserProjects();
+    await loadUserProjects(projectFilter);
+  };
+
+  const handleCompanySelect = (company: Company | null) => {
+    setOwnerCompany(company);
+    // Clear current projects when company changes
+    setProjects([]);
+    setSelectedProject(null);
+    setGapAnalysis(null);
+    setTeamAnalysis(null);
+    setRecommendedPartners([]);
+    setTeamMembers([]);
   };
 
   const loadProjectData = async (voId: string) => {
@@ -924,6 +921,27 @@ Return ONLY valid JSON, no markdown.`;
               </Button>
             )}
           </div>
+
+          {/* Company Selector */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Select Lead Company
+              </CardTitle>
+              <CardDescription>
+                Choose which company will be the lead for your consulting projects
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CompanySelector
+                selectedCompanyId={ownerCompany?.id}
+                onCompanySelect={handleCompanySelect}
+                onLoadingChange={setLoadingCompanies}
+                showAddButton={true}
+              />
+            </CardContent>
+          </Card>
 
           {/* Project Filter Tabs */}
           {!tenderId && (

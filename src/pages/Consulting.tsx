@@ -357,6 +357,16 @@ export default function Consulting() {
         .eq('id', voId)
         .maybeSingle();
 
+      // Verify the project belongs to the selected company
+      if (projectDetails && ownerCompany && projectDetails.lead_company_id !== ownerCompany.id) {
+        console.error('Project mismatch:', {
+          projectLeadCompany: projectDetails.lead_company_id,
+          selectedCompany: ownerCompany.id
+        });
+        toast.error('Project does not belong to the selected company. Please select the correct company.');
+        return;
+      }
+
       // Load saved analyses if they exist
       if ((projectDetails as any)?.gap_analysis) {
         console.log('Loading saved gap analysis from database');
@@ -759,8 +769,26 @@ Return ONLY valid JSON, no markdown.`;
       toast.error('This project is not linked to a tender. Please select a tender or create a project from the matching results page.');
       return;
     }
+
+    // Verify company matches project
+    if (selectedProject.lead_company_id !== ownerCompany.id) {
+      toast.error('Company mismatch: This project belongs to a different company. Please select the correct company.');
+      return;
+    }
+
+    // Fetch the actual lead company from the project to ensure consistency
+    const { data: leadCompany, error: companyError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', selectedProject.lead_company_id)
+      .single();
+
+    if (companyError || !leadCompany) {
+      toast.error('Failed to load company information');
+      return;
+    }
     
-    await runGapAnalysis(selectedProject.id, ownerCompany, tender);
+    await runGapAnalysis(selectedProject.id, leadCompany, tender);
   };
 
   const handleRunGapAnalysis = async () => {
@@ -768,7 +796,26 @@ Return ONLY valid JSON, no markdown.`;
       toast.error('Missing project, company, or tender information');
       return;
     }
-    await runGapAnalysis(selectedProject.id, ownerCompany, tender);
+
+    // Verify company matches project
+    if (selectedProject.lead_company_id !== ownerCompany.id) {
+      toast.error('Company mismatch: This project belongs to a different company. Please select the correct company.');
+      return;
+    }
+
+    // Fetch the actual lead company from the project to ensure consistency
+    const { data: leadCompany, error: companyError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', selectedProject.lead_company_id)
+      .single();
+
+    if (companyError || !leadCompany) {
+      toast.error('Failed to load company information');
+      return;
+    }
+
+    await runGapAnalysis(selectedProject.id, leadCompany, tender);
   };
 
   const handleRunTeamAnalysis = async () => {
@@ -780,7 +827,26 @@ Return ONLY valid JSON, no markdown.`;
       toast.error('Add at least one partner before running team analysis');
       return;
     }
-    await runTeamAnalysis(selectedProject.id, ownerCompany, tender, teamMembers);
+
+    // Verify company matches project
+    if (selectedProject.lead_company_id !== ownerCompany.id) {
+      toast.error('Company mismatch: This project belongs to a different company. Please select the correct company.');
+      return;
+    }
+
+    // Fetch the actual lead company from the project to ensure consistency
+    const { data: leadCompany, error: companyError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', selectedProject.lead_company_id)
+      .single();
+
+    if (companyError || !leadCompany) {
+      toast.error('Failed to load company information');
+      return;
+    }
+
+    await runTeamAnalysis(selectedProject.id, leadCompany, tender, teamMembers);
   };
 
   const handleSendInvitations = async (selectedPartnerIds: string[]) => {
@@ -1087,13 +1153,31 @@ Return ONLY valid JSON, no markdown.`;
                       >
                         <SelectTrigger className="flex-1">
                           <SelectValue placeholder="Select a project">
-                            {selectedProject ? selectedProject.name : "Select a project"}
+                            {selectedProject ? (
+                              <span>
+                                {selectedProject.name}
+                                {ownerCompany && (
+                                  <span className="text-muted-foreground text-sm ml-2">
+                                    ({ownerCompany.company_name})
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              "Select a project"
+                            )}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {projects.map((project) => (
                             <SelectItem key={project.id} value={project.id}>
-                              {project.name} {project.tenders && `- ${project.tenders.title}`}
+                              <div className="flex flex-col">
+                                <span>{project.name} {project.tenders && `- ${project.tenders.title}`}</span>
+                                {ownerCompany && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Lead: {ownerCompany.company_name}
+                                  </span>
+                                )}
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -820,12 +820,13 @@ Return ONLY valid JSON, no markdown.`;
 
     try {
       toast.info(`Moving project to ${newStatus}...`);
+      console.log('Moving project to status:', newStatus);
 
-      // Update the project status instead of deleting
-      const { error: projectError } = await supabase
-        .from('virtual_organizations')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', selectedProject.id);
+      // Use RPC call to bypass constraint cache issue
+      const { error: projectError } = await supabase.rpc('update_project_status', {
+        project_id: selectedProject.id,
+        new_status: newStatus
+      });
 
       if (projectError) {
         console.error('Error updating project status:', projectError);

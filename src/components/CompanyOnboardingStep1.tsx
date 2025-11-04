@@ -113,6 +113,9 @@ const CompanyOnboardingStep1 = ({ onNext }: CompanyOnboardingStep1Props) => {
         });
         onNext(formData, null);
       } else {
+        console.log('✅ Prefill data received:', prefillData);
+        console.log('✅ Financial data in response:', prefillData?.normalized?.financial);
+        console.log('✅ Compliance data in response:', prefillData?.normalized?.compliance);
         toast({
           title: "Data Retrieved!",
           description: "We've prefilled your profile with public data. Please review in the next step.",

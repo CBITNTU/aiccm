@@ -246,6 +246,8 @@ Rules:
     result.normalized = JSON.parse(openAIData.choices[0].message.content);
 
     console.log("OpenAI analysis completed successfully");
+    console.log("Financial data extracted:", JSON.stringify(result.normalized.financial, null, 2));
+    console.log("Compliance data extracted:", JSON.stringify(result.normalized.compliance, null, 2));
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

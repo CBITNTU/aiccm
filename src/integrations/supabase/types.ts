@@ -499,6 +499,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_project_status: {
+        Args: { new_status: string; project_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"

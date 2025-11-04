@@ -51,17 +51,8 @@ export function CompanySelector({
         }
 
         setCompanies(data || []);
-        
-        // Only auto-select if no selectedCompanyId is provided yet
-        // If selectedCompanyId is provided, wait for the second useEffect to handle it
-        if (data && data.length > 0 && !selectedCompanyId) {
-          const companyToSelect = data[0];
-          setSelectedCompany(companyToSelect);
-          onCompanySelect?.(companyToSelect);
-        }
       } catch (error) {
         console.error('Error fetching companies:', error);
-        // Set empty array to prevent further attempts
         setCompanies([]);
       } finally {
         setLoading(false);
@@ -69,18 +60,27 @@ export function CompanySelector({
     };
 
     fetchCompanies();
-  }, [user, selectedCompanyId]);
+  }, [user]);
 
-  // Update selected company when selectedCompanyId prop changes
+  // Handle company selection based on prop or auto-select
   useEffect(() => {
-    if (selectedCompanyId && companies.length > 0) {
+    if (companies.length === 0) return;
+    
+    if (selectedCompanyId) {
+      // Prop-driven selection (from route or parent)
       const companyToSelect = companies.find(c => c.id === selectedCompanyId);
       if (companyToSelect && companyToSelect.id !== selectedCompany?.id) {
+        console.log('CompanySelector: Selecting company from prop:', companyToSelect.company_name);
         setSelectedCompany(companyToSelect);
         onCompanySelect?.(companyToSelect);
       }
+    } else if (!selectedCompany) {
+      // Auto-select first company only if nothing is selected yet
+      console.log('CompanySelector: Auto-selecting first company:', companies[0].company_name);
+      setSelectedCompany(companies[0]);
+      onCompanySelect?.(companies[0]);
     }
-  }, [selectedCompanyId, companies]);
+  }, [selectedCompanyId, companies, selectedCompany?.id]);
 
   const handleCompanyChange = (companyId: string) => {
     const company = companies.find(c => c.id === companyId) || null;

@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Target, TrendingUp, MapPin, Eye, Loader2, Trash2, Building2 } from "lucide-react";
+import { AlertCircle, Target, TrendingUp, MapPin, Eye, Loader2, Trash2, Building2, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { TenderDetailDialog } from "./TenderDetailDialog";
 import { MatchingFilters } from "./MatchingFilters";
@@ -250,6 +250,29 @@ export function TenderMatching({ companyId }: TenderMatchingProps) {
       toast.error('Failed to delete match result');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const toggleBookmark = async (resultId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('matching_results')
+        .update({ is_bookmarked: !currentStatus })
+        .eq('id', resultId);
+
+      if (error) throw error;
+      
+      setMatchingResults(prev => 
+        prev.map(result => 
+          result.id === resultId 
+            ? { ...result, is_bookmarked: !currentStatus }
+            : result
+        )
+      );
+      toast.success(currentStatus ? 'Removed from saved tenders' : 'Added to saved tenders');
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      toast.error('Failed to update bookmark');
     }
   };
 
@@ -517,6 +540,13 @@ export function TenderMatching({ companyId }: TenderMatchingProps) {
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         View Details
+                      </Button>
+                      <Button
+                        variant={result.is_bookmarked ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleBookmark(result.id, result.is_bookmarked)}
+                      >
+                        <Bookmark className={`w-4 h-4 ${result.is_bookmarked ? 'fill-current' : ''}`} />
                       </Button>
                       <Button
                         variant="ghost"

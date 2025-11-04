@@ -3,12 +3,13 @@ import Header from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, FileText } from "lucide-react";
+import { Building2, FileText, Bookmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import DatabaseTenderFeed from "@/components/DatabaseTenderFeed";
 import { TenderMatching } from "@/components/TenderMatching";
+import { SavedTenders } from "@/components/SavedTenders";
 import { TenderFilters } from "@/components/TenderFilters";
 import { CompanySelector } from "@/components/CompanySelector";
 import { useToast } from "@/hooks/use-toast";
@@ -102,7 +103,7 @@ const Tenders = () => {
         </div>
 
         <Tabs defaultValue="tenders" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="tenders" className="flex items-center space-x-2">
               <FileText className="w-4 h-4" />
               <span>All Tenders</span>
@@ -110,6 +111,10 @@ const Tenders = () => {
             <TabsTrigger value="matches" className="flex items-center space-x-2">
               <Building2 className="w-4 h-4" />
               <span>Your Matches</span>
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="flex items-center space-x-2">
+              <Bookmark className="w-4 h-4" />
+              <span>Saved Tenders</span>
             </TabsTrigger>
           </TabsList>
 
@@ -172,6 +177,20 @@ const Tenders = () => {
 
             <div className="min-h-[600px] transition-all duration-200">
               <TenderMatching companyId={selectedCompany?.id} />
+            </div>
+          </TabsContent>
+
+          {/* Saved Tenders Tab */}
+          <TabsContent value="saved" className="space-y-6">
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6 dark:bg-blue-950/20">
+              <h3 className="font-semibold text-foreground mb-2">Your Saved Tenders</h3>
+              <p className="text-sm text-muted-foreground">
+                Review all the tenders you've bookmarked for future reference.
+              </p>
+            </div>
+
+            <div className="min-h-[600px] transition-all duration-200">
+              <SavedTenders />
             </div>
           </TabsContent>
         </Tabs>

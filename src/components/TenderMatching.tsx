@@ -308,6 +308,8 @@ export function TenderMatching({ companyId }: TenderMatchingProps) {
                 // Clear existing results when switching companies
                 setMatchingResults([]);
                 setFilteredResults([]);
+                // Reset filters to default
+                resetFilters();
               }}
               showAddButton={false}
               className="w-full max-w-md"
@@ -377,9 +379,14 @@ export function TenderMatching({ companyId }: TenderMatchingProps) {
                     ? selectedCompanyId 
                       ? "No tender matches found for this company yet. Click 'Run Analysis' to analyze available tenders and find matching opportunities."
                       : "Select a company above and click 'Run Analysis' to find opportunities that match the company profile."
-                    : "No matches found with current filters. Try adjusting your filter criteria."
+                    : `${matchingResults.length} matches found but filtered out. Active filters: ${filters.quickFilter ? `Quick Filter (${filters.quickFilter}), ` : ''}Score: ${filters.minScore}-${filters.maxScore}%, Status: ${filters.showApplied}. Click Reset to clear filters.`
                   }
                 </p>
+                {matchingResults.length > 0 && filteredResults.length === 0 && (
+                  <Button onClick={resetFilters} variant="outline" className="mb-4">
+                    Reset All Filters
+                  </Button>
+                )}
                 {matchingResults.length === 0 && selectedCompanyId && (
                   <Button onClick={runAnalysis} disabled={analyzing}>
                     <Target className="w-4 h-4 mr-2" />

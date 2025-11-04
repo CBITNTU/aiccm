@@ -237,18 +237,44 @@ const CompanyOnboardingStep2 = ({ step1Data, prefillData, onBack }: CompanyOnboa
         status: 'active',
       };
 
-      const { error } = await supabase
+      const { data: createdCompany, error } = await supabase
         .from('companies')
-        .insert(companyData);
+        .insert(companyData)
+        .select()
+        .single();
 
       if (error) {
         throw error;
       }
 
+      // Run comprehensive AI analysis for performance benchmarking and business insights
       toast({
-        title: "Success!",
-        description: "Your company profile has been created successfully.",
+        title: "Profile Created!",
+        description: "Running performance analysis and generating business insights...",
       });
+
+      try {
+        const { data: analysisResult, error: analysisError } = await supabase.functions.invoke('analyze-company', {
+          body: { companyId: createdCompany.id }
+        });
+
+        if (analysisError) {
+          console.error('Analysis error:', analysisError);
+          toast({
+            title: "Warning",
+            description: "Company created but analysis could not be completed. You can run it later.",
+          });
+        } else {
+          console.log('✅ AI Analysis completed:', analysisResult);
+          toast({
+            title: "Analysis Complete!",
+            description: "Performance benchmarking and business insights have been generated.",
+          });
+        }
+      } catch (analysisError) {
+        console.error('Analysis failed:', analysisError);
+        // Don't block the flow if analysis fails
+      }
 
       navigate('/dashboard');
     } catch (error) {

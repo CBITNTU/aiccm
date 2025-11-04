@@ -52,12 +52,10 @@ export function CompanySelector({
 
         setCompanies(data || []);
         
-        // Auto-select company if only one exists or if selectedCompanyId is provided
-        if (data && data.length > 0) {
-          const companyToSelect = selectedCompanyId 
-            ? data.find(c => c.id === selectedCompanyId) || data[0]
-            : data[0];
-          
+        // Only auto-select if no selectedCompanyId is provided yet
+        // If selectedCompanyId is provided, wait for the second useEffect to handle it
+        if (data && data.length > 0 && !selectedCompanyId) {
+          const companyToSelect = data[0];
           setSelectedCompany(companyToSelect);
           onCompanySelect?.(companyToSelect);
         }
@@ -71,7 +69,18 @@ export function CompanySelector({
     };
 
     fetchCompanies();
-  }, [user]); // Minimal dependencies
+  }, [user, selectedCompanyId]);
+
+  // Update selected company when selectedCompanyId prop changes
+  useEffect(() => {
+    if (selectedCompanyId && companies.length > 0) {
+      const companyToSelect = companies.find(c => c.id === selectedCompanyId);
+      if (companyToSelect && companyToSelect.id !== selectedCompany?.id) {
+        setSelectedCompany(companyToSelect);
+        onCompanySelect?.(companyToSelect);
+      }
+    }
+  }, [selectedCompanyId, companies]);
 
   const handleCompanyChange = (companyId: string) => {
     const company = companies.find(c => c.id === companyId) || null;

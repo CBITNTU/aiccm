@@ -45,15 +45,20 @@ serve(async (req) => {
     const complianceData = company.compliance_data || {};
     
     const analysisPrompt = `
-    Analyze the following construction company and provide comprehensive performance benchmarking, core competencies, and business insights:
+    Analyze the following construction company and provide comprehensive performance benchmarking, core competencies, business insights, AND fill in all missing company information fields.
     
     COMPANY PROFILE:
     Company: ${company.company_name}
-    Description: ${company.description || 'N/A'}
-    Key Capabilities: ${company.key_capabilities || 'N/A'}
-    Equipment: ${company.equipment || 'N/A'}
-    Certifications: ${company.certifications || 'N/A'}
-    Past Projects: ${company.past_projects || 'N/A'}
+    Website: ${company.website_url || 'N/A'}
+    Description: ${company.description || 'N/A - FILL THIS'}
+    Key Capabilities: ${company.key_capabilities || 'N/A - FILL THIS'}
+    Equipment: ${company.equipment || 'N/A - FILL THIS'}
+    Certifications: ${company.certifications || 'N/A - FILL THIS'}
+    Past Projects: ${company.past_projects || 'N/A - FILL THIS'}
+    Contact Person: ${company.contact_person || 'N/A - FILL THIS'}
+    Contact Email: ${company.contact_email || 'N/A - FILL THIS'}
+    Contact Phone: ${company.contact_phone || 'N/A - FILL THIS'}
+    Postcode: ${company.postcode || 'N/A - FILL THIS'}
     Safety Rating: ${company.safety_rating || 'N/A'}
     Digital Maturity: ${company.digital_maturity || 'N/A'}
     
@@ -72,6 +77,18 @@ serve(async (req) => {
     Active Charges: ${complianceData.activeCharges?.value || 'N/A'}
     
     ANALYSIS REQUIREMENTS:
+    
+    0. COMPANY INFORMATION ENRICHMENT:
+       For ANY field marked "N/A - FILL THIS", provide comprehensive, detailed information.
+       - description: 3-5 detailed sentences about the company's business, history, and market position
+       - key_capabilities: Comprehensive list of specific technical capabilities, services, and expertise (200+ words)
+       - equipment: Detailed inventory of equipment, machinery, vehicles, tools, and resources
+       - certifications: Full list of certifications, accreditations, quality standards (ISO, safety, industry-specific)
+       - past_projects: Detailed descriptions of 3-5 notable projects with specifics (names, values, locations, outcomes)
+       - contact_person: Extract contact name if available from website
+       - contact_email: Extract contact email if available  
+       - contact_phone: Extract contact phone if available
+       - postcode: Extract postcode/location if available
     
     1. PERFORMANCE BENCHMARKING (0-100 scores):
        - Technical Expertise: Assess capabilities, equipment, and project complexity
@@ -105,6 +122,17 @@ serve(async (req) => {
     
     Return ONLY a JSON object with this exact structure:
     {
+      "companyInfo": {
+        "description": "Detailed 3-5 sentence company description",
+        "key_capabilities": "Comprehensive capabilities list (200+ words)",
+        "equipment": "Detailed equipment inventory",
+        "certifications": "Full certifications list",
+        "past_projects": "Detailed project descriptions",
+        "contact_person": "Contact name or null",
+        "contact_email": "Contact email or null",
+        "contact_phone": "Contact phone or null",
+        "postcode": "Company postcode or null"
+      },
       "performanceBenchmark": {
         "technicalExpertise": 85,
         "safetyStandards": 92,
@@ -118,28 +146,20 @@ serve(async (req) => {
       },
       "coreCompetencies": [
         "High-rise concrete construction",
-        "Steel fabrication and erection",
-        "Project management excellence",
-        "ISO 9001 certified quality systems",
-        "Green building and sustainability",
-        "Heavy equipment operations"
+        "Steel fabrication and erection"
       ],
       "businessInsights": [
-        "Strong financial position provides stability for large projects",
-        "Significant operational capacity for mid-to-large scale work",
-        "Debt ratio requires monitoring for financial flexibility",
-        "Compliance status demonstrates good corporate governance",
-        "Opportunity to leverage equipment base for specialized contracts",
-        "Consider diversification into emerging markets"
+        "Strong financial position provides stability",
+        "Opportunity to leverage equipment base"
       ],
       "competitivePositioning": "Strong Competitor",
       "swotSummary": {
-        "strengths": ["Strong asset base", "Experienced workforce", "Regulatory compliance"],
-        "weaknesses": ["Moderate debt levels", "Limited digital presence"],
-        "opportunities": ["Green building market", "Infrastructure projects", "Technology adoption"],
-        "threats": ["Economic uncertainty", "Industry competition", "Regulatory changes"]
+        "strengths": ["Strong asset base", "Experienced workforce"],
+        "weaknesses": ["Moderate debt levels"],
+        "opportunities": ["Green building market"],
+        "threats": ["Economic uncertainty"]
       },
-      "executiveSummary": "2-3 sentence overall assessment of the company's position and potential"
+      "executiveSummary": "2-3 sentence overall assessment"
     }
     `;
 
@@ -162,7 +182,7 @@ serve(async (req) => {
           }
         ],
         temperature: 0.3,
-        max_tokens: 500
+        max_tokens: 2000
       }),
     });
 
@@ -190,7 +210,7 @@ serve(async (req) => {
       analysis = JSON.parse(cleanedContent);
       
       // Validate that we have all required fields
-      const requiredFields = ['performanceBenchmark', 'coreCompetencies', 'businessInsights', 'competitivePositioning', 'swotSummary', 'executiveSummary'];
+      const requiredFields = ['companyInfo', 'performanceBenchmark', 'coreCompetencies', 'businessInsights', 'competitivePositioning', 'swotSummary', 'executiveSummary'];
       const missingFields = requiredFields.filter(field => analysis[field] === undefined);
       
       if (missingFields.length > 0) {
@@ -200,6 +220,7 @@ serve(async (req) => {
       // Ensure arrays are properly formatted
       if (!Array.isArray(analysis.coreCompetencies)) analysis.coreCompetencies = [];
       if (!Array.isArray(analysis.businessInsights)) analysis.businessInsights = [];
+      if (!analysis.companyInfo) analysis.companyInfo = {};
       
     } catch (parseError) {
       console.error('Failed to parse OpenAI response:', analysisContent);
@@ -207,6 +228,7 @@ serve(async (req) => {
       console.error('Parse error:', errorMessage);
       // Fallback analysis if parsing fails
       analysis = {
+        companyInfo: {},
         performanceBenchmark: {
           technicalExpertise: 70,
           safetyStandards: 70,
@@ -231,10 +253,46 @@ serve(async (req) => {
       };
     }
 
-    // Save analysis results to database
+    // Save analysis results AND fill company information fields
+    const updateData: any = { 
+      ai_analysis: analysis,
+      updated_at: new Date().toISOString()
+    };
+
+    // Fill in company fields if they were empty or inadequate
+    const companyInfo = analysis.companyInfo || {};
+    
+    if (companyInfo.description && (!company.description || company.description.length < 50)) {
+      updateData.description = companyInfo.description;
+    }
+    if (companyInfo.key_capabilities && (!company.key_capabilities || company.key_capabilities.length < 50)) {
+      updateData.key_capabilities = companyInfo.key_capabilities;
+    }
+    if (companyInfo.equipment && (!company.equipment || company.equipment.length < 20)) {
+      updateData.equipment = companyInfo.equipment;
+    }
+    if (companyInfo.certifications && (!company.certifications || company.certifications.length < 20)) {
+      updateData.certifications = companyInfo.certifications;
+    }
+    if (companyInfo.past_projects && (!company.past_projects || company.past_projects.length < 50)) {
+      updateData.past_projects = companyInfo.past_projects;
+    }
+    if (companyInfo.contact_person && !company.contact_person) {
+      updateData.contact_person = companyInfo.contact_person;
+    }
+    if (companyInfo.contact_email && !company.contact_email) {
+      updateData.contact_email = companyInfo.contact_email;
+    }
+    if (companyInfo.contact_phone && !company.contact_phone) {
+      updateData.contact_phone = companyInfo.contact_phone;
+    }
+    if (companyInfo.postcode && !company.postcode) {
+      updateData.postcode = companyInfo.postcode;
+    }
+
     const { error: updateError } = await supabase
       .from('companies')
-      .update({ ai_analysis: analysis })
+      .update(updateData)
       .eq('id', companyId);
 
     if (updateError) {

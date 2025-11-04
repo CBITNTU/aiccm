@@ -811,8 +811,8 @@ Return ONLY valid JSON, no markdown.`;
     if (!confirmDelete) return;
 
     try {
-      setLoading(true);
       toast.info('Deleting project...');
+      console.log('Deleting project:', selectedProject.id);
 
       // Delete team members first (foreign key constraint)
       const { error: membersError } = await supabase
@@ -821,24 +821,29 @@ Return ONLY valid JSON, no markdown.`;
         .eq('vo_id', selectedProject.id);
 
       if (membersError) {
-        console.warn('Error deleting team members:', membersError);
-        // Continue anyway as members might not exist
+        console.error('Error deleting team members:', membersError);
+        throw new Error('Failed to delete team members: ' + membersError.message);
       }
 
       // Delete the project
-      const { error: projectError } = await supabase
+      const { error: projectError, data: deletedData } = await supabase
         .from('virtual_organizations')
         .delete()
-        .eq('id', selectedProject.id);
+        .eq('id', selectedProject.id)
+        .select();
 
-      if (projectError) throw projectError;
+      if (projectError) {
+        console.error('Error deleting project:', projectError);
+        throw new Error('Failed to delete project: ' + projectError.message);
+      }
+
+      console.log('Project deleted successfully:', deletedData);
 
       // Update projects list by filtering out the deleted project
       const updatedProjects = projects.filter(p => p.id !== selectedProject.id);
       setProjects(updatedProjects);
 
       // Clear state
-      setSelectedProject(null);
       setGapAnalysis(null);
       setTeamAnalysis(null);
       setRecommendedPartners([]);
@@ -846,17 +851,17 @@ Return ONLY valid JSON, no markdown.`;
       setTender(null);
       setInvitations([]);
 
-      // If there are remaining projects, select the first one
+      // If there are remaining projects, select the first one, otherwise clear selection
       if (updatedProjects.length > 0) {
         setSelectedProject(updatedProjects[0]);
+      } else {
+        setSelectedProject(null);
       }
 
       toast.success('Project deleted successfully');
     } catch (error: any) {
       console.error('Error deleting project:', error);
-      toast.error('Failed to delete project: ' + error.message);
-    } finally {
-      setLoading(false);
+      toast.error(error.message || 'Failed to delete project');
     }
   };
 
@@ -967,7 +972,7 @@ Return ONLY valid JSON, no markdown.`;
                           ))}
                         </SelectContent>
                       </Select>
-                      {selectedProject && (
+                      {selectedProject && projects.length > 0 && (
                         <Button
                           variant="destructive"
                           size="icon"

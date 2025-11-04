@@ -52,6 +52,13 @@ const CompanyOnboardingStep2 = ({ step1Data, prefillData, onBack }: CompanyOnboa
   // Initialize state from prefill data
   const normalized = prefillData?.normalized || {};
   
+  // Debug logging
+  console.log('=== Step 2 Debug ===');
+  console.log('prefillData:', prefillData);
+  console.log('normalized:', normalized);
+  console.log('normalized.financial:', normalized.financial);
+  console.log('normalized.compliance:', normalized.compliance);
+  
   // Also check for existing saved data from database (in case user is editing)
   const existingFinancial = step1Data?.existingCompany?.financial_data || {};
   const existingCompliance = step1Data?.existingCompany?.compliance_data || {};

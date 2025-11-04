@@ -133,6 +133,7 @@ export default function Consulting() {
             )
           `)
           .eq('lead_company_id', firstCompany.id)
+          .in('status', ['draft', 'active'])
           .order('created_at', { ascending: false });
 
         if (projectsError) {

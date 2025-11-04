@@ -23,32 +23,31 @@ const Header = ({ variant = "landing" }: HeaderProps) => {
     try {
       // Clear local session first to prevent UI flickering
       setIsMenuOpen(false);
-      
+
       // Force clear local storage and session
       localStorage.clear();
       sessionStorage.clear();
-      
+
       const { error } = await supabase.auth.signOut({
-        scope: 'global' // Sign out from all sessions
+        scope: "global", // Sign out from all sessions
       });
-      
+
       if (error) {
-        console.warn('Sign out error:', error);
+        console.warn("Sign out error:", error);
       }
-      
+
       toast({
         title: "Signed out",
         description: "You have been signed out successfully.",
         duration: 3000, // Auto-dismiss after 3 seconds
       });
-      
+
       // Force full page reload to clear any cached auth state
-      window.location.replace('/');
-      
+      window.location.replace("/");
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error("Sign out error:", error);
       // Force reload even on error - user intent is clear
-      window.location.replace('/');
+      window.location.replace("/");
     }
   };
 
@@ -69,12 +68,8 @@ const Header = ({ variant = "landing" }: HeaderProps) => {
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-primary">
-                AI-Powered CCM
-              </h1>
-              <p className="text-xs text-muted-foreground leading-none">
-                Competence-Centered Marketplace
-              </p>
+              <h1 className="text-xl font-bold text-primary">AI-Powered CCM</h1>
+              <p className="text-xs text-muted-foreground leading-none">Collaborative Commerce Marketplace</p>
             </div>
           </Link>
 
@@ -151,11 +146,7 @@ const Header = ({ variant = "landing" }: HeaderProps) => {
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label="Toggle navigation menu"
             >
-              {isMenuOpen ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
-              )}
+              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
           </div>
         </div>
@@ -164,11 +155,7 @@ const Header = ({ variant = "landing" }: HeaderProps) => {
         {isMenuOpen && variant === "app" && (
           <div className="md:hidden border-t border-border">
             <div className="py-4 space-y-2">
-              <Button
-                variant="ghost"
-                className="w-full justify-start space-x-3 text-muted-foreground"
-                asChild
-              >
+              <Button variant="ghost" className="w-full justify-start space-x-3 text-muted-foreground" asChild>
                 <Link to="/dashboard">
                   <LayoutDashboard className="w-4 h-4" />
                   <span>Dashboard</span>

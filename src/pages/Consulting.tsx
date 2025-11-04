@@ -750,33 +750,78 @@ Return ONLY valid JSON, no markdown.`;
     }
 
     const statusLabels = {
-      bin: 'move to bin',
+      bin: 'delete',
       archived: 'archive',
       completed: 'mark as completed'
     };
     
     const confirmMove = window.confirm(
-      `Are you sure you want to ${statusLabels[newStatus]} "${selectedProject.name}"?`
+      `Are you sure you want to ${statusLabels[newStatus]} "${selectedProject.name}"? ${newStatus === 'bin' ? 'This action cannot be undone.' : ''}`
     );
 
     if (!confirmMove) return;
 
     try {
-      toast.info(`Moving project to ${newStatus}...`);
-      console.log('Moving project to status:', newStatus);
+      if (newStatus === 'bin') {
+        // Delete project permanently
+        toast.info('Deleting project...');
+        
+        // Delete all vo_members first
+        const { error: membersError } = await supabase
+          .from('vo_members')
+          .delete()
+          .eq('vo_id', selectedProject.id);
 
-      // Use RPC call to bypass constraint cache issue
-      const { error: projectError } = await supabase.rpc('update_project_status', {
-        project_id: selectedProject.id,
-        new_status: newStatus
-      });
+        if (membersError) {
+          console.error('Error deleting project members:', membersError);
+        }
 
-      if (projectError) {
-        console.error('Error updating project status:', projectError);
-        throw new Error('Failed to update project status: ' + projectError.message);
+        // Then delete the project
+        const { error: deleteError } = await supabase
+          .from('virtual_organizations')
+          .delete()
+          .eq('id', selectedProject.id);
+
+        if (deleteError) {
+          console.error('Error deleting project:', deleteError);
+          throw new Error('Failed to delete project: ' + deleteError.message);
+        }
+
+        toast.success('Project deleted successfully');
+      } else {
+        // Update status for archived/completed
+        toast.info(`Moving project to ${newStatus}...`);
+        const { error: updateError } = await supabase.rpc('update_project_status', {
+          project_id: selectedProject.id,
+          new_status: newStatus
+        });
+
+        if (updateError) {
+          console.error('Error updating project status:', updateError);
+          throw new Error('Failed to update project status: ' + updateError.message);
+        }
+
+        // If marking as completed, add to company's past projects
+        if (newStatus === 'completed' && ownerCompany && tender) {
+          const projectEntry = `\n\n${tender.title} (${new Date().getFullYear()})\n- Client: ${tender.buyer}\n- Value: £${tender.budget_max?.toLocaleString() || 'Not specified'}\n- Team Size: ${teamMembers.length + 1} companies\n- Status: Successfully completed`;
+          
+          const currentPastProjects = ownerCompany.past_projects || '';
+          const updatedPastProjects = currentPastProjects + projectEntry;
+
+          const { error: companyError } = await supabase
+            .from('companies')
+            .update({ past_projects: updatedPastProjects })
+            .eq('id', ownerCompany.id);
+
+          if (companyError) {
+            console.error('Error updating company past projects:', companyError);
+          }
+        }
+
+        toast.success(`Project ${newStatus === 'completed' ? 'marked as completed' : 'archived'} successfully`);
       }
 
-      // Update projects list by filtering out the moved project
+      // Update projects list by filtering out the moved/deleted project
       const updatedProjects = projects.filter(p => p.id !== selectedProject.id);
       setProjects(updatedProjects);
 
@@ -813,7 +858,7 @@ Return ONLY valid JSON, no markdown.`;
     );
   }
 
-  if (!tenderId && (!ownerCompany || projects.length === 0) && !loading) {
+  if (!tenderId && (!ownerCompany || (projects.length === 0 && projectFilter === 'active')) && !loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -904,6 +949,23 @@ Return ONLY valid JSON, no markdown.`;
             </Tabs>
           )}
 
+          {/* Empty State for filtered tabs */}
+          {!tenderId && projects.length === 0 && projectFilter !== 'active' && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                {projectFilter === 'completed' && <CheckCircle2 className="h-16 w-16 text-muted-foreground mb-4" />}
+                {projectFilter === 'archived' && <Archive className="h-16 w-16 text-muted-foreground mb-4" />}
+                {projectFilter === 'bin' && <Trash2 className="h-16 w-16 text-muted-foreground mb-4" />}
+                <h3 className="text-xl font-semibold mb-2">
+                  No {projectFilter.charAt(0).toUpperCase() + projectFilter.slice(1)} Projects
+                </h3>
+                <p className="text-muted-foreground text-center max-w-md">
+                  You don't have any {projectFilter} projects yet.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Project Selector */}
           {!tenderId && projects.length > 0 && (
             <Card>
@@ -947,7 +1009,7 @@ Return ONLY valid JSON, no markdown.`;
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleMoveProject('bin')}>
                               <Trash2 className="h-4 w-4 mr-2" />
-                              Move to Bin
+                              Delete Project
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleMoveProject('archived')}>
                               <Archive className="h-4 w-4 mr-2" />

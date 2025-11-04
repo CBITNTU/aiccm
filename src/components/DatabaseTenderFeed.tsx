@@ -43,10 +43,11 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
         .neq('status', 'closed')
         .order('publication_date', { ascending: false });
 
-      // Apply search filter
-      if (search.trim()) {
+      // Apply keyword filter from filters
+      const keyword = filters.keyword || search;
+      if (keyword.trim()) {
         query = query.or(
-          `title.ilike.%${search}%,description.ilike.%${search}%,buyer.ilike.%${search}%,location.ilike.%${search}%`
+          `title.ilike.%${keyword}%,description.ilike.%${keyword}%,buyer.ilike.%${keyword}%,location.ilike.%${keyword}%`
         );
       }
 

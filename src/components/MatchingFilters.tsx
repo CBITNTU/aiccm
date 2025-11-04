@@ -1,11 +1,12 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Filter, RotateCcw, TrendingUp, TrendingDown } from "lucide-react";
+import { Filter, RotateCcw, TrendingUp, TrendingDown, Search } from "lucide-react";
 
 interface MatchingFiltersProps {
   onFiltersChange: (filters: any) => void;
@@ -46,6 +47,21 @@ export const MatchingFilters: React.FC<MatchingFiltersProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Keyword Search */}
+        <div className="space-y-2">
+          <Label htmlFor="keyword" className="flex items-center gap-2">
+            <Search className="w-4 h-4" />
+            Keyword Search
+          </Label>
+          <Input
+            id="keyword"
+            placeholder="Search by tender title, buyer, location, or description..."
+            value={filters.keyword || ''}
+            onChange={(e) => handleFilterChange('keyword', e.target.value)}
+            className="w-full"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Sort By */}
           <div className="space-y-2">

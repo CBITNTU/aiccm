@@ -4,7 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, TrendingUp, MapPin, Eye, Loader2, Bookmark } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, TrendingUp, MapPin, Eye, Loader2, Bookmark, Search } from "lucide-react";
 import { toast } from "sonner";
 import { TenderDetailDialog } from "./TenderDetailDialog";
 
@@ -36,15 +38,33 @@ interface MatchingResult {
 export function SavedTenders() {
   const { user } = useAuth();
   const [savedResults, setSavedResults] = useState<MatchingResult[]>([]);
+  const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedResult, setSelectedResult] = useState<MatchingResult | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [keyword, setKeyword] = useState('');
 
   useEffect(() => {
     if (user) {
       fetchSavedResults();
     }
   }, [user]);
+
+  // Apply keyword filter whenever savedResults or keyword changes
+  useEffect(() => {
+    if (!keyword.trim()) {
+      setFilteredResults(savedResults);
+    } else {
+      const lowerKeyword = keyword.toLowerCase().trim();
+      const filtered = savedResults.filter(result =>
+        result.tenders.title.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.description?.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.buyer.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.location?.toLowerCase().includes(lowerKeyword)
+      );
+      setFilteredResults(filtered);
+    }
+  }, [savedResults, keyword]);
 
   const fetchSavedResults = async () => {
     setLoading(true);
@@ -68,6 +88,7 @@ export function SavedTenders() {
 
       if (error) throw error;
       setSavedResults(data || []);
+      setFilteredResults(data || []);
     } catch (error) {
       console.error('Error fetching saved results:', error);
       toast.error('Failed to fetch saved tenders');
@@ -131,8 +152,32 @@ export function SavedTenders() {
         <h2 className="text-2xl font-bold">Your Saved Tenders</h2>
         <p className="text-muted-foreground">
           Tenders you've bookmarked for later review
+          {keyword && filteredResults.length !== savedResults.length && (
+            <span className="ml-2 text-primary font-medium">
+              (Showing {filteredResults.length} of {savedResults.length} saved tenders)
+            </span>
+          )}
         </p>
       </div>
+
+      {/* Keyword Search */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <Label htmlFor="savedKeyword" className="flex items-center gap-2">
+              <Search className="w-4 h-4" />
+              Search your saved tenders
+            </Label>
+            <Input
+              id="savedKeyword"
+              placeholder="Search by title, buyer, location, or description..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              className="w-full"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {loading ? (
         <div className="min-h-[400px] flex items-center justify-center">
@@ -153,9 +198,28 @@ export function SavedTenders() {
             </div>
           </CardContent>
         </Card>
+      ) : filteredResults.length === 0 ? (
+        <Card className="min-h-[300px]">
+          <CardContent className="flex items-center justify-center h-full py-12">
+            <div className="text-center">
+              <Search className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No matching results</h3>
+              <p className="text-muted-foreground">
+                No saved tenders match your search "{keyword}". Try different keywords.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => setKeyword('')}
+              >
+                Clear Search
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-6">
-          {savedResults.map((result) => (
+          {filteredResults.map((result) => (
             <Card key={result.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">

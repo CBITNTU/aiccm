@@ -78,6 +78,17 @@ export function TenderMatching({ companyId }: TenderMatchingProps) {
   const applyFiltersAndSorting = () => {
     let filtered = [...matchingResults];
 
+    // Apply keyword filter
+    if (filters.keyword && filters.keyword.trim()) {
+      const keyword = filters.keyword.toLowerCase().trim();
+      filtered = filtered.filter(result => 
+        result.tenders.title.toLowerCase().includes(keyword) ||
+        result.tenders.description?.toLowerCase().includes(keyword) ||
+        result.tenders.buyer.toLowerCase().includes(keyword) ||
+        result.tenders.location?.toLowerCase().includes(keyword)
+      );
+    }
+
     // Apply score range filter
     filtered = filtered.filter(result => 
       result.overall_score >= (filters.minScore || 0) && 

@@ -13,6 +13,7 @@ import { TenderDetailDialog } from "./TenderDetailDialog";
 interface MatchingResult {
   id: string;
   tender_id: string;
+  company_id: string;
   overall_score: number;
   capability_score: number;
   experience_score: number;
@@ -354,6 +355,7 @@ export function SavedTenders() {
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           result={selectedResult}
+          companyId={selectedResult.company_id}
         />
       )}
     </div>

@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 interface MatchingResult {
   id: string;
   tender_id: string;
+  company_id: string;
   overall_score: number;
   capability_score: number;
   experience_score: number;
@@ -35,9 +36,10 @@ interface TenderDetailDialogProps {
   result: MatchingResult | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  companyId?: string;
 }
 
-export function TenderDetailDialog({ result, open, onOpenChange }: TenderDetailDialogProps) {
+export function TenderDetailDialog({ result, open, onOpenChange, companyId }: TenderDetailDialogProps) {
   const navigate = useNavigate();
 
   if (!result) return null;
@@ -60,9 +62,15 @@ export function TenderDetailDialog({ result, open, onOpenChange }: TenderDetailD
   };
 
   const handleBuildTeam = () => {
-    // Navigate to consulting page with tender ID
+    // Navigate to consulting page with tender ID and company ID
     onOpenChange(false);
-    navigate('/vo', { state: { tenderId: result.tender_id, tenderTitle: result.tenders?.title } });
+    navigate('/vo', { 
+      state: { 
+        tenderId: result.tender_id, 
+        tenderTitle: result.tenders?.title,
+        companyId: companyId
+      } 
+    });
   };
 
   return (

@@ -13,6 +13,7 @@ import { CompanySelector } from "./CompanySelector";
 interface MatchingResult {
   id: string;
   tender_id: string;
+  company_id: string;
   overall_score: number;
   capability_score: number;
   experience_score: number;
@@ -584,6 +585,7 @@ export function TenderMatching({ companyId }: TenderMatchingProps) {
             open={dialogOpen}
             onOpenChange={setDialogOpen}
             result={selectedResult}
+            companyId={selectedCompanyId || undefined}
           />
         )}
       </div>

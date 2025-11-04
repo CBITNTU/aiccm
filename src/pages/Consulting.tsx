@@ -77,12 +77,48 @@ export default function Consulting() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState<'active' | 'completed' | 'archived'>('active');
 
-  // Get tender ID from route state and clear it to prevent re-initialization
+  // Get tender ID and company ID from route state
   const tenderId = location.state?.tenderId;
   const tenderTitle = location.state?.tenderTitle;
+  const routeCompanyId = location.state?.companyId;
   
   // Track if we've already initialized from tender to prevent loops
   const [initializedTenderId, setInitializedTenderId] = useState<string | null>(null);
+
+  // Load company from route state if provided
+  useEffect(() => {
+    const loadCompanyFromRoute = async () => {
+      if (!user || !routeCompanyId) return;
+      
+      // Only load if we don't already have this company selected
+      if (ownerCompany?.id === routeCompanyId) return;
+
+      console.log('Loading company from route:', routeCompanyId);
+      
+      try {
+        const { data: company, error } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', routeCompanyId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error loading company from route:', error);
+          return;
+        }
+
+        if (company) {
+          console.log('Setting owner company from route:', company.company_name);
+          setOwnerCompany(company);
+        }
+      } catch (error) {
+        console.error('Error loading company:', error);
+      }
+    };
+
+    loadCompanyFromRoute();
+  }, [user?.id, routeCompanyId]); // Don't include ownerCompany to avoid loops
 
   useEffect(() => {
     console.log('Main useEffect triggered:', { 

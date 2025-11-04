@@ -49,6 +49,35 @@ function transformOCDSToTender(release: any, ocid: string): TenderData {
     return Math.floor(numValue * 100);
   };
   
+  // Extract ALL CPV codes comprehensively from all items and classifications
+  const cpvCodes: string[] = [];
+  const cpvSet = new Set<string>(); // Use Set to avoid duplicates
+  
+  if (tender.items && Array.isArray(tender.items)) {
+    tender.items.forEach((item: any) => {
+      // Main classification
+      if (item.classification && item.classification.id) {
+        cpvSet.add(item.classification.id);
+      }
+      // Additional classifications (may contain more CPV codes)
+      if (item.additionalClassifications && Array.isArray(item.additionalClassifications)) {
+        item.additionalClassifications.forEach((ac: any) => {
+          if (ac.id && (ac.scheme === 'CPV' || !ac.scheme)) {
+            cpvSet.add(ac.id);
+          }
+        });
+      }
+    });
+  }
+  
+  // Fallback to tender-level classification if no items
+  if (cpvSet.size === 0 && tender.classification?.id) {
+    cpvSet.add(tender.classification.id);
+  }
+  
+  // Convert Set back to array
+  cpvCodes.push(...Array.from(cpvSet));
+  
   return {
     id: release.id || ocid,
     reference_number: release.id || ocid,
@@ -61,8 +90,7 @@ function transformOCDSToTender(release: any, ocid: string): TenderData {
     deadline: tender.tenderPeriod?.endDate || tender.enquiryPeriod?.endDate || null,
     budget_min: convertBudget(tender.value?.amount || tender.minValue?.amount),
     budget_max: convertBudget(tender.value?.amount || tender.maxValue?.amount),
-    cpv_codes: tender.items ? tender.items.map((item: any) => item.classification?.id).filter(Boolean) : 
-               tender.classification?.id ? [tender.classification.id] : [],
+    cpv_codes: cpvCodes,
     contact_info: {
       email: buyer?.contactPoint?.email || null,
       phone: buyer?.contactPoint?.telephone || null,
@@ -74,7 +102,7 @@ function transformOCDSToTender(release: any, ocid: string): TenderData {
   };
 }
 
-async function fetchFromFindTenderAPI(searchTerm?: string, limit = 10, cursor?: string, isAdmin = false, filters?: any): Promise<any> {
+async function fetchFromFindTenderAPI(searchTerm?: string, limit = 100, cursor?: string, isAdmin = false, filters?: any): Promise<any> {
   try {
     const params = new URLSearchParams();
     
@@ -175,7 +203,7 @@ serve(async (req) => {
       .single();
 
     const isAdmin = roleData?.role === 'admin';
-    const { searchTerm, limit = 10, cursor, adminImport = false, filters } = await req.json();
+    const { searchTerm, limit = 100, cursor, adminImport = false, filters } = await req.json();
 
     // If this is an admin import request, check admin permissions
     if (adminImport && !isAdmin) {

@@ -472,7 +472,11 @@ const CompanyDetail = () => {
                 <div className="space-y-4">
                   {companyData.past_projects ? (
                     <div className="p-4 border border-border rounded-lg">
-                      <div className="text-foreground">{companyData.past_projects}</div>
+                      <ul className="list-disc list-inside space-y-2 text-foreground">
+                        {companyData.past_projects.split(/\n|\.(?=\s[A-Z])/).filter(item => item.trim()).map((project, index) => (
+                          <li key={index} className="leading-relaxed">{project.trim()}</li>
+                        ))}
+                      </ul>
                     </div>
                   ) : (
                     <div className="text-center py-8">

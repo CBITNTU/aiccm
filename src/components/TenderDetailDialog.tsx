@@ -1,10 +1,12 @@
+import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Award, Lightbulb, MapPin, PoundSterling, Calendar, FileText, Users } from "lucide-react";
+import { Award, Lightbulb, MapPin, PoundSterling, Calendar, FileText, Users, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MatchingResult {
   id: string;
@@ -41,6 +43,28 @@ interface TenderDetailDialogProps {
 
 export function TenderDetailDialog({ result, open, onOpenChange, companyId }: TenderDetailDialogProps) {
   const navigate = useNavigate();
+  const [tenderDetails, setTenderDetails] = React.useState<any>(null);
+
+  // Fetch full tender details to get reference_number for external link
+  React.useEffect(() => {
+    const fetchTenderDetails = async () => {
+      if (!result?.tender_id) return;
+      
+      const { data, error } = await supabase
+        .from('tenders')
+        .select('reference_number, external_id')
+        .eq('id', result.tender_id)
+        .single();
+      
+      if (!error && data) {
+        setTenderDetails(data);
+      }
+    };
+    
+    if (open) {
+      fetchTenderDetails();
+    }
+  }, [result?.tender_id, open]);
 
   if (!result) return null;
 
@@ -57,8 +81,9 @@ export function TenderDetailDialog({ result, open, onOpenChange, companyId }: Te
   };
 
   const handleApplySolo = () => {
-    // Navigate to tender detail page
-    window.open(`https://www.contractsfinder.service.gov.uk/notice/${result.tender_id}`, '_blank');
+    // Use the tender's reference number or external_id for the original website
+    const referenceNumber = tenderDetails?.reference_number || tenderDetails?.external_id || result.tender_id;
+    window.open(`https://www.find-tender.service.gov.uk/Notice/${referenceNumber}?origin=SearchResults&p=1`, '_blank');
   };
 
   const handleBuildTeam = () => {
@@ -131,8 +156,8 @@ export function TenderDetailDialog({ result, open, onOpenChange, companyId }: Te
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button onClick={handleApplySolo} className="w-full" size="lg">
-              <FileText className="w-4 h-4 mr-2" />
-              Apply Solo
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Go to Original Website
             </Button>
             <Button onClick={handleBuildTeam} variant="outline" className="w-full" size="lg">
               <Users className="w-4 h-4 mr-2" />

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import AdminDataImport from "@/components/AdminDataImport";
 import AdminCompanyManager from "@/components/AdminCompanyManager";
+import AdminTenderImport from "@/components/AdminTenderImport";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -206,8 +207,15 @@ const Admin = () => {
           </div>
         )}
 
+        {/* Tenders Tab */}
+        {activeTab === "tenders" && (
+          <div className="space-y-6">
+            <AdminTenderImport />
+          </div>
+        )}
+
         {/* Other tabs placeholder */}
-        {activeTab !== "overview" && activeTab !== "companies" && (
+        {activeTab !== "overview" && activeTab !== "companies" && activeTab !== "tenders" && (
           <Card className="card-professional">
             <CardContent className="p-12 text-center">
               <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">

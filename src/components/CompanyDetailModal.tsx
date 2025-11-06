@@ -128,12 +128,12 @@ export function CompanyDetailModal({ company, open, onOpenChange }: CompanyDetai
   if (!company) return null;
 
   const radarData = analysis?.performanceBenchmark ? [
-    { subject: 'Technical Expertise', A: analysis.performanceBenchmark.technicalExpertise, fullMark: 100 },
-    { subject: 'Safety Standards', A: analysis.performanceBenchmark.safetyStandards, fullMark: 100 },
-    { subject: 'Innovation', A: analysis.performanceBenchmark.innovation, fullMark: 100 },  
-    { subject: 'Project Experience', A: analysis.performanceBenchmark.projectExperience, fullMark: 100 },
-    { subject: 'Certifications', A: analysis.performanceBenchmark.certifications, fullMark: 100 },
-    { subject: 'Market Reputation', A: analysis.performanceBenchmark.marketReputation, fullMark: 100 },
+    { subject: 'Technical Expertise', A: analysis.performanceBenchmark.technicalExpertise || 0, fullMark: 100 },
+    { subject: 'Safety Standards', A: analysis.performanceBenchmark.safetyStandards || 0, fullMark: 100 },
+    { subject: 'Innovation', A: analysis.performanceBenchmark.innovation || 0, fullMark: 100 },  
+    { subject: 'Project Experience', A: analysis.performanceBenchmark.projectExperience || 0, fullMark: 100 },
+    { subject: 'Certifications', A: analysis.performanceBenchmark.certifications || 0, fullMark: 100 },
+    { subject: 'Market Reputation', A: analysis.performanceBenchmark.marketReputation || 0, fullMark: 100 },
   ] : [];
 
   return (
@@ -143,7 +143,7 @@ export function CompanyDetailModal({ company, open, onOpenChange }: CompanyDetai
             <div className="flex justify-between items-start mb-2">
               <DialogTitle className="text-2xl">{company.company_name}</DialogTitle>
               <div className="flex items-center gap-2">
-                {analysis?.performanceBenchmark && (
+                {analysis?.performanceBenchmark?.overallScore && (
                   <Badge variant="default" className="text-lg px-3 py-1">
                     {analysis.performanceBenchmark.overallScore}/100
                   </Badge>
@@ -175,6 +175,8 @@ export function CompanyDetailModal({ company, open, onOpenChange }: CompanyDetai
                   capabilities = analysis.coreCompetencies;
                 } else if (company.ai_competencies && Array.isArray(company.ai_competencies)) {
                   capabilities = company.ai_competencies;
+                } else if (company.ai_capabilities && Array.isArray(company.ai_capabilities)) {
+                  capabilities = company.ai_capabilities;
                 } else if (company.key_capabilities) {
                   capabilities = company.key_capabilities.split(',').map(cap => cap.trim());
                 } else {
@@ -401,9 +403,9 @@ export function CompanyDetailModal({ company, open, onOpenChange }: CompanyDetai
                 <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg border border-border">
                   <div className="flex items-center gap-2 mb-2">
                     <Award className="h-4 w-4 text-primary" />
-                    <strong className="text-foreground">Overall Score: {analysis.performanceBenchmark.overallScore}/100</strong>
+                    <strong className="text-foreground">Overall Score: {analysis?.performanceBenchmark?.overallScore || 0}/100</strong>
                   </div>
-                  <strong className="text-foreground">Executive Summary:</strong> {analysis.executiveSummary}
+                  <strong className="text-foreground">Executive Summary:</strong> {analysis?.executiveSummary || 'No summary available'}
                 </div>
               </div>
             ) : (

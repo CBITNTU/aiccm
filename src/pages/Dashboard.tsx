@@ -129,27 +129,27 @@ const Dashboard = () => {
   }, [selectedCompany]);
   const radarData = companyAnalysis?.performanceBenchmark ? [{
     subject: 'Technical Expertise',
-    A: companyAnalysis.performanceBenchmark.technicalExpertise,
+    A: companyAnalysis.performanceBenchmark.technicalExpertise || 0,
     fullMark: 100
   }, {
     subject: 'Safety Standards',
-    A: companyAnalysis.performanceBenchmark.safetyStandards,
+    A: companyAnalysis.performanceBenchmark.safetyStandards || 0,
     fullMark: 100
   }, {
     subject: 'Innovation',
-    A: companyAnalysis.performanceBenchmark.innovation,
+    A: companyAnalysis.performanceBenchmark.innovation || 0,
     fullMark: 100
   }, {
     subject: 'Project Experience',
-    A: companyAnalysis.performanceBenchmark.projectExperience,
+    A: companyAnalysis.performanceBenchmark.projectExperience || 0,
     fullMark: 100
   }, {
     subject: 'Certifications',
-    A: companyAnalysis.performanceBenchmark.certifications,
+    A: companyAnalysis.performanceBenchmark.certifications || 0,
     fullMark: 100
   }, {
     subject: 'Market Reputation',
-    A: companyAnalysis.performanceBenchmark.marketReputation,
+    A: companyAnalysis.performanceBenchmark.marketReputation || 0,
     fullMark: 100
   }] : [];
   const executeFetchDashboardData = async () => {
@@ -361,7 +361,7 @@ const Dashboard = () => {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    {companyAnalysis?.performanceBenchmark && <Badge variant="default" className="text-lg px-3 py-1">
+                    {companyAnalysis?.performanceBenchmark?.overallScore && <Badge variant="default" className="text-lg px-3 py-1">
                         {companyAnalysis.performanceBenchmark.overallScore}/100
                       </Badge>}
                     <Button variant="outline" size="sm" onClick={fetchCompanyAnalysis} disabled={isAnalyzing}>
@@ -394,7 +394,7 @@ const Dashboard = () => {
                       </RadarChart>
                     </ResponsiveContainer>
                     <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg border border-border">
-                      <strong className="text-foreground">Executive Summary:</strong> {companyAnalysis.executiveSummary}
+                      <strong className="text-foreground">Executive Summary:</strong> {companyAnalysis?.executiveSummary || 'No summary available'}
                     </div>
                   </div> : <div className="h-[250px] flex items-center justify-center text-muted-foreground border border-dashed border-border rounded-lg bg-muted/30">
                     <div className="text-center">

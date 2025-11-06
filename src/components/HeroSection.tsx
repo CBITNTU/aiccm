@@ -17,19 +17,21 @@ const HeroSection = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [companiesRes, tendersRes, matchesRes, projectsRes] = await Promise.all([
-          supabase.from('companies').select('*', { count: 'exact', head: true }),
-          supabase.from('tenders').select('*', { count: 'exact', head: true }),
-          supabase.from('matching_results').select('*', { count: 'exact', head: true }),
-          supabase.from('virtual_organizations').select('*', { count: 'exact', head: true })
-        ]);
+        const { data, error } = await supabase.functions.invoke('get-platform-stats');
+        
+        if (error) {
+          console.error('Error fetching stats:', error);
+          return;
+        }
 
-        setRealStats({
-          companies: companiesRes.count || 0,
-          tenders: tendersRes.count || 0,
-          matches: matchesRes.count || 0,
-          projects: projectsRes.count || 0
-        });
+        if (data) {
+          setRealStats({
+            companies: data.companies || 0,
+            tenders: data.tenders || 0,
+            matches: data.matches || 0,
+            projects: data.projects || 0
+          });
+        }
       } catch (error) {
         console.error('Error fetching stats:', error);
       }

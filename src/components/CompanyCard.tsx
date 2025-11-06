@@ -135,12 +135,12 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
                     </h4>
                     <div className="flex flex-wrap gap-1">
                       {capabilities.slice(0, 6).map((capability, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
+                        <Badge key={index} variant="outline" className="text-xs rounded-sm px-2 py-1">
                           {typeof capability === 'string' ? capability : capability}
                         </Badge>
                       ))}
                       {capabilities.length > 6 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs rounded-sm px-2 py-1">
                           +{capabilities.length - 6} more
                         </Badge>
                       )}

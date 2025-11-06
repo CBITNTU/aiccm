@@ -34,15 +34,31 @@ type PublicCompany = Pick<Company,
 >;
 
 interface CompanyAnalysis {
-  technicalExpertise: number;
-  safetyStandards: number;
-  innovation: number;
-  projectExperience: number;
-  certifications: number;
-  marketReputation: number;
-  overallScore: number;
-  analysis: string;
-  ai_capabilities?: string[];
+  performanceBenchmark: {
+    technicalExpertise: number;
+    safetyStandards: number;
+    innovation: number;
+    projectExperience: number;
+    certifications: number;
+    marketReputation: number;
+    financialHealth: number;
+    operationalCapacity: number;
+    overallScore: number;
+  };
+  coreCompetencies: string[];
+  digitalMaturity: string;
+  safetyRating: string;
+  marketPosition: string;
+  businessInsights: string[];
+  competitivePositioning: string;
+  swotSummary: {
+    strengths: string[];
+    weaknesses: string[];
+    opportunities: string[];
+    threats: string[];
+  };
+  executiveSummary: string;
+  companyInfo?: any;
 }
 
 interface CompanyDetailModalProps {
@@ -111,32 +127,32 @@ export function CompanyDetailModal({ company, open, onOpenChange }: CompanyDetai
   // Return null after all hooks are called
   if (!company) return null;
 
-  const radarData = analysis ? [
-    { subject: 'Technical Expertise', A: analysis.technicalExpertise, fullMark: 100 },
-    { subject: 'Safety Standards', A: analysis.safetyStandards, fullMark: 100 },
-    { subject: 'Innovation', A: analysis.innovation, fullMark: 100 },  
-    { subject: 'Project Experience', A: analysis.projectExperience, fullMark: 100 },
-    { subject: 'Certifications', A: analysis.certifications, fullMark: 100 },
-    { subject: 'Market Reputation', A: analysis.marketReputation, fullMark: 100 },
+  const radarData = analysis?.performanceBenchmark ? [
+    { subject: 'Technical Expertise', A: analysis.performanceBenchmark.technicalExpertise, fullMark: 100 },
+    { subject: 'Safety Standards', A: analysis.performanceBenchmark.safetyStandards, fullMark: 100 },
+    { subject: 'Innovation', A: analysis.performanceBenchmark.innovation, fullMark: 100 },  
+    { subject: 'Project Experience', A: analysis.performanceBenchmark.projectExperience, fullMark: 100 },
+    { subject: 'Certifications', A: analysis.performanceBenchmark.certifications, fullMark: 100 },
+    { subject: 'Market Reputation', A: analysis.performanceBenchmark.marketReputation, fullMark: 100 },
   ] : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex justify-between items-start mb-2">
-            <DialogTitle className="text-2xl">{company.company_name}</DialogTitle>
-            <div className="flex items-center gap-2">
-              {analysis && (
-                <Badge variant="default" className="text-lg px-3 py-1">
-                  {analysis.overallScore}/100
-                </Badge>
-              )}
-              {company.is_system_company && (
-                <Badge variant="secondary">Verified</Badge>
-              )}
+            <div className="flex justify-between items-start mb-2">
+              <DialogTitle className="text-2xl">{company.company_name}</DialogTitle>
+              <div className="flex items-center gap-2">
+                {analysis?.performanceBenchmark && (
+                  <Badge variant="default" className="text-lg px-3 py-1">
+                    {analysis.performanceBenchmark.overallScore}/100
+                  </Badge>
+                )}
+                {company.is_system_company && (
+                  <Badge variant="secondary">Verified</Badge>
+                )}
+              </div>
             </div>
-          </div>
           {company.description && (
             <DialogDescription className="text-base">
               {company.description}
@@ -155,8 +171,8 @@ export function CompanyDetailModal({ company, open, onOpenChange }: CompanyDetai
                 // Use AI-generated capabilities if available, otherwise fall back to manual
                 let capabilities = [];
                 
-                if (analysis?.ai_capabilities && Array.isArray(analysis.ai_capabilities)) {
-                  capabilities = analysis.ai_capabilities;
+                if (analysis?.coreCompetencies && Array.isArray(analysis.coreCompetencies)) {
+                  capabilities = analysis.coreCompetencies;
                 } else if (company.ai_competencies && Array.isArray(company.ai_competencies)) {
                   capabilities = company.ai_competencies;
                 } else if (company.key_capabilities) {
@@ -385,9 +401,9 @@ export function CompanyDetailModal({ company, open, onOpenChange }: CompanyDetai
                 <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg border border-border">
                   <div className="flex items-center gap-2 mb-2">
                     <Award className="h-4 w-4 text-primary" />
-                    <strong className="text-foreground">Overall Score: {analysis.overallScore}/100</strong>
+                    <strong className="text-foreground">Overall Score: {analysis.performanceBenchmark.overallScore}/100</strong>
                   </div>
-                  <strong className="text-foreground">AI Benchmark Analysis:</strong> {analysis.analysis}
+                  <strong className="text-foreground">Executive Summary:</strong> {analysis.executiveSummary}
                 </div>
               </div>
             ) : (

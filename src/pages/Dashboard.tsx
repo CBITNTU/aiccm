@@ -22,14 +22,30 @@ interface DashboardStats {
   matchScoreDistribution: any[];
 }
 interface CompanyAnalysis {
-  technicalExpertise: number;
-  safetyStandards: number;
-  innovation: number;
-  projectExperience: number;
-  certifications: number;
-  marketReputation: number;
-  overallScore: number;
-  analysis: string;
+  performanceBenchmark: {
+    technicalExpertise: number;
+    safetyStandards: number;
+    innovation: number;
+    projectExperience: number;
+    certifications: number;
+    marketReputation: number;
+    financialHealth: number;
+    operationalCapacity: number;
+    overallScore: number;
+  };
+  coreCompetencies: string[];
+  digitalMaturity: string;
+  safetyRating: string;
+  marketPosition: string;
+  businessInsights: string[];
+  competitivePositioning: string;
+  swotSummary: {
+    strengths: string[];
+    weaknesses: string[];
+    opportunities: string[];
+    threats: string[];
+  };
+  executiveSummary: string;
 }
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -111,29 +127,29 @@ const Dashboard = () => {
       loadStoredAnalysis();
     }
   }, [selectedCompany]);
-  const radarData = companyAnalysis ? [{
+  const radarData = companyAnalysis?.performanceBenchmark ? [{
     subject: 'Technical Expertise',
-    A: companyAnalysis.technicalExpertise,
+    A: companyAnalysis.performanceBenchmark.technicalExpertise,
     fullMark: 100
   }, {
     subject: 'Safety Standards',
-    A: companyAnalysis.safetyStandards,
+    A: companyAnalysis.performanceBenchmark.safetyStandards,
     fullMark: 100
   }, {
     subject: 'Innovation',
-    A: companyAnalysis.innovation,
+    A: companyAnalysis.performanceBenchmark.innovation,
     fullMark: 100
   }, {
     subject: 'Project Experience',
-    A: companyAnalysis.projectExperience,
+    A: companyAnalysis.performanceBenchmark.projectExperience,
     fullMark: 100
   }, {
     subject: 'Certifications',
-    A: companyAnalysis.certifications,
+    A: companyAnalysis.performanceBenchmark.certifications,
     fullMark: 100
   }, {
     subject: 'Market Reputation',
-    A: companyAnalysis.marketReputation,
+    A: companyAnalysis.performanceBenchmark.marketReputation,
     fullMark: 100
   }] : [];
   const executeFetchDashboardData = async () => {
@@ -345,8 +361,8 @@ const Dashboard = () => {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    {companyAnalysis && <Badge variant="default" className="text-lg px-3 py-1">
-                        {companyAnalysis.overallScore}/100
+                    {companyAnalysis?.performanceBenchmark && <Badge variant="default" className="text-lg px-3 py-1">
+                        {companyAnalysis.performanceBenchmark.overallScore}/100
                       </Badge>}
                     <Button variant="outline" size="sm" onClick={fetchCompanyAnalysis} disabled={isAnalyzing}>
                       {isAnalyzing ? 'Analyzing...' : companyAnalysis ? 'Re-analyze' : 'Analyze'}
@@ -378,7 +394,7 @@ const Dashboard = () => {
                       </RadarChart>
                     </ResponsiveContainer>
                     <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg border border-border">
-                      <strong className="text-foreground">AI Benchmark Analysis:</strong> {companyAnalysis.analysis}
+                      <strong className="text-foreground">Executive Summary:</strong> {companyAnalysis.executiveSummary}
                     </div>
                   </div> : <div className="h-[250px] flex items-center justify-center text-muted-foreground border border-dashed border-border rounded-lg bg-muted/30">
                     <div className="text-center">
@@ -412,13 +428,6 @@ const Dashboard = () => {
                       <span className="text-sm font-medium">Safety Rating</span>
                       <Badge variant="default" className="bg-green-600 hover:bg-green-700 rounded-none">
                         {selectedCompany.safety_rating}
-                      </Badge>
-                    </div>}
-                  
-                  {selectedCompany.digital_maturity && <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                      <span className="text-sm font-medium">Digital Maturity</span>
-                      <Badge variant="default" className="rounded-none bg-black">
-                        {selectedCompany.digital_maturity}
                       </Badge>
                     </div>}
 

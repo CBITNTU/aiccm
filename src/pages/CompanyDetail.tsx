@@ -39,6 +39,7 @@ const CompanyDetail = () => {
   
   // Edit states
   const [isEditingOverview, setIsEditingOverview] = useState(false);
+  const [isEditingBasicInfo, setIsEditingBasicInfo] = useState(false);
   const [isEditingEquipment, setIsEditingEquipment] = useState(false);
   const [isEditingCertifications, setIsEditingCertifications] = useState(false);
   const [isEditingProjects, setIsEditingProjects] = useState(false);
@@ -47,9 +48,12 @@ const CompanyDetail = () => {
   // Form states
   const [editedDescription, setEditedDescription] = useState("");
   const [editedCapabilities, setEditedCapabilities] = useState("");
-  const [editedEquipment, setEditedEquipment] = useState("");
-  const [editedCertifications, setEditedCertifications] = useState("");
-  const [editedProjects, setEditedProjects] = useState("");
+  const [editedCompanyName, setEditedCompanyName] = useState("");
+  const [editedLocation, setEditedLocation] = useState("");
+  const [editedEmail, setEditedEmail] = useState("");
+  const [editedEquipmentItems, setEditedEquipmentItems] = useState<string[]>([]);
+  const [editedCertificationItems, setEditedCertificationItems] = useState<string[]>([]);
+  const [editedProjectItems, setEditedProjectItems] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchCompanyData = async () => {
@@ -200,6 +204,47 @@ const CompanyDetail = () => {
     }
   };
 
+  const handleSaveBasicInfo = async () => {
+    if (!companyData) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({ 
+          company_name: editedCompanyName,
+          postcode: editedLocation,
+          contact_email: editedEmail
+        })
+        .eq('id', companyData.id);
+
+      if (error) throw error;
+
+      setCompanyData({ 
+        ...companyData, 
+        company_name: editedCompanyName,
+        postcode: editedLocation,
+        contact_email: editedEmail
+      } as Company);
+      
+      toast({
+        title: "Saved",
+        description: "Company information updated successfully",
+      });
+      
+      setIsEditingBasicInfo(false);
+    } catch (error) {
+      console.error('Error saving:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleRefreshAnalysis = async () => {
     setIsAnalyzing(true);
     try {
@@ -265,25 +310,75 @@ const CompanyDetail = () => {
         <Card className="card-professional mb-8">
           <CardHeader>
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 flex-1">
                 <div className="w-16 h-16 gradient-hero rounded-lg flex items-center justify-center">
                   <Building2 className="w-8 h-8 text-white" />
                 </div>
-                <div>
-                  <CardTitle className="text-2xl font-bold text-foreground">{companyData.company_name}</CardTitle>
-                  <p className="text-muted-foreground">Companies House: {companyData.companies_house_number}</p>
+                <div className="flex-1">
+                  {isEditingBasicInfo ? (
+                    <div className="space-y-2">
+                      <Input 
+                        value={editedCompanyName}
+                        onChange={(e) => setEditedCompanyName(e.target.value)}
+                        placeholder="Company Name"
+                        className="text-xl font-bold"
+                      />
+                      <p className="text-muted-foreground text-sm">Companies House: {companyData.companies_house_number}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <CardTitle className="text-2xl font-bold text-foreground">{companyData.company_name}</CardTitle>
+                      <p className="text-muted-foreground">Companies House: {companyData.companies_house_number}</p>
+                    </>
+                  )}
                 </div>
               </div>
               
               <div className="flex gap-3">
-                <Button 
-                  className="btn-cta" 
-                  onClick={handleRefreshAnalysis}
-                  disabled={isAnalyzing}
-                >
-                  <RefreshCw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                  {isAnalyzing ? 'Analyzing...' : analysis ? 'Re-analyze Company' : 'Analyze Company'}
-                </Button>
+                {!isEditingBasicInfo ? (
+                  <>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditingBasicInfo(true);
+                        setEditedCompanyName(companyData.company_name);
+                        setEditedLocation(companyData.postcode || "");
+                        setEditedEmail(companyData.contact_email || "");
+                      }}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit Info
+                    </Button>
+                    <Button 
+                      className="btn-cta" 
+                      onClick={handleRefreshAnalysis}
+                      disabled={isAnalyzing}
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                      {isAnalyzing ? 'Analyzing...' : analysis ? 'Re-analyze Company' : 'Analyze Company'}
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsEditingBasicInfo(false)}
+                      disabled={isSaving}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={handleSaveBasicInfo}
+                      disabled={isSaving}
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {isSaving ? 'Saving...' : 'Save'}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -299,7 +394,16 @@ const CompanyDetail = () => {
               
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-muted-foreground" />
-                <span className="text-foreground">{companyData.contact_email}</span>
+                {isEditingBasicInfo ? (
+                  <Input 
+                    value={editedEmail}
+                    onChange={(e) => setEditedEmail(e.target.value)}
+                    placeholder="Email"
+                    type="email"
+                  />
+                ) : (
+                  <span className="text-foreground">{companyData.contact_email}</span>
+                )}
               </div>
               
               <div className="flex items-center space-x-3">
@@ -309,7 +413,15 @@ const CompanyDetail = () => {
               
               <div className="flex items-center space-x-3">
                 <MapPin className="w-5 h-5 text-muted-foreground" />
-                <span className="text-foreground">{companyData.postcode}</span>
+                {isEditingBasicInfo ? (
+                  <Input 
+                    value={editedLocation}
+                    onChange={(e) => setEditedLocation(e.target.value)}
+                    placeholder="Location/Postcode"
+                  />
+                ) : (
+                  <span className="text-foreground">{companyData.postcode}</span>
+                )}
               </div>
             </div>
           </CardContent>
@@ -571,7 +683,13 @@ const CompanyDetail = () => {
                       size="sm"
                       onClick={() => {
                         setIsEditingEquipment(true);
-                        setEditedEquipment(companyData.equipment || "");
+                        const items = companyData.equipment 
+                          ? (companyData.equipment.includes(';') 
+                              ? companyData.equipment.split(';')
+                              : companyData.equipment.split(',')
+                            ).map(item => item.trim()).filter(item => item)
+                          : [''];
+                        setEditedEquipmentItems(items);
                       }}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -590,7 +708,10 @@ const CompanyDetail = () => {
                       </Button>
                       <Button 
                         size="sm"
-                        onClick={() => handleSaveField('equipment', editedEquipment)}
+                        onClick={() => {
+                          const equipmentString = editedEquipmentItems.filter(item => item.trim()).join('; ');
+                          handleSaveField('equipment', equipmentString);
+                        }}
                         disabled={isSaving}
                       >
                         <Save className="w-4 h-4 mr-2" />
@@ -602,14 +723,38 @@ const CompanyDetail = () => {
               </CardHeader>
               <CardContent>
                 {isEditingEquipment ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Enter equipment items separated by semicolons (;)</p>
-                    <Textarea 
-                      value={editedEquipment}
-                      onChange={(e) => setEditedEquipment(e.target.value)}
-                      rows={6}
-                      placeholder="Excavators; Bulldozers; Concrete mixers; Tower cranes"
-                    />
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground mb-2">Add or edit equipment items</p>
+                    {editedEquipmentItems.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input 
+                          value={item}
+                          onChange={(e) => {
+                            const newItems = [...editedEquipmentItems];
+                            newItems[index] = e.target.value;
+                            setEditedEquipmentItems(newItems);
+                          }}
+                          placeholder="Equipment item"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newItems = editedEquipmentItems.filter((_, i) => i !== index);
+                            setEditedEquipmentItems(newItems);
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditedEquipmentItems([...editedEquipmentItems, ""])}
+                    >
+                      Add Item
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -653,7 +798,19 @@ const CompanyDetail = () => {
                       size="sm"
                       onClick={() => {
                         setIsEditingCertifications(true);
-                        setEditedCertifications(companyData.certifications || "");
+                        let items: string[] = [];
+                        const aiAnalysis = companyData.ai_analysis as any;
+                        if (aiAnalysis?.certifications && Array.isArray(aiAnalysis.certifications)) {
+                          items = aiAnalysis.certifications.filter((cert: any) => typeof cert === 'string');
+                        } else if (Array.isArray(companyData.ai_certifications)) {
+                          items = (companyData.ai_certifications as any[]).filter(cert => typeof cert === 'string');
+                        } else if (companyData.certifications) {
+                          items = (companyData.certifications.includes(';') 
+                            ? companyData.certifications.split(';')
+                            : companyData.certifications.split(',')
+                          ).map(item => item.trim()).filter(item => item);
+                        }
+                        setEditedCertificationItems(items.length > 0 ? items : ['']);
                       }}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -672,7 +829,10 @@ const CompanyDetail = () => {
                       </Button>
                       <Button 
                         size="sm"
-                        onClick={() => handleSaveField('certifications', editedCertifications)}
+                        onClick={() => {
+                          const certificationsString = editedCertificationItems.filter(item => item.trim()).join('; ');
+                          handleSaveField('certifications', certificationsString);
+                        }}
                         disabled={isSaving}
                       >
                         <Save className="w-4 h-4 mr-2" />
@@ -684,14 +844,38 @@ const CompanyDetail = () => {
               </CardHeader>
               <CardContent>
                 {isEditingCertifications ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Enter certifications separated by semicolons (;)</p>
-                    <Textarea 
-                      value={editedCertifications}
-                      onChange={(e) => setEditedCertifications(e.target.value)}
-                      rows={6}
-                      placeholder="ISO 9001; ISO 14001; OHSAS 18001; CITB"
-                    />
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground mb-2">Add or edit certifications</p>
+                    {editedCertificationItems.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input 
+                          value={item}
+                          onChange={(e) => {
+                            const newItems = [...editedCertificationItems];
+                            newItems[index] = e.target.value;
+                            setEditedCertificationItems(newItems);
+                          }}
+                          placeholder="Certification name"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newItems = editedCertificationItems.filter((_, i) => i !== index);
+                            setEditedCertificationItems(newItems);
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditedCertificationItems([...editedCertificationItems, ""])}
+                    >
+                      Add Certification
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -745,7 +929,10 @@ const CompanyDetail = () => {
                       size="sm"
                       onClick={() => {
                         setIsEditingProjects(true);
-                        setEditedProjects(companyData.past_projects || "");
+                        const items = companyData.past_projects 
+                          ? companyData.past_projects.split(/\n\n+/).filter(item => item.trim())
+                          : [''];
+                        setEditedProjectItems(items);
                       }}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -764,7 +951,10 @@ const CompanyDetail = () => {
                       </Button>
                       <Button 
                         size="sm"
-                        onClick={() => handleSaveField('past_projects', editedProjects)}
+                        onClick={() => {
+                          const projectsString = editedProjectItems.filter(item => item.trim()).join('\n\n');
+                          handleSaveField('past_projects', projectsString);
+                        }}
                         disabled={isSaving}
                       >
                         <Save className="w-4 h-4 mr-2" />
@@ -776,14 +966,42 @@ const CompanyDetail = () => {
               </CardHeader>
               <CardContent>
                 {isEditingProjects ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Enter projects (separate each project with double line breaks)</p>
-                    <Textarea 
-                      value={editedProjects}
-                      onChange={(e) => setEditedProjects(e.target.value)}
-                      rows={10}
-                      placeholder="Project Title 1&#10;Project details here&#10;&#10;Project Title 2&#10;Project details here"
-                    />
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground mb-2">Add or edit past projects</p>
+                    {editedProjectItems.map((item, index) => (
+                      <div key={index} className="space-y-2 p-3 border border-border rounded-lg">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium">Project {index + 1}</span>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const newItems = editedProjectItems.filter((_, i) => i !== index);
+                              setEditedProjectItems(newItems);
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <Textarea 
+                          value={item}
+                          onChange={(e) => {
+                            const newItems = [...editedProjectItems];
+                            newItems[index] = e.target.value;
+                            setEditedProjectItems(newItems);
+                          }}
+                          placeholder="Project Title&#10;Project description and details..."
+                          rows={4}
+                        />
+                      </div>
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditedProjectItems([...editedProjectItems, ""])}
+                    >
+                      Add Project
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-2">

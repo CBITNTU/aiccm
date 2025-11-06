@@ -9,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Building2, Globe, Mail, Phone, MapPin, Award, Wrench, Users, FileText, Edit2, RefreshCw, ArrowLeft, DollarSign, TrendingUp } from "lucide-react";
+import { Building2, Globe, Mail, Phone, MapPin, Award, Wrench, Users, FileText, Edit2, RefreshCw, ArrowLeft, DollarSign, TrendingUp, Save, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { hasOpenAIKey } from "@/lib/openai";
 import OpenAIKeyDialog from "@/components/OpenAIKeyDialog";
@@ -21,6 +21,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Database } from "@/integrations/supabase/types";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 type Company = Database['public']['Tables']['companies']['Row'];
 
@@ -34,6 +36,20 @@ const CompanyDetail = () => {
   const [companyData, setCompanyData] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<any>(null);
+  
+  // Edit states
+  const [isEditingOverview, setIsEditingOverview] = useState(false);
+  const [isEditingEquipment, setIsEditingEquipment] = useState(false);
+  const [isEditingCertifications, setIsEditingCertifications] = useState(false);
+  const [isEditingProjects, setIsEditingProjects] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Form states
+  const [editedDescription, setEditedDescription] = useState("");
+  const [editedCapabilities, setEditedCapabilities] = useState("");
+  const [editedEquipment, setEditedEquipment] = useState("");
+  const [editedCertifications, setEditedCertifications] = useState("");
+  const [editedProjects, setEditedProjects] = useState("");
 
   useEffect(() => {
     const fetchCompanyData = async () => {
@@ -103,8 +119,85 @@ const CompanyDetail = () => {
     );
   }
 
-  const handleEditProfile = () => {
-    navigate(`/onboarding?mode=edit&id=${companyData.id}`);
+  const handleSaveField = async (field: string, value: string) => {
+    if (!companyData) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({ [field]: value })
+        .eq('id', companyData.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setCompanyData({ ...companyData, [field]: value } as Company);
+      
+      toast({
+        title: "Saved",
+        description: "Changes saved successfully",
+      });
+      
+      // Reset edit mode
+      if (field === 'description' || field === 'key_capabilities') {
+        setIsEditingOverview(false);
+      } else if (field === 'equipment') {
+        setIsEditingEquipment(false);
+      } else if (field === 'certifications') {
+        setIsEditingCertifications(false);
+      } else if (field === 'past_projects') {
+        setIsEditingProjects(false);
+      }
+    } catch (error) {
+      console.error('Error saving:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveOverview = async () => {
+    if (!companyData) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({ 
+          description: editedDescription,
+          key_capabilities: editedCapabilities
+        })
+        .eq('id', companyData.id);
+
+      if (error) throw error;
+
+      setCompanyData({ 
+        ...companyData, 
+        description: editedDescription,
+        key_capabilities: editedCapabilities
+      } as Company);
+      
+      toast({
+        title: "Saved",
+        description: "Overview updated successfully",
+      });
+      
+      setIsEditingOverview(false);
+    } catch (error) {
+      console.error('Error saving:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRefreshAnalysis = async () => {
@@ -183,10 +276,6 @@ const CompanyDetail = () => {
               </div>
               
               <div className="flex gap-3">
-                <Button variant="outline" onClick={handleEditProfile}>
-                  <Edit2 className="w-4 h-4" />
-                  Edit Profile
-                </Button>
                 <Button 
                   className="btn-cta" 
                   onClick={handleRefreshAnalysis}
@@ -240,13 +329,75 @@ const CompanyDetail = () => {
           <TabsContent value="overview" className="space-y-6">
             <Card className="card-professional">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Building2 className="w-5 h-5" />
-                  <span>Company Overview</span>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Building2 className="w-5 h-5" />
+                    <span>Company Overview</span>
+                  </div>
+                  {!isEditingOverview ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingOverview(true);
+                        setEditedDescription(companyData.description || "");
+                        setEditedCapabilities(companyData.key_capabilities || "");
+                      }}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsEditingOverview(false)}
+                        disabled={isSaving}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={handleSaveOverview}
+                        disabled={isSaving}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed">{companyData.description || "No description available"}</p>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Description</label>
+                  {isEditingOverview ? (
+                    <Textarea 
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      rows={5}
+                      placeholder="Company description"
+                    />
+                  ) : (
+                    <p className="text-muted-foreground leading-relaxed">{companyData.description || "No description available"}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Key Capabilities</label>
+                  {isEditingOverview ? (
+                    <Textarea 
+                      value={editedCapabilities}
+                      onChange={(e) => setEditedCapabilities(e.target.value)}
+                      rows={3}
+                      placeholder="Key capabilities (comma-separated)"
+                    />
+                  ) : (
+                    <p className="text-muted-foreground leading-relaxed">{companyData.key_capabilities || "No capabilities listed"}</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -417,34 +568,81 @@ const CompanyDetail = () => {
             {/* Equipment & Resources Section */}
             <Card className="card-professional">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Wrench className="w-5 h-5" />
-                  <span>Equipment & Resources</span>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Wrench className="w-5 h-5" />
+                    <span>Equipment & Resources</span>
+                  </div>
+                  {!isEditingEquipment ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingEquipment(true);
+                        setEditedEquipment(companyData.equipment || "");
+                      }}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsEditingEquipment(false)}
+                        disabled={isSaving}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => handleSaveField('equipment', editedEquipment)}
+                        disabled={isSaving}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {(() => {
-                    if (!companyData.equipment) return <p className="text-muted-foreground">No equipment listed</p>;
-                    
-                    // Split by semicolon or comma
-                    const items = companyData.equipment.includes(';') 
-                      ? companyData.equipment.split(';')
-                      : companyData.equipment.split(',');
-                    
-                    return items.map((item: string, index: number) => {
-                      const trimmedItem = item.trim();
-                      if (!trimmedItem) return null;
+                {isEditingEquipment ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Enter equipment items separated by semicolons (;)</p>
+                    <Textarea 
+                      value={editedEquipment}
+                      onChange={(e) => setEditedEquipment(e.target.value)}
+                      rows={6}
+                      placeholder="Excavators; Bulldozers; Concrete mixers; Tower cranes"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(() => {
+                      if (!companyData.equipment) return <p className="text-muted-foreground">No equipment listed</p>;
                       
-                      return (
-                        <div key={index} className="flex items-center space-x-3 p-3 bg-secondary/30 rounded-lg">
-                          <div className="w-2 h-2 bg-primary rounded-full"></div>
-                          <span className="text-foreground">{trimmedItem}</span>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
+                      // Split by semicolon or comma
+                      const items = companyData.equipment.includes(';') 
+                        ? companyData.equipment.split(';')
+                        : companyData.equipment.split(',');
+                      
+                      return items.map((item: string, index: number) => {
+                        const trimmedItem = item.trim();
+                        if (!trimmedItem) return null;
+                        
+                        return (
+                          <div key={index} className="flex items-center space-x-3 p-3 bg-secondary/30 rounded-lg">
+                            <div className="w-2 h-2 bg-primary rounded-full"></div>
+                            <span className="text-foreground">{trimmedItem}</span>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -452,44 +650,91 @@ const CompanyDetail = () => {
           <TabsContent value="certifications" className="space-y-6">
             <Card className="card-professional">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Award className="w-5 h-5" />
-                  <span>Certifications & Accreditations</span>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Award className="w-5 h-5" />
+                    <span>Certifications & Accreditations</span>
+                  </div>
+                  {!isEditingCertifications ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingCertifications(true);
+                        setEditedCertifications(companyData.certifications || "");
+                      }}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsEditingCertifications(false)}
+                        disabled={isSaving}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => handleSaveField('certifications', editedCertifications)}
+                        disabled={isSaving}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {(() => {
-                    if (!companyData.certifications) return <p className="text-muted-foreground">No certifications listed</p>;
-                    
-                    let certifications: string[] = [];
-                    
-                    // Check if ai_certifications exists in ai_analysis
-                    const aiAnalysis = companyData.ai_analysis as any;
-                    if (aiAnalysis?.certifications && Array.isArray(aiAnalysis.certifications)) {
-                      certifications = aiAnalysis.certifications.filter((cert: any) => typeof cert === 'string');
-                    } else if (Array.isArray(companyData.ai_certifications)) {
-                      certifications = (companyData.ai_certifications as any[]).filter(cert => typeof cert === 'string');
-                    } else {
-                      // Split by semicolon or comma
-                      certifications = companyData.certifications.includes(';')
-                        ? companyData.certifications.split(';')
-                        : companyData.certifications.split(',');
-                    }
-                    
-                    return certifications.map((cert: string, index: number) => {
-                      const trimmedCert = cert.trim();
-                      if (!trimmedCert) return null;
+                {isEditingCertifications ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Enter certifications separated by semicolons (;)</p>
+                    <Textarea 
+                      value={editedCertifications}
+                      onChange={(e) => setEditedCertifications(e.target.value)}
+                      rows={6}
+                      placeholder="ISO 9001; ISO 14001; OHSAS 18001; CITB"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(() => {
+                      if (!companyData.certifications) return <p className="text-muted-foreground">No certifications listed</p>;
                       
-                      return (
-                        <div key={index} className="flex items-center space-x-3 p-4 border border-border rounded-lg bg-card">
-                          <Award className="w-5 h-5 text-primary flex-shrink-0" />
-                          <span className="font-medium text-foreground">{trimmedCert}</span>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
+                      let certifications: string[] = [];
+                      
+                      // Check if ai_certifications exists in ai_analysis
+                      const aiAnalysis = companyData.ai_analysis as any;
+                      if (aiAnalysis?.certifications && Array.isArray(aiAnalysis.certifications)) {
+                        certifications = aiAnalysis.certifications.filter((cert: any) => typeof cert === 'string');
+                      } else if (Array.isArray(companyData.ai_certifications)) {
+                        certifications = (companyData.ai_certifications as any[]).filter(cert => typeof cert === 'string');
+                      } else {
+                        // Split by semicolon or comma
+                        certifications = companyData.certifications.includes(';')
+                          ? companyData.certifications.split(';')
+                          : companyData.certifications.split(',');
+                      }
+                      
+                      return certifications.map((cert: string, index: number) => {
+                        const trimmedCert = cert.trim();
+                        if (!trimmedCert) return null;
+                        
+                        return (
+                          <div key={index} className="flex items-center space-x-3 p-4 border border-border rounded-lg bg-card">
+                            <Award className="w-5 h-5 text-primary flex-shrink-0" />
+                            <span className="font-medium text-foreground">{trimmedCert}</span>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -497,38 +742,85 @@ const CompanyDetail = () => {
           <TabsContent value="projects" className="space-y-6">
             <Card className="card-professional">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="w-5 h-5" />
-                  <span>Notable Past Projects</span>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-5 h-5" />
+                    <span>Notable Past Projects</span>
+                  </div>
+                  {!isEditingProjects ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingProjects(true);
+                        setEditedProjects(companyData.past_projects || "");
+                      }}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsEditingProjects(false)}
+                        disabled={isSaving}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => handleSaveField('past_projects', editedProjects)}
+                        disabled={isSaving}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {companyData.past_projects ? (
-                    <Accordion type="single" collapsible className="w-full">
-                      {companyData.past_projects.split(/\n\n+/).filter(item => item.trim()).map((project, index) => {
-                        const trimmedProject = project.trim();
-                        const lines = trimmedProject.split('\n');
-                        const title = lines[0]; // First line is the title
-                        const details = lines.slice(1).join('\n'); // Rest are details
-                        return (
-                          <AccordionItem key={index} value={`project-${index}`}>
-                            <AccordionTrigger className="text-left">
-                              <span className="font-medium">{title}</span>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <div className="text-muted-foreground leading-relaxed whitespace-pre-line">{details}</div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        );
-                      })}
-                    </Accordion>
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">No past projects recorded yet.</p>
-                    </div>
-                  )}
-                </div>
+                {isEditingProjects ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Enter projects (separate each project with double line breaks)</p>
+                    <Textarea 
+                      value={editedProjects}
+                      onChange={(e) => setEditedProjects(e.target.value)}
+                      rows={10}
+                      placeholder="Project Title 1&#10;Project details here&#10;&#10;Project Title 2&#10;Project details here"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {companyData.past_projects ? (
+                      <Accordion type="single" collapsible className="w-full">
+                        {companyData.past_projects.split(/\n\n+/).filter(item => item.trim()).map((project, index) => {
+                          const trimmedProject = project.trim();
+                          const lines = trimmedProject.split('\n');
+                          const title = lines[0]; // First line is the title
+                          const details = lines.slice(1).join('\n'); // Rest are details
+                          return (
+                            <AccordionItem key={index} value={`project-${index}`}>
+                              <AccordionTrigger className="text-left">
+                                <span className="font-medium">{title}</span>
+                              </AccordionTrigger>
+                              <AccordionContent>
+                                <div className="text-muted-foreground leading-relaxed whitespace-pre-line">{details}</div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          );
+                        })}
+                      </Accordion>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">No past projects recorded yet.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -3,36 +3,69 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import cbitLogo from "@/assets/cbit-logo.png";
 import UKCompaniesMap from "./UKCompaniesMap";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const HeroSection = () => {
+  const [realStats, setRealStats] = useState({
+    companies: 0,
+    tenders: 0,
+    matches: 0,
+    projects: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [companiesRes, tendersRes, matchesRes, projectsRes] = await Promise.all([
+          supabase.from('companies').select('*', { count: 'exact', head: true }),
+          supabase.from('tenders').select('*', { count: 'exact', head: true }),
+          supabase.from('matching_results').select('*', { count: 'exact', head: true }),
+          supabase.from('virtual_organizations').select('*', { count: 'exact', head: true })
+        ]);
+
+        setRealStats({
+          companies: companiesRes.count || 0,
+          tenders: tendersRes.count || 0,
+          matches: matchesRes.count || 0,
+          projects: projectsRes.count || 0
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   const stats = [
     { 
-      label: "Registered Companies", 
-      value: "52", 
+      label: "Network Companies", 
+      value: realStats.companies.toString(), 
       icon: Building2, 
       gradient: "from-primary to-primary-hover",
       description: "Active businesses in our network"
     },
     { 
-      label: "Live Tender Opportunities", 
-      value: "102", 
+      label: "Available Opportunities", 
+      value: realStats.tenders.toString(), 
       icon: FileText, 
       gradient: "from-secondary to-secondary-hover",
-      description: "Current available tenders"
+      description: "Current tender opportunities"
     },
     { 
-      label: "Successful Matches", 
-      value: "30", 
+      label: "Smart Matches", 
+      value: realStats.matches.toString(), 
       icon: Users2, 
       gradient: "from-accent to-accent-hover",
       description: "AI-powered connections made"
     },
     { 
-      label: "Success Rate", 
-      value: "85%", 
+      label: "Active Projects", 
+      value: realStats.projects.toString(), 
       icon: Award, 
       gradient: "from-primary to-secondary",
-      description: "Partnership success rate"
+      description: "Collaborative consortiums formed"
     },
   ];
 

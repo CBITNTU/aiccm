@@ -116,11 +116,14 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
               let hasAIAnalysis = false;
               
               const aiAnalysis = company.ai_analysis as any;
-              if (aiAnalysis && aiAnalysis.ai_capabilities && Array.isArray(aiAnalysis.ai_capabilities)) {
-                capabilities = aiAnalysis.ai_capabilities;
+              if (aiAnalysis?.coreCompetencies && Array.isArray(aiAnalysis.coreCompetencies)) {
+                capabilities = aiAnalysis.coreCompetencies;
                 hasAIAnalysis = true;
               } else if (company.ai_competencies && Array.isArray(company.ai_competencies)) {
                 capabilities = company.ai_competencies;
+                hasAIAnalysis = true;
+              } else if (company.ai_capabilities && Array.isArray(company.ai_capabilities)) {
+                capabilities = company.ai_capabilities;
                 hasAIAnalysis = true;
               } else if (company.key_capabilities) {
                 capabilities = company.key_capabilities.split(',').map(cap => cap.trim());

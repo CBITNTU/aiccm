@@ -21,6 +21,7 @@ const Auth = () => {
   const [signUpData, setSignUpData] = useState({
     firstName: "",
     lastName: "",
+    jobTitle: "",
     email: "",
     password: "",
     confirmPassword: ""
@@ -143,6 +144,7 @@ const Auth = () => {
           data: {
             first_name: signUpData.firstName,
             last_name: signUpData.lastName,
+            job_title: signUpData.jobTitle,
           },
           emailRedirectTo: `${window.location.origin}/`
         }
@@ -308,6 +310,22 @@ const Auth = () => {
                         value={signUpData.lastName}
                         onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })}
                         className="input-professional"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-jobtitle">Job Title / Role</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="signup-jobtitle"
+                        type="text"
+                        placeholder="e.g. CEO, Manager, Engineer"
+                        value={signUpData.jobTitle}
+                        onChange={(e) => setSignUpData({ ...signUpData, jobTitle: e.target.value })}
+                        className="pl-10 input-professional"
                         required
                       />
                     </div>

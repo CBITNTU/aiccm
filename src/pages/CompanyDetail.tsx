@@ -51,6 +51,8 @@ const CompanyDetail = () => {
   const [editedCompanyName, setEditedCompanyName] = useState("");
   const [editedLocation, setEditedLocation] = useState("");
   const [editedEmail, setEditedEmail] = useState("");
+  const [editedWebsite, setEditedWebsite] = useState("");
+  const [editedPhone, setEditedPhone] = useState("");
   const [editedEquipmentItems, setEditedEquipmentItems] = useState<string[]>([]);
   const [editedCertificationItems, setEditedCertificationItems] = useState<string[]>([]);
   const [editedProjectItems, setEditedProjectItems] = useState<string[]>([]);
@@ -212,9 +214,11 @@ const CompanyDetail = () => {
       const { error } = await supabase
         .from('companies')
         .update({ 
-          company_name: editedCompanyName,
-          postcode: editedLocation,
-          contact_email: editedEmail
+          company_name: editedCompanyName.trim(),
+          postcode: editedLocation.trim(),
+          contact_email: editedEmail.trim(),
+          website_url: editedWebsite.trim(),
+          contact_phone: editedPhone.trim()
         })
         .eq('id', companyData.id);
 
@@ -222,9 +226,11 @@ const CompanyDetail = () => {
 
       setCompanyData({ 
         ...companyData, 
-        company_name: editedCompanyName,
-        postcode: editedLocation,
-        contact_email: editedEmail
+        company_name: editedCompanyName.trim(),
+        postcode: editedLocation.trim(),
+        contact_email: editedEmail.trim(),
+        website_url: editedWebsite.trim(),
+        contact_phone: editedPhone.trim()
       } as Company);
       
       toast({
@@ -344,6 +350,8 @@ const CompanyDetail = () => {
                         setEditedCompanyName(companyData.company_name);
                         setEditedLocation(companyData.postcode || "");
                         setEditedEmail(companyData.contact_email || "");
+                        setEditedWebsite(companyData.website_url || "");
+                        setEditedPhone(companyData.contact_phone || "");
                       }}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -384,16 +392,25 @@ const CompanyDetail = () => {
           </CardHeader>
           
           <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="flex items-center space-x-3">
-                <Globe className="w-5 h-5 text-muted-foreground" />
-                <a href={companyData.website_url} className="text-primary hover:underline">
-                  {companyData.website_url}
-                </a>
+                <Globe className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                {isEditingBasicInfo ? (
+                  <Input 
+                    value={editedWebsite}
+                    onChange={(e) => setEditedWebsite(e.target.value)}
+                    placeholder="Website URL"
+                    type="url"
+                  />
+                ) : (
+                  <a href={companyData.website_url} className="text-primary hover:underline truncate">
+                    {companyData.website_url}
+                  </a>
+                )}
               </div>
               
               <div className="flex items-center space-x-3">
-                <Mail className="w-5 h-5 text-muted-foreground" />
+                <Mail className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                 {isEditingBasicInfo ? (
                   <Input 
                     value={editedEmail}
@@ -402,17 +419,26 @@ const CompanyDetail = () => {
                     type="email"
                   />
                 ) : (
-                  <span className="text-foreground">{companyData.contact_email}</span>
+                  <span className="text-foreground truncate">{companyData.contact_email}</span>
                 )}
               </div>
               
               <div className="flex items-center space-x-3">
-                <Phone className="w-5 h-5 text-muted-foreground" />
-                <span className="text-foreground">{companyData.contact_phone}</span>
+                <Phone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                {isEditingBasicInfo ? (
+                  <Input 
+                    value={editedPhone}
+                    onChange={(e) => setEditedPhone(e.target.value)}
+                    placeholder="Phone number"
+                    type="tel"
+                  />
+                ) : (
+                  <span className="text-foreground">{companyData.contact_phone}</span>
+                )}
               </div>
               
               <div className="flex items-center space-x-3">
-                <MapPin className="w-5 h-5 text-muted-foreground" />
+                <MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                 {isEditingBasicInfo ? (
                   <Input 
                     value={editedLocation}

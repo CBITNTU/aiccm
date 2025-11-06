@@ -20,6 +20,7 @@ import { TeamBuilder } from "@/components/consulting/TeamBuilder";
 import { InvitationManager } from "@/components/consulting/InvitationManager";
 import { ProjectCreationDialog } from "@/components/consulting/ProjectCreationDialog";
 import { CompanySelector } from "@/components/CompanySelector";
+import { TenderViewDialog } from "@/components/TenderViewDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Company = Database['public']['Tables']['companies']['Row'];
@@ -76,6 +77,7 @@ export default function Consulting() {
   const [invitations, setInvitations] = useState<any[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState<'active' | 'completed' | 'archived'>('active');
+  const [tenderDialogOpen, setTenderDialogOpen] = useState(false);
 
   // Get tender ID and company ID from route state
   const tenderId = location.state?.tenderId;
@@ -1257,6 +1259,7 @@ Return ONLY valid JSON, no markdown.`;
             <ProjectSummary 
               tender={tender}
               ownerCompany={ownerCompany}
+              onCardClick={() => setTenderDialogOpen(true)}
             />
           )}
 
@@ -1412,6 +1415,13 @@ Return ONLY valid JSON, no markdown.`;
             companyId={ownerCompany.id}
           />
         )}
+
+        {/* Tender View Dialog */}
+        <TenderViewDialog
+          tender={tender}
+          open={tenderDialogOpen}
+          onOpenChange={setTenderDialogOpen}
+        />
       </div>
     </div>
   );

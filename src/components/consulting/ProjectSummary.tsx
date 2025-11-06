@@ -6,11 +6,22 @@ import { ExternalLink, MapPin, Calendar, PoundSterling, Building2 } from "lucide
 interface ProjectSummaryProps {
   tender: any;
   ownerCompany: any;
+  onCardClick?: () => void;
 }
 
-export function ProjectSummary({ tender, ownerCompany }: ProjectSummaryProps) {
+export function ProjectSummary({ tender, ownerCompany, onCardClick }: ProjectSummaryProps) {
+  // Generate external URL using the same pattern as TenderViewDialog
+  const externalUrl = tender.external_id 
+    ? `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`
+    : tender.reference_number 
+    ? `https://www.find-tender.service.gov.uk/Notice/${tender.reference_number}?origin=SearchResults`
+    : `https://www.contractsfinder.service.gov.uk/notice/${tender.id}`;
+
   return (
-    <Card>
+    <Card 
+      className="cursor-pointer hover:shadow-lg transition-shadow" 
+      onClick={onCardClick}
+    >
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -60,8 +71,13 @@ export function ProjectSummary({ tender, ownerCompany }: ProjectSummaryProps) {
             <div className="font-medium">{ownerCompany?.company_name}</div>
           </div>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <a href={`https://www.contractsfinder.service.gov.uk/notice/${tender.id}`} target="_blank" rel="noopener noreferrer">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          asChild
+          onClick={(e) => e.stopPropagation()}
+        >
+          <a href={externalUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-4 w-4 mr-2" />
             View Tender Details
           </a>

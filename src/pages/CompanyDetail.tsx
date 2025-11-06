@@ -442,15 +442,7 @@ const CompanyDetail = () => {
                  <CardContent>
                    <div className="space-y-4">
                      {/* Business Metrics */}
-                      <div className="grid md:grid-cols-2 gap-3">
-                        <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                          <div>
-                            <p className="text-sm font-medium">Digital Maturity</p>
-                            <p className="text-xs text-muted-foreground">
-                              {analysis?.digitalMaturity || companyData.digital_maturity || 'Not assessed yet'}
-                            </p>
-                          </div>
-                        </div>
+                      <div className="grid md:grid-cols-1 gap-3">
                         <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
                           <div>
                             <p className="text-sm font-medium">Market Position</p>

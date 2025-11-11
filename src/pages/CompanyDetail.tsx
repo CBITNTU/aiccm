@@ -23,6 +23,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { Database } from "@/integrations/supabase/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 
 type Company = Database['public']['Tables']['companies']['Row'];
 
@@ -538,6 +539,9 @@ const CompanyDetail = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Taxonomy Selector */}
+            {companyData && <CompanyTaxonomySelector companyId={companyData.id} />}
 
             <div className="grid md:grid-cols-2 gap-6">
               <Card className="card-professional">

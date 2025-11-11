@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Award, Lightbulb, MapPin, PoundSterling, Calendar, FileText, Users, ExternalLink } from "lucide-react";
+import { Award, Lightbulb, MapPin, PoundSterling, Calendar, FileText, Users, ExternalLink, Tag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -44,6 +44,7 @@ interface TenderDetailDialogProps {
 export function TenderDetailDialog({ result, open, onOpenChange, companyId }: TenderDetailDialogProps) {
   const navigate = useNavigate();
   const [tenderDetails, setTenderDetails] = React.useState<any>(null);
+  const [taxonomies, setTaxonomies] = React.useState<Array<{ id: string; name: string }>>([]);
 
   // Fetch full tender details to get external_id for the correct link
   React.useEffect(() => {
@@ -58,6 +59,19 @@ export function TenderDetailDialog({ result, open, onOpenChange, companyId }: Te
       
       if (!error && data) {
         setTenderDetails(data);
+      }
+
+      // Fetch taxonomies
+      const { data: taxData } = await supabase
+        .from('tender_taxonomies')
+        .select('taxonomy_id, taxonomies(id, name)')
+        .eq('tender_id', result.tender_id);
+      
+      if (taxData) {
+        setTaxonomies(taxData.map(tt => ({
+          id: (tt.taxonomies as any)?.id || '',
+          name: (tt.taxonomies as any)?.name || ''
+        })).filter(t => t.name));
       }
     };
     
@@ -126,6 +140,23 @@ export function TenderDetailDialog({ result, open, onOpenChange, companyId }: Te
 
         <div className="space-y-6">
           {/* Tender Description */}
+          {/* Taxonomies */}
+          {taxonomies.length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Tender Categories
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {taxonomies.map((taxonomy) => (
+                  <Badge key={taxonomy.id} variant="secondary">
+                    {taxonomy.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {result.tenders?.description && (
             <div>
               <h4 className="font-medium mb-2">Description</h4>

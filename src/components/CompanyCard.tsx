@@ -1,7 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Globe, Phone, Mail, Award } from "lucide-react";
+import { MapPin, Globe, Phone, Mail, Award, Tag } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 type Company = Database['public']['Tables']['companies']['Row'];
 type PublicCompany = Pick<Company, 
@@ -32,6 +34,24 @@ interface CompanyCardProps {
 }
 
 export function CompanyCard({ company, onClick }: CompanyCardProps) {
+  const [taxonomies, setTaxonomies] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    const fetchTaxonomies = async () => {
+      const { data } = await supabase
+        .from('company_taxonomies')
+        .select('taxonomy_id, taxonomies(id, name)')
+        .eq('company_id', company.id);
+      
+      if (data) {
+        setTaxonomies(data.map(ct => ({
+          id: (ct.taxonomies as any)?.id || '',
+          name: (ct.taxonomies as any)?.name || ''
+        })).filter(t => t.name));
+      }
+    };
+    fetchTaxonomies();
+  }, [company.id]);
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
@@ -155,6 +175,28 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
             })()}
           </div>
         </div>
+
+        {/* Taxonomies Section */}
+        {taxonomies.length > 0 && (
+          <div className="mt-3 pt-3 border-t">
+            <h4 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Categories
+            </h4>
+            <div className="flex flex-wrap gap-1">
+              {taxonomies.slice(0, 3).map((taxonomy) => (
+                <Badge key={taxonomy.id} variant="secondary" className="text-xs">
+                  {taxonomy.name}
+                </Badge>
+              ))}
+              {taxonomies.length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{taxonomies.length - 3} more
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
         
         <div className="mt-3 pt-3 border-t">
           <p className="text-xs text-muted-foreground text-center">

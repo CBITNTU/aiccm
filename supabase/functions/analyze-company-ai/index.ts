@@ -26,6 +26,7 @@ interface CompanyAnalysis {
   digitalMaturity: string;
   safetyRating: string;
   marketPosition: string;
+  suggestedTaxonomies?: string[];
 }
 
 serve(async (req) => {
@@ -35,12 +36,25 @@ serve(async (req) => {
   }
 
   try {
-    const { companyData } = await req.json() as { companyData: CompanyData };
+    const { companyData, companyId } = await req.json() as { companyData: CompanyData; companyId?: string };
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
     }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch available taxonomies to help AI suggest appropriate ones
+    const { data: taxonomies } = await supabase
+      .from('taxonomies')
+      .select('id, name, level')
+      .order('level');
+
+    const taxonomyList = taxonomies?.map(t => `${t.name} (Level ${t.level})`).join(', ') || '';
 
     const prompt = `Analyze this company profile and provide a comprehensive assessment based on the url and company profile:
 
@@ -52,6 +66,8 @@ Certifications: ${companyData.certifications}
 Equipment: ${companyData.equipment}
 Past Projects: ${companyData.pastProjects}
 
+Available taxonomy categories: ${taxonomyList}
+
 Please provide analysis in the following JSON format:
 {
   "competencies": ["list of extracted competencies"],
@@ -61,10 +77,11 @@ Please provide analysis in the following JSON format:
   "recommendations": ["improvement recommendations"],
   "digitalMaturity": "assessment of digital capabilities",
   "safetyRating": "safety and compliance assessment",
-  "marketPosition": "market positioning analysis"
+  "marketPosition": "market positioning analysis",
+  "suggestedTaxonomies": ["array of taxonomy names from the available list that best match this company's profile"]
 }
 
-Focus on industry standards, UK compliance requirements, and tender readiness.`;
+Focus on industry standards, UK compliance requirements, and tender readiness. For suggestedTaxonomies, select the most specific and relevant categories from the available taxonomy list.`;
 
     console.log('Sending request to OpenAI...');
 
@@ -133,13 +150,51 @@ Focus on industry standards, UK compliance requirements, and tender readiness.`;
               recommendations: ["Consider obtaining relevant certifications"],
               digitalMaturity: "Requires assessment",
               safetyRating: "Requires assessment", 
-              marketPosition: "Requires further analysis"
+              marketPosition: "Requires further analysis",
+              suggestedTaxonomies: []
             };
           }
         }
       } catch (fallbackError) {
         console.error('Failed to parse OpenAI response:', content);
         throw new Error('Could not parse analysis response. Please try again.');
+      }
+    }
+
+    // Auto-tag company with suggested taxonomies
+    if (companyId && parsedResult.suggestedTaxonomies && parsedResult.suggestedTaxonomies.length > 0) {
+      console.log('Auto-tagging company with taxonomies:', parsedResult.suggestedTaxonomies);
+      
+      // Find taxonomy IDs by name
+      const taxonomyIds = taxonomies
+        ?.filter(t => parsedResult.suggestedTaxonomies?.some(suggested => 
+          t.name.toLowerCase().includes(suggested.toLowerCase()) || 
+          suggested.toLowerCase().includes(t.name.toLowerCase())
+        ))
+        .map(t => t.id) || [];
+
+      if (taxonomyIds.length > 0) {
+        // Remove existing taxonomies first to avoid duplicates
+        await supabase
+          .from('company_taxonomies')
+          .delete()
+          .eq('company_id', companyId);
+
+        // Insert new taxonomies
+        const taxonomyInserts = taxonomyIds.map(taxId => ({
+          company_id: companyId,
+          taxonomy_id: taxId
+        }));
+
+        const { error: taxonomyError } = await supabase
+          .from('company_taxonomies')
+          .insert(taxonomyInserts);
+
+        if (taxonomyError) {
+          console.error('Error inserting taxonomies:', taxonomyError);
+        } else {
+          console.log(`Successfully tagged company with ${taxonomyIds.length} taxonomies`);
+        }
       }
     }
 

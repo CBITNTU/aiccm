@@ -93,7 +93,7 @@ const Tenders = () => {
   }, []);
 
   const resetFilters = () => {
-    setFilters({});
+    setFilters({ selectedTaxonomies: [] });
   };
 
   return (

@@ -1,114 +1,110 @@
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TaxonomyFilterProps {
-  level1: string | null;
-  level2: string | null;
-  level3: string | null;
-  onLevel1Change: (value: string | null) => void;
-  onLevel2Change: (value: string | null) => void;
-  onLevel3Change: (value: string | null) => void;
+  selectedTaxonomies: string[];
+  onTaxonomiesChange: (taxonomies: string[]) => void;
 }
 
 export function TaxonomyFilter({
-  level1,
-  level2,
-  level3,
-  onLevel1Change,
-  onLevel2Change,
-  onLevel3Change,
+  selectedTaxonomies,
+  onTaxonomiesChange,
 }: TaxonomyFilterProps) {
-  const { getLevel1, getLevel2, getLevel3, loading } = useTaxonomies();
+  const { getLevel1, getLevel2, getLevel3, loading, taxonomies } = useTaxonomies();
 
-  const level1Options = getLevel1();
-  const level2Options = level1 ? getLevel2(level1) : [];
-  const level3Options = level2 ? getLevel3(level2) : [];
-
-  const handleLevel1Change = (value: string) => {
-    const newValue = value === "all" ? null : value;
-    onLevel1Change(newValue);
-    onLevel2Change(null);
-    onLevel3Change(null);
-  };
-
-  const handleLevel2Change = (value: string) => {
-    const newValue = value === "all" ? null : value;
-    onLevel2Change(newValue);
-    onLevel3Change(null);
-  };
-
-  const handleLevel3Change = (value: string) => {
-    const newValue = value === "all" ? null : value;
-    onLevel3Change(newValue);
+  const handleTaxonomyToggle = (taxonomyId: string, checked: boolean) => {
+    if (checked) {
+      onTaxonomiesChange([...selectedTaxonomies, taxonomyId]);
+    } else {
+      onTaxonomiesChange(selectedTaxonomies.filter(id => id !== taxonomyId));
+    }
   };
 
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading categories...</div>;
   }
 
+  const level1Options = getLevel1();
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Primary Category</Label>
-        <Select value={level1 || "all"} onValueChange={handleLevel1Change}>
-          <SelectTrigger>
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {level1Options.map((tax) => (
-              <SelectItem key={tax.id} value={tax.id}>
-                {tax.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <ScrollArea className="h-[400px] pr-4">
+      <div className="space-y-6">
+        {level1Options.map((level1Tax) => {
+          const level2Options = getLevel2(level1Tax.id);
+          
+          return (
+            <div key={level1Tax.id} className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={level1Tax.id}
+                  checked={selectedTaxonomies.includes(level1Tax.id)}
+                  onCheckedChange={(checked) => 
+                    handleTaxonomyToggle(level1Tax.id, checked as boolean)
+                  }
+                />
+                <Label
+                  htmlFor={level1Tax.id}
+                  className="text-sm font-semibold cursor-pointer"
+                >
+                  {level1Tax.name}
+                </Label>
+              </div>
+
+              {level2Options.length > 0 && (
+                <div className="ml-6 space-y-2">
+                  {level2Options.map((level2Tax) => {
+                    const level3Options = getLevel3(level2Tax.id);
+                    
+                    return (
+                      <div key={level2Tax.id} className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={level2Tax.id}
+                            checked={selectedTaxonomies.includes(level2Tax.id)}
+                            onCheckedChange={(checked) => 
+                              handleTaxonomyToggle(level2Tax.id, checked as boolean)
+                            }
+                          />
+                          <Label
+                            htmlFor={level2Tax.id}
+                            className="text-sm font-medium cursor-pointer"
+                          >
+                            {level2Tax.name}
+                          </Label>
+                        </div>
+
+                        {level3Options.length > 0 && (
+                          <div className="ml-6 space-y-1.5">
+                            {level3Options.map((level3Tax) => (
+                              <div key={level3Tax.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={level3Tax.id}
+                                  checked={selectedTaxonomies.includes(level3Tax.id)}
+                                  onCheckedChange={(checked) => 
+                                    handleTaxonomyToggle(level3Tax.id, checked as boolean)
+                                  }
+                                />
+                                <Label
+                                  htmlFor={level3Tax.id}
+                                  className="text-sm cursor-pointer text-muted-foreground"
+                                >
+                                  {level3Tax.name}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
-
-      {level1 && level2Options.length > 0 && (
-        <div className="space-y-2">
-          <Label>Sub-Category</Label>
-          <Select value={level2 || "all"} onValueChange={handleLevel2Change}>
-            <SelectTrigger>
-              <SelectValue placeholder="All sub-categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sub-categories</SelectItem>
-              {level2Options.map((tax) => (
-                <SelectItem key={tax.id} value={tax.id}>
-                  {tax.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {level2 && level3Options.length > 0 && (
-        <div className="space-y-2">
-          <Label>Specific Area</Label>
-          <Select value={level3 || "all"} onValueChange={handleLevel3Change}>
-            <SelectTrigger>
-              <SelectValue placeholder="All areas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All areas</SelectItem>
-              {level3Options.map((tax) => (
-                <SelectItem key={tax.id} value={tax.id}>
-                  {tax.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-    </div>
+    </ScrollArea>
   );
 }

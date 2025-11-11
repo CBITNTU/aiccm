@@ -11,6 +11,7 @@ import { Search, Building2, MapPin, Globe, Phone, Mail, Award } from "lucide-rea
 import { toast } from "sonner";
 import { CompanyCard } from "@/components/CompanyCard";
 import { CompanyDetailModal } from "@/components/CompanyDetailModal";
+import { TaxonomyFilter } from "@/components/TaxonomyFilter";
 
 type Company = Database['public']['Tables']['companies']['Row'];
 type PublicCompany = Pick<Company, 
@@ -42,15 +43,14 @@ export default function Companies() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [selectedCapability, setSelectedCapability] = useState<string>("all");
+  const [selectedTaxonomies, setSelectedTaxonomies] = useState<string[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<PublicCompany | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        // Only select non-sensitive fields for public company directory
-        // Sensitive contact info (email, phone, website_url) excluded for security
-        const { data, error } = await supabase
+        let query = supabase
           .from('companies')
           .select(`
             id,
@@ -76,6 +76,28 @@ export default function Companies() {
           .eq('status', 'active')
           .order('company_name');
 
+        // Apply taxonomy filter
+        if (selectedTaxonomies.length > 0) {
+          const { data: companyIds, error: taxonomyError } = await supabase
+            .from('company_taxonomies')
+            .select('company_id')
+            .in('taxonomy_id', selectedTaxonomies);
+
+          if (taxonomyError) {
+            console.error('Error fetching taxonomy companies:', taxonomyError);
+          } else if (companyIds && companyIds.length > 0) {
+            const ids = [...new Set(companyIds.map(c => c.company_id))];
+            query = query.in('id', ids);
+          } else {
+            // No companies match these taxonomies
+            setCompanies([]);
+            setLoading(false);
+            return;
+          }
+        }
+
+        const { data, error } = await query;
+
         if (error) {
           throw error;
         }
@@ -90,7 +112,7 @@ export default function Companies() {
     };
 
     fetchCompanies();
-  }, [user]);
+  }, [user, selectedTaxonomies]);
 
   const filteredCompanies = companies.filter(company => {
     const matchesSearch = company.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -146,7 +168,7 @@ export default function Companies() {
               Search & Filter
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -185,6 +207,15 @@ export default function Companies() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Taxonomy Filters */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3">Filter by Category</h3>
+              <TaxonomyFilter
+                selectedTaxonomies={selectedTaxonomies}
+                onTaxonomiesChange={setSelectedTaxonomies}
+              />
             </div>
           </CardContent>
         </Card>

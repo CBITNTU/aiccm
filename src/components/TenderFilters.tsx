@@ -147,7 +147,6 @@ export const TenderFilters: React.FC<TenderFiltersProps> = ({
 
         {/* Taxonomy Filters */}
         <div className="border-t pt-4">
-          <h3 className="text-sm font-medium mb-3">Filter by Category</h3>
           <TaxonomyFilter
             selectedTaxonomies={filters.selectedTaxonomies || []}
             onTaxonomiesChange={(taxonomies) => handleFilterChange('selectedTaxonomies', taxonomies)}

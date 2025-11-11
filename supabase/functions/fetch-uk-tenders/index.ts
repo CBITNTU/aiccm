@@ -282,21 +282,54 @@ serve(async (req) => {
       // Check for existing tenders to avoid duplicates
       const { data: existingTenders } = await supabase
         .from('tenders')
-        .select('reference_number')
+        .select('reference_number, id')
         .in('reference_number', tendersToInsert.map((t: any) => t.reference_number));
       
-      const existingRefs = new Set(existingTenders?.map((t: any) => t.reference_number) || []);
+      const existingRefs = new Map(existingTenders?.map((t: any) => [t.reference_number, t.id]) || []);
       const newTenders = tendersToInsert.filter((t: any) => !existingRefs.has(t.reference_number));
       
       if (newTenders.length > 0) {
-        const { error: insertError } = await supabase
+        const { data: insertedTenders, error: insertError } = await supabase
           .from('tenders')
-          .upsert(newTenders, { onConflict: 'reference_number' });
+          .upsert(newTenders, { onConflict: 'reference_number' })
+          .select('id, reference_number, title, description, buyer, cpv_codes, location');
 
         if (insertError) {
           console.error('Error importing tenders:', insertError);
         } else {
-          console.log(`Successfully imported ${newTenders.length} new tenders to database (${tendersToInsert.length - newTenders.length} duplicates skipped)`);
+          console.log(`Successfully imported ${newTenders.length} new tenders to database`);
+          
+          // Auto-tag each imported tender with AI
+          if (insertedTenders && insertedTenders.length > 0) {
+            console.log(`Starting AI analysis for ${insertedTenders.length} tenders...`);
+            
+            for (const tender of insertedTenders) {
+              try {
+                const { error: analyzeError } = await supabase.functions.invoke('analyze-tender', {
+                  body: {
+                    tenderData: {
+                      title: tender.title,
+                      description: tender.description,
+                      buyer: tender.buyer,
+                      cpv_codes: tender.cpv_codes || [],
+                      location: tender.location
+                    },
+                    tenderId: tender.id
+                  }
+                });
+
+                if (analyzeError) {
+                  console.error(`Failed to analyze tender ${tender.reference_number}:`, analyzeError);
+                } else {
+                  console.log(`Successfully analyzed and tagged tender ${tender.reference_number}`);
+                }
+              } catch (error) {
+                console.error(`Error analyzing tender ${tender.reference_number}:`, error);
+              }
+            }
+            
+            console.log('Completed AI analysis for all imported tenders');
+          }
         }
       } else {
         console.log('No new tenders to import - all were duplicates');

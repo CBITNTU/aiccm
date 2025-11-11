@@ -78,6 +78,28 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
         query = query.lte('publication_date', filters.dateTo);
       }
 
+      // Apply taxonomy filters
+      const taxonomyId = filters.taxonomyLevel3 || filters.taxonomyLevel2 || filters.taxonomyLevel1;
+      if (taxonomyId) {
+        // Get all tenders that have this taxonomy or any of its children
+        const { data: tenderIds, error: taxonomyError } = await supabase
+          .from('tender_taxonomies')
+          .select('tender_id')
+          .eq('taxonomy_id', taxonomyId);
+
+        if (taxonomyError) {
+          console.error('Error fetching taxonomy tenders:', taxonomyError);
+        } else if (tenderIds && tenderIds.length > 0) {
+          const ids = tenderIds.map(t => t.tender_id);
+          query = query.in('id', ids);
+        } else {
+          // No tenders match this taxonomy, return empty
+          setTenders([]);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data, error } = await query;
 
       if (error) {

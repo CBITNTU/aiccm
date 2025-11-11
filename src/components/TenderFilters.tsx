@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Filter, RotateCcw, Search } from "lucide-react";
+import { TaxonomyFilter } from "./TaxonomyFilter";
 
 interface TenderFiltersProps {
   onFiltersChange: (filters: any) => void;
@@ -142,6 +143,19 @@ export const TenderFilters: React.FC<TenderFiltersProps> = ({
               className="w-full"
             />
           </div>
+        </div>
+
+        {/* Taxonomy Filters */}
+        <div className="border-t pt-4">
+          <h3 className="text-sm font-medium mb-3">Filter by Category</h3>
+          <TaxonomyFilter
+            level1={filters.taxonomyLevel1 || null}
+            level2={filters.taxonomyLevel2 || null}
+            level3={filters.taxonomyLevel3 || null}
+            onLevel1Change={(value) => handleFilterChange('taxonomyLevel1', value)}
+            onLevel2Change={(value) => handleFilterChange('taxonomyLevel2', value)}
+            onLevel3Change={(value) => handleFilterChange('taxonomyLevel3', value)}
+          />
         </div>
       </CardContent>
     </Card>

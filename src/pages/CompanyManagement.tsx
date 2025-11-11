@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { CompanyDetailModal } from "@/components/CompanyDetailModal";
+import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import type { Database } from "@/integrations/supabase/types";
 
 type Company = Database['public']['Tables']['companies']['Row'];
@@ -222,6 +223,26 @@ const CompanyManagement = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Taxonomy Management Section */}
+        {companies.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-4">Company Categories</h2>
+            <p className="text-muted-foreground mb-6">
+              Tag your companies with relevant categories to improve tender matching
+            </p>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {companies.map((company) => (
+                <div key={company.id}>
+                  <div className="mb-2">
+                    <h3 className="font-semibold">{company.company_name}</h3>
+                  </div>
+                  <CompanyTaxonomySelector companyId={company.id} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

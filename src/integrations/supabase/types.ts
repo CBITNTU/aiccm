@@ -119,6 +119,42 @@ export type Database = {
         }
         Relationships: []
       }
+      company_taxonomies: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          taxonomy_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          taxonomy_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          taxonomy_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_taxonomies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_taxonomies_taxonomy_id_fkey"
+            columns: ["taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "taxonomies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matching_results: {
         Row: {
           ai_analysis: Json | null
@@ -342,6 +378,80 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      taxonomies: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          level: number
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          level: number
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          level?: number
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taxonomies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "taxonomies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tender_taxonomies: {
+        Row: {
+          created_at: string
+          id: string
+          taxonomy_id: string
+          tender_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          taxonomy_id: string
+          tender_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          taxonomy_id?: string
+          tender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tender_taxonomies_taxonomy_id_fkey"
+            columns: ["taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "taxonomies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tender_taxonomies_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenders: {
         Row: {

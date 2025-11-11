@@ -20,6 +20,8 @@ import {
   Phone,
   Tag
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { formatCpvCode } from "@/lib/cpvCodes";
 
 interface TenderViewDialogProps {
   tender: any;
@@ -32,6 +34,29 @@ export const TenderViewDialog: React.FC<TenderViewDialogProps> = ({
   open,
   onOpenChange,
 }) => {
+  const [taxonomies, setTaxonomies] = React.useState<Array<{ id: string; name: string }>>([]);
+
+  // Fetch taxonomies when dialog opens
+  React.useEffect(() => {
+    const fetchTaxonomies = async () => {
+      if (!tender?.id || !open) return;
+      
+      const { data } = await supabase
+        .from('tender_taxonomies')
+        .select('taxonomy_id, taxonomies(id, name)')
+        .eq('tender_id', tender.id);
+      
+      if (data) {
+        setTaxonomies(data.map(tt => ({
+          id: (tt.taxonomies as any)?.id || '',
+          name: (tt.taxonomies as any)?.name || ''
+        })).filter(t => t.name));
+      }
+    };
+    
+    fetchTaxonomies();
+  }, [tender?.id, open]);
+
   if (!tender) return null;
 
   const formatBudget = (min?: number | null, max?: number | null): string => {
@@ -122,6 +147,26 @@ export const TenderViewDialog: React.FC<TenderViewDialogProps> = ({
 
             <Separator />
 
+            {/* Taxonomies */}
+            {taxonomies.length > 0 && (
+              <>
+                <div>
+                  <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    <Tag className="w-5 h-5" />
+                    Tender Categories
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {taxonomies.map((taxonomy) => (
+                      <Badge key={taxonomy.id} variant="secondary">
+                        {taxonomy.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
+
             {/* Description */}
             <div>
               <h3 className="font-semibold text-lg mb-2">Description</h3>
@@ -179,12 +224,16 @@ export const TenderViewDialog: React.FC<TenderViewDialogProps> = ({
                     <Tag className="w-5 h-5" />
                     CPV Codes
                   </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {tender.cpv_codes.map((code: string, index: number) => (
-                      <Badge key={index} variant="outline">
-                        {code}
-                      </Badge>
-                    ))}
+                  <div className="space-y-2">
+                    {tender.cpv_codes.map((code: string, index: number) => {
+                      const cpv = formatCpvCode(code);
+                      return (
+                        <div key={index} className="bg-muted/50 rounded-lg p-3">
+                          <div className="font-mono text-sm text-primary">{cpv.code}</div>
+                          <div className="text-sm text-muted-foreground">{cpv.name}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </>

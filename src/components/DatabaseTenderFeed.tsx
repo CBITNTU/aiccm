@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
-import { RefreshCw, Search, Calendar, MapPin, Building2, PoundSterling, ExternalLink } from "lucide-react";
+import { RefreshCw, Search, Calendar, MapPin, Building2, PoundSterling, ExternalLink, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TenderViewDialog } from './TenderViewDialog';
+import { formatCpvCode } from "@/lib/cpvCodes";
 
 interface DatabaseTender {
   id: string;
@@ -33,6 +34,7 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTender, setSelectedTender] = useState<DatabaseTender | null>(null);
+  const [tenderTaxonomies, setTenderTaxonomies] = useState<Record<string, Array<{ id: string; name: string }>>>({});
   const { toast } = useToast();
 
   const fetchDatabaseTenders = async (search = '') => {
@@ -107,6 +109,27 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
       }
 
       setTenders(data || []);
+
+      // Fetch taxonomies for the tenders
+      if (data && data.length > 0) {
+        const tenderIds = data.map(t => t.id);
+        const { data: taxData } = await supabase
+          .from('tender_taxonomies')
+          .select('tender_id, taxonomy_id, taxonomies(id, name)')
+          .in('tender_id', tenderIds);
+        
+        if (taxData) {
+          const taxMap: Record<string, Array<{ id: string; name: string }>> = {};
+          taxData.forEach(tt => {
+            if (!taxMap[tt.tender_id]) taxMap[tt.tender_id] = [];
+            const tax = tt.taxonomies as any;
+            if (tax?.name) {
+              taxMap[tt.tender_id].push({ id: tax.id, name: tax.name });
+            }
+          });
+          setTenderTaxonomies(taxMap);
+        }
+      }
       
       if (search.trim() || Object.keys(filters).some(key => filters[key])) {
         toast({
@@ -253,6 +276,23 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
                       <p className="text-sm mb-3 line-clamp-3">
                         {tender.description}
                       </p>
+
+                      {/* Taxonomies */}
+                      {tenderTaxonomies[tender.id] && tenderTaxonomies[tender.id].length > 0 && (
+                        <div className="mb-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <TagIcon className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-xs font-medium text-muted-foreground">Categories:</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {tenderTaxonomies[tender.id].map((taxonomy) => (
+                              <Badge key={taxonomy.id} variant="secondary" className="text-xs">
+                                {taxonomy.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                         <div className="flex items-center">
@@ -274,9 +314,14 @@ const DatabaseTenderFeed: React.FC<DatabaseTenderFeedProps> = ({ filters = {} })
                       </div>
 
                       <div className="flex justify-between items-center pt-3 border-t">
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground space-y-1">
                           {tender.cpv_codes && tender.cpv_codes.length > 0 && (
-                            <>CPV: {tender.cpv_codes.join(', ')}</>
+                            <div>
+                              {tender.cpv_codes.map(code => {
+                                const cpv = formatCpvCode(code);
+                                return `${cpv.code} (${cpv.name})`;
+                              }).join(' | ')}
+                            </div>
                           )}
                         </div>
                         <div className="flex space-x-2">

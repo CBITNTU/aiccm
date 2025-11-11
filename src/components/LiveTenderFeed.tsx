@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
-import { ChevronDown, Download, RefreshCw, Search, Shield, ExternalLink } from "lucide-react";
+import { ChevronDown, Download, RefreshCw, Search, Shield, ExternalLink, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUserRole } from '@/hooks/useUserRole';
 import { TenderFilters } from './TenderFilters';
 import { TenderViewDialog } from './TenderViewDialog';
+import { formatCpvCode } from "@/lib/cpvCodes";
 
 interface LiveTender {
   id: string;
@@ -49,6 +50,7 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
   const [totalFetched, setTotalFetched] = useState(0);
   const [duplicatesSkipped, setDuplicatesSkipped] = useState(0);
   const [selectedTender, setSelectedTender] = useState<LiveTender | null>(null);
+  const [tenderTaxonomies, setTenderTaxonomies] = useState<Record<string, Array<{ id: string; name: string }>>>({});
   const { toast } = useToast();
   const { role, loading: roleLoading } = useUserRole();
 
@@ -151,6 +153,29 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
       setIsAdmin(data.isAdmin || false);
       setTotalFetched(data.totalFetched || data.tenders?.length || 0);
       setDuplicatesSkipped(data.duplicatesSkipped || 0);
+
+      // Fetch taxonomies for imported tenders
+      if (data.tenders && data.tenders.length > 0) {
+        const tenderIds = data.tenders.map((t: LiveTender) => t.id).filter(Boolean);
+        if (tenderIds.length > 0) {
+          const { data: taxData } = await supabase
+            .from('tender_taxonomies')
+            .select('tender_id, taxonomy_id, taxonomies(id, name)')
+            .in('tender_id', tenderIds);
+          
+          if (taxData) {
+            const taxMap: Record<string, Array<{ id: string; name: string }>> = {};
+            taxData.forEach(tt => {
+              if (!taxMap[tt.tender_id]) taxMap[tt.tender_id] = [];
+              const tax = tt.taxonomies as any;
+              if (tax?.name) {
+                taxMap[tt.tender_id].push({ id: tax.id, name: tax.name });
+              }
+            });
+            setTenderTaxonomies(prev => ({ ...prev, ...taxMap }));
+          }
+        }
+      }
 
       if (adminImport && data.tenders?.length > 0) {
         const message = duplicatesSkipped > 0 
@@ -378,6 +403,23 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
                     <p className="text-sm mb-3 line-clamp-3">
                       {tender.description}
                     </p>
+
+                    {/* Taxonomies */}
+                    {tenderTaxonomies[tender.id] && tenderTaxonomies[tender.id].length > 0 && (
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TagIcon className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs font-medium text-muted-foreground">Categories:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {tenderTaxonomies[tender.id].map((taxonomy) => (
+                            <Badge key={taxonomy.id} variant="secondary" className="text-xs">
+                              {taxonomy.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -396,9 +438,16 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
                     </div>
 
                     <div className="flex justify-between items-center mt-4 pt-3 border-t">
-                      <div className="text-xs text-muted-foreground">
-                        Source: {tender.source === 'find_tender' ? 'Find a Tender API' : 'Contracts Finder'} | 
-                        CPV: {tender.cpv_codes.join(', ') || 'Not specified'}
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <div>Source: {tender.source === 'find_tender' ? 'Find a Tender API' : 'Contracts Finder'}</div>
+                        {tender.cpv_codes && tender.cpv_codes.length > 0 && (
+                          <div>
+                            CPV: {tender.cpv_codes.map(code => {
+                              const cpv = formatCpvCode(code);
+                              return `${cpv.code} (${cpv.name})`;
+                            }).join(' | ')}
+                          </div>
+                        )}
                       </div>
                       <div className="flex space-x-2">
                         <Button

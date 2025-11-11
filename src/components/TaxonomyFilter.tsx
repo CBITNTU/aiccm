@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Filter, X } from "lucide-react";
+import { Filter, X, ChevronDown, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface TaxonomyFilterProps {
   selectedTaxonomies: string[];
@@ -17,18 +19,48 @@ export function TaxonomyFilter({
   selectedTaxonomies,
   onTaxonomiesChange,
 }: TaxonomyFilterProps) {
+  const [open, setOpen] = useState(false);
+  const [tempSelected, setTempSelected] = useState<string[]>(selectedTaxonomies);
+  const [expandedLevel1, setExpandedLevel1] = useState<Record<string, boolean>>({});
+  const [expandedLevel2, setExpandedLevel2] = useState<Record<string, boolean>>({});
+  
   const { getLevel1, getLevel2, getLevel3, getTaxonomyById, loading } = useTaxonomies();
 
   const handleTaxonomyToggle = (taxonomyId: string, checked: boolean) => {
     if (checked) {
-      onTaxonomiesChange([...selectedTaxonomies, taxonomyId]);
+      setTempSelected([...tempSelected, taxonomyId]);
     } else {
-      onTaxonomiesChange(selectedTaxonomies.filter(id => id !== taxonomyId));
+      setTempSelected(tempSelected.filter(id => id !== taxonomyId));
     }
   };
 
   const handleClearAll = () => {
-    onTaxonomiesChange([]);
+    setTempSelected([]);
+  };
+
+  const handleApply = () => {
+    onTaxonomiesChange(tempSelected);
+    setOpen(false);
+  };
+
+  const handleCancel = () => {
+    setTempSelected(selectedTaxonomies);
+    setOpen(false);
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      setTempSelected(selectedTaxonomies);
+    }
+  };
+
+  const toggleLevel1 = (id: string) => {
+    setExpandedLevel1(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleLevel2 = (id: string) => {
+    setExpandedLevel2(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   if (loading) {
@@ -38,8 +70,8 @@ export function TaxonomyFilter({
   const level1Options = getLevel1();
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
         <Button variant="outline" className="w-full justify-between">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4" />
@@ -51,115 +83,151 @@ export function TaxonomyFilter({
             </Badge>
           )}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0 bg-background border shadow-lg z-50" align="start">
-        <div className="p-4 border-b flex items-center justify-between bg-background">
-          <h4 className="font-semibold text-sm">Select Categories</h4>
-          {selectedTaxonomies.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearAll}
-              className="h-8 px-2 text-xs"
-            >
-              <X className="h-3 w-3 mr-1" />
-              Clear All
-            </Button>
-          )}
-        </div>
-        
-        <ScrollArea className="h-[450px] bg-background">
-          <Accordion type="multiple" className="w-full px-4">
-            {level1Options.map((level1Tax) => {
-              const level2Options = getLevel2(level1Tax.id);
-              
-              return (
-                <AccordionItem key={level1Tax.id} value={level1Tax.id} className="border-b">
-                  <div className="flex items-center gap-2 py-2">
-                    <Checkbox
-                      id={level1Tax.id}
-                      checked={selectedTaxonomies.includes(level1Tax.id)}
-                      onCheckedChange={(checked) => 
-                        handleTaxonomyToggle(level1Tax.id, checked as boolean)
-                      }
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <Label
-                      htmlFor={level1Tax.id}
-                      className="text-sm font-semibold cursor-pointer flex-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {level1Tax.name}
-                    </Label>
-                    {level2Options.length > 0 && (
-                      <AccordionTrigger className="hover:no-underline py-0 h-auto" />
-                    )}
-                  </div>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl max-h-[85vh] p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+          <DialogTitle className="text-xl">Select Categories</DialogTitle>
+          <DialogDescription>
+            Choose one or more categories to filter results. You can select categories at any level.
+          </DialogDescription>
+        </DialogHeader>
 
-                  {level2Options.length > 0 && (
-                    <AccordionContent className="pb-2">
-                      <Accordion type="multiple" className="ml-4">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-muted-foreground">
+              {tempSelected.length} {tempSelected.length === 1 ? 'category' : 'categories'} selected
+            </div>
+            {tempSelected.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearAll}
+                className="h-8"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear All
+              </Button>
+            )}
+          </div>
+
+          <ScrollArea className="h-[50vh] pr-4">
+            <div className="space-y-2">
+              {level1Options.map((level1Tax) => {
+                const level2Options = getLevel2(level1Tax.id);
+                const isLevel1Expanded = expandedLevel1[level1Tax.id];
+                
+                return (
+                  <div key={level1Tax.id} className="border rounded-lg p-3 bg-card">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id={level1Tax.id}
+                        checked={tempSelected.includes(level1Tax.id)}
+                        onCheckedChange={(checked) => 
+                          handleTaxonomyToggle(level1Tax.id, checked as boolean)
+                        }
+                      />
+                      <Label
+                        htmlFor={level1Tax.id}
+                        className="text-base font-semibold cursor-pointer flex-1"
+                      >
+                        {level1Tax.name}
+                      </Label>
+                      {level2Options.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleLevel1(level1Tax.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          {isLevel1Expanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+
+                    {isLevel1Expanded && level2Options.length > 0 && (
+                      <div className="ml-8 mt-3 space-y-2">
                         {level2Options.map((level2Tax) => {
                           const level3Options = getLevel3(level2Tax.id);
+                          const isLevel2Expanded = expandedLevel2[level2Tax.id];
                           
                           return (
-                            <AccordionItem key={level2Tax.id} value={level2Tax.id} className="border-b">
-                              <div className="flex items-center gap-2 py-2">
+                            <div key={level2Tax.id} className="border-l-2 border-muted pl-4 py-2">
+                              <div className="flex items-center gap-3">
                                 <Checkbox
                                   id={level2Tax.id}
-                                  checked={selectedTaxonomies.includes(level2Tax.id)}
+                                  checked={tempSelected.includes(level2Tax.id)}
                                   onCheckedChange={(checked) => 
                                     handleTaxonomyToggle(level2Tax.id, checked as boolean)
                                   }
-                                  onClick={(e) => e.stopPropagation()}
                                 />
                                 <Label
                                   htmlFor={level2Tax.id}
                                   className="text-sm font-medium cursor-pointer flex-1"
-                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   {level2Tax.name}
                                 </Label>
                                 {level3Options.length > 0 && (
-                                  <AccordionTrigger className="hover:no-underline py-0 h-auto" />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleLevel2(level2Tax.id)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    {isLevel2Expanded ? (
+                                      <ChevronDown className="h-3 w-3" />
+                                    ) : (
+                                      <ChevronRight className="h-3 w-3" />
+                                    )}
+                                  </Button>
                                 )}
                               </div>
 
-                              {level3Options.length > 0 && (
-                                <AccordionContent className="pb-2">
-                                  <div className="ml-4 space-y-2">
-                                    {level3Options.map((level3Tax) => (
-                                      <div key={level3Tax.id} className="flex items-center gap-2 py-1">
-                                        <Checkbox
-                                          id={level3Tax.id}
-                                          checked={selectedTaxonomies.includes(level3Tax.id)}
-                                          onCheckedChange={(checked) => 
-                                            handleTaxonomyToggle(level3Tax.id, checked as boolean)
-                                          }
-                                        />
-                                        <Label
-                                          htmlFor={level3Tax.id}
-                                          className="text-sm cursor-pointer text-muted-foreground"
-                                        >
-                                          {level3Tax.name}
-                                        </Label>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </AccordionContent>
+                              {isLevel2Expanded && level3Options.length > 0 && (
+                                <div className="ml-6 mt-2 space-y-1.5">
+                                  {level3Options.map((level3Tax) => (
+                                    <div key={level3Tax.id} className="flex items-center gap-2">
+                                      <Checkbox
+                                        id={level3Tax.id}
+                                        checked={tempSelected.includes(level3Tax.id)}
+                                        onCheckedChange={(checked) => 
+                                          handleTaxonomyToggle(level3Tax.id, checked as boolean)
+                                        }
+                                      />
+                                      <Label
+                                        htmlFor={level3Tax.id}
+                                        className="text-sm cursor-pointer text-muted-foreground"
+                                      >
+                                        {level3Tax.name}
+                                      </Label>
+                                    </div>
+                                  ))}
+                                </div>
                               )}
-                            </AccordionItem>
+                            </div>
                           );
                         })}
-                      </Accordion>
-                    </AccordionContent>
-                  )}
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
-        </ScrollArea>
-      </PopoverContent>
-    </Popover>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t bg-muted/20">
+          <Button variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button onClick={handleApply}>
+            Apply Filters ({tempSelected.length})
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

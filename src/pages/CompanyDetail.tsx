@@ -438,8 +438,8 @@ const CompanyDetail = () => {
                 )}
               </div>
               
-              <div className="flex items-center space-x-3">
-                <MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              <div className="flex items-start space-x-3">
+                <MapPin className="w-5 h-5 text-muted-foreground mt-1 flex-shrink-0" />
                 {isEditingBasicInfo ? (
                   <Input 
                     value={editedLocation}
@@ -447,7 +447,12 @@ const CompanyDetail = () => {
                     placeholder="Location/Postcode"
                   />
                 ) : (
-                  <span className="text-foreground">{companyData.postcode}</span>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Location</p>
+                    <p className="text-base font-medium text-foreground whitespace-pre-line">
+                      {companyData.address || companyData.postcode || 'Not specified'}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

@@ -220,6 +220,8 @@ const CompanyOnboardingStep2 = ({ step1Data, prefillData, onBack }: CompanyOnboa
         key_capabilities: capabilities.join(', '),
         certifications: JSON.stringify(certifications),
         equipment: JSON.stringify(equipment),
+        address: normalized.address?.value || null,
+        postcode: step1Data.postcode || null,
         system_extracted: {
           description: normalized.description,
           capabilities: normalized.capabilities,
@@ -227,6 +229,7 @@ const CompanyOnboardingStep2 = ({ step1Data, prefillData, onBack }: CompanyOnboa
           equipment: normalized.equipment,
           sectors: normalized.sectors,
           locations: normalized.locations,
+          address: normalized.address,
         },
         human_verified: {
           certifications: certifications.filter(c => c.verified).map(c => c.name),

@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       companies: {
         Row: {
+          address: string | null
           ai_analysis: Json | null
           ai_capabilities: Json | null
           ai_certifications: Json | null
@@ -50,6 +51,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          address?: string | null
           ai_analysis?: Json | null
           ai_capabilities?: Json | null
           ai_certifications?: Json | null
@@ -84,6 +86,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          address?: string | null
           ai_analysis?: Json | null
           ai_capabilities?: Json | null
           ai_certifications?: Json | null

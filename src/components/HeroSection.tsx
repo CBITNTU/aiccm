@@ -214,6 +214,15 @@ const HeroSection = () => {
           </div>
         </div>
 
+        {/* UK Companies Map Section */}
+        <div className="mt-20 lg:mt-32">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Our Network</h2>
+            <p className="text-lg text-muted-foreground">Active companies across the UK</p>
+          </div>
+          <UKCompaniesMap />
+        </div>
+
         {/* Contact Section */}
         <div className="mt-20 lg:mt-32 max-w-4xl mx-auto">
           <div className="text-center mb-12">

@@ -209,6 +209,7 @@ Schema to return:
   "equipment": [{"name": "", "model": "", "capacity": "", "notes": "", "confidence": 0, "evidence": ""}],
   "sectors": [{"value": "", "confidence": 0, "evidence": ""}],
   "locations": [{"value": "", "confidence": 0, "evidence": ""}],
+  "address": {"value": "", "confidence": 0, "evidence": ""},
   "financial": {
     "employees": {"value": 0, "confidence": 0, "evidence": ""},
     "netAssets": {"value": 0, "confidence": 0, "evidence": ""},

@@ -202,7 +202,7 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
                   cx={marker.position.x}
                   cy={marker.position.y}
                   r="4"
-                  className="fill-red-500 stroke-white stroke-2 cursor-pointer transition-all hover:r-6"
+                  className="fill-red-500 cursor-pointer transition-all hover:r-6"
                   style={{
                     filter: hoveredMarker === marker.company.id ? 'drop-shadow(0 0 8px rgb(239 68 68))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                   }}

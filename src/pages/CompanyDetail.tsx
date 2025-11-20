@@ -24,6 +24,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
+import UKCompaniesMap from "@/components/UKCompaniesMap";
 
 type Company = Database['public']['Tables']['companies']['Row'];
 
@@ -458,6 +459,21 @@ const CompanyDetail = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Company Location Map */}
+        {(companyData.address || companyData.postcode) && (
+          <Card className="card-professional">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <MapPin className="w-5 h-5" />
+                <span>Company Location</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UKCompaniesMap companyId={companyData.id} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="space-y-6">

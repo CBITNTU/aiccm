@@ -2,7 +2,6 @@ import { ArrowRight, Building2, FileText, Users2, TrendingUp, Mail, Clock, Spark
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import cbitLogo from "@/assets/cbit-logo.png";
-import UKCompaniesMap from "./UKCompaniesMap";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -212,15 +211,6 @@ const HeroSection = () => {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* UK Companies Map Section */}
-        <div className="mt-20 lg:mt-32">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Our Network</h2>
-            <p className="text-lg text-muted-foreground">Active companies across the UK</p>
-          </div>
-          <UKCompaniesMap />
         </div>
 
         {/* Contact Section */}

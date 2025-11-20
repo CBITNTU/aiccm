@@ -32,7 +32,11 @@ const SVG_VIEWBOX = {
   height: 209.38,
 };
 
-const UKCompaniesMap = () => {
+interface UKCompaniesMapProps {
+  companyId?: string;
+}
+
+const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
@@ -42,11 +46,18 @@ const UKCompaniesMap = () => {
   // Fetch companies from database
   const fetchCompanies = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('companies')
         .select('id, company_name, address, postcode, status')
         .eq('status', 'active')
         .not('postcode', 'is', null);
+
+      // If companyId is provided, filter for that specific company
+      if (companyId) {
+        query = query.eq('id', companyId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching companies:', error);
@@ -134,7 +145,7 @@ const UKCompaniesMap = () => {
 
   useEffect(() => {
     fetchCompanies();
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     if (companies.length > 0) {

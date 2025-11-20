@@ -155,7 +155,7 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
 
   if (loading) {
     return (
-      <div className="w-full h-[600px] flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/20">
+      <div className="w-full h-[400px] flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/20">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
           <p className="text-sm text-muted-foreground">Loading company locations...</p>
@@ -165,7 +165,7 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
   }
 
   return (
-    <div className="relative w-full h-[600px] rounded-2xl overflow-hidden shadow-xl border border-border/20 bg-card">
+    <div className="relative w-full h-[400px] rounded-2xl overflow-hidden shadow-xl border border-border/20 bg-card">
       {/* Map Header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-background/95 to-transparent p-6">
         <div className="flex items-center justify-between">
@@ -179,9 +179,6 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
                 {geocoding ? 'Geocoding locations...' : `${markers.length} active companies`}
               </p>
             </div>
-          </div>
-          <div className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-            Live Map
           </div>
         </div>
       </div>
@@ -205,9 +202,9 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
                   cx={marker.position.x}
                   cy={marker.position.y}
                   r="2"
-                  className="fill-primary stroke-background stroke-1 cursor-pointer transition-all hover:r-3"
+                  className="fill-red-500 stroke-background stroke-1 cursor-pointer transition-all hover:r-3"
                   style={{
-                    filter: hoveredMarker === marker.company.id ? 'drop-shadow(0 0 8px rgb(var(--primary)))' : 'none',
+                    filter: hoveredMarker === marker.company.id ? 'drop-shadow(0 0 8px rgb(239 68 68))' : 'none',
                   }}
                   onMouseEnter={() => setHoveredMarker(marker.company.id)}
                   onMouseLeave={() => setHoveredMarker(null)}
@@ -239,36 +236,38 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
         </div>
       </div>
 
-      {/* Company List Sidebar */}
-      <div className="absolute right-0 top-0 bottom-0 w-80 bg-background/95 backdrop-blur-sm border-l border-border overflow-y-auto">
-        <div className="p-6">
-          <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center">
-            <MapPin className="w-4 h-4 mr-2 text-primary" />
-            Active Companies
-          </h4>
-          <div className="space-y-2">
-            {markers.map((marker) => (
-              <div
-                key={marker.company.id}
-                className={`p-3 rounded-lg border transition-all cursor-pointer ${
-                  hoveredMarker === marker.company.id
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border/50 hover:border-border'
-                }`}
-                onMouseEnter={() => setHoveredMarker(marker.company.id)}
-                onMouseLeave={() => setHoveredMarker(null)}
-              >
-                <p className="text-sm font-medium text-foreground truncate">
-                  {marker.company.company_name}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line line-clamp-2">
-                  {marker.company.address || marker.company.postcode}
-                </p>
-              </div>
-            ))}
+      {/* Company List Sidebar - only show when not filtering by specific company */}
+      {!companyId && (
+        <div className="absolute right-0 top-0 bottom-0 w-80 bg-background/95 backdrop-blur-sm border-l border-border overflow-y-auto">
+          <div className="p-6">
+            <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center">
+              <MapPin className="w-4 h-4 mr-2 text-primary" />
+              Active Companies
+            </h4>
+            <div className="space-y-2">
+              {markers.map((marker) => (
+                <div
+                  key={marker.company.id}
+                  className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                    hoveredMarker === marker.company.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border/50 hover:border-border'
+                  }`}
+                  onMouseEnter={() => setHoveredMarker(marker.company.id)}
+                  onMouseLeave={() => setHoveredMarker(null)}
+                >
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {marker.company.company_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line line-clamp-2">
+                    {marker.company.address || marker.company.postcode}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

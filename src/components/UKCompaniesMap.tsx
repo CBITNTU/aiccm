@@ -184,8 +184,8 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
       </div>
 
       {/* SVG Map Container */}
-      <div className="uk-map relative w-full h-full flex items-center justify-center p-8 pt-24">
-        <div className="relative w-full h-full max-w-2xl">
+      <div className="uk-map relative w-full h-full flex items-center justify-start p-8 pt-24">
+        <div className="relative w-full h-full max-w-md">
           {/* UK Map SVG */}
           <img 
             src={ukMapSvg} 
@@ -201,10 +201,10 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
                 <circle
                   cx={marker.position.x}
                   cy={marker.position.y}
-                  r="2"
-                  className="fill-red-500 stroke-background stroke-1 cursor-pointer transition-all hover:r-3"
+                  r="4"
+                  className="fill-red-500 stroke-white stroke-2 cursor-pointer transition-all hover:r-6"
                   style={{
-                    filter: hoveredMarker === marker.company.id ? 'drop-shadow(0 0 8px rgb(239 68 68))' : 'none',
+                    filter: hoveredMarker === marker.company.id ? 'drop-shadow(0 0 8px rgb(239 68 68))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                   }}
                   onMouseEnter={() => setHoveredMarker(marker.company.id)}
                   onMouseLeave={() => setHoveredMarker(null)}

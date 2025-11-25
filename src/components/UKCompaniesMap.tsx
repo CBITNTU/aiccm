@@ -148,7 +148,7 @@ const UKCompaniesMap: React.FC<UKCompaniesMapProps> = ({ companyId }) => {
   }, [companyId]);
 
   useEffect(() => {
-    if (companies.length > 0) {
+    if (companies.length > 0 && !geocoding) {
       geocodeCompanies();
     }
   }, [companies]);

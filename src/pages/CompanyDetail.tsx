@@ -460,23 +460,6 @@ const CompanyDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Company Location Map */}
-        {(companyData.address || companyData.postcode) && (
-          <div className="float-right ml-6 mb-6 w-96">
-            <Card className="card-professional">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="w-5 h-5" />
-                  <span>Location</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <UKCompaniesMap companyId={companyData.id} />
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
@@ -489,6 +472,23 @@ const CompanyDetail = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Company Location Map */}
+            {(companyData.address || companyData.postcode) && (
+              <div className="float-right ml-6 mb-6 w-96">
+                <Card className="card-professional">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <MapPin className="w-5 h-5" />
+                      <span>Location</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <UKCompaniesMap companyId={companyData.id} />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             <Card className="card-professional">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">

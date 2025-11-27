@@ -481,9 +481,20 @@ const CompanyDetail = () => {
                 ) : (
                   <div>
                     <p className="text-sm text-muted-foreground">Location</p>
-                    <p className="text-base font-medium text-foreground whitespace-pre-line">
-                      {companyData.address || companyData.postcode || 'Not specified'}
-                    </p>
+                    {(companyData.address || companyData.postcode) ? (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(companyData.address || companyData.postcode || '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-base font-medium text-primary hover:underline whitespace-pre-line cursor-pointer"
+                      >
+                        {companyData.address || companyData.postcode}
+                      </a>
+                    ) : (
+                      <p className="text-base font-medium text-muted-foreground whitespace-pre-line italic">
+                        Not specified
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

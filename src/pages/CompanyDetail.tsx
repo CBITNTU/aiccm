@@ -331,12 +331,36 @@ const CompanyDetail = () => {
                         placeholder="Company Name"
                         className="text-xl font-bold"
                       />
-                      <p className="text-muted-foreground text-sm">Companies House: {companyData.companies_house_number}</p>
+                      <p className="text-muted-foreground text-sm">
+                        Companies House: {companyData.companies_house_number && (
+                          <a 
+                            href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companies_house_number}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {companyData.companies_house_number}
+                          </a>
+                        )}
+                      </p>
                     </div>
                   ) : (
                     <>
                       <CardTitle className="text-2xl font-bold text-foreground">{companyData.company_name}</CardTitle>
-                      <p className="text-muted-foreground">Companies House: {companyData.companies_house_number}</p>
+                      <p className="text-muted-foreground">
+                        Companies House: {companyData.companies_house_number ? (
+                          <a 
+                            href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companies_house_number}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {companyData.companies_house_number}
+                          </a>
+                        ) : (
+                          <span className="italic">Not available</span>
+                        )}
+                      </p>
                     </>
                   )}
                 </div>

@@ -404,10 +404,17 @@ const CompanyDetail = () => {
                     placeholder="Website URL"
                     type="url"
                   />
-                ) : (
-                  <a href={companyData.website_url} className="text-primary hover:underline truncate">
+                ) : companyData.website_url ? (
+                  <a 
+                    href={companyData.website_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline truncate"
+                  >
                     {companyData.website_url}
                   </a>
+                ) : (
+                  <span className="text-muted-foreground italic">No website added - click edit to add one</span>
                 )}
               </div>
               

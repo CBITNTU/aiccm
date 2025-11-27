@@ -193,10 +193,9 @@ const Dashboard = () => {
       if (userCompaniesData && userCompaniesData.length > 0) {
         // Using type assertion to avoid deep type instantiation error
         const supabaseClient: any = supabase;
-        const { data: projects } = await supabaseClient
-          .from('virtual_organizations')
-          .select('id')
-          .in('lead_company_id', userCompaniesData.map((c: any) => c.id));
+        const {
+          data: projects
+        } = await supabaseClient.from('virtual_organizations').select('id').in('lead_company_id', userCompaniesData.map((c: any) => c.id));
         projectsCount = projects?.length || 0;
       }
 
@@ -437,24 +436,20 @@ const Dashboard = () => {
                     </div>}
                   
                   {/* Financial Data */}
-                  {selectedCompany.financial_data && Object.keys(selectedCompany.financial_data).length > 0 && (
-                    <>
+                  {selectedCompany.financial_data && Object.keys(selectedCompany.financial_data).length > 0 && <>
                       <Separator className="my-2" />
                       <div className="space-y-2">
                         <h4 className="text-sm font-semibold">Financial Information</h4>
-                        {Object.entries(selectedCompany.financial_data).map(([key, field]: [string, any]) => (
-                          <div key={key} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                        {Object.entries(selectedCompany.financial_data).map(([key, field]: [string, any]) => <div key={key} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                             <span className="text-sm font-medium capitalize">
                               {key.replace(/([A-Z])/g, ' $1').trim()}
                             </span>
                             <span className="text-sm font-semibold">
                               {field.value?.toLocaleString() || 'N/A'}
                             </span>
-                          </div>
-                        ))}
+                          </div>)}
                       </div>
-                    </>
-                  )}
+                    </>}
                   
                   <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                     <span className="text-sm font-medium">Status</span>
@@ -476,66 +471,12 @@ const Dashboard = () => {
             </Card>
           </div>}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Tender Trends Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Tender Trends
-              </CardTitle>
-              <CardDescription>
-                Monthly tender opportunities over time
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={stats.tendersByMonth}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="tenders" stroke="hsl(var(--primary))" strokeWidth={2} dot={{
-                  fill: "hsl(var(--primary))"
-                }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Match Score Distribution */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Match Score Distribution
-              </CardTitle>
-              <CardDescription>
-                How well your companies match available tenders
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.matchScoreDistribution}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="range" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
+        
 
         {/* Recent Matches - Filter by selected company */}
         {(() => {
-          const filteredMatches = selectedCompany 
-            ? stats.recentMatches.filter(match => match.company_id === selectedCompany.id)
-            : stats.recentMatches;
-          
-          return filteredMatches.length > 0 && (
-            <Card>
+        const filteredMatches = selectedCompany ? stats.recentMatches.filter(match => match.company_id === selectedCompany.id) : stats.recentMatches;
+        return filteredMatches.length > 0 && <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -544,10 +485,7 @@ const Dashboard = () => {
                       Recent Matches
                     </CardTitle>
                     <CardDescription>
-                      {selectedCompany 
-                        ? `Latest matches for ${selectedCompany.company_name}`
-                        : 'Your latest tender matching opportunities'
-                      }
+                      {selectedCompany ? `Latest matches for ${selectedCompany.company_name}` : 'Your latest tender matching opportunities'}
                     </CardDescription>
                   </div>
                   <Button variant="outline" onClick={() => navigate('/tenders')}>
@@ -558,8 +496,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {filteredMatches.map(match => (
-                    <div key={match.id} className="flex items-center justify-between p-4 border hover:bg-muted/50 transition-colors rounded-2xl">
+                  {filteredMatches.map(match => <div key={match.id} className="flex items-center justify-between p-4 border hover:bg-muted/50 transition-colors rounded-2xl">
                       <div className="flex-1">
                         <h4 className="font-semibold">{match.tenders?.title}</h4>
                         <p className="text-sm text-muted-foreground">
@@ -575,18 +512,16 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => {
-                        setSelectedMatch(match);
-                        setDialogOpen(true);
-                      }}>
+                  setSelectedMatch(match);
+                  setDialogOpen(true);
+                }}>
                         View Details
                       </Button>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </CardContent>
-            </Card>
-          );
-        })()}
+            </Card>;
+      })()}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
@@ -628,13 +563,7 @@ const Dashboard = () => {
         </div>
         
         {/* Tender Detail Dialog */}
-        {selectedMatch && (
-          <TenderDetailDialog
-            open={dialogOpen}
-            onOpenChange={setDialogOpen}
-            result={selectedMatch}
-          />
-        )}
+        {selectedMatch && <TenderDetailDialog open={dialogOpen} onOpenChange={setDialogOpen} result={selectedMatch} />}
 
         {/* Business Chatbot */}
         <BusinessChatbot companyData={selectedCompany} />

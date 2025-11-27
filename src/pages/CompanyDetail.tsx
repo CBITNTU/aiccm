@@ -517,17 +517,6 @@ const CompanyDetail = () => {
             {/* Company Location Map */}
             {(companyData.address || companyData.postcode) && (
               <div className="float-right ml-6 mb-6 w-96">
-                <Card className="card-professional">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <MapPin className="w-5 h-5" />
-                      <span>Location</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <UKCompaniesMap companyId={companyData.id} />
-                  </CardContent>
-                </Card>
               </div>
             )}
 

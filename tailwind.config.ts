@@ -22,25 +22,20 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          hover: "hsl(var(--primary-hover))",
           light: "hsl(var(--primary-light))",
-          hover: "hsl(var(--primary-hover))"
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          hover: "hsl(var(--secondary-hover))",
           light: "hsl(var(--secondary-light))",
-          hover: "hsl(var(--secondary-hover))"
         },
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          hover: "hsl(var(--accent-hover))",
           light: "hsl(var(--accent-light))",
-          hover: "hsl(var(--accent-hover))"
-        },
-        cinematic: {
-          gold: "hsl(45 100% 51%)",
-          red: "hsl(0 70% 45%)",
-          dark: "hsl(0 0% 5%)",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",

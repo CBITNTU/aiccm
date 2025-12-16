@@ -1,19 +1,35 @@
--- Create profiles table for user data
-CREATE TABLE public.profiles (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  
-  -- Personal info
-  first_name TEXT,
-  last_name TEXT,
-  email TEXT,
-  phone TEXT
-);
+-- Create profiles table for user data (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'profiles'
+  ) THEN
+    CREATE TABLE public.profiles (
+      id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+      
+      -- Personal info
+      first_name TEXT,
+      last_name TEXT,
+      email TEXT,
+      phone TEXT
+    );
+  END IF;
+END $$;
 
--- Create companies table
-CREATE TABLE public.companies (
+-- Create companies table (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'companies'
+  ) THEN
+    CREATE TABLE public.companies (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -46,10 +62,19 @@ CREATE TABLE public.companies (
   
   -- Status
   status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'pending_review'))
-);
+    );
+  END IF;
+END $$;
 
--- Create tenders table
-CREATE TABLE public.tenders (
+-- Create tenders table (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'tenders'
+  ) THEN
+    CREATE TABLE public.tenders (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -77,10 +102,19 @@ CREATE TABLE public.tenders (
   contact_info JSONB,
   documents JSONB,
   requirements JSONB
-);
+    );
+  END IF;
+END $$;
 
--- Create matching_results table
-CREATE TABLE public.matching_results (
+-- Create matching_results table (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'matching_results'
+  ) THEN
+    CREATE TABLE public.matching_results (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -106,21 +140,48 @@ CREATE TABLE public.matching_results (
   application_date TIMESTAMP WITH TIME ZONE,
   
   UNIQUE(company_id, tender_id)
-);
+    );
+  END IF;
+END $$;
 
--- Add admin role functionality
-CREATE TYPE public.app_role AS ENUM ('admin', 'user');
+-- Add admin role functionality (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type 
+    WHERE typname = 'app_role'
+  ) THEN
+    CREATE TYPE public.app_role AS ENUM ('admin', 'user');
+  END IF;
+END $$;
 
-CREATE TABLE public.user_roles (
+-- Create user_roles table (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'user_roles'
+  ) THEN
+    CREATE TABLE public.user_roles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     role app_role NOT NULL DEFAULT 'user',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
     UNIQUE (user_id, role)
-);
+    );
+  END IF;
+END $$;
 
--- Create virtual organizations table with updated status options
-CREATE TABLE public.virtual_organizations (
+-- Create virtual organizations table with updated status options (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'virtual_organizations'
+  ) THEN
+    CREATE TABLE public.virtual_organizations (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
@@ -129,10 +190,19 @@ CREATE TABLE public.virtual_organizations (
   target_tender_id UUID REFERENCES public.tenders(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
+    );
+  END IF;
+END $$;
 
--- Create virtual organization members table
-CREATE TABLE public.vo_members (
+-- Create virtual organization members table (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'vo_members'
+  ) THEN
+    CREATE TABLE public.vo_members (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   vo_id UUID REFERENCES public.virtual_organizations(id) ON DELETE CASCADE NOT NULL,
   company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
@@ -140,10 +210,19 @@ CREATE TABLE public.vo_members (
   joined_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   UNIQUE(vo_id, company_id)
-);
+    );
+  END IF;
+END $$;
 
--- Create partnership recommendations table
-CREATE TABLE public.partnership_recommendations (
+-- Create partnership recommendations table (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'partnership_recommendations'
+  ) THEN
+    CREATE TABLE public.partnership_recommendations (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
   recommended_company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
@@ -155,10 +234,19 @@ CREATE TABLE public.partnership_recommendations (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   UNIQUE(company_id, recommended_company_id)
-);
+    );
+  END IF;
+END $$;
 
--- Create partnership messages table
-CREATE TABLE public.partnership_messages (
+-- Create partnership messages table (idempotent)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'partnership_messages'
+  ) THEN
+    CREATE TABLE public.partnership_messages (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   from_company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
   to_company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
@@ -167,9 +255,11 @@ CREATE TABLE public.partnership_messages (
   tender_id UUID REFERENCES public.tenders(id) ON DELETE SET NULL,
   read_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
+    );
+  END IF;
+END $$;
 
--- Enable RLS on all tables
+-- Enable RLS on all tables (idempotent - ALTER TABLE is safe to run multiple times)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenders ENABLE ROW LEVEL SECURITY;
@@ -180,65 +270,124 @@ ALTER TABLE public.vo_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.partnership_recommendations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.partnership_messages ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for profiles
-CREATE POLICY "Users can view their own profile" 
-ON public.profiles FOR SELECT 
-USING (auth.uid() = user_id);
+-- RLS Policies for profiles (idempotent)
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 
-CREATE POLICY "Users can update their own profile" 
-ON public.profiles FOR UPDATE 
-USING (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can view their own profile" 
+  ON public.profiles FOR SELECT 
+  USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Users can insert their own profile" 
-ON public.profiles FOR INSERT 
-WITH CHECK (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can update their own profile" 
+  ON public.profiles FOR UPDATE 
+  USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- RLS Policies for companies
-CREATE POLICY "Users can view their own companies" 
-ON public.companies FOR SELECT 
-USING (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can insert their own profile" 
+  ON public.profiles FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Users can update their own companies" 
-ON public.companies FOR UPDATE 
-USING (auth.uid() = user_id);
+-- RLS Policies for companies (idempotent)
+DROP POLICY IF EXISTS "Users can view their own companies" ON public.companies;
+DROP POLICY IF EXISTS "Users can update their own companies" ON public.companies;
+DROP POLICY IF EXISTS "Users can insert their own companies" ON public.companies;
+DROP POLICY IF EXISTS "Users can delete their own companies" ON public.companies;
 
-CREATE POLICY "Users can insert their own companies" 
-ON public.companies FOR INSERT 
-WITH CHECK (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can view their own companies" 
+  ON public.companies FOR SELECT 
+  USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Users can delete their own companies" 
-ON public.companies FOR DELETE 
-USING (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can update their own companies" 
+  ON public.companies FOR UPDATE 
+  USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- RLS Policies for tenders (public read)
-CREATE POLICY "Tenders are viewable by everyone" 
-ON public.tenders FOR SELECT 
-USING (true);
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can insert their own companies" 
+  ON public.companies FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- RLS Policies for matching_results
-CREATE POLICY "Users can view their own matching results" 
-ON public.matching_results FOR SELECT 
-USING (EXISTS (
-  SELECT 1 FROM public.companies 
-  WHERE companies.id = matching_results.company_id 
-  AND companies.user_id = auth.uid()
-));
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can delete their own companies" 
+  ON public.companies FOR DELETE 
+  USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Users can update their own matching results" 
-ON public.matching_results FOR UPDATE 
-USING (EXISTS (
-  SELECT 1 FROM public.companies 
-  WHERE companies.id = matching_results.company_id 
-  AND companies.user_id = auth.uid()
-));
+-- RLS Policies for tenders (public read) (idempotent)
+DROP POLICY IF EXISTS "Tenders are viewable by everyone" ON public.tenders;
 
-CREATE POLICY "Users can insert their own matching results" 
-ON public.matching_results FOR INSERT 
-WITH CHECK (EXISTS (
-  SELECT 1 FROM public.companies 
-  WHERE companies.id = matching_results.company_id 
-  AND companies.user_id = auth.uid()
-));
+DO $$ 
+BEGIN
+  CREATE POLICY "Tenders are viewable by everyone" 
+  ON public.tenders FOR SELECT 
+  USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- RLS Policies for matching_results (idempotent)
+DROP POLICY IF EXISTS "Users can view their own matching results" ON public.matching_results;
+DROP POLICY IF EXISTS "Users can update their own matching results" ON public.matching_results;
+DROP POLICY IF EXISTS "Users can insert their own matching results" ON public.matching_results;
+
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can view their own matching results" 
+  ON public.matching_results FOR SELECT 
+  USING (EXISTS (
+    SELECT 1 FROM public.companies 
+    WHERE companies.id = matching_results.company_id 
+    AND companies.user_id = auth.uid()
+  ));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can update their own matching results" 
+  ON public.matching_results FOR UPDATE 
+  USING (EXISTS (
+    SELECT 1 FROM public.companies 
+    WHERE companies.id = matching_results.company_id 
+    AND companies.user_id = auth.uid()
+  ));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can insert their own matching results" 
+  ON public.matching_results FOR INSERT 
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.companies 
+    WHERE companies.id = matching_results.company_id 
+    AND companies.user_id = auth.uid()
+  ));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Security definer function to check roles without RLS recursion
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
@@ -256,32 +405,59 @@ AS $$
   )
 $$;
 
--- RLS policies for user_roles
-CREATE POLICY "Users can view own roles"
-ON public.user_roles
-FOR SELECT
-USING (auth.uid() = user_id);
+-- RLS policies for user_roles (idempotent)
+DROP POLICY IF EXISTS "Users can view own roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Users can insert own roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Admins can view all roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Admins can manage all roles" ON public.user_roles;
 
-CREATE POLICY "Users can insert own roles"
-ON public.user_roles
-FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can view own roles"
+  ON public.user_roles
+  FOR SELECT
+  USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can insert own roles"
+  ON public.user_roles
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Admin policies
-CREATE POLICY "Admins can view all roles"
-ON public.user_roles
-FOR SELECT
-TO authenticated
-USING (public.has_role(auth.uid(), 'admin'));
+DO $$ 
+BEGIN
+  CREATE POLICY "Admins can view all roles"
+  ON public.user_roles
+  FOR SELECT
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admins can manage all roles"
-ON public.user_roles
-FOR ALL
-TO authenticated
-USING (public.has_role(auth.uid(), 'admin'));
+DO $$ 
+BEGIN
+  CREATE POLICY "Admins can manage all roles"
+  ON public.user_roles
+  FOR ALL
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- RLS Policies for virtual_organizations
-CREATE POLICY "Users can view VOs they're part of" ON public.virtual_organizations
+-- RLS Policies for virtual_organizations (idempotent)
+DROP POLICY IF EXISTS "Users can view VOs they're part of" ON public.virtual_organizations;
+DROP POLICY IF EXISTS "Users can create VOs for their companies" ON public.virtual_organizations;
+DROP POLICY IF EXISTS "Lead companies can update VOs" ON public.virtual_organizations;
+
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can view VOs they're part of" ON public.virtual_organizations
 FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM public.vo_members vm 
@@ -289,26 +465,41 @@ FOR SELECT USING (
     WHERE vm.vo_id = virtual_organizations.id 
     AND c.user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Users can create VOs for their companies" ON public.virtual_organizations
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can create VOs for their companies" ON public.virtual_organizations
 FOR INSERT WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.companies 
     WHERE id = lead_company_id AND user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Lead companies can update VOs" ON public.virtual_organizations
+DO $$ 
+BEGIN
+  CREATE POLICY "Lead companies can update VOs" ON public.virtual_organizations
 FOR UPDATE USING (
   EXISTS (
     SELECT 1 FROM public.companies 
     WHERE id = lead_company_id AND user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- RLS Policies for vo_members
-CREATE POLICY "Users can view VO members they're part of" ON public.vo_members
+-- RLS Policies for vo_members (idempotent)
+DROP POLICY IF EXISTS "Users can view VO members they're part of" ON public.vo_members;
+DROP POLICY IF EXISTS "Lead companies can manage VO members" ON public.vo_members;
+
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can view VO members they're part of" ON public.vo_members
 FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM public.vo_members vm2 
@@ -316,9 +507,13 @@ FOR SELECT USING (
     WHERE vm2.vo_id = vo_members.vo_id 
     AND c.user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Lead companies can manage VO members" ON public.vo_members
+DO $$ 
+BEGIN
+  CREATE POLICY "Lead companies can manage VO members" ON public.vo_members
 FOR ALL USING (
   EXISTS (
     SELECT 1 FROM public.virtual_organizations vo 
@@ -326,45 +521,69 @@ FOR ALL USING (
     WHERE vo.id = vo_members.vo_id 
     AND c.user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- RLS Policies for partnership_recommendations
-CREATE POLICY "Users can view recommendations for their companies" ON public.partnership_recommendations
+-- RLS Policies for partnership_recommendations (idempotent)
+DROP POLICY IF EXISTS "Users can view recommendations for their companies" ON public.partnership_recommendations;
+DROP POLICY IF EXISTS "Users can update recommendations for their companies" ON public.partnership_recommendations;
+
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can view recommendations for their companies" ON public.partnership_recommendations
 FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM public.companies 
     WHERE (id = company_id OR id = recommended_company_id) 
     AND user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Users can update recommendations for their companies" ON public.partnership_recommendations
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can update recommendations for their companies" ON public.partnership_recommendations
 FOR UPDATE USING (
   EXISTS (
     SELECT 1 FROM public.companies 
     WHERE id = company_id AND user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- RLS Policies for partnership_messages
-CREATE POLICY "Users can view messages for their companies" ON public.partnership_messages
+-- RLS Policies for partnership_messages (idempotent)
+DROP POLICY IF EXISTS "Users can view messages for their companies" ON public.partnership_messages;
+DROP POLICY IF EXISTS "Users can send messages from their companies" ON public.partnership_messages;
+
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can view messages for their companies" ON public.partnership_messages
 FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM public.companies 
     WHERE (id = from_company_id OR id = to_company_id) 
     AND user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Users can send messages from their companies" ON public.partnership_messages
+DO $$ 
+BEGIN
+  CREATE POLICY "Users can send messages from their companies" ON public.partnership_messages
 FOR INSERT WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.companies 
     WHERE id = from_company_id AND user_id = auth.uid()
   )
-);
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- Create function to update timestamps
+-- Create function to update timestamps (idempotent - CREATE OR REPLACE)
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -373,7 +592,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- Create triggers for automatic timestamp updates
+-- Create triggers for automatic timestamp updates (idempotent)
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
+DROP TRIGGER IF EXISTS update_companies_updated_at ON public.companies;
+DROP TRIGGER IF EXISTS update_tenders_updated_at ON public.tenders;
+DROP TRIGGER IF EXISTS update_matching_results_updated_at ON public.matching_results;
+DROP TRIGGER IF EXISTS update_virtual_organizations_updated_at ON public.virtual_organizations;
+DROP TRIGGER IF EXISTS update_partnership_recommendations_updated_at ON public.partnership_recommendations;
+
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW
@@ -422,35 +648,53 @@ BEGIN
 END;
 $$;
 
--- Create trigger for automatic profile creation
+-- Create trigger for automatic profile creation (idempotent)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
 
--- Insert sample tenders
-INSERT INTO public.tenders (reference_number, title, buyer, cpv_codes, description, budget_min, budget_max, location, deadline, status) VALUES
-('TND-2024-001', 'Nottingham City Centre Infrastructure Upgrade', 'Nottingham City Council', 
- ARRAY['45200000-9', '45233000-9'], 
- 'Major infrastructure improvements including road resurfacing, utility upgrades, and street furniture installation across the city centre.', 
- 2500000, 4000000, 'Nottingham, East Midlands', '2024-12-15', 'open'),
+-- Insert sample tenders (idempotent - only insert if they don't exist)
+INSERT INTO public.tenders (reference_number, title, buyer, cpv_codes, description, budget_min, budget_max, location, deadline, status) 
+SELECT 
+  v.reference_number, 
+  v.title, 
+  v.buyer, 
+  v.cpv_codes, 
+  v.description, 
+  v.budget_min, 
+  v.budget_max, 
+  v.location, 
+  v.deadline::timestamp with time zone, 
+  v.status
+FROM (VALUES
+('TND-2024-001'::TEXT, 'Nottingham City Centre Infrastructure Upgrade'::TEXT, 'Nottingham City Council'::TEXT, 
+ ARRAY['45200000-9', '45233000-9']::TEXT[], 
+ 'Major infrastructure improvements including road resurfacing, utility upgrades, and street furniture installation across the city centre.'::TEXT, 
+ 2500000::BIGINT, 4000000::BIGINT, 'Nottingham, East Midlands'::TEXT, '2024-12-15'::TEXT, 'open'::TEXT),
 
-('TND-2024-002', 'Leicester Sports Complex Construction', 'Leicester City Council', 
- ARRAY['45210000-2', '45262000-8'], 
- 'Design and build of new multi-purpose sports complex including swimming facilities, gymnasium, and community spaces.', 
- 8000000, 12000000, 'Leicester, East Midlands', '2024-12-28', 'closing_soon'),
+('TND-2024-002'::TEXT, 'Leicester Sports Complex Construction'::TEXT, 'Leicester City Council'::TEXT, 
+ ARRAY['45210000-2', '45262000-8']::TEXT[], 
+ 'Design and build of new multi-purpose sports complex including swimming facilities, gymnasium, and community spaces.'::TEXT, 
+ 8000000::BIGINT, 12000000::BIGINT, 'Leicester, East Midlands'::TEXT, '2024-12-28'::TEXT, 'closing_soon'::TEXT),
 
-('TND-2024-003', 'Derby Housing Development - Phase 2', 'Derby City Council', 
- ARRAY['45210000-2'], 
- 'Construction of 120 affordable housing units with associated infrastructure and landscaping.', 
- 15000000, 20000000, 'Derby, East Midlands', '2025-01-20', 'framework'),
+('TND-2024-003'::TEXT, 'Derby Housing Development - Phase 2'::TEXT, 'Derby City Council'::TEXT, 
+ ARRAY['45210000-2']::TEXT[], 
+ 'Construction of 120 affordable housing units with associated infrastructure and landscaping.'::TEXT, 
+ 15000000::BIGINT, 20000000::BIGINT, 'Derby, East Midlands'::TEXT, '2025-01-20'::TEXT, 'framework'::TEXT),
 
-('TND-2024-004', 'Lincoln Hospital Expansion', 'NHS Foundation Trust', 
- ARRAY['45210000-2', '45310000-3'], 
- 'Extension and refurbishment of existing hospital facilities including new emergency wing and upgraded medical equipment installation.', 
- 25000000, 35000000, 'Lincoln, East Midlands', '2025-02-10', 'open'),
+('TND-2024-004'::TEXT, 'Lincoln Hospital Expansion'::TEXT, 'NHS Foundation Trust'::TEXT, 
+ ARRAY['45210000-2', '45310000-3']::TEXT[], 
+ 'Extension and refurbishment of existing hospital facilities including new emergency wing and upgraded medical equipment installation.'::TEXT, 
+ 25000000::BIGINT, 35000000::BIGINT, 'Lincoln, East Midlands'::TEXT, '2025-02-10'::TEXT, 'open'::TEXT),
 
-('TND-2024-005', 'Mansfield School Building Programme', 'Nottinghamshire County Council', 
- ARRAY['45210000-2', '45400000-1'], 
- 'New build primary school facility with modern teaching spaces, sports hall, and energy-efficient systems.', 
- 5000000, 7500000, 'Mansfield, East Midlands', '2024-12-30', 'closing_soon');
+('TND-2024-005'::TEXT, 'Mansfield School Building Programme'::TEXT, 'Nottinghamshire County Council'::TEXT, 
+ ARRAY['45210000-2', '45400000-1']::TEXT[], 
+ 'New build primary school facility with modern teaching spaces, sports hall, and energy-efficient systems.'::TEXT, 
+ 5000000::BIGINT, 7500000::BIGINT, 'Mansfield, East Midlands'::TEXT, '2024-12-30'::TEXT, 'closing_soon'::TEXT)
+) AS v(reference_number, title, buyer, cpv_codes, description, budget_min, budget_max, location, deadline, status)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.tenders WHERE reference_number = v.reference_number
+);

@@ -4,7 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
-import { Building2, LayoutDashboard, User, FileText, Users, Settings, LogOut } from "lucide-react";
+import {
+  Building2,
+  LayoutDashboard,
+  User,
+  FileText,
+  Users,
+  LogOut,
+} from "lucide-react";
 
 export default function ProtectedLayout({
   children,

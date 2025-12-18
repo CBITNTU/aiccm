@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AICCM - Construction Tender Matching",
+  title: "AI-Powered CCM - Collaborative Commerce Marketplace",
   description:
-    "AI-powered construction tender matching platform for UK contractors",
+    "Discover your company's strengths, match with tenders, and form winning consortiums with AI. Build consulting teams and grow your business with AI-powered CCM.",
 };
 
 export default function RootLayout({

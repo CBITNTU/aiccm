@@ -4,13 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Header } from "@/components/layout/Header";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -151,7 +145,9 @@ export default function DirectoryPage() {
     const matchesLocation =
       selectedLocation === "all" ||
       (company.postcode &&
-        company.postcode.toLowerCase().includes(selectedLocation.toLowerCase()));
+        company.postcode
+          .toLowerCase()
+          .includes(selectedLocation.toLowerCase()));
 
     const matchesCapability =
       selectedCapability === "all" ||
@@ -184,7 +180,6 @@ export default function DirectoryPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-        <Header variant="app" />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading companies...</div>
         </div>
@@ -194,8 +189,6 @@ export default function DirectoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-      <Header variant="app" />
-
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -226,7 +219,10 @@ export default function DirectoryPage() {
                 />
               </div>
 
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+              <Select
+                value={selectedLocation}
+                onValueChange={setSelectedLocation}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by location" />
                 </SelectTrigger>

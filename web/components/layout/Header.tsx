@@ -45,7 +45,7 @@ export function Header({ variant = "landing" }: HeaderProps) {
             href="/"
             className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 gradient-hero rounded-lg flex items-center justify-center">
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>

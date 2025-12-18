@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Building2, Mail, Lock, User, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Header } from "@/components/layout/Header";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -216,9 +217,11 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header variant="landing" />
+
       <div className="max-w-md mx-auto px-4 pt-20 pb-16">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 btn-hero rounded-lg mx-auto mb-4 flex items-center justify-center">
+          <div className="w-16 h-16 gradient-hero rounded-lg mx-auto mb-4 flex items-center justify-center">
             <Building2 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">

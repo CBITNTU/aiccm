@@ -45,7 +45,6 @@ import {
   CheckCircle2,
   Building2,
 } from "lucide-react";
-import { Header } from "@/components/layout/Header";
 import { ProjectSummary } from "@/components/consulting/ProjectSummary";
 import { CoverageMap } from "@/components/consulting/CoverageMap";
 import { RecommendedPartners } from "@/components/consulting/RecommendedPartners";
@@ -369,8 +368,7 @@ export default function ConsultingPage() {
       }
 
       // Load tender if associated
-      const project =
-        projects.find((p) => p.id === voId) || selectedProject;
+      const project = projects.find((p) => p.id === voId) || selectedProject;
       if (project?.target_tender_id) {
         const { data: tenderData } = await supabase
           .from("tenders")
@@ -508,8 +506,10 @@ Return ONLY valid JSON, no markdown.`;
       await supabase
         .from("virtual_organizations")
         .update({
-          gap_analysis: gapAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
-          recommended_partners: recommendations as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["recommended_partners"],
+          gap_analysis:
+            gapAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
+          recommended_partners:
+            recommendations as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["recommended_partners"],
         })
         .eq("id", voId);
 
@@ -542,10 +542,9 @@ Return ONLY valid JSON, no markdown.`;
       setAnalyzing(true);
       toast.info("Starting team analysis...");
 
-      const allCompanies = [
-        company,
-        ...members.map((m) => m.companies),
-      ].filter(Boolean);
+      const allCompanies = [company, ...members.map((m) => m.companies)].filter(
+        Boolean
+      );
 
       const prompt = `
 You are a tender analysis expert. Analyze this tender against a full consortium team.
@@ -607,7 +606,8 @@ Return ONLY valid JSON, no markdown.`;
       await supabase
         .from("virtual_organizations")
         .update({
-          team_analysis: teamAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
+          team_analysis:
+            teamAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
         })
         .eq("id", voId);
 
@@ -783,7 +783,9 @@ Return ONLY valid JSON, no markdown.`;
     };
 
     const confirmMove = window.confirm(
-      `Are you sure you want to ${statusLabels[newStatus]} "${selectedProject.name}"? ${newStatus === "delete" ? "This action cannot be undone." : ""}`
+      `Are you sure you want to ${statusLabels[newStatus]} "${
+        selectedProject.name
+      }"? ${newStatus === "delete" ? "This action cannot be undone." : ""}`
     );
 
     if (!confirmMove) return;
@@ -824,7 +826,9 @@ Return ONLY valid JSON, no markdown.`;
         }
 
         toast.success(
-          `Project ${newStatus === "completed" ? "marked as completed" : "archived"} successfully`
+          `Project ${
+            newStatus === "completed" ? "marked as completed" : "archived"
+          } successfully`
         );
       }
 
@@ -855,7 +859,6 @@ Return ONLY valid JSON, no markdown.`;
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header variant="app" />
         <div className="container mx-auto px-4 py-8 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -870,7 +873,6 @@ Return ONLY valid JSON, no markdown.`;
   ) {
     return (
       <div className="min-h-screen bg-background">
-        <Header variant="app" />
         <div className="container mx-auto px-4 py-8">
           <div className="space-y-6">
             <div>
@@ -946,7 +948,6 @@ Return ONLY valid JSON, no markdown.`;
 
   return (
     <div className="min-h-screen bg-background">
-      <Header variant="app" />
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           {/* Page Header */}
@@ -1025,7 +1026,8 @@ Return ONLY valid JSON, no markdown.`;
                 )}
                 <h3 className="text-xl font-semibold mb-2">
                   No{" "}
-                  {projectFilter.charAt(0).toUpperCase() + projectFilter.slice(1)}{" "}
+                  {projectFilter.charAt(0).toUpperCase() +
+                    projectFilter.slice(1)}{" "}
                   Projects
                 </h3>
                 <p className="text-muted-foreground text-center max-w-md">
@@ -1166,7 +1168,9 @@ Return ONLY valid JSON, no markdown.`;
                     ) : (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        {gapAnalysis ? "Re-run Gap Analysis" : "Run Gap Analysis"}
+                        {gapAnalysis
+                          ? "Re-run Gap Analysis"
+                          : "Run Gap Analysis"}
                       </>
                     )}
                   </Button>
@@ -1202,8 +1206,8 @@ Return ONLY valid JSON, no markdown.`;
                       </h3>
                       <p className="text-muted-foreground max-w-md mx-auto">
                         Analyzing tender requirements, comparing with your
-                        team&apos;s competencies, identifying gaps, and searching
-                        for recommended partners from the database...
+                        team&apos;s competencies, identifying gaps, and
+                        searching for recommended partners from the database...
                       </p>
                     </CardContent>
                   </Card>

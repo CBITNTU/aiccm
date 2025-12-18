@@ -135,25 +135,25 @@ export function HeroSection() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(var(--secondary)/0.1),transparent_50%)]" />
 
       {/* Animated Background Elements */}
-      <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full blur-3xl animate-float" />
       <div
-        className="absolute top-40 right-20 w-48 h-48 bg-gradient-to-r from-secondary/15 to-accent/15 rounded-full blur-3xl animate-pulse"
+        className="absolute top-40 right-20 w-48 h-48 bg-gradient-to-r from-secondary/15 to-accent/15 rounded-full blur-3xl animate-float"
         style={{ animationDelay: "1s" }}
       />
       <div
-        className="absolute bottom-40 left-1/3 w-40 h-40 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-3xl animate-pulse"
+        className="absolute bottom-40 left-1/3 w-40 h-40 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-3xl animate-float"
         style={{ animationDelay: "2s" }}
       />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
         {/* Hero Section */}
-        <div className="text-center space-y-8">
+        <div className="text-center space-y-8 animate-fade-in">
           {/* Main Heading */}
           <div className="max-w-5xl mx-auto space-y-6">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
               AI-Powered CCM{" "}
               <span className="relative">
-                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                <span className="gradient-hero bg-clip-text text-transparent">
                   Empowering Collaboration through Competence
                 </span>
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 -z-10" />
@@ -170,7 +170,7 @@ export function HeroSection() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
             <Button
               size="lg"
-              className="min-w-[220px] text-lg px-8 py-6 shadow-2xl"
+              className="btn-hero min-w-[220px] text-lg px-8 py-4 shadow-2xl"
               asChild
             >
               <Link href="/onboarding">
@@ -182,7 +182,7 @@ export function HeroSection() {
             <Button
               size="lg"
               variant="outline"
-              className="min-w-[220px] text-lg px-8 py-6"
+              className="btn-outline-primary min-w-[220px] text-lg px-8 py-4"
               asChild
             >
               <Link href="/tenders">Explore Tenders</Link>
@@ -201,7 +201,7 @@ export function HeroSection() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 animate-slide-up">
             {stats.map((stat) => (
               <Card
                 key={stat.label}
@@ -259,7 +259,7 @@ export function HeroSection() {
 
                   <CardContent className="relative p-8 text-center space-y-6 h-full flex flex-col">
                     <div className="flex-shrink-0">
-                      <div className="w-20 h-20 bg-gradient-to-br from-primary to-secondary rounded-2xl mx-auto flex items-center justify-center group-hover:scale-110 transition-transform duration-500 shadow-xl">
+                      <div className="w-20 h-20 gradient-primary rounded-2xl mx-auto flex items-center justify-center group-hover:scale-110 transition-transform duration-500 shadow-xl">
                         <feature.icon className="w-10 h-10 text-white" />
                       </div>
                     </div>
@@ -327,12 +327,11 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer with Logo */}
         <div className="mt-16 border-t border-border/20 pt-8">
-          <div className="flex flex-col items-center md:items-end md:pr-4">
-            <p className="text-sm text-muted-foreground">
-              Powered by Centre for Business and Industry Transformation (CBIT)
-            </p>
+          <div className="flex flex-col items-end pr-4">
+            <img src="/cbit-logo.png" alt="Centre for Business and Industry Transformation" className="h-12" />
+            <p className="text-sm text-muted-foreground mt-2">Powered by UKCCM</p>
           </div>
         </div>
       </div>

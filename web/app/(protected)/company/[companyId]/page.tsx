@@ -295,12 +295,12 @@ export default function CompanyDetailPage() {
       </div>
 
       {/* Company Header */}
-      <Card className="mb-8">
+      <Card className="card-professional mb-8">
         <CardHeader>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center space-x-4 flex-1">
-              <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center">
-                <Building2 className="w-8 h-8 text-primary-foreground" />
+              <div className="w-16 h-16 gradient-hero rounded-lg flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-white" />
               </div>
               <div className="flex-1">
                 {isEditingBasicInfo ? (
@@ -311,25 +311,38 @@ export default function CompanyDetailPage() {
                       placeholder="Company Name"
                       className="text-xl font-bold"
                     />
+                    <p className="text-muted-foreground text-sm">
+                      Companies House:{" "}
+                      {companyData.companies_house_number && (
+                        <a
+                          href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companies_house_number}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          {companyData.companies_house_number}
+                        </a>
+                      )}
+                    </p>
                   </div>
                 ) : (
                   <>
-                    <CardTitle className="text-2xl font-bold">
+                    <CardTitle className="text-2xl font-bold text-foreground">
                       {companyData.company_name}
                     </CardTitle>
                     <p className="text-muted-foreground">
-                      {companyData.companies_house_number && (
-                        <>
-                          Companies House:{" "}
-                          <a
-                            href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companies_house_number}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            {companyData.companies_house_number}
-                          </a>
-                        </>
+                      Companies House:{" "}
+                      {companyData.companies_house_number ? (
+                        <a
+                          href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companies_house_number}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          {companyData.companies_house_number}
+                        </a>
+                      ) : (
+                        <span className="italic">Not available</span>
                       )}
                     </p>
                   </>
@@ -354,16 +367,18 @@ export default function CompanyDetailPage() {
                     <Edit2 className="w-4 h-4 mr-2" />
                     Edit Info
                   </Button>
-                  <Button onClick={handleRefreshAnalysis} disabled={isAnalyzing}>
+                  <Button
+                    className="btn-cta"
+                    onClick={handleRefreshAnalysis}
+                    disabled={isAnalyzing}
+                  >
                     <RefreshCw
-                      className={`w-4 h-4 mr-2 ${
-                        isAnalyzing ? "animate-spin" : ""
-                      }`}
+                      className={`w-4 h-4 ${isAnalyzing ? "animate-spin" : ""}`}
                     />
                     {isAnalyzing
                       ? "Analyzing..."
                       : analysis
-                      ? "Re-analyze"
+                      ? "Re-analyze Company"
                       : "Analyze Company"}
                   </Button>
                 </>
@@ -391,85 +406,99 @@ export default function CompanyDetailPage() {
             </div>
           </div>
 
-          {/* Contact Info */}
-          {isEditingBasicInfo ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-              <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Location</label>
-                <Input
-                  value={editedLocation}
-                  onChange={(e) => setEditedLocation(e.target.value)}
-                  placeholder="Postcode"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Email</label>
-                <Input
-                  value={editedEmail}
-                  onChange={(e) => setEditedEmail(e.target.value)}
-                  placeholder="Email"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Website</label>
+        </CardHeader>
+
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="flex items-center space-x-3">
+              <Globe className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              {isEditingBasicInfo ? (
                 <Input
                   value={editedWebsite}
                   onChange={(e) => setEditedWebsite(e.target.value)}
                   placeholder="Website URL"
+                  type="url"
                 />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Phone</label>
+              ) : companyData.website_url ? (
+                <a
+                  href={companyData.website_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline truncate"
+                >
+                  {companyData.website_url}
+                </a>
+              ) : (
+                <span className="text-muted-foreground italic">
+                  No website added - click edit to add one
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <Mail className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              {isEditingBasicInfo ? (
+                <Input
+                  value={editedEmail}
+                  onChange={(e) => setEditedEmail(e.target.value)}
+                  placeholder="Email"
+                  type="email"
+                />
+              ) : (
+                <span className="text-foreground truncate">
+                  {companyData.contact_email}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <Phone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              {isEditingBasicInfo ? (
                 <Input
                   value={editedPhone}
                   onChange={(e) => setEditedPhone(e.target.value)}
-                  placeholder="Phone"
+                  placeholder="Phone number"
+                  type="tel"
                 />
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-6 mt-4 text-sm text-muted-foreground">
-              {companyData.postcode && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  {companyData.postcode}
-                </div>
-              )}
-              {companyData.contact_email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  {companyData.contact_email}
-                </div>
-              )}
-              {companyData.website_url && (
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4" />
-                  <a
-                    href={companyData.website_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    Website
-                  </a>
-                </div>
-              )}
-              {companyData.contact_phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
+              ) : (
+                <span className="text-foreground">
                   {companyData.contact_phone}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <MapPin className="w-5 h-5 text-muted-foreground mt-1 flex-shrink-0" />
+              {isEditingBasicInfo ? (
+                <Input
+                  value={editedLocation}
+                  onChange={(e) => setEditedLocation(e.target.value)}
+                  placeholder="Location/Postcode"
+                />
+              ) : (
+                <div>
+                  <p className="text-sm text-muted-foreground">Location</p>
+                  {companyData.address || companyData.postcode ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        companyData.address || companyData.postcode || ""
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-base font-medium text-primary hover:underline whitespace-pre-line cursor-pointer"
+                    >
+                      {companyData.address || companyData.postcode}
+                    </a>
+                  ) : (
+                    <p className="text-base font-medium text-muted-foreground whitespace-pre-line italic">
+                      Not specified
+                    </p>
+                  )}
                 </div>
               )}
             </div>
-          )}
-
-          <Badge
-            variant={companyData.status === "active" ? "default" : "secondary"}
-            className="mt-4"
-          >
-            {companyData.status}
-          </Badge>
-        </CardHeader>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Tabs */}
@@ -730,11 +759,13 @@ export default function CompanyDetailPage() {
                     No analysis available. Click &quot;Analyze Company&quot; to
                     generate AI insights.
                   </p>
-                  <Button onClick={handleRefreshAnalysis} disabled={isAnalyzing}>
+                  <Button
+                    className="btn-cta"
+                    onClick={handleRefreshAnalysis}
+                    disabled={isAnalyzing}
+                  >
                     <RefreshCw
-                      className={`w-4 h-4 mr-2 ${
-                        isAnalyzing ? "animate-spin" : ""
-                      }`}
+                      className={`w-4 h-4 ${isAnalyzing ? "animate-spin" : ""}`}
                     />
                     {isAnalyzing ? "Analyzing..." : "Analyze Company"}
                   </Button>

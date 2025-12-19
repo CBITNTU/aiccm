@@ -8,7 +8,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -19,6 +18,8 @@ import {
 import { Building2, FileText, Bookmark, Target } from "lucide-react";
 import { DatabaseTenderFeed } from "@/components/tenders/DatabaseTenderFeed";
 import { TenderFilters } from "@/components/tenders/TenderFilters";
+import { TenderMatching } from "@/components/tenders/TenderMatching";
+import { SavedTenders } from "@/components/tenders/SavedTenders";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -34,7 +35,7 @@ interface TenderFiltersState {
 }
 
 export default function TendersPage() {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
     null
@@ -42,14 +43,6 @@ export default function TendersPage() {
   const [filters, setFilters] = useState<TenderFiltersState>({});
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [matchingResults, setMatchingResults] = useState<
-    Array<{
-      id: string;
-      overall_score: number;
-      tenders: { title: string; buyer: string; deadline: string } | null;
-    }>
-  >([]);
-  const [matchingLoading, setMatchingLoading] = useState(false);
 
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
@@ -91,44 +84,6 @@ export default function TendersPage() {
 
     fetchCompanies();
   }, [supabase, user]);
-
-  // Fetch matching results when company changes
-  useEffect(() => {
-    if (!supabase || !selectedCompany) return;
-
-    const fetchMatchingResults = async () => {
-      setMatchingLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("matching_results")
-          .select(
-            `
-            id,
-            overall_score,
-            tenders(title, buyer, deadline)
-          `
-          )
-          .eq("company_id", selectedCompany.id)
-          .order("overall_score", { ascending: false })
-          .limit(20);
-
-        if (error) throw error;
-        setMatchingResults(
-          (data as Array<{
-            id: string;
-            overall_score: number;
-            tenders: { title: string; buyer: string; deadline: string } | null;
-          }>) || []
-        );
-      } catch (error) {
-        console.error("Error fetching matching results:", error);
-      } finally {
-        setMatchingLoading(false);
-      }
-    };
-
-    fetchMatchingResults();
-  }, [supabase, selectedCompany]);
 
   const handleFiltersChange = (newFilters: TenderFiltersState) => {
     setFilters(newFilters);
@@ -222,7 +177,7 @@ export default function TendersPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building2 className="h-5 w-5" />
-                  Filter by Company
+                  Select Company
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -241,93 +196,25 @@ export default function TendersPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="mt-2 h-5">
-                  {selectedCompany ? (
-                    <p className="text-sm text-muted-foreground">
-                      Filtering for:{" "}
-                      <span className="font-medium text-primary">
-                        {selectedCompany.company_name}
-                      </span>
-                    </p>
-                  ) : companies.length > 1 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Showing all companies
-                    </p>
-                  ) : null}
-                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Matching Results */}
-          <div className="min-h-[600px] transition-all duration-200">
-            {matchingLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <span className="ml-2">Loading matches...</span>
-              </div>
-            ) : matchingResults.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  {selectedCompany
-                    ? "No matching results found for this company."
-                    : "Select a company to see matching results."}
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {matchingResults.map((match) => (
-                  <Card
-                    key={match.id}
-                    className="hover:shadow-md transition-shadow"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-semibold">
-                            {match.tenders?.title || "Untitled Tender"}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            {match.tenders?.buyer || "Unknown buyer"} • Due:{" "}
-                            {match.tenders?.deadline
-                              ? new Date(
-                                  match.tenders.deadline
-                                ).toLocaleDateString()
-                              : "N/A"}
-                          </p>
-                        </div>
-                        <Badge
-                          variant={
-                            match.overall_score >= 80 ? "default" : "secondary"
-                          }
-                        >
-                          {match.overall_score}% Match
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* TenderMatching Component */}
+          {selectedCompany ? (
+            <TenderMatching companyId={selectedCompany.id} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Select a company to see matching results.
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Saved Tenders Tab */}
         <TabsContent value="saved" className="space-y-6">
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6 dark:bg-blue-950/20">
-            <h3 className="font-semibold text-foreground mb-2">
-              Your Saved Tenders
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Review all the tenders you&apos;ve bookmarked for future reference.
-            </p>
-          </div>
-
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Saved tenders functionality will be available soon.
-            </CardContent>
-          </Card>
+          <SavedTenders companyId={selectedCompany?.id} />
         </TabsContent>
       </Tabs>
     </div>

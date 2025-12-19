@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   FileText,
   Building2,
@@ -22,14 +23,85 @@ import {
   Target,
   Clock,
   ArrowRight,
+  Award,
 } from "lucide-react";
+import {
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+import { CompanySelector } from "@/components/CompanySelector";
+import { TenderDetailDialog } from "@/components/TenderDetailDialog";
+import { BusinessChatbot } from "@/components/BusinessChatbot";
+
+type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface DashboardStats {
   totalTenders: number;
   matchingResults: number;
   companies: number;
   projects: number;
-  recentMatches: any[];
+  recentMatches: MatchingResult[];
+}
+
+interface MatchingResult {
+  id: string;
+  tender_id: string;
+  company_id: string;
+  overall_score: number;
+  capability_score: number;
+  experience_score: number;
+  location_score: number;
+  certification_score: number;
+  match_reasons: string[];
+  improvement_suggestions: string[];
+  ai_analysis: Record<string, unknown>;
+  is_bookmarked: boolean;
+  is_applied: boolean;
+  created_at: string;
+  tenders: {
+    title: string;
+    buyer: string;
+    description: string;
+    location: string;
+    deadline: string;
+    budget_min: number;
+    budget_max: number;
+  };
+  companies: {
+    company_name: string;
+  };
+}
+
+interface CompanyAnalysis {
+  performanceBenchmark: {
+    technicalExpertise: number;
+    safetyStandards: number;
+    innovation: number;
+    projectExperience: number;
+    certifications: number;
+    marketReputation: number;
+    financialHealth: number;
+    operationalCapacity: number;
+    overallScore: number;
+  };
+  coreCompetencies: string[];
+  digitalMaturity: string;
+  safetyRating: string;
+  marketPosition: string;
+  businessInsights: string[];
+  competitivePositioning: string;
+  swotSummary: {
+    strengths: string[];
+    weaknesses: string[];
+    opportunities: string[];
+    threats: string[];
+  };
+  executiveSummary: string;
 }
 
 export default function DashboardPage() {
@@ -46,7 +118,15 @@ export default function DashboardPage() {
     recentMatches: [],
   });
   const [loading, setLoading] = useState(true);
-  const [userCompanies, setUserCompanies] = useState<any[]>([]);
+  const [userCompanies, setUserCompanies] = useState<Company[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [companyAnalysis, setCompanyAnalysis] =
+    useState<CompanyAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<MatchingResult | null>(
+    null
+  );
 
   // Initialize supabase client
   useEffect(() => {
@@ -58,6 +138,64 @@ export default function DashboardPage() {
       setLoading(false);
     }
   }, []);
+
+  // Load stored analysis when company is selected
+  const loadStoredAnalysis = useCallback(() => {
+    if (selectedCompany?.ai_analysis) {
+      setCompanyAnalysis(selectedCompany.ai_analysis as unknown as CompanyAnalysis);
+    } else {
+      setCompanyAnalysis(null);
+    }
+  }, [selectedCompany]);
+
+  useEffect(() => {
+    if (selectedCompany) {
+      loadStoredAnalysis();
+    }
+  }, [selectedCompany, loadStoredAnalysis]);
+
+  // Fetch company analysis
+  const fetchCompanyAnalysis = async () => {
+    if (!selectedCompany?.id || !supabase) return;
+    setIsAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "analyze-company",
+        {
+          body: { companyId: selectedCompany.id },
+        }
+      );
+
+      if (error) {
+        console.error("Error fetching analysis:", error);
+        return;
+      }
+
+      if (data?.success && data?.analysis) {
+        setCompanyAnalysis(data.analysis);
+
+        // Refresh company data to get updated ai_analysis field
+        const { data: updatedCompany, error: fetchError } = await supabase
+          .from("companies")
+          .select("*")
+          .eq("id", selectedCompany.id)
+          .single();
+
+        if (fetchError) {
+          console.error("Error fetching updated company data:", fetchError);
+        } else if (updatedCompany) {
+          setSelectedCompany(updatedCompany);
+          setUserCompanies((prev) =>
+            prev.map((c) => (c.id === updatedCompany.id ? updatedCompany : c))
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching company analysis:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Fetch dashboard data
   useEffect(() => {
@@ -71,8 +209,10 @@ export default function DashboardPage() {
           .select("*")
           .eq("user_id", user.id);
 
-        if (userCompaniesData) {
+        if (userCompaniesData && userCompaniesData.length > 0) {
           setUserCompanies(userCompaniesData);
+          // Auto-select first company
+          setSelectedCompany(userCompaniesData[0]);
         }
 
         // Fetch total tenders
@@ -81,7 +221,7 @@ export default function DashboardPage() {
           .select("*", { count: "exact", head: true });
 
         // Fetch matching results for user's companies
-        let matchingResults: any[] = [];
+        let matchingResults: MatchingResult[] = [];
         let matchCount = 0;
 
         if (userCompaniesData && userCompaniesData.length > 0) {
@@ -91,7 +231,7 @@ export default function DashboardPage() {
             .select(
               `
               *,
-              tenders(title, buyer, deadline),
+              tenders(title, buyer, deadline, description, location, budget_min, budget_max),
               companies(company_name)
             `,
               { count: "exact" }
@@ -100,7 +240,7 @@ export default function DashboardPage() {
             .order("created_at", { ascending: false })
             .limit(5);
 
-          matchingResults = matchData || [];
+          matchingResults = (matchData as MatchingResult[]) || [];
           matchCount = count || 0;
         }
 
@@ -133,6 +273,49 @@ export default function DashboardPage() {
 
     fetchDashboardData();
   }, [supabase, user]);
+
+  // Prepare radar chart data
+  const radarData = companyAnalysis?.performanceBenchmark
+    ? [
+        {
+          subject: "Technical Expertise",
+          A: companyAnalysis.performanceBenchmark.technicalExpertise || 0,
+          fullMark: 100,
+        },
+        {
+          subject: "Safety Standards",
+          A: companyAnalysis.performanceBenchmark.safetyStandards || 0,
+          fullMark: 100,
+        },
+        {
+          subject: "Innovation",
+          A: companyAnalysis.performanceBenchmark.innovation || 0,
+          fullMark: 100,
+        },
+        {
+          subject: "Project Experience",
+          A: companyAnalysis.performanceBenchmark.projectExperience || 0,
+          fullMark: 100,
+        },
+        {
+          subject: "Certifications",
+          A: companyAnalysis.performanceBenchmark.certifications || 0,
+          fullMark: 100,
+        },
+        {
+          subject: "Market Reputation",
+          A: companyAnalysis.performanceBenchmark.marketReputation || 0,
+          fullMark: 100,
+        },
+      ]
+    : [];
+
+  // Filter matches by selected company
+  const filteredMatches = selectedCompany
+    ? stats.recentMatches.filter(
+        (match) => match.company_id === selectedCompany.id
+      )
+    : stats.recentMatches;
 
   if (loading) {
     return (
@@ -172,14 +355,14 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalTenders}</div>
             <p className="text-xs text-muted-foreground">
-              Available opportunities
+              <span className="text-green-600">+12%</span> from last month
             </p>
           </CardContent>
         </Card>
 
         <Card
           className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => router.push("/tenders")}
+          onClick={() => router.push("/tenders?tab=matches")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -190,7 +373,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.matchingResults}</div>
             <p className="text-xs text-muted-foreground">
-              Based on your profile
+              <span className="text-green-600">+8%</span> from last week
             </p>
           </CardContent>
         </Card>
@@ -221,56 +404,245 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.projects}</div>
-            <p className="text-xs text-muted-foreground">
-              Consulting projects
-            </p>
+            <p className="text-xs text-muted-foreground">Consulting projects</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Company Overview */}
+      {/* Company Selector */}
       {userCompanies.length > 0 && (
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Your Companies
-            </CardTitle>
-            <CardDescription>
-              Companies registered to your account
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Select Company for Analysis
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {userCompanies.map((company) => (
-                <div
-                  key={company.id}
-                  className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => router.push(`/company/${company.id}`)}
-                >
-                  <div>
-                    <p className="font-medium">{company.company_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {company.description?.slice(0, 100) || "No description"}
-                      {company.description?.length > 100 ? "..." : ""}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      company.status === "active" ? "default" : "secondary"
-                    }
-                  >
-                    {company.status || "active"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+            <CompanySelector
+              selectedCompanyId={selectedCompany?.id}
+              onCompanySelect={setSelectedCompany}
+              showAddButton={true}
+            />
           </CardContent>
         </Card>
       )}
 
-      {/* Recent Matches */}
-      {stats.recentMatches.length > 0 && (
+      {/* Performance Benchmark and Company Overview */}
+      {selectedCompany && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Performance Benchmark Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5" />
+                    Company Performance Benchmark
+                  </CardTitle>
+                  <CardDescription>
+                    AI-powered assessment of {selectedCompany.company_name}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  {companyAnalysis?.performanceBenchmark?.overallScore && (
+                    <Badge variant="default" className="text-lg px-3 py-1">
+                      {companyAnalysis.performanceBenchmark.overallScore}/100
+                    </Badge>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchCompanyAnalysis}
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing
+                      ? "Analyzing..."
+                      : companyAnalysis
+                      ? "Re-analyze"
+                      : "Analyze"}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {companyAnalysis ? (
+                <div className="space-y-4">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <RadarChart data={radarData}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
+                      <PolarRadiusAxis
+                        angle={90}
+                        domain={[0, 100]}
+                        tick={{ fontSize: 10 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          color: "hsl(var(--foreground))",
+                          fontSize: "12px",
+                        }}
+                        labelStyle={{ color: "hsl(var(--foreground))" }}
+                        formatter={(value) => [`${value}/100`, "Score"]}
+                      />
+                      <Radar
+                        name="Performance Score"
+                        dataKey="A"
+                        stroke="hsl(var(--primary))"
+                        fill="hsl(var(--primary))"
+                        fillOpacity={0.2}
+                        strokeWidth={2}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                  <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg border border-border">
+                    <strong className="text-foreground">
+                      Executive Summary:
+                    </strong>{" "}
+                    {companyAnalysis?.executiveSummary || "No summary available"}
+                  </div>
+                </div>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground border border-dashed border-border rounded-lg bg-muted/30">
+                  <div className="text-center">
+                    <Award className="h-16 w-16 mx-auto mb-3 opacity-40" />
+                    <p className="font-medium mb-1">
+                      No Performance Benchmark Available
+                    </p>
+                    <p className="text-sm mb-4">
+                      Click &quot;Analyze&quot; to generate your company&apos;s
+                      performance benchmark
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Company Overview Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Company Overview
+              </CardTitle>
+              <CardDescription>
+                Key information and business insights
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                  <span className="text-sm font-medium">Company Name</span>
+                  <span className="text-sm">{selectedCompany.company_name}</span>
+                </div>
+
+                {selectedCompany.safety_rating && (
+                  <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                    <span className="text-sm font-medium">Safety Rating</span>
+                    <Badge
+                      variant="default"
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {selectedCompany.safety_rating}
+                    </Badge>
+                  </div>
+                )}
+
+                {selectedCompany.market_position && (
+                  <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                    <span className="text-sm font-medium">Market Position</span>
+                    <span className="text-sm">
+                      {selectedCompany.market_position}
+                    </span>
+                  </div>
+                )}
+
+                {/* Financial Data */}
+                {selectedCompany.financial_data &&
+                  Object.keys(
+                    selectedCompany.financial_data as Record<string, unknown>
+                  ).length > 0 && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">
+                          Financial Information
+                        </h4>
+                        {Object.entries(
+                          selectedCompany.financial_data as Record<
+                            string,
+                            { value: number | string }
+                          >
+                        ).map(([key, field]) => (
+                          <div
+                            key={key}
+                            className="flex justify-between items-center p-3 bg-muted/30 rounded-lg"
+                          >
+                            <span className="text-sm font-medium capitalize">
+                              {key.replace(/([A-Z])/g, " $1").trim()}
+                            </span>
+                            <span className="text-sm font-semibold">
+                              {typeof field.value === "number"
+                                ? `£${field.value.toLocaleString()}`
+                                : field.value || "N/A"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                  <span className="text-sm font-medium">Status</span>
+                  <Badge
+                    variant={
+                      selectedCompany.status === "active"
+                        ? "default"
+                        : "secondary"
+                    }
+                    className={
+                      selectedCompany.status === "active"
+                        ? "bg-emerald-600 hover:bg-emerald-700"
+                        : "bg-orange-600 hover:bg-orange-700"
+                    }
+                  >
+                    {selectedCompany.status
+                      ? selectedCompany.status.charAt(0).toUpperCase() +
+                        selectedCompany.status.slice(1)
+                      : "Active"}
+                  </Badge>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => router.push("/profile")}
+                  >
+                    View Profile
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => router.push("/directory")}
+                  >
+                    Browse Directory
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Recent Matches - Filter by selected company */}
+      {filteredMatches.length > 0 && (
         <Card className="mb-8">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -280,7 +652,9 @@ export default function DashboardPage() {
                   Recent Matches
                 </CardTitle>
                 <CardDescription>
-                  Your latest tender matching opportunities
+                  {selectedCompany
+                    ? `Latest matches for ${selectedCompany.company_name}`
+                    : "Your latest tender matching opportunities"}
                 </CardDescription>
               </div>
               <Button variant="outline" onClick={() => router.push("/tenders")}>
@@ -291,15 +665,15 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats.recentMatches.map((match) => (
+              {filteredMatches.map((match) => (
                 <div
                   key={match.id}
-                  className="flex items-center justify-between p-4 border hover:bg-muted/50 transition-colors rounded-lg"
+                  className="flex items-center justify-between p-4 border hover:bg-muted/50 transition-colors rounded-2xl"
                 >
                   <div className="flex-1">
                     <h4 className="font-semibold">{match.tenders?.title}</h4>
                     <p className="text-sm text-muted-foreground">
-                      {match.tenders?.buyer} • Due:{" "}
+                      {match.tenders?.buyer} - Due:{" "}
                       {match.tenders?.deadline
                         ? new Date(match.tenders.deadline).toLocaleDateString()
                         : "N/A"}
@@ -317,7 +691,14 @@ export default function DashboardPage() {
                       </Badge>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedMatch(match);
+                      setDialogOpen(true);
+                    }}
+                  >
                     View Details
                   </Button>
                 </div>
@@ -331,7 +712,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card
           className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => router.push("/companies")}
+          onClick={() => router.push("/directory")}
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -380,6 +761,37 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Tender Detail Dialog */}
+      {selectedMatch && (
+        <TenderDetailDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          result={selectedMatch}
+          companyId={selectedCompany?.id}
+        />
+      )}
+
+      {/* Business Chatbot */}
+      <BusinessChatbot
+        companyData={
+          selectedCompany
+            ? {
+                company_name: selectedCompany.company_name || undefined,
+                description: selectedCompany.description || undefined,
+                key_capabilities: Array.isArray(selectedCompany.key_capabilities)
+                  ? selectedCompany.key_capabilities.join(", ")
+                  : undefined,
+                certifications: Array.isArray(selectedCompany.certifications)
+                  ? selectedCompany.certifications.join(", ")
+                  : undefined,
+                equipment: Array.isArray(selectedCompany.equipment)
+                  ? selectedCompany.equipment.join(", ")
+                  : undefined,
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

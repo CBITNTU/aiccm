@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,16 +63,30 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     try {
-      // Fetch users from profiles table with their roles
+      // Fetch users from profiles table
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_roles (role)
-        `);
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
 
+      // Fetch all user roles
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Create a map of user_id -> role for quick lookup
+      const roleMap = new Map<string, 'admin' | 'user'>();
+      roles?.forEach(r => {
+        if (r.role === 'admin' || r.role === 'user') {
+          roleMap.set(r.user_id, r.role);
+        }
+      });
+
+      // Combine profiles with roles
       const formattedUsers: User[] = profiles?.map(profile => ({
         id: profile.user_id,
         email: profile.email || '',
@@ -81,7 +94,7 @@ const AdminUsers = () => {
         last_name: profile.last_name,
         created_at: profile.created_at,
         last_sign_in_at: profile.created_at,
-        role: ((profile as any).user_roles?.[0]?.role as 'admin' | 'user') || 'user'
+        role: roleMap.get(profile.user_id) || 'user'
       })) || [];
 
       setUsers(formattedUsers);
@@ -174,40 +187,31 @@ const AdminUsers = () => {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header variant="app" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              You don't have permission to access this page. Admin access required.
-            </AlertDescription>
-          </Alert>
-        </div>
+      <div className="space-y-6">
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            You don't have permission to access this page. Admin access required.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header variant="app" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading users...</p>
-        </div>
+      <div className="text-center py-8">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Loading users...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header variant="app" />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="space-y-6">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">User Management</h1>
+            <h2 className="text-2xl font-bold text-foreground">User Management</h2>
             <p className="text-muted-foreground mt-2">Manage platform users and their permissions</p>
           </div>
           
@@ -319,7 +323,6 @@ const AdminUsers = () => {
             </AlertDescription>
           </Alert>
         </div>
-      </div>
     </div>
   );
 };

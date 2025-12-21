@@ -28,7 +28,7 @@ interface User {
   email: string;
   created_at: string;
   last_sign_in_at: string;
-  role?: "admin" | "user";
+  role?: "superadmin" | "sme-owner";
   first_name?: string;
   last_name?: string;
 }
@@ -64,7 +64,7 @@ export default function AdminUsersPage() {
     try {
       const { data } = await supabase.rpc("has_role", {
         _user_id: user.id,
-        _role: "admin",
+        _role: "superadmin",
       });
 
       setIsAdmin(data ?? false);
@@ -109,7 +109,7 @@ export default function AdminUsersPage() {
           last_name: profile.last_name || undefined,
           created_at: profile.created_at,
           last_sign_in_at: profile.created_at,
-          role: (roleMap.get(profile.user_id) as "admin" | "user") || "user",
+          role: (roleMap.get(profile.user_id) as "superadmin" | "sme-owner") || "sme-owner",
         })) || [];
 
       setUsers(formattedUsers);
@@ -151,26 +151,26 @@ export default function AdminUsersPage() {
     }
   };
 
-  const toggleUserRole = async (userId: string, currentRole: "admin" | "user") => {
+  const toggleUserRole = async (userId: string, currentRole: "superadmin" | "sme-owner") => {
     if (!supabase) return;
 
-    const newRole = currentRole === "admin" ? "user" : "admin";
+    const newRole = currentRole === "superadmin" ? "sme-owner" : "superadmin";
 
     try {
-      if (newRole === "admin") {
-        // Add admin role
+      if (newRole === "superadmin") {
+        // Add superadmin role
         const { error } = await supabase
           .from("user_roles")
-          .insert({ user_id: userId, role: "admin" });
+          .insert({ user_id: userId, role: "superadmin" });
 
         if (error) throw error;
       } else {
-        // Remove admin role
+        // Remove superadmin role
         const { error } = await supabase
           .from("user_roles")
           .delete()
           .eq("user_id", userId)
-          .eq("role", "admin");
+          .eq("role", "superadmin");
 
         if (error) throw error;
       }
@@ -201,7 +201,7 @@ export default function AdminUsersPage() {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              You don&apos;t have permission to access this page. Admin access
+              You don&apos;t have permission to access this page. Superadmin access
               required.
             </AlertDescription>
           </Alert>
@@ -291,11 +291,11 @@ export default function AdminUsersPage() {
                       <TableCell>
                         <Badge
                           variant={
-                            userData.role === "admin" ? "default" : "secondary"
+                            userData.role === "superadmin" ? "default" : "secondary"
                           }
                           className="capitalize"
                         >
-                          {userData.role}
+                          {userData.role === "superadmin" ? "Superadmin" : "SME Owner"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -307,13 +307,13 @@ export default function AdminUsersPage() {
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              toggleUserRole(userData.id, userData.role || "user")
+                              toggleUserRole(userData.id, userData.role || "sme-owner")
                             }
                           >
                             <Shield className="w-4 h-4 mr-1" />
-                            {userData.role === "admin"
-                              ? "Remove Admin"
-                              : "Make Admin"}
+                            {userData.role === "superadmin"
+                              ? "Remove Superadmin"
+                              : "Make Superadmin"}
                           </Button>
                           <Button
                             variant="destructive"
@@ -345,14 +345,14 @@ export default function AdminUsersPage() {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Admin Instructions:</strong> To create an admin account,
+              <strong>Superadmin Instructions:</strong> To create a superadmin account,
               you need to:
               <br />
               1. Create a regular account through signup
               <br />
-              2. Update the migration SQL to insert your email as admin
+              2. Update the migration SQL to insert your email as superadmin
               <br />
-              3. Or use the &quot;Make Admin&quot; button on an existing user
+              3. Or use the &quot;Make Superadmin&quot; button on an existing user
             </AlertDescription>
           </Alert>
         </div>

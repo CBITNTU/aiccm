@@ -1,38 +1,39 @@
--- Migration to rename roles: 'admin' -> 'superadmin', 'user' -> 'sme-owner'
--- This migration updates the enum type and migrates all existing data
+-- Step 2: Migrate existing data from old role names to new ones
+-- This runs after the enum values are added in the previous migration
 
--- Step 1: Add new enum values to app_role
-DO $$ 
+-- Migrate data: delete old and insert new
+DO $$
+DECLARE
+  rec RECORD;
+  new_role_text TEXT;
 BEGIN
-  -- Add 'superadmin' if it doesn't exist
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum 
-    WHERE enumlabel = 'superadmin' 
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'app_role')
-  ) THEN
-    ALTER TYPE public.app_role ADD VALUE 'superadmin';
-  END IF;
-
-  -- Add 'sme-owner' if it doesn't exist
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum 
-    WHERE enumlabel = 'sme-owner' 
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'app_role')
-  ) THEN
-    ALTER TYPE public.app_role ADD VALUE 'sme-owner';
-  END IF;
+  -- Loop through all user roles
+  FOR rec IN 
+    SELECT user_id, role::text as old_role, created_at
+    FROM public.user_roles
+  LOOP
+    -- Determine new role name
+    IF rec.old_role = 'admin' THEN
+      new_role_text := 'superadmin';
+    ELSIF rec.old_role = 'user' THEN
+      new_role_text := 'sme-owner';
+    ELSE
+      new_role_text := rec.old_role; -- Keep as-is for any other values
+    END IF;
+    
+    -- Only update if role name changed
+    IF new_role_text != rec.old_role THEN
+      -- Delete old role entry
+      DELETE FROM public.user_roles 
+      WHERE user_id = rec.user_id AND role::text = rec.old_role;
+      
+      -- Insert new role entry
+      INSERT INTO public.user_roles (user_id, role, created_at)
+      VALUES (rec.user_id, new_role_text::app_role, rec.created_at)
+      ON CONFLICT (user_id, role) DO NOTHING;
+    END IF;
+  END LOOP;
 END $$;
-
--- Step 2: Migrate existing data
--- Update all 'admin' roles to 'superadmin'
-UPDATE public.user_roles
-SET role = 'superadmin'::app_role
-WHERE role = 'admin'::app_role;
-
--- Update all 'user' roles to 'sme-owner'
-UPDATE public.user_roles
-SET role = 'sme-owner'::app_role
-WHERE role = 'user'::app_role;
 
 -- Step 3: Update the default role in user_roles table
 ALTER TABLE public.user_roles 
@@ -65,9 +66,7 @@ BEGIN
 END;
 $$;
 
--- Step 5: Update has_role function calls in RLS policies
--- Note: We'll update policies that reference 'admin' to use 'superadmin'
--- First, drop existing policies that reference 'admin'
+-- Step 5: Update RLS policies - drop old ones first
 DROP POLICY IF EXISTS "Admins can view all roles" ON public.user_roles;
 DROP POLICY IF EXISTS "Admins can manage all roles" ON public.user_roles;
 DROP POLICY IF EXISTS "Admins can view all companies" ON public.companies;
@@ -79,13 +78,16 @@ DROP POLICY IF EXISTS "Admins can delete taxonomies" ON public.taxonomies;
 -- Recreate policies with 'superadmin'
 DO $$ 
 BEGIN
-  -- User roles policies
   CREATE POLICY "Superadmins can view all roles"
   ON public.user_roles
   FOR SELECT
   TO authenticated
   USING (public.has_role(auth.uid(), 'superadmin'::app_role));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
+DO $$ 
+BEGIN
   CREATE POLICY "Superadmins can manage all roles"
   ON public.user_roles
   FOR ALL
@@ -94,7 +96,6 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- Companies policies (if they exist)
 DO $$ 
 BEGIN
   CREATE POLICY "Superadmins can view all companies"
@@ -115,7 +116,6 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- Taxonomy policies (if they exist)
 DO $$ 
 BEGIN
   CREATE POLICY "Superadmins can insert taxonomies"
@@ -146,11 +146,4 @@ BEGIN
   USING (public.has_role(auth.uid(), 'superadmin'::app_role));
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
-
--- Step 6: Update any other functions or triggers that reference 'admin'
--- Check for any other references in the codebase and update them
-
--- Note: The old enum values ('admin', 'user') will remain in the enum type
--- but should not be used going forward. They can be removed in a future migration
--- if needed, but keeping them allows for rollback if necessary.
 

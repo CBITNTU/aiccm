@@ -23,7 +23,7 @@ interface User {
   email: string;
   created_at: string;
   last_sign_in_at: string;
-  role?: 'admin' | 'user';
+  role?: 'superadmin' | 'sme-owner';
   first_name?: string;
   last_name?: string;
 }
@@ -52,7 +52,7 @@ const AdminUsers = () => {
     try {
       const { data } = await supabase.rpc('has_role', {
         _user_id: user.id,
-        _role: 'admin'
+        _role: 'superadmin'
       });
       
       setIsAdmin(data);
@@ -79,10 +79,10 @@ const AdminUsers = () => {
       if (rolesError) throw rolesError;
 
       // Create a map of user_id -> role for quick lookup
-      const roleMap = new Map<string, 'admin' | 'user'>();
+      const roleMap = new Map<string, 'superadmin' | 'sme-owner'>();
       roles?.forEach(r => {
-        if (r.role === 'admin' || r.role === 'user') {
-          roleMap.set(r.user_id, r.role);
+        if (r.role === 'superadmin' || r.role === 'sme-owner') {
+          roleMap.set(r.user_id, r.role as 'superadmin' | 'sme-owner');
         }
       });
 
@@ -94,7 +94,7 @@ const AdminUsers = () => {
         last_name: profile.last_name,
         created_at: profile.created_at,
         last_sign_in_at: profile.created_at,
-        role: roleMap.get(profile.user_id) || 'user'
+        role: roleMap.get(profile.user_id) || 'sme-owner'
       })) || [];
 
       setUsers(formattedUsers);
@@ -141,24 +141,24 @@ const AdminUsers = () => {
     }
   };
 
-  const toggleUserRole = async (userId: string, currentRole: 'admin' | 'user') => {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  const toggleUserRole = async (userId: string, currentRole: 'superadmin' | 'sme-owner') => {
+    const newRole = currentRole === 'superadmin' ? 'sme-owner' : 'superadmin';
     
     try {
-      if (newRole === 'admin') {
-        // Add admin role
+      if (newRole === 'superadmin') {
+        // Add superadmin role
         const { error } = await supabase
           .from('user_roles')
-          .insert({ user_id: userId, role: 'admin' });
+          .insert({ user_id: userId, role: 'superadmin' });
         
         if (error) throw error;
       } else {
-        // Remove admin role
+        // Remove superadmin role
         const { error } = await supabase
           .from('user_roles')
           .delete()
           .eq('user_id', userId)
-          .eq('role', 'admin');
+          .eq('role', 'superadmin');
         
         if (error) throw error;
       }
@@ -191,7 +191,7 @@ const AdminUsers = () => {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            You don't have permission to access this page. Admin access required.
+            You don't have permission to access this page. Superadmin access required.
           </AlertDescription>
         </Alert>
       </div>
@@ -269,10 +269,10 @@ const AdminUsers = () => {
                       <TableCell>{userData.email}</TableCell>
                       <TableCell>
                         <Badge 
-                          variant={userData.role === 'admin' ? 'default' : 'secondary'}
+                          variant={userData.role === 'superadmin' ? 'default' : 'secondary'}
                           className="capitalize"
                         >
-                          {userData.role}
+                          {userData.role === 'superadmin' ? 'Superadmin' : 'SME Owner'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -283,10 +283,10 @@ const AdminUsers = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => toggleUserRole(userData.id, userData.role || 'user')}
+                            onClick={() => toggleUserRole(userData.id, userData.role || 'sme-owner')}
                           >
                             <Shield className="w-4 h-4 mr-1" />
-                            {userData.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                            {userData.role === 'superadmin' ? 'Remove Superadmin' : 'Make Superadmin'}
                           </Button>
                           <Button
                             variant="destructive"
@@ -316,10 +316,10 @@ const AdminUsers = () => {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Admin Instructions:</strong> To create an admin account, you need to:
+              <strong>Superadmin Instructions:</strong> To create a superadmin account, you need to:
               <br />1. Create a regular account through signup
-              <br />2. Update the migration SQL to insert your email as admin
-              <br />3. Or use the "Make Admin" button on an existing user
+              <br />2. Update the migration SQL to insert your email as superadmin
+              <br />3. Or use the "Make Superadmin" button on an existing user
             </AlertDescription>
           </Alert>
         </div>

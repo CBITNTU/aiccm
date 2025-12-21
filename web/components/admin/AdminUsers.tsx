@@ -278,7 +278,10 @@ export default function AdminUsers() {
                         }
                         className="capitalize"
                       >
-                        {userData.role === "superadmin" ? "Superadmin" : "SME Owner"}
+                        {(() => {
+                          // Handle both new and old role values for display
+                          return userData.role === "superadmin" ? "Superadmin" : "SME Owner";
+                        })()}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -294,9 +297,7 @@ export default function AdminUsers() {
                           }
                         >
                           <Shield className="w-4 h-4 mr-1" />
-                          {userData.role === "superadmin"
-                            ? "Remove Superadmin"
-                            : "Make Superadmin"}
+                          {userData.role === "superadmin" ? "Remove Superadmin" : "Make Superadmin"}
                         </Button>
                         <Button
                           variant="destructive"

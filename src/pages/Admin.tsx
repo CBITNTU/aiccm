@@ -100,7 +100,7 @@ const Admin = () => {
   // Check admin access
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
-      toast.error("Admin access required");
+      toast.error("Superadmin access required");
       navigate("/dashboard");
     }
   }, [isAdmin, roleLoading, navigate]);

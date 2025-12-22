@@ -2,13 +2,13 @@ import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
   createAdminClient,
-  checkAdminRole,
   apiResponse,
   apiError,
+  checkSuperadminRole,
 } from "@/lib/api";
+import { Database } from "@/lib/supabase/types";
 
-const FIND_TENDER_API_BASE =
-  "https://www.find-tender.service.gov.uk/api/1.0";
+const FIND_TENDER_API_BASE = "https://www.find-tender.service.gov.uk/api/1.0";
 
 interface TenderData {
   id?: string;
@@ -32,7 +32,10 @@ interface TenderData {
 }
 
 // Transform OCDS release data to our tender format
-function transformOCDSToTender(release: Record<string, unknown>, ocid: string): TenderData {
+function transformOCDSToTender(
+  release: Record<string, unknown>,
+  ocid: string
+): TenderData {
   const tender = (release.tender || {}) as Record<string, unknown>;
   const parties = (release.parties || []) as Array<Record<string, unknown>>;
   const buyer = parties.find((p) =>
@@ -58,12 +61,19 @@ function transformOCDSToTender(release: Record<string, unknown>, ocid: string): 
   const items = tender.items as Array<Record<string, unknown>> | undefined;
   if (items && Array.isArray(items)) {
     items.forEach((item) => {
-      const classification = item.classification as Record<string, unknown> | undefined;
+      const classification = item.classification as
+        | Record<string, unknown>
+        | undefined;
       if (classification?.id) {
         cpvSet.add(classification.id as string);
       }
-      const additionalClassifications = item.additionalClassifications as Array<Record<string, unknown>> | undefined;
-      if (additionalClassifications && Array.isArray(additionalClassifications)) {
+      const additionalClassifications = item.additionalClassifications as
+        | Array<Record<string, unknown>>
+        | undefined;
+      if (
+        additionalClassifications &&
+        Array.isArray(additionalClassifications)
+      ) {
         additionalClassifications.forEach((ac) => {
           if (ac.id && (ac.scheme === "CPV" || !ac.scheme)) {
             cpvSet.add(ac.id as string);
@@ -74,31 +84,46 @@ function transformOCDSToTender(release: Record<string, unknown>, ocid: string): 
   }
 
   // Fallback to tender-level classification
-  const tenderClassification = tender.classification as Record<string, unknown> | undefined;
+  const tenderClassification = tender.classification as
+    | Record<string, unknown>
+    | undefined;
   if (cpvSet.size === 0 && tenderClassification?.id) {
     cpvSet.add(tenderClassification.id as string);
   }
 
   const cpvCodes = Array.from(cpvSet);
 
-  const tenderPeriod = tender.tenderPeriod as Record<string, unknown> | undefined;
-  const enquiryPeriod = tender.enquiryPeriod as Record<string, unknown> | undefined;
+  const tenderPeriod = tender.tenderPeriod as
+    | Record<string, unknown>
+    | undefined;
+  const enquiryPeriod = tender.enquiryPeriod as
+    | Record<string, unknown>
+    | undefined;
   const tenderValue = tender.value as Record<string, unknown> | undefined;
   const minValue = tender.minValue as Record<string, unknown> | undefined;
   const maxValue = tender.maxValue as Record<string, unknown> | undefined;
-  const deliveryLocation = tender.deliveryLocation as Record<string, unknown> | undefined;
-  const buyerContactPoint = buyer?.contactPoint as Record<string, unknown> | undefined;
+  const deliveryLocation = tender.deliveryLocation as
+    | Record<string, unknown>
+    | undefined;
+  const buyerContactPoint = buyer?.contactPoint as
+    | Record<string, unknown>
+    | undefined;
 
   return {
     id: (release.id as string) || ocid,
     reference_number: (release.id as string) || ocid,
     title: (tender.title as string) || "Untitled Tender",
-    description: (tender.description as string) || (release.description as string) || "",
+    description:
+      (tender.description as string) || (release.description as string) || "",
     buyer: (buyer?.name as string) || "Unknown Buyer",
     location: (deliveryLocation?.description as string) || "United Kingdom",
-    status: tender.status === "active" ? "open" : ((tender.status as string) || "open"),
+    status:
+      tender.status === "active" ? "open" : (tender.status as string) || "open",
     publication_date: (release.date as string) || new Date().toISOString(),
-    deadline: (tenderPeriod?.endDate as string) || (enquiryPeriod?.endDate as string) || null,
+    deadline:
+      (tenderPeriod?.endDate as string) ||
+      (enquiryPeriod?.endDate as string) ||
+      null,
     budget_min: convertBudget(tenderValue?.amount || minValue?.amount),
     budget_max: convertBudget(tenderValue?.amount || maxValue?.amount),
     cpv_codes: cpvCodes,
@@ -174,7 +199,9 @@ async function fetchFromFindTenderAPI(
 
   const data = await response.json();
   console.log(
-    `Received ${data.releases?.length || 0} releases from API (Admin: ${isAdmin})`
+    `Received ${
+      data.releases?.length || 0
+    } releases from API (Admin: ${isAdmin})`
   );
 
   return data;
@@ -191,8 +218,8 @@ export async function POST(request: NextRequest) {
 
     console.log("Authenticated user:", user.id);
 
-    // Check if user has admin role
-    const isAdmin = await checkAdminRole(user.id);
+    // Check if user has superadmin role
+    const isAdmin = await checkSuperadminRole(user.id);
 
     const {
       searchTerm,
@@ -204,7 +231,7 @@ export async function POST(request: NextRequest) {
 
     // If this is an admin import request, check admin permissions
     if (adminImport && !isAdmin) {
-      return apiError("Admin access required to import tenders", 403);
+      return apiError("Superadmin access required to import tenders", 403);
     }
 
     // Fetch from real Find a Tender API with admin privileges and filters
@@ -218,7 +245,9 @@ export async function POST(request: NextRequest) {
 
     // Transform OCDS releases to our tender format
     let tenders: TenderData[] = [];
-    const releases = ocdsData.releases as Array<Record<string, unknown>> | undefined;
+    const releases = ocdsData.releases as
+      | Array<Record<string, unknown>>
+      | undefined;
     if (releases && releases.length > 0) {
       tenders = releases.map((release) =>
         transformOCDSToTender(release, release.ocid as string)
@@ -303,8 +332,13 @@ export async function POST(request: NextRequest) {
       if (newTenders.length > 0) {
         const { data: insertedTenders, error: insertError } = await supabase
           .from("tenders")
-          .upsert(newTenders, { onConflict: "reference_number" })
-          .select("id, reference_number, title, description, buyer, cpv_codes, location");
+          .upsert(
+            newTenders as unknown as Database["public"]["Tables"]["tenders"]["Insert"][],
+            { onConflict: "reference_number" }
+          )
+          .select(
+            "id, reference_number, title, description, buyer, cpv_codes, location"
+          );
 
         if (insertError) {
           console.error("Error importing tenders:", insertError);
@@ -328,7 +362,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract pagination info from OCDS response
-    const links = ocdsData.links as Record<string, { href?: string }> | undefined;
+    const links = ocdsData.links as
+      | Record<string, { href?: string }>
+      | undefined;
     const nextCursor = links?.next?.href
       ? new URL(links.next.href).searchParams.get("cursor")
       : null;

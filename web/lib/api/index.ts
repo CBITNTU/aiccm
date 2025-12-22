@@ -77,8 +77,8 @@ export async function getAuthenticatedUser(request: NextRequest) {
   return { user, supabase, error: null };
 }
 
-// Check if user has admin role
-export async function checkAdminRole(userId: string): Promise<boolean> {
+// Check if user has superadmin role
+export async function checkSuperadminRole(userId: string): Promise<boolean> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("user_roles")
@@ -90,7 +90,7 @@ export async function checkAdminRole(userId: string): Promise<boolean> {
     return false;
   }
 
-  return data.role === "admin";
+  return data.role === "superadmin";
 }
 
 // OpenAI client singleton

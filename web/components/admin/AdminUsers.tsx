@@ -28,8 +28,8 @@ interface User {
   created_at: string;
   last_sign_in_at: string;
   role?: "superadmin" | "sme-owner";
-  first_name?: string;
-  last_name?: string;
+  first_name?: string | null;
+  last_name?: string | null;
 }
 
 export default function AdminUsers() {

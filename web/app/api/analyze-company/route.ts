@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         "executiveSummary",
       ];
       const missingFields = requiredFields.filter(
-        (field) => (analysis as Record<string, unknown>)[field] === undefined
+        (field) => (analysis as unknown as Record<string, unknown>)[field] === undefined
       );
 
       if (missingFields.length > 0) {

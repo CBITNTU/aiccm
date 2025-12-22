@@ -13,7 +13,7 @@ interface CompanyData {
   company_name: string;
   description: string | null;
   key_capabilities: string | null;
-  location: string | null;
+  location?: string | null;
   postcode: string | null;
   past_projects: string | null;
   certifications: string | null;

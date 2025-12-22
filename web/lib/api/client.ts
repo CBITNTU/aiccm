@@ -141,9 +141,9 @@ export const api = {
       { body: { projectId } }
     ),
 
-  // Analyze project simple (stub)
+  // Analyze project simple
   analyzeProjectSimple: (prompt: string) =>
-    apiCall<{ analysis: unknown; recommendedPartners: unknown[] }>(
+    apiCall<{ content: string }>(
       "analyze-project-simple",
       { body: { prompt } }
     ),

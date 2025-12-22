@@ -28,6 +28,7 @@ import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { MatchingFilters, MatchingFiltersState } from "./MatchingFilters";
 import { CompanySelector } from "@/components/CompanySelector";
 import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -250,14 +251,7 @@ export function TenderMatching({ companyId }: TenderMatchingProps) {
 
     setAnalyzing(true);
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.functions.invoke("match-tenders", {
-        body: { companyId: selectedCompanyId },
-      });
-
-      if (error) {
-        throw error;
-      }
+      const data = await api.matchTenders(selectedCompanyId);
 
       if (data.up_to_date) {
         toast.success("All tenders are up to date - no new analysis needed");

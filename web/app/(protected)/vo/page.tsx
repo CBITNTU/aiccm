@@ -53,6 +53,7 @@ import { InvitationManager } from "@/components/consulting/InvitationManager";
 import { ProjectCreationDialog } from "@/components/consulting/ProjectCreationDialog";
 import { CompanySelector } from "@/components/consulting/CompanySelector";
 import { TenderViewDialog } from "@/components/tenders/TenderViewDialog";
+import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -422,16 +423,7 @@ Provide a detailed JSON analysis with:
 
 Return ONLY valid JSON, no markdown.`;
 
-      const { data: aiData, error: aiError } = await supabase.functions.invoke(
-        "analyze-project-simple",
-        {
-          body: { prompt },
-        }
-      );
-
-      if (aiError) {
-        throw new Error(`AI analysis failed: ${aiError.message}`);
-      }
+      const aiData = await api.analyzeProjectSimple(prompt);
 
       const analysis = JSON.parse(aiData.content);
 
@@ -580,16 +572,7 @@ Provide a detailed JSON analysis with:
 
 Return ONLY valid JSON, no markdown.`;
 
-      const { data: result, error: aiError } = await supabase.functions.invoke(
-        "analyze-project-simple",
-        {
-          body: { prompt },
-        }
-      );
-
-      if (aiError) {
-        throw new Error(`AI analysis failed: ${aiError.message}`);
-      }
+      const result = await api.analyzeProjectSimple(prompt);
 
       const analysis = JSON.parse(result.content);
 
@@ -743,23 +726,16 @@ Return ONLY valid JSON, no markdown.`;
   };
 
   const handleSendInvitations = async (selectedPartnerIds: string[]) => {
-    if (!supabase) return;
+    if (!selectedProject?.id) return;
 
     try {
       toast.info("Sending invitations...");
 
-      const { error } = await supabase.functions.invoke(
-        "send-project-invitations",
-        {
-          body: {
-            projectId: selectedProject?.id,
-            tenderTitle: tender?.title,
-            partnerIds: selectedPartnerIds,
-          },
-        }
+      await api.sendProjectInvitations(
+        selectedProject.id,
+        tender?.title || "",
+        selectedPartnerIds
       );
-
-      if (error) throw error;
 
       toast.success(`Sent ${selectedPartnerIds.length} invitation(s)`);
     } catch (error) {

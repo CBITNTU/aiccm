@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { api } from '@/lib/api/client';
 
 export interface CompanyAnalysis {
   competencies: string[];
@@ -22,19 +22,18 @@ export const analyzeCompanyProfile = async (
     pastProjects: string;
   }
 ): Promise<CompanyAnalysis> => {
-  const supabase = createClient();
-
   try {
-    const { data, error } = await supabase.functions.invoke('analyze-company-ai', {
-      body: { companyData }
+    const result = await api.analyzeCompanyAI({
+      companyName: companyData.companyName,
+      websiteUrl: companyData.websiteUrl,
+      description: companyData.description,
+      keyCapabilities: companyData.keyCapabilities,
+      certifications: companyData.certifications,
+      equipment: companyData.equipment,
+      pastProjects: companyData.pastProjects,
     });
 
-    if (error) {
-      console.error('Supabase function error:', error);
-      throw new Error('Failed to analyze company profile. Please try again.');
-    }
-
-    return data.analysis;
+    return result.analysis as CompanyAnalysis;
   } catch (error) {
     console.error('Analysis Error:', error);
     throw new Error('Failed to analyze company profile. Please try again.');

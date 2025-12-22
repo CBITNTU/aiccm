@@ -1,4 +1,4 @@
-import { apiResponse } from "@/lib/api";
+import { apiResponse, apiError } from "@/lib/api";
 
 // This is currently a stub function that returns test data
 // The full implementation would analyze Virtual Organization projects

@@ -1,20 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
 import { toast } from "sonner";
 import { Calendar } from "lucide-react";
+import { api } from "@/lib/api/client";
 
 export function AdminTenderImport() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
@@ -28,14 +25,7 @@ export function AdminTenderImport() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
   const handleImportTenders = async () => {
-    if (!supabase) return;
-
     setIsImporting(true);
     setProgress(0);
     setImportedCount(0);
@@ -46,30 +36,17 @@ export function AdminTenderImport() {
     try {
       setProgress(30);
 
-      // Get the current session
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('No active session. Please sign in again.');
-      }
-
-      // Call the edge function with admin import flag
-      const { data, error: functionError } = await supabase.functions.invoke('fetch-uk-tenders', {
-        body: {
-          adminImport: true,
-          limit: 100,
-          filters: {
-            dateFrom: new Date(dateFrom).toISOString(),
-            dateTo: new Date(dateTo).toISOString()
-          }
+      // Call the API with admin import flag
+      const data = await api.fetchUKTenders({
+        adminImport: true,
+        limit: 100,
+        filters: {
+          dateFrom: new Date(dateFrom).toISOString(),
+          dateTo: new Date(dateTo).toISOString()
         }
       });
 
       setProgress(90);
-
-      if (functionError) {
-        throw new Error(functionError.message);
-      }
 
       if (!data.isAdmin) {
         throw new Error('Superadmin access required to import tenders');
@@ -134,7 +111,7 @@ export function AdminTenderImport() {
           </div>
 
           {!isImporting && (
-            <Button onClick={handleImportTenders} className="w-full" disabled={!supabase}>
+            <Button onClick={handleImportTenders} className="w-full">
               Import Tenders
             </Button>
           )}

@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { api } from "@/lib/api/client";
 
 interface ConfidenceField {
   value: string;
@@ -293,27 +294,17 @@ export function CompanyOnboardingStep2({
       });
 
       try {
-        const { error: analysisError } = await supabase.functions.invoke(
-          "analyze-company",
-          {
-            body: { companyId: createdCompany.id },
-          }
-        );
-
-        if (analysisError) {
-          console.error("Analysis error:", analysisError);
-          toast.info("Warning", {
-            description:
-              "Company created but analysis could not be completed. You can run it later.",
-          });
-        } else {
-          toast.success("Analysis Complete!", {
-            description:
-              "Performance benchmarking and business insights have been generated.",
-          });
-        }
+        await api.analyzeCompany(createdCompany.id);
+        toast.success("Analysis Complete!", {
+          description:
+            "Performance benchmarking and business insights have been generated.",
+        });
       } catch (analysisError) {
-        console.error("Analysis failed:", analysisError);
+        console.error("Analysis error:", analysisError);
+        toast.info("Warning", {
+          description:
+            "Company created but analysis could not be completed. You can run it later.",
+        });
       }
 
       router.push("/dashboard");

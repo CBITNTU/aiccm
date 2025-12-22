@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, Send, X, Bot, User } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 
 interface Message {
   id: string;
@@ -84,12 +84,7 @@ export function BusinessChatbot({ companyData }: BusinessChatbotProps) {
 
       User question: ${userMessage}`;
 
-      const supabase = createClient();
-      const { data, error } = await supabase.functions.invoke("chat-advisor", {
-        body: { prompt: contextPrompt },
-      });
-
-      if (error) throw error;
+      const data = await api.chatAdvisor(contextPrompt);
       return data.response;
     } catch (error) {
       console.error("Chatbot error:", error);

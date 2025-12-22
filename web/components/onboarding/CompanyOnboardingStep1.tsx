@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { Building2, Loader2 } from "lucide-react";
+import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -135,31 +136,26 @@ export function CompanyOnboardingStep1({
       }
 
       // Trigger background prefill job
-      const { data: prefillData, error } = await supabase.functions.invoke(
-        "prefill-company-data",
-        {
-          body: {
-            companyName: formData.companyName,
-            companyNumber: formData.companiesHouseNumber,
-            websiteUrl: formData.websiteUrl,
-          },
-        }
-      );
-
-      if (error) {
-        console.error("Prefill error:", error);
-        toast.info("Warning", {
-          description:
-            "Could not auto-fetch data. You can still continue and fill manually.",
+      try {
+        const prefillData = await api.prefillCompanyData({
+          companyName: formData.companyName,
+          companyNumber: formData.companiesHouseNumber,
+          websiteUrl: formData.websiteUrl,
         });
-        onNext(formData, null);
-      } else {
+
         console.log("Prefill data received:", prefillData);
         toast.success("Data Retrieved!", {
           description:
             "We've prefilled your profile with public data. Please review in the next step.",
         });
         onNext(formData, prefillData as PrefillData);
+      } catch (prefillError) {
+        console.error("Prefill error:", prefillError);
+        toast.info("Warning", {
+          description:
+            "Could not auto-fetch data. You can still continue and fill manually.",
+        });
+        onNext(formData, null);
       }
     } catch (error) {
       console.error("Error:", error);

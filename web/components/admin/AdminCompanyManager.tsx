@@ -269,8 +269,8 @@ export function AdminCompanyManager() {
       <Alert>
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Note:</strong> You can delete user companies you own, but system companies require admin permissions.
-          If you can&apos;t delete system companies, you may need admin role assignment.
+          <strong>Note:</strong> You can delete user companies you own, but system companies require superadmin permissions.
+          If you can&apos;t delete system companies, you may need superadmin role assignment.
         </AlertDescription>
       </Alert>
     </div>

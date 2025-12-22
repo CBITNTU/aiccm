@@ -195,20 +195,21 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id);
 
-    // Check if user has admin role
+    // Check if user has superadmin role
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .eq('role', 'superadmin')
+      .maybeSingle();
 
-    const isAdmin = roleData?.role === 'admin';
+    const isAdmin = roleData?.role === 'superadmin';
     const { searchTerm, limit = 100, cursor, adminImport = false, filters } = await req.json();
 
     // If this is an admin import request, check admin permissions
     if (adminImport && !isAdmin) {
       return new Response(JSON.stringify({ 
-        error: 'Admin access required to import tenders',
+        error: 'Superadmin access required to import tenders',
         isAdmin: false 
       }), {
         status: 403,

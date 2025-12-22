@@ -256,7 +256,7 @@ const LiveTenderFeed: React.FC<LiveTenderFeedProps> = ({ filters: externalFilter
   // Set admin status based on user role
   useEffect(() => {
     if (!roleLoading && role) {
-      setIsAdmin(role === 'admin');
+      setIsAdmin(role === 'superadmin');
     }
   }, [role, roleLoading]);
 

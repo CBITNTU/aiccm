@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   BarChart3,
   Building2,
@@ -10,14 +11,21 @@ import {
   Database,
   Activity,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AdminDataImport } from "@/components/admin/AdminDataImport";
 import { AdminCompanyManager } from "@/components/admin/AdminCompanyManager";
 import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
+import AdminUsers from "@/components/admin/AdminUsers";
+import AdminTaxonomyEditor from "@/components/admin/AdminTaxonomyEditor";
+import { UserCog, Tags } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { toast } from "sonner";
 
 const overviewStats = [
   {
@@ -115,6 +123,48 @@ const getActivityIcon = (type: string) => {
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const { isAdmin, loading: roleLoading } = useUserRole();
+  const router = useRouter();
+
+  // Check admin access
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      toast.error("Superadmin access required");
+      router.push("/dashboard");
+    }
+  }, [isAdmin, roleLoading, router]);
+
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header variant="app" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading superadmin access...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header variant="app" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You do not have superadmin access. Redirecting to dashboard...
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,7 +189,8 @@ export default function AdminPage() {
               { id: "overview", label: "Overview", icon: BarChart3 },
               { id: "companies", label: "Companies", icon: Building2 },
               { id: "tenders", label: "Tenders", icon: FileText },
-              { id: "settings", label: "Settings", icon: Settings },
+              { id: "users", label: "Users", icon: UserCog },
+              { id: "taxonomy", label: "Taxonomy", icon: Tags },
             ].map((tab) => (
               <Button
                 key={tab.id}
@@ -284,10 +335,22 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Users Tab */}
+        {activeTab === "users" && <AdminUsers />}
+
+        {/* Taxonomy Tab */}
+        {activeTab === "taxonomy" && (
+          <div className="space-y-6">
+            <AdminTaxonomyEditor />
+          </div>
+        )}
+
         {/* Other tabs placeholder */}
         {activeTab !== "overview" &&
           activeTab !== "companies" &&
-          activeTab !== "tenders" && (
+          activeTab !== "tenders" &&
+          activeTab !== "users" &&
+          activeTab !== "taxonomy" && (
             <Card>
               <CardContent className="p-12 text-center">
                 <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">

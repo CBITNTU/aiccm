@@ -72,7 +72,7 @@ export function AdminTenderImport() {
       }
 
       if (!data.isAdmin) {
-        throw new Error('Admin access required to import tenders');
+        throw new Error('Superadmin access required to import tenders');
       }
 
       setTotalFetched(data.totalFetched || 0);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import {
   Building2,
@@ -15,6 +16,7 @@ import {
   FileText,
   Settings,
   LayoutDashboard,
+  Shield,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -24,6 +26,7 @@ interface HeaderProps {
 export function Header({ variant = "landing" }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
 
   const handleSignOut = async () => {
     setIsMenuOpen(false);
@@ -72,6 +75,18 @@ export function Header({ variant = "landing" }: HeaderProps) {
                   </Link>
                 </Button>
               ))}
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  className="flex items-center space-x-2 text-muted-foreground hover:text-primary"
+                  asChild
+                >
+                  <Link href="/admin">
+                    <Shield className="w-4 h-4" />
+                    <span>Admin</span>
+                  </Link>
+                </Button>
+              )}
             </nav>
           )}
 
@@ -180,6 +195,18 @@ export function Header({ variant = "landing" }: HeaderProps) {
                   </Link>
                 </Button>
               ))}
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start space-x-3 text-muted-foreground"
+                  asChild
+                >
+                  <Link href="/admin">
+                    <Shield className="w-4 h-4" />
+                    <span>Admin</span>
+                  </Link>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 className="w-full justify-start space-x-3 text-muted-foreground"

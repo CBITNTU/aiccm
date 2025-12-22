@@ -36,6 +36,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
@@ -125,25 +126,14 @@ export function CompanyDetailModal({
 
   // Move conditional logic after hooks
   const fetchAnalysis = async () => {
-    if (!company?.id || loadingAnalysis || !supabase) return;
+    if (!company?.id || loadingAnalysis) return;
 
     setLoadingAnalysis(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "analyze-company",
-        {
-          body: { companyId: company.id },
-        }
-      );
-
-      if (error) {
-        console.error("Error fetching analysis:", error);
-        toast.error("Failed to load company analysis");
-        return;
-      }
+      const data = await api.analyzeCompany(company.id);
 
       if (data?.success && data?.analysis) {
-        setAnalysis(data.analysis);
+        setAnalysis(data.analysis as CompanyAnalysis);
         // Force refresh the company data in parent component if needed
         window.location.reload();
       }

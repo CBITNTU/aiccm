@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import {
   ArrowRight,
   Building2,
@@ -21,9 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function HeroSection() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
-  );
   const [realStats, setRealStats] = useState({
     companies: 0,
     tenders: 0,
@@ -31,30 +26,11 @@ export function HeroSection() {
     projects: 0,
   });
 
-  // Initialize supabase client
-  useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-    }
-  }, []);
-
   // Fetch platform stats
   useEffect(() => {
-    if (!supabase) return;
-
     const fetchStats = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "get-platform-stats"
-        );
-
-        if (error) {
-          console.error("Error fetching stats:", error);
-          return;
-        }
+        const data = await api.getPlatformStats();
 
         if (data) {
           setRealStats({
@@ -70,7 +46,7 @@ export function HeroSection() {
     };
 
     fetchStats();
-  }, [supabase]);
+  }, []);
 
   const stats = [
     {

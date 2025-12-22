@@ -37,6 +37,7 @@ import {
 import { CompanySelector } from "@/components/CompanySelector";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { BusinessChatbot } from "@/components/BusinessChatbot";
+import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -159,20 +160,10 @@ export default function DashboardPage() {
     if (!selectedCompany?.id || !supabase) return;
     setIsAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "analyze-company",
-        {
-          body: { companyId: selectedCompany.id },
-        }
-      );
-
-      if (error) {
-        console.error("Error fetching analysis:", error);
-        return;
-      }
+      const data = await api.analyzeCompany(selectedCompany.id);
 
       if (data?.success && data?.analysis) {
-        setCompanyAnalysis(data.analysis);
+        setCompanyAnalysis(data.analysis as CompanyAnalysis);
 
         // Refresh company data to get updated ai_analysis field
         const { data: updatedCompany, error: fetchError } = await supabase

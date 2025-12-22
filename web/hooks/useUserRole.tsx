@@ -8,7 +8,9 @@ import type { Database } from "@/lib/supabase/types";
 
 export const useUserRole = () => {
   const { user } = useAuth();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null
+  );
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,9 +41,9 @@ export const useUserRole = () => {
         } else {
           const roles = data || [];
           // Find superadmin role (takes precedence)
-          const superadminRole = roles.find(r => r.role === 'superadmin');
-          const smeOwnerRole = roles.find(r => r.role === 'sme-owner');
-          
+          const superadminRole = roles.find((r) => r.role === "superadmin");
+          const smeOwnerRole = roles.find((r) => r.role === "sme-owner");
+
           // Set the primary role (superadmin takes precedence)
           if (superadminRole) {
             setRole(superadminRole.role);
@@ -67,4 +69,3 @@ export const useUserRole = () => {
 
   return { role, loading, isAdmin };
 };
-

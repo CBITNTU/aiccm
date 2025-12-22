@@ -44,6 +44,7 @@ import {
 import { toast } from "sonner";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import { TenderMatching } from "@/components/tenders/TenderMatching";
+import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -307,19 +308,10 @@ export default function CompanyDetailPage() {
 
     setIsAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "analyze-company",
-        {
-          body: { companyId: companyData.id },
-        }
-      );
-
-      if (error) {
-        throw new Error("Failed to analyze company");
-      }
+      const data = await api.analyzeCompany(companyData.id);
 
       if (data?.success && data?.analysis) {
-        setAnalysis(data.analysis);
+        setAnalysis(data.analysis as Record<string, unknown>);
 
         const { data: updatedData } = await supabase
           .from("companies")

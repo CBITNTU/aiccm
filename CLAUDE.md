@@ -22,9 +22,11 @@ Key features:
 Key points:
 
 - The `web/` folder contains the active Next.js application
-- The Supabase backend (`supabase/` folder and database) remains unchanged
+- The Supabase database remains unchanged
 - The root-level Vite app (`src/` folder) is **DEPRECATED** but kept for reference
+- Supabase Edge Functions (`supabase/functions/`) are **DEPRECATED** - use Next.js API routes instead
 - **ALL new features and changes should be made in `web/`**
+- **ALL new API endpoints should be created as Next.js API routes in `web/app/api/`**
 
 ## Development Commands
 
@@ -66,7 +68,7 @@ npm run lint   # Lint the codebase
 
 - **Frontend**: Next.js 16 + React 19 + TypeScript
 - **UI Framework**: shadcn/ui components + Radix UI primitives + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
+- **Backend**: Supabase (PostgreSQL + Auth) + Next.js API Routes
 - **Auth**: @supabase/ssr for server-side authentication
 - **State Management**: TanStack Query (React Query)
 - **Routing**: Next.js App Router
@@ -80,6 +82,7 @@ web/                     # Next.js application (ACTIVE - use this for developmen
 ├── app/                 # Next.js App Router
 │   ├── layout.tsx       # Root layout with providers
 │   ├── page.tsx         # Landing page
+│   ├── api/             # Next.js API Routes (use this for all new endpoints)
 │   ├── auth/            # Authentication pages
 │   │   └── page.tsx     # Login/signup page
 │   ├── (protected)/     # Route group for authenticated pages
@@ -111,9 +114,9 @@ src/                     # DEPRECATED - Vite + React app (kept for reference)
 ├── integrations/        # Supabase client and types
 └── lib/                 # Utilities
 
-supabase/                # Backend (shared between both apps)
+supabase/                # Backend (database only)
 ├── migrations/          # Database migrations
-└── functions/           # Supabase Edge Functions
+└── functions/           # DEPRECATED - Supabase Edge Functions (use Next.js API routes instead)
 ```
 
 ### Key Architectural Patterns
@@ -270,6 +273,29 @@ Optional (user can provide via UI):
 1. Create a new folder in `web/app/(protected)/[page-name]/`
 2. Add `page.tsx` in that folder
 3. Add navigation link in `web/components/layout/Header.tsx`
+
+**Adding a new API endpoint** (use this instead of Supabase Edge Functions):
+
+1. Create a new folder in `web/app/api/[endpoint-name]/`
+2. Add `route.ts` in that folder with HTTP method handlers
+
+```typescript
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+
+export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  // Your logic here
+  return NextResponse.json({ data: "result" });
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const body = await request.json();
+  // Your logic here
+  return NextResponse.json({ data: "result" });
+}
+```
 
 **Querying Supabase (Server Component)**:
 

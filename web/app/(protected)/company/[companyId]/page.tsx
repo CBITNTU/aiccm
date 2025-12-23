@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -40,10 +40,12 @@ import {
   Tag,
   Target,
   Briefcase,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import { TenderMatching } from "@/components/tenders/TenderMatching";
+import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -71,7 +73,15 @@ export default function CompanyDetailPage() {
   const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const companyId = params.companyId as string;
+  const currentTab = searchParams.get("tab") || "overview";
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", value);
+    router.replace(`/company/${companyId}?${params.toString()}`, { scroll: false });
+  };
 
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
   const [companyData, setCompanyData] = useState<Company | null>(null);
@@ -608,8 +618,8 @@ export default function CompanyDetailPage() {
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+      <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">
             <FileText className="w-4 h-4 mr-2" />
             Overview
@@ -621,6 +631,10 @@ export default function CompanyDetailPage() {
           <TabsTrigger value="projects">
             <Briefcase className="w-4 h-4 mr-2" />
             Projects
+          </TabsTrigger>
+          <TabsTrigger value="team">
+            <Users className="w-4 h-4 mr-2" />
+            Team
           </TabsTrigger>
           <TabsTrigger value="financial">
             <DollarSign className="w-4 h-4 mr-2" />
@@ -1179,6 +1193,11 @@ export default function CompanyDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Team Tab */}
+        <TabsContent value="team">
+          <TeamMembersCard companyId={companyId} variant="full" />
         </TabsContent>
 
         {/* Financial Tab */}

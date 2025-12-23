@@ -52,23 +52,130 @@ export async function updateSession(request: NextRequest) {
     "/company",
     "/vo",
     "/admin",
+    "/pending-approval",
+  ];
+
+  // Paths that pending users can access (subset of protected paths)
+  const pendingAllowedPaths = [
+    "/pending-approval",
+    "/profile",
+  ];
+
+  // Paths that require full approval (redirect pending users)
+  const approvalRequiredPaths = [
+    "/dashboard",
+    "/onboarding",
+    "/tenders",
+    "/directory",
+    "/companies",
+    "/company",
+    "/vo",
+    "/admin",
   ];
 
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
+  const isPendingAllowedPath = pendingAllowedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
+  const isApprovalRequiredPath = approvalRequiredPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
+  // Redirect unauthenticated users from protected paths to /auth
   if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     return NextResponse.redirect(url);
   }
 
+  // For authenticated users, check approval status
+  if (user && isApprovalRequiredPath) {
+    try {
+      // Check user's approval status from profiles table
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("approval_status")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Middleware: Error fetching profile:", error);
+        // If we can't fetch profile, allow access (fail open for existing users)
+        // This handles cases where the profile might not exist yet
+      } else if (profile) {
+        // If user is pending, redirect to pending-approval page
+        if (profile.approval_status === "pending") {
+          const url = request.nextUrl.clone();
+          url.pathname = "/pending-approval";
+          return NextResponse.redirect(url);
+        }
+
+        // If user is rejected, redirect to auth with signout
+        // (The auth page will handle showing the rejection message)
+        if (profile.approval_status === "rejected") {
+          const url = request.nextUrl.clone();
+          url.pathname = "/auth";
+          url.searchParams.set("rejected", "true");
+          return NextResponse.redirect(url);
+        }
+      }
+    } catch (error) {
+      console.error("Middleware: Error checking approval status:", error);
+      // Fail open - allow access if we can't check status
+    }
+  }
+
   // Redirect authenticated users away from auth page
   if (user && request.nextUrl.pathname === "/auth") {
+    // First check their approval status
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("approval_status")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile?.approval_status === "pending") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/pending-approval";
+        return NextResponse.redirect(url);
+      }
+
+      if (profile?.approval_status === "rejected") {
+        // Let them stay on auth page to see rejection message
+        return supabaseResponse;
+      }
+    } catch (error) {
+      console.error("Middleware: Error checking approval for auth redirect:", error);
+    }
+
+    // Approved users go to dashboard
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  // Redirect approved users away from pending-approval page
+  if (user && request.nextUrl.pathname === "/pending-approval") {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("approval_status")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile?.approval_status === "approved") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
+    } catch (error) {
+      console.error("Middleware: Error checking approval for pending page:", error);
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -11,9 +11,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Building2, Mail, Lock, User, AlertCircle } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Building2,
+  Mail,
+  Lock,
+  User,
+  AlertCircle,
+  Search,
+  CheckCircle,
+  Clock,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
+
+interface CompanySearchResult {
+  id: string;
+  company_name: string;
+  has_admin: boolean;
+}
+
+type SignupType = "individual" | "with-company";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -31,12 +51,30 @@ export default function AuthPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    signupType: "individual" as SignupType,
+    companyName: "",
+    existingCompanyId: null as string | null,
+    isNewCompany: false,
+    joinMessage: "",
   });
 
   const [signInData, setSignInData] = useState({
     email: "",
     password: "",
   });
+
+  // Company search state
+  const [companySearchResults, setCompanySearchResults] = useState<
+    CompanySearchResult[]
+  >([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [selectedCompany, setSelectedCompany] =
+    useState<CompanySearchResult | null>(null);
+
+  // Signup success state
+  const [signupSuccess, setSignupSuccess] = useState(false);
+  const [signupMessage, setSignupMessage] = useState("");
 
   // Initialize supabase client on mount
   useEffect(() => {
@@ -62,8 +100,35 @@ export default function AuthPage() {
       if (event === "SIGNED_IN" && session) {
         // Add small delay to ensure any pending database operations complete
         setTimeout(async () => {
-          // Check if user has a company to determine redirect destination
+          // Check user approval status
           try {
+            const { data: profile, error: profileError } = await supabase
+              .from("profiles")
+              .select("approval_status")
+              .eq("user_id", session.user.id)
+              .single();
+
+            if (profileError) {
+              console.error("Error checking profile:", profileError);
+              router.push("/pending-approval");
+              return;
+            }
+
+            if (profile?.approval_status === "pending") {
+              router.push("/pending-approval");
+              return;
+            }
+
+            if (profile?.approval_status === "rejected") {
+              toast.error("Account Access Denied", {
+                description:
+                  "Your account application was not approved. Please contact support.",
+              });
+              await supabase.auth.signOut();
+              return;
+            }
+
+            // User is approved, check for company
             const { data: companies, error } = await supabase
               .from("companies")
               .select("id, company_name")
@@ -75,28 +140,13 @@ export default function AuthPage() {
               return;
             }
 
-            console.log(
-              "Auth page - Company check for user:",
-              session.user.id,
-              "found companies:",
-              companies?.length || 0
-            );
-
             if (companies && companies.length > 0) {
-              // Existing user with company, redirect to dashboard
-              console.log(
-                "Auth page - Existing user with company, redirecting to dashboard"
-              );
               router.push("/dashboard");
             } else {
-              // New user without company, redirect to profile to add company
-              console.log(
-                "Auth page - New user without company, redirecting to profile"
-              );
               router.push("/profile");
             }
           } catch (error) {
-            console.error("Error checking user company:", error);
+            console.error("Error checking user status:", error);
             router.push("/profile");
           }
         }, 100);
@@ -106,15 +156,82 @@ export default function AuthPage() {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!supabase) {
-      setError("Client not initialized");
+  // Debounced company search
+  const searchCompanies = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setCompanySearchResults([]);
+      setShowCompanyDropdown(false);
       return;
     }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `/api/search-companies?q=${encodeURIComponent(query)}`
+      );
+      const data = await response.json();
+
+      if (data.companies) {
+        setCompanySearchResults(data.companies);
+        setShowCompanyDropdown(true);
+      }
+    } catch (error) {
+      console.error("Company search error:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // Debounce the search
+  useEffect(() => {
+    if (signUpData.signupType !== "with-company") return;
+
+    const timer = setTimeout(() => {
+      if (signUpData.companyName && !selectedCompany) {
+        searchCompanies(signUpData.companyName);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [signUpData.companyName, signUpData.signupType, selectedCompany, searchCompanies]);
+
+  const handleCompanySelect = (company: CompanySearchResult) => {
+    setSelectedCompany(company);
+    setSignUpData({
+      ...signUpData,
+      companyName: company.company_name,
+      existingCompanyId: company.id,
+      isNewCompany: false,
+    });
+    setShowCompanyDropdown(false);
+  };
+
+  const handleCompanyNameChange = (value: string) => {
+    setSignUpData({
+      ...signUpData,
+      companyName: value,
+      existingCompanyId: null,
+      isNewCompany: false,
+    });
+    setSelectedCompany(null);
+  };
+
+  const handleCreateNewCompany = () => {
+    setSignUpData({
+      ...signUpData,
+      existingCompanyId: null,
+      isNewCompany: true,
+    });
+    setShowCompanyDropdown(false);
+    setSelectedCompany(null);
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
     setIsLoading(true);
 
+    // Validation
     if (signUpData.password !== signUpData.confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
@@ -127,45 +244,63 @@ export default function AuthPage() {
       return;
     }
 
+    if (
+      signUpData.signupType === "with-company" &&
+      !signUpData.companyName.trim()
+    ) {
+      setError("Please enter a company name");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: signUpData.email,
-        password: signUpData.password,
-        options: {
-          data: {
-            first_name: signUpData.firstName,
-            last_name: signUpData.lastName,
-            job_title: signUpData.jobTitle,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+      // Determine the actual signup type for the API
+      let apiSignupType: "individual" | "new-company" | "join-company";
+
+      if (signUpData.signupType === "individual") {
+        apiSignupType = "individual";
+      } else if (signUpData.existingCompanyId) {
+        apiSignupType = "join-company";
+      } else {
+        apiSignupType = "new-company";
+      }
+
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          email: signUpData.email,
+          password: signUpData.password,
+          firstName: signUpData.firstName,
+          lastName: signUpData.lastName,
+          jobTitle: signUpData.jobTitle,
+          signupType: apiSignupType,
+          companyName: signUpData.companyName || undefined,
+          existingCompanyId: signUpData.existingCompanyId || undefined,
+          message: signUpData.joinMessage || undefined,
+        }),
       });
 
-      if (error) throw error;
+      const data = await response.json();
 
-      // Check if email confirmation is required
-      if (data.user && !data.session) {
-        toast.success("Please Check Your Email", {
-          description:
-            "We've sent you a confirmation link. Please check your email and click the link to activate your account.",
-        });
-      } else {
-        toast.success("Account Created!", {
-          description:
-            "Welcome to AI-Powered CCM! You can now set up your company profile.",
-        });
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create account");
       }
+
+      // Show success state
+      setSignupSuccess(true);
+      setSignupMessage(data.message);
+
+      toast.success("Account Created!", {
+        description: "Please check your email for further instructions.",
+      });
     } catch (error: unknown) {
       console.error("Sign up error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to create account";
-      if (errorMessage === "Email logins are disabled") {
-        setError(
-          "Email authentication is currently disabled. Please contact support."
-        );
-      } else {
-        setError(errorMessage);
-      }
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -214,6 +349,72 @@ export default function AuthPage() {
       setIsLoading(false);
     }
   };
+
+  // Show success screen after signup
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header variant="landing" />
+
+        <div className="max-w-md mx-auto px-4 pt-20 pb-16">
+          <Card className="card-professional">
+            <CardContent className="pt-8 pb-8 text-center">
+              <div className="w-16 h-16 bg-amber-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <Clock className="w-8 h-8 text-amber-600" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">
+                Account Pending Approval
+              </h2>
+              <p className="text-muted-foreground mb-4">{signupMessage}</p>
+              <div className="bg-muted p-4 rounded-lg text-left text-sm">
+                <p className="font-medium mb-2">What happens next?</p>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>You&apos;ll receive a welcome email shortly</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Clock className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <span>
+                      Our team will review your application within 24-48 hours
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Mail className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span>
+                      You&apos;ll be notified by email once approved
+                    </span>
+                  </li>
+                </ul>
+              </div>
+              <Button
+                className="mt-6"
+                variant="outline"
+                onClick={() => {
+                  setSignupSuccess(false);
+                  setSignUpData({
+                    firstName: "",
+                    lastName: "",
+                    jobTitle: "",
+                    email: "",
+                    password: "",
+                    confirmPassword: "",
+                    signupType: "individual",
+                    companyName: "",
+                    existingCompanyId: null,
+                    isNewCompany: false,
+                    joinMessage: "",
+                  });
+                }}
+              >
+                Back to Sign In
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -303,6 +504,62 @@ export default function AuthPage() {
 
               <TabsContent value="signup" className="space-y-4 mt-6">
                 <form onSubmit={handleSignUp} className="space-y-4">
+                  {/* Signup Type Selection */}
+                  <div className="space-y-3">
+                    <Label>How would you like to sign up?</Label>
+                    <RadioGroup
+                      value={signUpData.signupType}
+                      onValueChange={(value: SignupType) => {
+                        setSignUpData({
+                          ...signUpData,
+                          signupType: value,
+                          companyName: "",
+                          existingCompanyId: null,
+                          isNewCompany: false,
+                        });
+                        setSelectedCompany(null);
+                        setCompanySearchResults([]);
+                      }}
+                      className="grid grid-cols-2 gap-3"
+                    >
+                      <div>
+                        <RadioGroupItem
+                          value="individual"
+                          id="signup-individual"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="signup-individual"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        >
+                          <User className="mb-2 h-6 w-6" />
+                          <span className="text-sm font-medium">Individual</span>
+                          <span className="text-xs text-muted-foreground text-center mt-1">
+                            Browse without company
+                          </span>
+                        </Label>
+                      </div>
+                      <div>
+                        <RadioGroupItem
+                          value="with-company"
+                          id="signup-company"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="signup-company"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        >
+                          <Building2 className="mb-2 h-6 w-6" />
+                          <span className="text-sm font-medium">With Company</span>
+                          <span className="text-xs text-muted-foreground text-center mt-1">
+                            Join or create company
+                          </span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Personal Information */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="signup-firstname">First Name</Label>
@@ -364,6 +621,122 @@ export default function AuthPage() {
                     </div>
                   </div>
 
+                  {/* Company Field (conditional) */}
+                  {signUpData.signupType === "with-company" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-company-name">Company Name</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="signup-company-name"
+                          type="text"
+                          placeholder="Search or enter company name"
+                          value={signUpData.companyName}
+                          onChange={(e) => handleCompanyNameChange(e.target.value)}
+                          onFocus={() => {
+                            if (companySearchResults.length > 0) {
+                              setShowCompanyDropdown(true);
+                            }
+                          }}
+                          className="pl-10"
+                          required
+                        />
+                        {isSearching && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Company Search Results Dropdown */}
+                      {showCompanyDropdown && companySearchResults.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                          {companySearchResults.map((company) => (
+                            <button
+                              key={company.id}
+                              type="button"
+                              className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
+                              onClick={() => handleCompanySelect(company)}
+                            >
+                              <span className="font-medium">
+                                {company.company_name}
+                              </span>
+                              {company.has_admin && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Users className="w-3 h-3" />
+                                  Has members
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            className="w-full px-4 py-2 text-left hover:bg-accent border-t text-primary font-medium"
+                            onClick={handleCreateNewCompany}
+                          >
+                            + Create &quot;{signUpData.companyName}&quot; as new
+                            company
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Selected Company or New Company Status */}
+                      {selectedCompany && (
+                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 rounded-md text-sm">
+                          <Building2 className="w-4 h-4 text-blue-600" />
+                          <span>
+                            Joining existing company:{" "}
+                            <strong>{selectedCompany.company_name}</strong>
+                          </span>
+                          <button
+                            type="button"
+                            className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              setSelectedCompany(null);
+                              setSignUpData({
+                                ...signUpData,
+                                existingCompanyId: null,
+                              });
+                            }}
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      )}
+
+                      {signUpData.isNewCompany && (
+                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md text-sm">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <span>
+                            Creating new company:{" "}
+                            <strong>{signUpData.companyName}</strong>
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Join Message (when joining existing company) */}
+                      {selectedCompany && (
+                        <div className="space-y-2 mt-3">
+                          <Label htmlFor="signup-join-message">
+                            Message to Company Admin (optional)
+                          </Label>
+                          <Textarea
+                            id="signup-join-message"
+                            placeholder="Introduce yourself or explain why you want to join..."
+                            value={signUpData.joinMessage}
+                            onChange={(e) =>
+                              setSignUpData({
+                                ...signUpData,
+                                joinMessage: e.target.value,
+                              })
+                            }
+                            rows={2}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <div className="relative">
@@ -424,6 +797,20 @@ export default function AuthPage() {
                         className="pl-10"
                         required
                       />
+                    </div>
+                  </div>
+
+                  {/* Approval Notice */}
+                  <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-md text-sm">
+                    <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-amber-800 dark:text-amber-200">
+                        Approval Required
+                      </p>
+                      <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5">
+                        All new accounts require administrator approval before
+                        access is granted.
+                      </p>
                     </div>
                   </div>
 

@@ -128,19 +128,25 @@ export default function AuthPage() {
               return;
             }
 
-            // User is approved, check for company
-            const { data: companies, error } = await supabase
+            // User is approved, check for company (owned or member)
+            // Check if user owns any companies
+            const { data: ownedCompanies } = await supabase
               .from("companies")
-              .select("id, company_name")
+              .select("id")
               .eq("user_id", session.user.id);
 
-            if (error) {
-              console.error("Error checking user company:", error);
-              router.push("/profile");
-              return;
-            }
+            // Check if user is an approved member of any company
+            const { data: memberCompanies } = await supabase
+              .from("company_members")
+              .select("company_id")
+              .eq("user_id", session.user.id)
+              .eq("status", "approved");
 
-            if (companies && companies.length > 0) {
+            const hasCompany =
+              (ownedCompanies && ownedCompanies.length > 0) ||
+              (memberCompanies && memberCompanies.length > 0);
+
+            if (hasCompany) {
               router.push("/dashboard");
             } else {
               router.push("/profile");

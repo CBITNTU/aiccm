@@ -126,11 +126,37 @@ export default function CompanyDetailPage() {
 
     const fetchCompanyData = async () => {
       try {
+        // First, check if user has access (owner or approved member)
+        const isOwner = supabase
+          .from("companies")
+          .select("id")
+          .eq("id", companyId)
+          .eq("user_id", user.id)
+          .single();
+
+        const isMember = supabase
+          .from("company_members")
+          .select("company_id")
+          .eq("company_id", companyId)
+          .eq("user_id", user.id)
+          .eq("status", "approved")
+          .single();
+
+        const [ownerResult, memberResult] = await Promise.all([isOwner, isMember]);
+
+        const hasAccess = !ownerResult.error || !memberResult.error;
+
+        if (!hasAccess) {
+          console.log("User has no access to this company");
+          router.push("/profile");
+          return;
+        }
+
+        // User has access, fetch full company data
         const { data, error } = await supabase
           .from("companies")
           .select("*")
           .eq("id", companyId)
-          .eq("user_id", user.id)
           .single();
 
         if (error) {

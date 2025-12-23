@@ -217,42 +217,58 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Get companies where user is admin
-    const { data: adminMemberships } = await supabase
+    // Get companies where user is an approved member (any role)
+    const { data: userMemberships } = await supabase
       .from("company_members")
-      .select("company_id")
+      .select("company_id, role")
       .eq("user_id", user.id)
-      .eq("role", "admin")
       .eq("status", "approved");
 
-    if (!adminMemberships || adminMemberships.length === 0) {
+    if (!userMemberships || userMemberships.length === 0) {
       return apiResponse({ requests: [], members: [] });
     }
 
-    const companyIds = adminMemberships.map((m) => m.company_id);
+    const companyIds = userMemberships.map((m) => m.company_id);
+    const adminCompanyIds = userMemberships
+      .filter((m) => m.role === "admin")
+      .map((m) => m.company_id);
 
-    // Get pending join requests for these companies
-    const { data: joinRequests, error: requestsError } = await supabase
-      .from("company_join_requests")
-      .select(`
-        id,
-        user_id,
-        company_id,
-        company_name_requested,
-        message,
-        status,
-        created_at
-      `)
-      .in("company_id", companyIds)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
+    // Get pending join requests only for companies where user is admin
+    let joinRequests: Array<{
+      id: string;
+      user_id: string;
+      company_id: string;
+      company_name_requested: string;
+      message: string | null;
+      status: string;
+      created_at: string;
+    }> = [];
 
-    if (requestsError) {
-      console.error("Error fetching join requests:", requestsError);
-      return apiError("Failed to fetch join requests", 500);
+    if (adminCompanyIds.length > 0) {
+      const { data: requestsData, error: requestsError } = await supabase
+        .from("company_join_requests")
+        .select(`
+          id,
+          user_id,
+          company_id,
+          company_name_requested,
+          message,
+          status,
+          created_at
+        `)
+        .in("company_id", adminCompanyIds)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+
+      if (requestsError) {
+        console.error("Error fetching join requests:", requestsError);
+        return apiError("Failed to fetch join requests", 500);
+      }
+
+      joinRequests = requestsData || [];
     }
 
-    // Get current members
+    // Get current members for all companies the user belongs to
     const { data: members, error: membersError } = await supabase
       .from("company_members")
       .select(`

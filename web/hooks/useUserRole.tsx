@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 
 export const useUserRole = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
     null
   );
@@ -21,7 +21,18 @@ export const useUserRole = () => {
 
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (!user || !supabase) {
+      if (!supabase) {
+        // Supabase client not ready yet, keep loading
+        return;
+      }
+
+      if (authLoading) {
+        // Auth still loading, wait for it to resolve
+        return;
+      }
+
+      if (!user) {
+        // Auth resolved but no user - not logged in
         setRole(null);
         setLoading(false);
         return;
@@ -62,7 +73,7 @@ export const useUserRole = () => {
     };
 
     fetchUserRole();
-  }, [user, supabase]);
+  }, [user, supabase, authLoading]);
 
   // Check if user is superadmin
   const isAdmin = role === "superadmin";

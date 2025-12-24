@@ -199,7 +199,12 @@ export default function AuthPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [signUpData.companyName, signUpData.signupType, selectedCompany, searchCompanies]);
+  }, [
+    signUpData.companyName,
+    signUpData.signupType,
+    selectedCompany,
+    searchCompanies,
+  ]);
 
   const handleCompanySelect = (company: CompanySearchResult) => {
     setSelectedCompany(company);
@@ -387,9 +392,7 @@ export default function AuthPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <Mail className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>
-                      You&apos;ll be notified by email once approved
-                    </span>
+                    <span>You&apos;ll be notified by email once approved</span>
                   </li>
                 </ul>
               </div>
@@ -469,7 +472,10 @@ export default function AuthPage() {
                         placeholder="Enter your email"
                         value={signInData.email}
                         onChange={(e) =>
-                          setSignInData({ ...signInData, email: e.target.value })
+                          setSignInData({
+                            ...signInData,
+                            email: e.target.value,
+                          })
                         }
                         className="pl-10"
                         required
@@ -539,7 +545,9 @@ export default function AuthPage() {
                           className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
                           <User className="mb-2 h-6 w-6" />
-                          <span className="text-sm font-medium">Individual</span>
+                          <span className="text-sm font-medium">
+                            Individual
+                          </span>
                           <span className="text-xs text-muted-foreground text-center mt-1">
                             Browse without company
                           </span>
@@ -556,7 +564,9 @@ export default function AuthPage() {
                           className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
                           <Building2 className="mb-2 h-6 w-6" />
-                          <span className="text-sm font-medium">With Company</span>
+                          <span className="text-sm font-medium">
+                            With Company
+                          </span>
                           <span className="text-xs text-muted-foreground text-center mt-1">
                             Join or create company
                           </span>
@@ -638,7 +648,9 @@ export default function AuthPage() {
                           type="text"
                           placeholder="Search or enter company name"
                           value={signUpData.companyName}
-                          onChange={(e) => handleCompanyNameChange(e.target.value)}
+                          onChange={(e) =>
+                            handleCompanyNameChange(e.target.value)
+                          }
                           onFocus={() => {
                             if (companySearchResults.length > 0) {
                               setShowCompanyDropdown(true);
@@ -655,48 +667,49 @@ export default function AuthPage() {
                       </div>
 
                       {/* Company Search Results Dropdown */}
-                      {showCompanyDropdown && companySearchResults.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
-                          {companySearchResults.map((company) => (
-                            <button
-                              key={company.id}
-                              type="button"
-                              className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
-                              onClick={() => handleCompanySelect(company)}
-                            >
-                              <span className="font-medium">
-                                {company.company_name}
-                              </span>
-                              {company.has_admin && (
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Users className="w-3 h-3" />
-                                  Has members
+                      {showCompanyDropdown &&
+                        companySearchResults.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                            {companySearchResults.map((company) => (
+                              <button
+                                key={company.id}
+                                type="button"
+                                className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
+                                onClick={() => handleCompanySelect(company)}
+                              >
+                                <span className="font-medium">
+                                  {company.company_name}
                                 </span>
-                              )}
+                                {company.has_admin && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    Has members
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              className="w-full px-4 py-2 text-left hover:bg-accent border-t text-primary font-medium"
+                              onClick={handleCreateNewCompany}
+                            >
+                              + Create &quot;{signUpData.companyName}&quot; as
+                              new company
                             </button>
-                          ))}
-                          <button
-                            type="button"
-                            className="w-full px-4 py-2 text-left hover:bg-accent border-t text-primary font-medium"
-                            onClick={handleCreateNewCompany}
-                          >
-                            + Create &quot;{signUpData.companyName}&quot; as new
-                            company
-                          </button>
-                        </div>
-                      )}
+                          </div>
+                        )}
 
                       {/* Selected Company or New Company Status */}
                       {selectedCompany && (
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 rounded-md text-sm">
-                          <Building2 className="w-4 h-4 text-blue-600" />
+                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 rounded-md text-sm text-blue-800 dark:text-blue-200">
+                          <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           <span>
                             Joining existing company:{" "}
                             <strong>{selectedCompany.company_name}</strong>
                           </span>
                           <button
                             type="button"
-                            className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                            className="ml-auto text-xs text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
                             onClick={() => {
                               setSelectedCompany(null);
                               setSignUpData({
@@ -711,8 +724,8 @@ export default function AuthPage() {
                       )}
 
                       {signUpData.isNewCompany && (
-                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md text-sm">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
+                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md text-sm text-green-800 dark:text-green-200">
+                          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                           <span>
                             Creating new company:{" "}
                             <strong>{signUpData.companyName}</strong>

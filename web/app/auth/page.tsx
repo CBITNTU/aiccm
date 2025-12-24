@@ -23,7 +23,9 @@ import {
   CheckCircle,
   Clock,
   Users,
+  Loader2,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
 
@@ -62,7 +64,19 @@ export default function AuthPage() {
     contactPerson: "",
     contactEmail: "",
     contactPhone: "",
+    isVerifiedByCH: false,
   });
+
+  // Companies House lookup state
+  interface CHLookupData {
+    companyName: string;
+    registeredAddress: string;
+    companyStatus: string;
+    companyType?: string;
+  }
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupData, setLookupData] = useState<CHLookupData | null>(null);
 
   const [signInData, setSignInData] = useState({
     email: "",
@@ -241,6 +255,93 @@ export default function AuthPage() {
     });
     setShowCompanyDropdown(false);
     setSelectedCompany(null);
+  };
+
+  // Companies House lookup handler
+  const handleLookup = async () => {
+    const companyNumber = signUpData.companiesHouseNumber.trim();
+
+    // Client-side validation
+    if (!companyNumber) {
+      setLookupError("Please enter a company number");
+      return;
+    }
+
+    // Basic format check (8 digits or 2 letters + 6 digits)
+    const cleanNumber = companyNumber.replace(/\s/g, "").toUpperCase();
+    const isValidFormat =
+      /^\d{1,8}$/.test(cleanNumber) ||
+      /^(SC|NI|OC|SO|NC|NL|R0|IP|SP|IC|SI|NP)\d{6}$/.test(cleanNumber);
+
+    if (!isValidFormat) {
+      setLookupError(
+        "Invalid format. Enter 8 digits (e.g., 12345678) or 2 letters + 6 digits (e.g., SC123456)"
+      );
+      return;
+    }
+
+    setIsLookingUp(true);
+    setLookupError(null);
+    setLookupData(null);
+
+    try {
+      const response = await fetch("/api/lookup-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyNumber: cleanNumber }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // Handle specific error codes
+        if (data.errorCode === "DUPLICATE") {
+          setLookupError(
+            `This company is already registered: "${data.existingCompany?.company_name}". Please contact support if you believe this is an error.`
+          );
+        } else if (data.errorCode === "NOT_FOUND") {
+          setLookupError(
+            "Company not found on Companies House. Please check the number and try again."
+          );
+        } else if (data.errorCode === "INVALID_FORMAT") {
+          setLookupError(data.error || "Invalid company number format");
+        } else {
+          setLookupError(
+            data.error || "Failed to look up company. Please try again."
+          );
+        }
+        return;
+      }
+
+      // Success - auto-fill company name and mark as verified
+      setLookupData(data.data);
+      setSignUpData({
+        ...signUpData,
+        companyName: data.data.companyName,
+        companiesHouseNumber: cleanNumber,
+        isVerifiedByCH: true,
+      });
+
+      toast.success("Company Verified", {
+        description: `Found: ${data.data.companyName}`,
+      });
+    } catch (error) {
+      console.error("Lookup error:", error);
+      setLookupError("Failed to connect to Companies House. Please try again.");
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
+  // Reset verification when company number changes
+  const handleCompanyNumberChange = (value: string) => {
+    setSignUpData({
+      ...signUpData,
+      companiesHouseNumber: value,
+      isVerifiedByCH: false,
+    });
+    setLookupError(null);
+    setLookupData(null);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -432,7 +533,11 @@ export default function AuthPage() {
                     contactPerson: "",
                     contactEmail: "",
                     contactPhone: "",
+                    isVerifiedByCH: false,
                   });
+                  // Reset lookup state
+                  setLookupData(null);
+                  setLookupError(null);
                 }}
               >
                 Back to Sign In
@@ -762,12 +867,23 @@ export default function AuthPage() {
 
                       {signUpData.isNewCompany && (
                         <>
-                          <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md text-sm text-green-800 dark:text-green-200">
-                            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                            <span>
-                              Creating new company:{" "}
-                              <strong>{signUpData.companyName}</strong>
-                            </span>
+                          <div className="flex items-center justify-between gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md text-sm text-green-800 dark:text-green-200">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                              <span>
+                                Creating new company:{" "}
+                                <strong>{signUpData.companyName}</strong>
+                              </span>
+                            </div>
+                            {signUpData.isVerifiedByCH && (
+                              <Badge
+                                variant="outline"
+                                className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700 text-xs"
+                              >
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Verified
+                              </Badge>
+                            )}
                           </div>
 
                           {/* New Company Details Fields */}
@@ -780,22 +896,108 @@ export default function AuthPage() {
                               <Label htmlFor="signup-company-house-number">
                                 Companies House Number
                               </Label>
-                              <Input
-                                id="signup-company-house-number"
-                                type="text"
-                                placeholder="e.g. 12345678"
-                                maxLength={8}
-                                value={signUpData.companiesHouseNumber}
-                                onChange={(e) =>
-                                  setSignUpData({
-                                    ...signUpData,
-                                    companiesHouseNumber: e.target.value,
-                                  })
-                                }
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                8-digit UK Companies House registration number
-                              </p>
+                              <div className="flex gap-2">
+                                <Input
+                                  id="signup-company-house-number"
+                                  type="text"
+                                  placeholder="e.g. 12345678"
+                                  maxLength={10}
+                                  value={signUpData.companiesHouseNumber}
+                                  onChange={(e) =>
+                                    handleCompanyNumberChange(e.target.value)
+                                  }
+                                  disabled={signUpData.isVerifiedByCH}
+                                  className={
+                                    signUpData.isVerifiedByCH
+                                      ? "border-green-500 bg-green-50 dark:bg-green-950"
+                                      : ""
+                                  }
+                                />
+                                <Button
+                                  type="button"
+                                  variant={signUpData.isVerifiedByCH ? "outline" : "secondary"}
+                                  onClick={handleLookup}
+                                  disabled={
+                                    isLookingUp ||
+                                    !signUpData.companiesHouseNumber.trim() ||
+                                    signUpData.isVerifiedByCH
+                                  }
+                                  className="shrink-0"
+                                >
+                                  {isLookingUp ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                      Looking up...
+                                    </>
+                                  ) : signUpData.isVerifiedByCH ? (
+                                    <>
+                                      <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                                      Verified
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Search className="w-4 h-4 mr-2" />
+                                      Lookup
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+
+                              {/* Lookup Error */}
+                              {lookupError && (
+                                <Alert variant="destructive" className="py-2">
+                                  <AlertCircle className="h-4 w-4" />
+                                  <AlertDescription className="text-xs">
+                                    {lookupError}
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+
+                              {/* Verified Company Info Banner */}
+                              {signUpData.isVerifiedByCH && lookupData && (
+                                <div className="p-2 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
+                                  <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
+                                    <CheckCircle className="w-4 h-4 text-green-600" />
+                                    <span className="font-medium">
+                                      Verified by Companies House
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 text-xs text-green-700 dark:text-green-300 space-y-0.5">
+                                    <p>
+                                      <strong>Status:</strong>{" "}
+                                      {lookupData.companyStatus}
+                                    </p>
+                                    {lookupData.registeredAddress && (
+                                      <p>
+                                        <strong>Address:</strong>{" "}
+                                        {lookupData.registeredAddress}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="mt-1 text-xs text-green-600 dark:text-green-400 hover:underline"
+                                    onClick={() => {
+                                      setSignUpData({
+                                        ...signUpData,
+                                        companiesHouseNumber: "",
+                                        isVerifiedByCH: false,
+                                      });
+                                      setLookupData(null);
+                                      setLookupError(null);
+                                    }}
+                                  >
+                                    Change company number
+                                  </button>
+                                </div>
+                              )}
+
+                              {!signUpData.isVerifiedByCH && (
+                                <p className="text-xs text-muted-foreground">
+                                  Enter your Companies House number and click
+                                  Lookup to verify and auto-fill company details
+                                </p>
+                              )}
                             </div>
 
                             <div className="space-y-2">

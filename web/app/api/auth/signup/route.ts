@@ -74,6 +74,24 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
+    // Check for duplicate company number (before creating user to avoid rollback)
+    if (signupType === "new-company" && companiesHouseNumber) {
+      const normalizedNumber = companiesHouseNumber.replace(/\s/g, "").toUpperCase();
+
+      const { data: existingCompany } = await supabase
+        .from("companies")
+        .select("id, company_name")
+        .eq("companies_house_number", normalizedNumber)
+        .single();
+
+      if (existingCompany) {
+        return apiError(
+          `A company with this Companies House number is already registered: "${existingCompany.company_name}"`,
+          409
+        );
+      }
+    }
+
     // 1. Create auth user with Supabase Admin API
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
@@ -115,13 +133,18 @@ export async function POST(request: NextRequest) {
         "Your individual account has been created and is pending approval.";
     } else if (signupType === "new-company") {
       // Create new company with all provided details
+      // Normalize company number for storage (uppercase, no spaces)
+      const normalizedCompanyNumber = companiesHouseNumber
+        ? companiesHouseNumber.replace(/\s/g, "").toUpperCase()
+        : null;
+
       const { data: company, error: companyError } = await supabase
         .from("companies")
         .insert({
           company_name: companyName!,
           user_id: userId,
           status: "pending_review",
-          companies_house_number: companiesHouseNumber || null,
+          companies_house_number: normalizedCompanyNumber,
           website_url: websiteUrl || null,
           contact_person: contactPerson || `${firstName} ${lastName}`,
           contact_email: contactEmail || email,

@@ -60,32 +60,91 @@ async function triggerAIPrefill(
       const normalized = prefillData.normalized;
       const updateData: Record<string, unknown> = {};
 
-      // Map normalized fields to company columns
-      if (normalized.description) updateData.description = normalized.description;
-      if (normalized.address) updateData.address = normalized.address;
-      if (normalized.postcode) updateData.postcode = normalized.postcode;
+      // Helper to extract value from structured field {value, confidence, evidence}
+      const extractValue = (field: unknown): string | null => {
+        if (!field) return null;
+        if (typeof field === "string") return field;
+        if (typeof field === "object" && "value" in (field as Record<string, unknown>)) {
+          return (field as { value: string }).value || null;
+        }
+        return null;
+      };
+
+      // Map normalized fields to company columns - extract .value from structured fields
+      const description = extractValue(normalized.description);
+      if (description) updateData.description = description;
+
+      const address = extractValue(normalized.address);
+      if (address) updateData.address = address;
+
+      const postcode = extractValue(normalized.postcode);
+      if (postcode) updateData.postcode = postcode;
+
+      // Capabilities are an array of {value, confidence, evidence} objects
       if (normalized.capabilities?.length) {
-        updateData.key_capabilities = normalized.capabilities.join(", ");
-      }
-      if (normalized.certifications?.length) {
-        updateData.certifications = JSON.stringify(normalized.certifications);
-      }
-      if (normalized.equipment?.length) {
-        updateData.equipment = JSON.stringify(normalized.equipment);
+        const capabilityValues = normalized.capabilities
+          .map((cap: unknown) => extractValue(cap))
+          .filter(Boolean);
+        if (capabilityValues.length) {
+          updateData.key_capabilities = capabilityValues.join(", ");
+        }
       }
 
-      // Store the raw extracted data
+      // Certifications - extract just the essential fields for display
+      if (normalized.certifications?.length) {
+        const cleanCerts = normalized.certifications.map((cert: Record<string, unknown>) => ({
+          name: cert.name || "",
+          issuer: cert.issuer || "",
+          validUntil: cert.validUntil || "",
+        })).filter((cert: { name: string }) => cert.name);
+        if (cleanCerts.length) {
+          updateData.certifications = JSON.stringify(cleanCerts);
+        }
+      }
+
+      // Equipment - extract just the essential fields for display
+      if (normalized.equipment?.length) {
+        const cleanEquipment = normalized.equipment.map((eq: Record<string, unknown>) => ({
+          name: eq.name || "",
+          model: eq.model || "",
+          capacity: eq.capacity || "",
+        })).filter((eq: { name: string }) => eq.name);
+        if (cleanEquipment.length) {
+          updateData.equipment = JSON.stringify(cleanEquipment);
+        }
+      }
+
+      // Store the raw extracted data for reference
       updateData.system_extracted = JSON.stringify({
         prefillData: normalized,
         fetchedAt: new Date().toISOString(),
       });
 
-      // Store financial and compliance data if available
-      if (normalized.financialData) {
-        updateData.financial_data = JSON.stringify(normalized.financialData);
+      // Store financial data - extract values from structured fields
+      if (normalized.financial) {
+        const financial = normalized.financial;
+        const financialData: Record<string, { value: number; confidence: number }> = {};
+
+        for (const [key, field] of Object.entries(financial)) {
+          if (field && typeof field === "object" && "value" in (field as Record<string, unknown>)) {
+            const typedField = field as { value: number; confidence: number };
+            if (typedField.value && typedField.value > 0) {
+              financialData[key] = {
+                value: typedField.value,
+                confidence: Math.round((typedField.confidence || 0) * 100),
+              };
+            }
+          }
+        }
+
+        if (Object.keys(financialData).length) {
+          updateData.financial_data = JSON.stringify(financialData);
+        }
       }
-      if (normalized.complianceData) {
-        updateData.compliance_data = JSON.stringify(normalized.complianceData);
+
+      // Store compliance data if available
+      if (normalized.compliance) {
+        updateData.compliance_data = JSON.stringify(normalized.compliance);
       }
 
       // Update the company with prefilled data

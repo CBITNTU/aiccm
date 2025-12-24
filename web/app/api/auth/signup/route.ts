@@ -22,6 +22,12 @@ export interface SignupRequest {
   companyName?: string;
   existingCompanyId?: string;
   message?: string; // Optional message when joining a company
+  // New company fields (for new-company signup type)
+  companiesHouseNumber?: string;
+  websiteUrl?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
 }
 
 export interface SignupResponse {
@@ -45,6 +51,11 @@ export async function POST(request: NextRequest) {
       companyName,
       existingCompanyId,
       message,
+      companiesHouseNumber,
+      websiteUrl,
+      contactPerson,
+      contactEmail,
+      contactPhone,
     } = body;
 
     // Validate required fields
@@ -103,13 +114,18 @@ export async function POST(request: NextRequest) {
       responseMessage =
         "Your individual account has been created and is pending approval.";
     } else if (signupType === "new-company") {
-      // Create new company
+      // Create new company with all provided details
       const { data: company, error: companyError } = await supabase
         .from("companies")
         .insert({
           company_name: companyName!,
           user_id: userId,
           status: "pending_review",
+          companies_house_number: companiesHouseNumber || null,
+          website_url: websiteUrl || null,
+          contact_person: contactPerson || `${firstName} ${lastName}`,
+          contact_email: contactEmail || email,
+          contact_phone: contactPhone || null,
         })
         .select()
         .single();

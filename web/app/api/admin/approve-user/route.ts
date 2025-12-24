@@ -18,6 +18,93 @@ export interface ApproveUserRequest {
   rejectionReason?: string;
 }
 
+/**
+ * Triggers AI prefill for a company in the background.
+ * Fetches data from Companies House, Endole, and company website,
+ * then applies the normalized data to the company record.
+ */
+async function triggerAIPrefill(
+  companyId: string,
+  params: {
+    companyName: string;
+    companyNumber: string | null;
+    websiteUrl: string | null;
+  }
+) {
+  const supabase = createAdminClient();
+
+  try {
+    // Fetch prefill data from external sources
+    const prefillResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/prefill-company-data`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: params.companyName,
+          companyNumber: params.companyNumber,
+          websiteUrl: params.websiteUrl,
+        }),
+      }
+    );
+
+    if (!prefillResponse.ok) {
+      console.error("Prefill API returned error:", prefillResponse.status);
+      return;
+    }
+
+    const prefillData = await prefillResponse.json();
+
+    // Apply normalized data to company if available
+    if (prefillData.normalized) {
+      const normalized = prefillData.normalized;
+      const updateData: Record<string, unknown> = {};
+
+      // Map normalized fields to company columns
+      if (normalized.description) updateData.description = normalized.description;
+      if (normalized.address) updateData.address = normalized.address;
+      if (normalized.postcode) updateData.postcode = normalized.postcode;
+      if (normalized.capabilities?.length) {
+        updateData.key_capabilities = normalized.capabilities.join(", ");
+      }
+      if (normalized.certifications?.length) {
+        updateData.certifications = JSON.stringify(normalized.certifications);
+      }
+      if (normalized.equipment?.length) {
+        updateData.equipment = JSON.stringify(normalized.equipment);
+      }
+
+      // Store the raw extracted data
+      updateData.system_extracted = JSON.stringify({
+        prefillData: normalized,
+        fetchedAt: new Date().toISOString(),
+      });
+
+      // Store financial and compliance data if available
+      if (normalized.financialData) {
+        updateData.financial_data = JSON.stringify(normalized.financialData);
+      }
+      if (normalized.complianceData) {
+        updateData.compliance_data = JSON.stringify(normalized.complianceData);
+      }
+
+      // Update the company with prefilled data
+      const { error: updateError } = await supabase
+        .from("companies")
+        .update(updateData)
+        .eq("id", companyId);
+
+      if (updateError) {
+        console.error("Error applying prefill data to company:", updateError);
+      } else {
+        console.log(`AI prefill applied to company ${companyId}`);
+      }
+    }
+  } catch (error) {
+    console.error("Error in triggerAIPrefill:", error);
+  }
+}
+
 export interface ApproveUserResponse {
   success: boolean;
   message: string;
@@ -75,17 +162,26 @@ export async function POST(request: NextRequest) {
     let signupType: "individual" | "new-company" | "join-company" = "individual";
     let companyName: string | undefined;
 
+    // Store company details for new-company approvals (for AI prefill)
+    let companyDetails: {
+      id: string;
+      company_name: string;
+      companies_house_number: string | null;
+      website_url: string | null;
+    } | null = null;
+
     if (userRole?.role === "sme-owner") {
       // Check if they created a company
       const { data: ownedCompany } = await supabase
         .from("companies")
-        .select("company_name")
+        .select("id, company_name, companies_house_number, website_url")
         .eq("user_id", userId)
         .single();
 
       if (ownedCompany) {
         signupType = "new-company";
         companyName = ownedCompany.company_name;
+        companyDetails = ownedCompany;
       }
     } else if (userRole?.role === "sme-member") {
       // Check if they have a join request
@@ -137,6 +233,18 @@ export async function POST(request: NextRequest) {
           .update({ status: "active" })
           .eq("user_id", userId)
           .eq("status", "pending_review");
+
+        // Trigger AI prefill in the background (non-blocking)
+        // This will fetch data from Companies House, Endole, and company website
+        if (companyDetails) {
+          triggerAIPrefill(companyDetails.id, {
+            companyName: companyDetails.company_name,
+            companyNumber: companyDetails.companies_house_number,
+            websiteUrl: companyDetails.website_url,
+          }).catch((err) => {
+            console.error("Background AI prefill error:", err);
+          });
+        }
       }
 
       // Send approval email
@@ -254,15 +362,27 @@ export async function GET(request: NextRequest) {
         let companyName: string | null = null;
         let signupType: string = "individual";
 
+        // Company details object for new-company signups
+        let company: {
+          id: string;
+          company_name: string;
+          companies_house_number: string | null;
+          website_url: string | null;
+          contact_person: string | null;
+          contact_email: string | null;
+          contact_phone: string | null;
+        } | null = null;
+
         if (roleData?.role === "sme-owner") {
-          const { data: company } = await supabase
+          const { data: companyData } = await supabase
             .from("companies")
-            .select("company_name")
+            .select("id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone")
             .eq("user_id", profile.user_id)
             .single();
 
-          if (company) {
-            companyName = company.company_name;
+          if (companyData) {
+            company = companyData;
+            companyName = companyData.company_name;
             signupType = "new-company";
           }
         } else if (roleData?.role === "sme-member") {
@@ -283,6 +403,7 @@ export async function GET(request: NextRequest) {
           role: roleData?.role || "individual",
           companyName,
           signupType,
+          company, // Full company details for new-company signups
         };
       })
     );

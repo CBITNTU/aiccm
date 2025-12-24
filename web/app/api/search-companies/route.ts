@@ -20,10 +20,12 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient();
 
     // Search for companies by name (case-insensitive)
+    // Only show active companies (hide pending_review companies from regular users)
     const { data: companies, error } = await supabase
       .from("companies")
       .select("id, company_name")
       .ilike("company_name", `%${query}%`)
+      .eq("status", "active")
       .order("company_name")
       .limit(10);
 

@@ -56,6 +56,12 @@ export default function AuthPage() {
     existingCompanyId: null as string | null,
     isNewCompany: false,
     joinMessage: "",
+    // New company fields
+    companiesHouseNumber: "",
+    websiteUrl: "",
+    contactPerson: "",
+    contactEmail: "",
+    contactPhone: "",
   });
 
   const [signInData, setSignInData] = useState({
@@ -291,6 +297,14 @@ export default function AuthPage() {
           companyName: signUpData.companyName || undefined,
           existingCompanyId: signUpData.existingCompanyId || undefined,
           message: signUpData.joinMessage || undefined,
+          // New company fields (only for new-company signups)
+          ...(apiSignupType === "new-company" && {
+            companiesHouseNumber: signUpData.companiesHouseNumber || undefined,
+            websiteUrl: signUpData.websiteUrl || undefined,
+            contactPerson: signUpData.contactPerson || undefined,
+            contactEmail: signUpData.contactEmail || undefined,
+            contactPhone: signUpData.contactPhone || undefined,
+          }),
         }),
       });
 
@@ -413,6 +427,11 @@ export default function AuthPage() {
                     existingCompanyId: null,
                     isNewCompany: false,
                     joinMessage: "",
+                    companiesHouseNumber: "",
+                    websiteUrl: "",
+                    contactPerson: "",
+                    contactEmail: "",
+                    contactPhone: "",
                   });
                 }}
               >
@@ -652,7 +671,8 @@ export default function AuthPage() {
                             handleCompanyNameChange(e.target.value)
                           }
                           onFocus={() => {
-                            if (companySearchResults.length > 0) {
+                            // Show dropdown if user has typed at least 2 chars and hasn't selected a company
+                            if (signUpData.companyName.length >= 2 && !selectedCompany && !signUpData.isNewCompany) {
                               setShowCompanyDropdown(true);
                             }
                           }}
@@ -667,37 +687,54 @@ export default function AuthPage() {
                       </div>
 
                       {/* Company Search Results Dropdown */}
-                      {showCompanyDropdown &&
-                        companySearchResults.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
-                            {companySearchResults.map((company) => (
-                              <button
-                                key={company.id}
-                                type="button"
-                                className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
-                                onClick={() => handleCompanySelect(company)}
-                              >
-                                <span className="font-medium">
-                                  {company.company_name}
-                                </span>
-                                {company.has_admin && (
-                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Users className="w-3 h-3" />
-                                    Has members
+                      {showCompanyDropdown && (
+                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                          {companySearchResults.length > 0 ? (
+                            <>
+                              {companySearchResults.map((company) => (
+                                <button
+                                  key={company.id}
+                                  type="button"
+                                  className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
+                                  onClick={() => handleCompanySelect(company)}
+                                >
+                                  <span className="font-medium">
+                                    {company.company_name}
                                   </span>
-                                )}
+                                  {company.has_admin && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Users className="w-3 h-3" />
+                                      Has members
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                              <button
+                                type="button"
+                                className="w-full px-4 py-2 text-left hover:bg-accent border-t text-primary font-medium"
+                                onClick={handleCreateNewCompany}
+                              >
+                                + Create &quot;{signUpData.companyName}&quot; as
+                                new company
                               </button>
-                            ))}
-                            <button
-                              type="button"
-                              className="w-full px-4 py-2 text-left hover:bg-accent border-t text-primary font-medium"
-                              onClick={handleCreateNewCompany}
-                            >
-                              + Create &quot;{signUpData.companyName}&quot; as
-                              new company
-                            </button>
-                          </div>
-                        )}
+                            </>
+                          ) : (
+                            <div className="p-2">
+                              <p className="text-sm text-muted-foreground px-2 py-1">
+                                No matching companies found
+                              </p>
+                              <button
+                                type="button"
+                                className="w-full px-4 py-2 text-left hover:bg-accent text-primary font-medium rounded"
+                                onClick={handleCreateNewCompany}
+                              >
+                                + Create &quot;{signUpData.companyName}&quot; as
+                                new company
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Selected Company or New Company Status */}
                       {selectedCompany && (
@@ -724,13 +761,121 @@ export default function AuthPage() {
                       )}
 
                       {signUpData.isNewCompany && (
-                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md text-sm text-green-800 dark:text-green-200">
-                          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                          <span>
-                            Creating new company:{" "}
-                            <strong>{signUpData.companyName}</strong>
-                          </span>
-                        </div>
+                        <>
+                          <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md text-sm text-green-800 dark:text-green-200">
+                            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            <span>
+                              Creating new company:{" "}
+                              <strong>{signUpData.companyName}</strong>
+                            </span>
+                          </div>
+
+                          {/* New Company Details Fields */}
+                          <div className="space-y-3 mt-3 p-3 border rounded-md bg-muted/30">
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Company Details (optional but recommended)
+                            </p>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="signup-company-house-number">
+                                Companies House Number
+                              </Label>
+                              <Input
+                                id="signup-company-house-number"
+                                type="text"
+                                placeholder="e.g. 12345678"
+                                maxLength={8}
+                                value={signUpData.companiesHouseNumber}
+                                onChange={(e) =>
+                                  setSignUpData({
+                                    ...signUpData,
+                                    companiesHouseNumber: e.target.value,
+                                  })
+                                }
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                8-digit UK Companies House registration number
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="signup-website-url">
+                                Company Website
+                              </Label>
+                              <Input
+                                id="signup-website-url"
+                                type="url"
+                                placeholder="https://www.example.com"
+                                value={signUpData.websiteUrl}
+                                onChange={(e) =>
+                                  setSignUpData({
+                                    ...signUpData,
+                                    websiteUrl: e.target.value,
+                                  })
+                                }
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label htmlFor="signup-contact-person">
+                                  Contact Person
+                                </Label>
+                                <Input
+                                  id="signup-contact-person"
+                                  type="text"
+                                  placeholder="Your name"
+                                  value={signUpData.contactPerson}
+                                  onChange={(e) =>
+                                    setSignUpData({
+                                      ...signUpData,
+                                      contactPerson: e.target.value,
+                                    })
+                                  }
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="signup-contact-phone">
+                                  Contact Phone
+                                </Label>
+                                <Input
+                                  id="signup-contact-phone"
+                                  type="tel"
+                                  placeholder="+44 ..."
+                                  value={signUpData.contactPhone}
+                                  onChange={(e) =>
+                                    setSignUpData({
+                                      ...signUpData,
+                                      contactPhone: e.target.value,
+                                    })
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="signup-contact-email">
+                                Company Contact Email
+                              </Label>
+                              <Input
+                                id="signup-contact-email"
+                                type="email"
+                                placeholder="contact@company.com"
+                                value={signUpData.contactEmail}
+                                onChange={(e) =>
+                                  setSignUpData({
+                                    ...signUpData,
+                                    contactEmail: e.target.value,
+                                  })
+                                }
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Defaults to your signup email if left empty
+                              </p>
+                            </div>
+                          </div>
+                        </>
                       )}
 
                       {/* Join Message (when joining existing company) */}

@@ -33,8 +33,27 @@ import {
   AlertCircle,
   Users,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  Phone,
+  Pencil,
+  Sparkles,
+  Save,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+
+interface CompanyDetails {
+  id: string;
+  company_name: string;
+  companies_house_number: string | null;
+  website_url: string | null;
+  contact_person: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+}
 
 interface PendingUser {
   user_id: string;
@@ -47,6 +66,7 @@ interface PendingUser {
   role: string;
   companyName: string | null;
   signupType: string;
+  company: CompanyDetails | null;
 }
 
 interface JoinRequest {
@@ -71,6 +91,12 @@ export default function AdminApprovals() {
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Company details expand/edit state
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<CompanyDetails | null>(null);
+  const [analyzingCompanyId, setAnalyzingCompanyId] = useState<string | null>(null);
 
   // Rejection dialog state
   const [rejectDialog, setRejectDialog] = useState<{
@@ -222,6 +248,77 @@ export default function AdminApprovals() {
     }
   };
 
+  // Company edit handlers
+  const handleStartEdit = (company: CompanyDetails) => {
+    setEditingCompanyId(company.id);
+    setEditFormData({ ...company });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCompanyId(null);
+    setEditFormData(null);
+  };
+
+  const handleSaveCompany = async () => {
+    if (!editFormData) return;
+
+    setActionLoading(editFormData.id);
+    try {
+      const response = await fetch("/api/admin/edit-pending-company", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: editFormData.id,
+          companyName: editFormData.company_name,
+          companiesHouseNumber: editFormData.companies_house_number,
+          websiteUrl: editFormData.website_url,
+          contactPerson: editFormData.contact_person,
+          contactEmail: editFormData.contact_email,
+          contactPhone: editFormData.contact_phone,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update company");
+      }
+
+      toast.success("Company details updated");
+      setEditingCompanyId(null);
+      setEditFormData(null);
+      fetchData();
+    } catch (error) {
+      console.error("Error updating company:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update company");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAnalyzeCompany = async (companyId: string) => {
+    setAnalyzingCompanyId(companyId);
+    try {
+      const response = await fetch("/api/analyze-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to analyze company");
+      }
+
+      toast.success("Company analysis started. Data will be updated shortly.");
+      fetchData();
+    } catch (error) {
+      console.error("Error analyzing company:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to analyze company");
+    } finally {
+      setAnalyzingCompanyId(null);
+    }
+  };
+
   const getSignupTypeBadge = (signupType: string) => {
     switch (signupType) {
       case "individual":
@@ -306,6 +403,10 @@ export default function AdminApprovals() {
                 <div className="space-y-4">
                   {pendingUsers.map((user) => {
                     const userName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown";
+                    const isExpanded = expandedUserId === user.user_id;
+                    const isEditing = editingCompanyId === user.company?.id;
+                    const hasCompanyDetails = user.signupType === "new-company" && user.company;
+
                     return (
                       <div
                         key={user.user_id}
@@ -339,6 +440,30 @@ export default function AdminApprovals() {
                                 {formatDate(user.created_at)}
                               </div>
                             </div>
+
+                            {/* Expand/Collapse button for new-company signups */}
+                            {hasCompanyDetails && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 text-primary"
+                                onClick={() =>
+                                  setExpandedUserId(isExpanded ? null : user.user_id)
+                                }
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <ChevronUp className="w-4 h-4 mr-1" />
+                                    Hide Company Details
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="w-4 h-4 mr-1" />
+                                    View Company Details
+                                  </>
+                                )}
+                              </Button>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             <Button
@@ -371,6 +496,209 @@ export default function AdminApprovals() {
                             </Button>
                           </div>
                         </div>
+
+                        {/* Expanded Company Details Section */}
+                        {hasCompanyDetails && isExpanded && user.company && (
+                          <div className="mt-4 pt-4 border-t">
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="font-medium text-sm">Company Details</h5>
+                              <div className="flex gap-2">
+                                {!isEditing ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleStartEdit(user.company!)}
+                                    >
+                                      <Pencil className="w-3 h-3 mr-1" />
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleAnalyzeCompany(user.company!.id)}
+                                      disabled={analyzingCompanyId === user.company.id}
+                                    >
+                                      {analyzingCompanyId === user.company.id ? (
+                                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                      ) : (
+                                        <Sparkles className="w-3 h-3 mr-1" />
+                                      )}
+                                      AI Analyze
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={handleCancelEdit}
+                                    >
+                                      <X className="w-3 h-3 mr-1" />
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={handleSaveCompany}
+                                      disabled={actionLoading === user.company.id}
+                                    >
+                                      {actionLoading === user.company.id ? (
+                                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                      ) : (
+                                        <Save className="w-3 h-3 mr-1" />
+                                      )}
+                                      Save
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {isEditing && editFormData ? (
+                              /* Edit Mode */
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Company Name</Label>
+                                  <Input
+                                    value={editFormData.company_name}
+                                    onChange={(e) =>
+                                      setEditFormData({
+                                        ...editFormData,
+                                        company_name: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Company name"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Companies House No.</Label>
+                                  <Input
+                                    value={editFormData.companies_house_number || ""}
+                                    onChange={(e) =>
+                                      setEditFormData({
+                                        ...editFormData,
+                                        companies_house_number: e.target.value || null,
+                                      })
+                                    }
+                                    placeholder="e.g. 12345678"
+                                    maxLength={8}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Website URL</Label>
+                                  <Input
+                                    value={editFormData.website_url || ""}
+                                    onChange={(e) =>
+                                      setEditFormData({
+                                        ...editFormData,
+                                        website_url: e.target.value || null,
+                                      })
+                                    }
+                                    placeholder="https://..."
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Contact Person</Label>
+                                  <Input
+                                    value={editFormData.contact_person || ""}
+                                    onChange={(e) =>
+                                      setEditFormData({
+                                        ...editFormData,
+                                        contact_person: e.target.value || null,
+                                      })
+                                    }
+                                    placeholder="Contact name"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Contact Email</Label>
+                                  <Input
+                                    value={editFormData.contact_email || ""}
+                                    onChange={(e) =>
+                                      setEditFormData({
+                                        ...editFormData,
+                                        contact_email: e.target.value || null,
+                                      })
+                                    }
+                                    placeholder="contact@company.com"
+                                    type="email"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Contact Phone</Label>
+                                  <Input
+                                    value={editFormData.contact_phone || ""}
+                                    onChange={(e) =>
+                                      setEditFormData({
+                                        ...editFormData,
+                                        contact_phone: e.target.value || null,
+                                      })
+                                    }
+                                    placeholder="+44..."
+                                    type="tel"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              /* View Mode */
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                                  <div>
+                                    <span className="text-muted-foreground text-xs block">Company Name</span>
+                                    <span>{user.company.company_name}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                                  <div>
+                                    <span className="text-muted-foreground text-xs block">Companies House No.</span>
+                                    <span>{user.company.companies_house_number || "Not provided"}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Globe className="w-4 h-4 text-muted-foreground" />
+                                  <div>
+                                    <span className="text-muted-foreground text-xs block">Website</span>
+                                    {user.company.website_url ? (
+                                      <a
+                                        href={user.company.website_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline"
+                                      >
+                                        {user.company.website_url}
+                                      </a>
+                                    ) : (
+                                      <span>Not provided</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4 text-muted-foreground" />
+                                  <div>
+                                    <span className="text-muted-foreground text-xs block">Contact Person</span>
+                                    <span>{user.company.contact_person || "Not provided"}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4 text-muted-foreground" />
+                                  <div>
+                                    <span className="text-muted-foreground text-xs block">Contact Email</span>
+                                    <span>{user.company.contact_email || "Not provided"}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4 text-muted-foreground" />
+                                  <div>
+                                    <span className="text-muted-foreground text-xs block">Contact Phone</span>
+                                    <span>{user.company.contact_phone || "Not provided"}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -30,6 +30,28 @@ export async function sendEmail(
 ): Promise<SendEmailResult> {
   const { to, subject, html, text } = options;
 
+  // In development mode, log email instead of sending via Resend
+  if (process.env.NODE_ENV === "development") {
+    const recipients = Array.isArray(to) ? to.join(", ") : to;
+
+    // Extract any URLs from the HTML for easy access
+    const urlMatches = html.match(/href="([^"]+)"/g);
+    const urls = urlMatches
+      ? urlMatches.map((m) => m.replace(/href="|"/g, ""))
+      : [];
+
+    console.log("\n========== EMAIL (DEV MODE) ==========");
+    console.log("To:", recipients);
+    console.log("Subject:", subject);
+    if (urls.length > 0) {
+      console.log("Links:");
+      urls.forEach((url) => console.log("  →", url));
+    }
+    console.log("=======================================\n");
+
+    return { success: true, data: { id: `dev-${Date.now()}` } };
+  }
+
   // Check if API key is configured
   if (!process.env.RESEND_API_KEY) {
     console.warn("RESEND_API_KEY not configured, skipping email send");

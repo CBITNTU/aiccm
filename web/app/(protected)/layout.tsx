@@ -1,9 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Header } from "@/components/layout/Header";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
+import { EmailVerifiedToast } from "@/components/EmailVerifiedToast";
 
 export default function ProtectedLayout({
   children,
@@ -33,7 +36,11 @@ export default function ProtectedLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <Suspense fallback={null}>
+        <EmailVerifiedToast />
+      </Suspense>
       <Header variant="app" />
+      <EmailVerificationBanner />
       <main>{children}</main>
     </div>
   );

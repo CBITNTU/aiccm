@@ -96,6 +96,10 @@ export default function AuthPage() {
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [signupMessage, setSignupMessage] = useState("");
 
+  // Email verification state
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+
   // Initialize supabase client on mount
   useEffect(() => {
     try {
@@ -109,6 +113,39 @@ export default function AuthPage() {
     }
   }, []);
 
+  // Handle hash fragment tokens (from email verification links)
+  useEffect(() => {
+    if (typeof window === "undefined" || !supabase) return;
+
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      // Parse hash to check for type=signup (email verification)
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const type = hashParams.get("type");
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+
+      if (accessToken && refreshToken && (type === "signup" || type === "magiclink")) {
+        // This is an email verification - show loading state
+        setIsVerifyingEmail(true);
+        setError(null); // Clear any server-side error
+
+        // Manually set the session from the hash tokens
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        }).then(({ error }) => {
+          if (error) {
+            console.error("Failed to set session from hash:", error);
+            setIsVerifyingEmail(false);
+            setError("Failed to verify email. Please try again.");
+          }
+          // onAuthStateChange will handle the rest
+        });
+      }
+    }
+  }, [supabase]);
+
   useEffect(() => {
     if (!supabase) return;
 
@@ -118,6 +155,18 @@ export default function AuthPage() {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth page - Auth state change:", event, session?.user?.id);
       if (event === "SIGNED_IN" && session) {
+        // Check if this was an email verification (from hash tokens)
+        const wasVerifyingEmail = isVerifyingEmail;
+        if (wasVerifyingEmail) {
+          setEmailVerified(true);
+          setIsVerifyingEmail(false);
+          // Clean up the URL
+          window.history.replaceState(null, "", "/auth");
+          toast.success("Email verified!", {
+            description: "Your email has been verified successfully.",
+          });
+        }
+
         // Add small delay to ensure any pending database operations complete
         setTimeout(async () => {
           // Check user approval status
@@ -167,9 +216,9 @@ export default function AuthPage() {
               (memberCompanies && memberCompanies.length > 0);
 
             if (hasCompany) {
-              router.push("/dashboard");
+              router.push("/dashboard?email_verified=true");
             } else {
-              router.push("/profile");
+              router.push("/profile?email_verified=true");
             }
           } catch (error) {
             console.error("Error checking user status:", error);
@@ -180,7 +229,7 @@ export default function AuthPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase, router]);
+  }, [supabase, router, isVerifyingEmail]);
 
   // Debounced company search
   const searchCompanies = useCallback(async (query: string) => {
@@ -475,6 +524,31 @@ export default function AuthPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading screen while verifying email
+  if (isVerifyingEmail) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header variant="landing" />
+
+        <div className="max-w-md mx-auto px-4 pt-20 pb-16">
+          <Card className="card-professional">
+            <CardContent className="pt-8 pb-8 text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">
+                Verifying Your Email
+              </h2>
+              <p className="text-muted-foreground">
+                Please wait while we verify your email address...
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Show success screen after signup
   if (signupSuccess) {

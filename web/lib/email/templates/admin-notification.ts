@@ -15,8 +15,8 @@ export function getAdminNotificationEmailSubject(
     data.signupType === "individual"
       ? "Individual"
       : data.signupType === "new-company"
-        ? "New Company"
-        : "Company Join Request";
+      ? "Company"
+      : "Company Join Request";
   return `[Action Required] New ${typeLabel} Signup: ${data.userName}`;
 }
 
@@ -31,15 +31,15 @@ export function getAdminNotificationEmailHtml(
     signupType === "individual"
       ? "Individual User"
       : signupType === "new-company"
-        ? "New Company Registration"
-        : "Company Join Request";
+      ? "New Company Registration"
+      : "Company Join Request";
 
   const signupTypeBadgeColor =
     signupType === "individual"
       ? "#3b82f6"
       : signupType === "new-company"
-        ? "#10b981"
-        : "#8b5cf6";
+      ? "#10b981"
+      : "#8b5cf6";
 
   return `
 <!DOCTYPE html>

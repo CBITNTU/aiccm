@@ -87,8 +87,8 @@ export function getPlatformName(): string {
 }
 
 // Re-export templates
-export * from "./templates/welcome";
-export * from "./templates/pending-approval";
+export * from "./templates/welcome-verification";
+export * from "./templates/verification-resend";
 export * from "./templates/admin-notification";
 export * from "./templates/company-join-request";
 export * from "./templates/approval-notification";

@@ -2,14 +2,13 @@ import { NextRequest } from "next/server";
 import { createAdminClient, apiResponse, apiError } from "@/lib/api";
 import {
   sendEmail,
-  getWelcomeEmailSubject,
-  getWelcomeEmailHtml,
-  getPendingApprovalEmailSubject,
-  getPendingApprovalEmailHtml,
+  getWelcomeVerificationEmailSubject,
+  getWelcomeVerificationEmailHtml,
   getAdminNotificationEmailSubject,
   getAdminNotificationEmailHtml,
   getCompanyJoinRequestEmailSubject,
   getCompanyJoinRequestEmailHtml,
+  getPlatformUrl,
 } from "@/lib/email";
 
 export interface SignupRequest {
@@ -92,16 +91,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 1. Create auth user with Supabase Admin API
-    const { data: authData, error: authError } =
-      await supabase.auth.admin.createUser({
+    // 1. Create auth user with Supabase Admin API using generateLink
+    // This creates the user with unverified email and returns a verification link
+    const { data: linkData, error: authError } =
+      await supabase.auth.admin.generateLink({
+        type: "signup",
         email,
         password,
-        email_confirm: true, // Auto-confirm email for now (approval handles access)
-        user_metadata: {
-          first_name: firstName,
-          last_name: lastName,
-          job_title: jobTitle,
+        options: {
+          redirectTo: getPlatformUrl("/auth/callback"),
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            job_title: jobTitle,
+          },
         },
       });
 
@@ -116,11 +119,12 @@ export async function POST(request: NextRequest) {
       return apiError(authError.message, 400);
     }
 
-    if (!authData.user) {
+    if (!linkData?.user) {
       return apiError("Failed to create user", 500);
     }
 
-    const userId = authData.user.id;
+    const userId = linkData.user.id;
+    const verificationLink = linkData.properties.action_link;
     const userName = `${firstName} ${lastName}`;
 
     // 2. Handle signup type specific logic
@@ -275,27 +279,21 @@ export async function POST(request: NextRequest) {
       responseMessage = `Your request to join "${company.company_name}" has been submitted and is pending approval.`;
     }
 
-    // 3. Send welcome email to the new user
+    // 3. Send combined welcome & verification email to the new user
     const welcomeEmailData = {
       userName,
       signupType,
       companyName,
+      verificationLink,
     };
 
     await sendEmail({
       to: email,
-      subject: getWelcomeEmailSubject(),
-      html: getWelcomeEmailHtml(welcomeEmailData),
+      subject: getWelcomeVerificationEmailSubject(),
+      html: getWelcomeVerificationEmailHtml(welcomeEmailData),
     });
 
-    // 4. Send pending approval email
-    await sendEmail({
-      to: email,
-      subject: getPendingApprovalEmailSubject(),
-      html: getPendingApprovalEmailHtml(welcomeEmailData),
-    });
-
-    // 5. Notify superadmins about new signup
+    // 4. Notify superadmins about new signup
     const { data: superadmins } = await supabase
       .from("user_roles")
       .select("user_id")
@@ -329,7 +327,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. Return success response
+    // 5. Return success response
     const response: SignupResponse = {
       success: true,
       userId,

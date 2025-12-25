@@ -348,39 +348,204 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approval_status: "pending" | "approved" | "rejected"
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           email: string | null
           first_name: string | null
           id: string
+          invited_to_company_id: string | null
           job_title: string | null
           last_name: string | null
           phone: string | null
+          rejection_reason: string | null
+          signup_type: "individual" | "new-company" | "join-company" | "invited" | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          approval_status?: "pending" | "approved" | "rejected"
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
           id?: string
+          invited_to_company_id?: string | null
           job_title?: string | null
           last_name?: string | null
           phone?: string | null
+          rejection_reason?: string | null
+          signup_type?: "individual" | "new-company" | "join-company" | "invited" | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          approval_status?: "pending" | "approved" | "rejected"
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
           id?: string
+          invited_to_company_id?: string | null
           job_title?: string | null
           last_name?: string | null
           phone?: string | null
+          rejection_reason?: string | null
+          signup_type?: "individual" | "new-company" | "join-company" | "invited" | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      company_members: {
+        Row: {
+          id: string
+          company_id: string
+          user_id: string
+          role: "admin" | "member"
+          status: "pending" | "approved" | "rejected"
+          approved_by: string | null
+          approved_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          user_id: string
+          role?: "admin" | "member"
+          status?: "pending" | "approved" | "rejected"
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          user_id?: string
+          role?: "admin" | "member"
+          status?: "pending" | "approved" | "rejected"
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_join_requests: {
+        Row: {
+          id: string
+          user_id: string
+          company_id: string
+          company_name_requested: string
+          message: string | null
+          status: "pending" | "approved_by_admin" | "approved" | "rejected"
+          admin_approved_at: string | null
+          admin_approved_by: string | null
+          superadmin_approved_at: string | null
+          superadmin_approved_by: string | null
+          rejection_reason: string | null
+          rejected_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          company_id: string
+          company_name_requested: string
+          message?: string | null
+          status?: "pending" | "approved_by_admin" | "approved" | "rejected"
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
+          superadmin_approved_at?: string | null
+          superadmin_approved_by?: string | null
+          rejection_reason?: string | null
+          rejected_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          company_id?: string
+          company_name_requested?: string
+          message?: string | null
+          status?: "pending" | "approved_by_admin" | "approved" | "rejected"
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
+          superadmin_approved_at?: string | null
+          superadmin_approved_by?: string | null
+          rejection_reason?: string | null
+          rejected_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_join_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_invitations: {
+        Row: {
+          id: string
+          company_id: string
+          email: string
+          token_hash: string
+          invited_by: string
+          status: "pending" | "accepted" | "expired" | "cancelled"
+          expires_at: string
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          email: string
+          token_hash: string
+          invited_by: string
+          status?: "pending" | "accepted" | "expired" | "cancelled"
+          expires_at: string
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          email?: string
+          token_hash?: string
+          invited_by?: string
+          status?: "pending" | "accepted" | "expired" | "cancelled"
+          expires_at?: string
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       taxonomies: {
         Row: {
@@ -664,9 +829,25 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_company_admin: {
+        Args: { _user_id: string; _company_id: string }
+        Returns: boolean
+      }
+      is_sme_owner: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      is_user_approved: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
     }
     Enums: {
-      app_role: "superadmin" | "sme-owner"
+      app_role: "superadmin" | "sme-owner" | "sme-member" | "individual"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -794,7 +975,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["superadmin", "sme-owner"],
+      app_role: ["superadmin", "sme-owner", "sme-member", "individual"],
     },
   },
 } as const

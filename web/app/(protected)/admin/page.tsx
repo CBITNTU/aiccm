@@ -13,7 +13,6 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +22,8 @@ import { AdminCompanyManager } from "@/components/admin/AdminCompanyManager";
 import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminTaxonomyEditor from "@/components/admin/AdminTaxonomyEditor";
-import { UserCog, Tags } from "lucide-react";
+import AdminApprovals from "@/components/admin/AdminApprovals";
+import { UserCog, Tags, ClipboardCheck } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 
@@ -137,7 +137,6 @@ export default function AdminPage() {
   if (roleLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header variant="app" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -155,7 +154,6 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background">
-        <Header variant="app" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -170,8 +168,6 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header variant="app" />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
@@ -189,6 +185,7 @@ export default function AdminPage() {
           <div className="flex space-x-1 bg-muted p-1 rounded-lg w-fit">
             {[
               { id: "overview", label: "Overview", icon: BarChart3 },
+              { id: "approvals", label: "Approvals", icon: ClipboardCheck },
               { id: "companies", label: "Companies", icon: Building2 },
               { id: "tenders", label: "Tenders", icon: FileText },
               { id: "users", label: "Users", icon: UserCog },
@@ -322,6 +319,9 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Approvals Tab */}
+        {activeTab === "approvals" && <AdminApprovals />}
+
         {/* Companies Tab */}
         {activeTab === "companies" && (
           <div className="space-y-6">
@@ -349,6 +349,7 @@ export default function AdminPage() {
 
         {/* Other tabs placeholder */}
         {activeTab !== "overview" &&
+          activeTab !== "approvals" &&
           activeTab !== "companies" &&
           activeTab !== "tenders" &&
           activeTab !== "users" &&

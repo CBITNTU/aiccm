@@ -55,21 +55,50 @@ export default function ProfilePage() {
       console.log("Profile: Checking companies for user:", user.id);
 
       try {
-        const { data: companiesData, error } = await supabase
+        // First check if user owns any companies
+        const { data: ownedCompanies, error: ownedError } = await supabase
           .from("companies")
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        if (ownedError) throw ownedError;
+
+        // Also check if user is an approved member of any company
+        const { data: memberships } = await supabase
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", user.id)
+          .eq("status", "approved");
+
+        // Fetch companies the user is a member of (but doesn't own)
+        let memberCompanies: Company[] = [];
+        if (memberships && memberships.length > 0) {
+          // Filter out companies already in ownedCompanies
+          const ownedIds = new Set((ownedCompanies || []).map((c) => c.id));
+          const memberCompanyIds = memberships
+            .map((m) => m.company_id)
+            .filter((id) => !ownedIds.has(id));
+
+          if (memberCompanyIds.length > 0) {
+            const { data: memberCompaniesData } = await supabase
+              .from("companies")
+              .select("*")
+              .in("id", memberCompanyIds);
+            memberCompanies = memberCompaniesData || [];
+          }
+        }
+
+        // Combine owned and member companies
+        const allCompanies = [...(ownedCompanies || []), ...memberCompanies];
 
         console.log(
           "Profile: Found companies:",
-          companiesData?.length || 0,
-          companiesData
+          allCompanies.length,
+          { owned: ownedCompanies?.length || 0, member: memberCompanies.length }
         );
 
-        if (!companiesData || companiesData.length === 0) {
+        if (allCompanies.length === 0) {
           // No companies found, redirect to onboarding
           console.log("Profile: No companies found, redirecting to onboarding");
           router.push("/onboarding?mode=create");
@@ -77,7 +106,7 @@ export default function ProfilePage() {
         }
 
         console.log("Profile: User has companies, showing profile");
-        setCompanies(companiesData);
+        setCompanies(allCompanies);
       } catch (error) {
         console.error("Error fetching company data:", error);
         toast.error("Error", {

@@ -37,6 +37,7 @@ import {
 import { CompanySelector } from "@/components/CompanySelector";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { BusinessChatbot } from "@/components/BusinessChatbot";
+import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -629,6 +630,16 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Team Members Section */}
+      {selectedCompany && (
+        <div className="mb-8">
+          <TeamMembersCard
+            companyId={selectedCompany.id}
+            variant="compact"
+          />
         </div>
       )}
 

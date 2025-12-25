@@ -24,7 +24,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 interface PendingInfo {
-  signupType: "individual" | "new-company" | "join-company" | null;
+  signupType: "individual" | "new-company" | "join-company" | "invited" | null;
   companyName: string | null;
   joinRequestStatus: string | null;
 }

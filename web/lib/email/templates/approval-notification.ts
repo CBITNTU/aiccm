@@ -4,7 +4,7 @@ export interface ApprovalNotificationEmailData {
   userName: string;
   approved: boolean;
   rejectionReason?: string;
-  signupType: "individual" | "new-company" | "join-company";
+  signupType: "individual" | "new-company" | "join-company" | "invited";
   companyName?: string;
 }
 
@@ -67,6 +67,17 @@ function getApprovedEmailHtml(
     case "join-company":
       welcomeMessage = `
         <p>You've been approved to join <strong>${companyName}</strong>! You now have access to:</p>
+        <ul>
+          <li>Your company's profile and details</li>
+          <li>Company tender matches</li>
+          <li>Team collaboration features</li>
+          <li>Virtual organization projects</li>
+        </ul>
+      `;
+      break;
+    case "invited":
+      welcomeMessage = `
+        <p>You've been approved to join <strong>${companyName}</strong> as a team member! You now have access to:</p>
         <ul>
           <li>Your company's profile and details</li>
           <li>Company tender matches</li>

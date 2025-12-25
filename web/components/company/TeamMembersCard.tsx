@@ -31,8 +31,10 @@ import {
   XCircle,
   Loader2,
   Shield,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { InviteTeamMemberDialog } from "./InviteTeamMemberDialog";
 
 interface JoinRequest {
   id: string;
@@ -67,14 +69,22 @@ interface Member {
 
 interface TeamMembersCardProps {
   companyId?: string;
+  companyName?: string;
   variant?: "full" | "compact";
   showRequests?: boolean;
+  isSmeOwner?: boolean;
+  currentUserId?: string;
+  onInviteSent?: () => void;
 }
 
 export function TeamMembersCard({
   companyId,
+  companyName = "Company",
   variant = "full",
   showRequests = true,
+  isSmeOwner = false,
+  currentUserId,
+  onInviteSent,
 }: TeamMembersCardProps) {
   const router = useRouter();
   const [requests, setRequests] = useState<JoinRequest[]>([]);
@@ -90,6 +100,17 @@ export function TeamMembersCard({
     name: string;
   } | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+
+  // Invite dialog state
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+
+  // Remove member dialog state
+  const [removeDialog, setRemoveDialog] = useState<{
+    open: boolean;
+    memberId: string;
+    name: string;
+    userId: string;
+  } | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -186,6 +207,38 @@ export function TeamMembersCard({
       console.error("Error rejecting request:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to reject request"
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!removeDialog || !companyId) return;
+
+    setActionLoading(removeDialog.memberId);
+    try {
+      const response = await fetch("/api/team/members", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberId: removeDialog.memberId,
+          companyId,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to remove member");
+      }
+
+      toast.success(`${removeDialog.name} has been removed from the team`);
+      setRemoveDialog(null);
+      fetchData();
+    } catch (error) {
+      console.error("Error removing member:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove member"
       );
     } finally {
       setActionLoading(null);
@@ -295,13 +348,23 @@ export function TeamMembersCard({
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Team Members
-          </CardTitle>
-          <CardDescription>
-            Manage team members and review join requests
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Team Members
+              </CardTitle>
+              <CardDescription>
+                Manage team members and review join requests
+              </CardDescription>
+            </div>
+            {isSmeOwner && companyId && (
+              <Button onClick={() => setInviteDialogOpen(true)}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Invite
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Pending Requests */}
@@ -409,6 +472,9 @@ export function TeamMembersCard({
                     ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() || "Unknown"
                     : "Unknown";
                   const isAdmin = member.role === "admin";
+                  const isSelf = currentUserId === member.user_id;
+                  const adminCount = members.filter((m) => m.role === "admin").length;
+                  const canRemove = isSmeOwner && !isSelf && !(isAdmin && adminCount === 1);
 
                   return (
                     <div
@@ -431,15 +497,44 @@ export function TeamMembersCard({
                                 Admin
                               </Badge>
                             )}
+                            {isSelf && (
+                              <Badge variant="outline" className="text-xs">
+                                You
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             {member.user?.email && <span>{member.user.email}</span>}
                           </div>
                         </div>
                       </div>
-                      <span className="text-sm text-muted-foreground">
-                        Joined {formatDate(member.created_at)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          Joined {formatDate(member.created_at)}
+                        </span>
+                        {canRemove && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setRemoveDialog({
+                                open: true,
+                                memberId: member.id,
+                                name: userName,
+                                userId: member.user_id,
+                              })
+                            }
+                            disabled={actionLoading === member.id}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            {actionLoading === member.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -503,6 +598,60 @@ export function TeamMembersCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Remove Member Dialog */}
+      <Dialog
+        open={removeDialog?.open || false}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRemoveDialog(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove {removeDialog?.name}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove {removeDialog?.name} from the team?
+              They will lose access to the company.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRemoveDialog(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRemoveMember}
+              disabled={actionLoading === removeDialog?.memberId}
+            >
+              {actionLoading === removeDialog?.memberId ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-1" />
+              )}
+              Remove Member
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Team Member Dialog */}
+      {companyId && (
+        <InviteTeamMemberDialog
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+          companyId={companyId}
+          companyName={companyName}
+          onInviteSent={() => {
+            fetchData();
+            onInviteSent?.();
+          }}
+        />
+      )}
     </>
   );
 }

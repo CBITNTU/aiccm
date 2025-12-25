@@ -192,14 +192,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Get user profile
+    // Get user profile - use * to avoid issues with missing columns during migration
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("user_id, email, first_name, last_name, approval_status")
+      .select("*")
       .eq("user_id", userId)
       .single();
 
     if (profileError || !profile) {
+      console.error("Profile not found:", { userId, profileError });
       return apiError("User not found", 404);
     }
 
@@ -218,8 +219,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Determine signup type based on role and company membership
-    let signupType: "individual" | "new-company" | "join-company" = "individual";
+    let signupType: "individual" | "new-company" | "join-company" | "invited" = "individual";
     let companyName: string | undefined;
+    let invitedToCompanyId: string | null = null;
 
     // Store company details for new-company approvals (for AI prefill)
     let companyDetails: {
@@ -229,7 +231,28 @@ export async function POST(request: NextRequest) {
       website_url: string | null;
     } | null = null;
 
-    if (userRole?.role === "sme-owner") {
+    // Check if user was invited (has invited_to_company_id set OR signup_type is "invited")
+    // We check invited_to_company_id as primary indicator since signup_type column may not exist yet
+    console.log("Profile data for approval:", {
+      userId,
+      invited_to_company_id: profile.invited_to_company_id,
+      signup_type: profile.signup_type,
+      role: userRole?.role
+    });
+
+    if (profile.invited_to_company_id) {
+      invitedToCompanyId = profile.invited_to_company_id;
+      const { data: invitedCompany } = await supabase
+        .from("companies")
+        .select("id, company_name")
+        .eq("id", profile.invited_to_company_id)
+        .single();
+
+      if (invitedCompany) {
+        signupType = "invited";
+        companyName = invitedCompany.company_name;
+      }
+    } else if (userRole?.role === "sme-owner") {
       // Check if they created a company
       const { data: ownedCompany } = await supabase
         .from("companies")
@@ -304,6 +327,33 @@ export async function POST(request: NextRequest) {
             console.error("Background AI prefill error:", err);
           });
         }
+      }
+
+      // If user was invited, approve their company membership
+      if (signupType === "invited" && invitedToCompanyId) {
+        console.log("Approving invited user company membership:", { userId, invitedToCompanyId });
+
+        const { data: memberUpdate, error: memberError } = await supabase
+          .from("company_members")
+          .update({
+            status: "approved",
+            approved_at: new Date().toISOString(),
+            approved_by: user.id,
+          })
+          .eq("user_id", userId)
+          .eq("company_id", invitedToCompanyId)
+          .eq("status", "pending")
+          .select();
+
+        console.log("Company member update result:", { memberUpdate, memberError });
+
+        // Clear the invited_to_company_id since they're now approved
+        await supabase
+          .from("profiles")
+          .update({ invited_to_company_id: null })
+          .eq("user_id", userId);
+      } else {
+        console.log("Not an invited user or no invitedToCompanyId:", { signupType, invitedToCompanyId });
       }
 
       // Send approval email
@@ -387,18 +437,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Get pending users
+    // Get pending users - use * to avoid issues with missing columns during migration
     const { data: pendingUsers, error } = await supabase
       .from("profiles")
-      .select(`
-        user_id,
-        email,
-        first_name,
-        last_name,
-        job_title,
-        approval_status,
-        created_at
-      `)
+      .select("*")
       .eq("approval_status", "pending")
       .order("created_at", { ascending: false });
 
@@ -445,6 +487,7 @@ export async function GET(request: NextRequest) {
             signupType = "new-company";
           }
         } else if (roleData?.role === "sme-member") {
+          // Check for join request first
           const { data: joinRequest } = await supabase
             .from("company_join_requests")
             .select("company_name_requested, status")
@@ -454,6 +497,20 @@ export async function GET(request: NextRequest) {
           if (joinRequest) {
             companyName = joinRequest.company_name_requested;
             signupType = "join-company";
+          } else {
+            // Check for invited user (has company_members entry)
+            const { data: memberEntry } = await supabase
+              .from("company_members")
+              .select("company_id, companies:company_id(company_name)")
+              .eq("user_id", profile.user_id)
+              .eq("status", "pending")
+              .single();
+
+            if (memberEntry && memberEntry.companies) {
+              const companyData = memberEntry.companies as { company_name: string };
+              companyName = companyData.company_name;
+              signupType = "invited";
+            }
           }
         }
 

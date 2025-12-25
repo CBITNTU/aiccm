@@ -355,11 +355,12 @@ export type Database = {
           email: string | null
           first_name: string | null
           id: string
+          invited_to_company_id: string | null
           job_title: string | null
           last_name: string | null
           phone: string | null
           rejection_reason: string | null
-          signup_type: "individual" | "new-company" | "join-company" | null
+          signup_type: "individual" | "new-company" | "join-company" | "invited" | null
           updated_at: string
           user_id: string
         }
@@ -371,11 +372,12 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id?: string
+          invited_to_company_id?: string | null
           job_title?: string | null
           last_name?: string | null
           phone?: string | null
           rejection_reason?: string | null
-          signup_type?: "individual" | "new-company" | "join-company" | null
+          signup_type?: "individual" | "new-company" | "join-company" | "invited" | null
           updated_at?: string
           user_id: string
         }
@@ -387,11 +389,12 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id?: string
+          invited_to_company_id?: string | null
           job_title?: string | null
           last_name?: string | null
           phone?: string | null
           rejection_reason?: string | null
-          signup_type?: "individual" | "new-company" | "join-company" | null
+          signup_type?: "individual" | "new-company" | "join-company" | "invited" | null
           updated_at?: string
           user_id?: string
         }
@@ -487,6 +490,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_join_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_invitations: {
+        Row: {
+          id: string
+          company_id: string
+          email: string
+          token_hash: string
+          invited_by: string
+          status: "pending" | "accepted" | "expired" | "cancelled"
+          expires_at: string
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          email: string
+          token_hash: string
+          invited_by: string
+          status?: "pending" | "accepted" | "expired" | "cancelled"
+          expires_at: string
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          email?: string
+          token_hash?: string
+          invited_by?: string
+          status?: "pending" | "accepted" | "expired" | "cancelled"
+          expires_at?: string
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"

@@ -129,8 +129,9 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // Redirect authenticated users away from auth page
-  if (user && request.nextUrl.pathname === "/auth") {
+  // Redirect authenticated users away from auth page (but not /auth/invite for accepting invitations)
+  const isAuthInvitePath = request.nextUrl.pathname.startsWith("/auth/invite");
+  if (user && request.nextUrl.pathname === "/auth" && !isAuthInvitePath) {
     // First check their approval status
     try {
       const { data: profile } = await supabase
@@ -153,9 +154,19 @@ export async function updateSession(request: NextRequest) {
       console.error("Middleware: Error checking approval for auth redirect:", error);
     }
 
-    // Approved users go to dashboard
+    // Approved users: check role and redirect accordingly
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    if (roleData?.role === "superadmin") {
+      url.pathname = "/admin";
+    } else {
+      url.pathname = "/dashboard";
+    }
     return NextResponse.redirect(url);
   }
 
@@ -169,8 +180,19 @@ export async function updateSession(request: NextRequest) {
         .single();
 
       if (profile?.approval_status === "approved") {
+        // Check role and redirect accordingly
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+
         const url = request.nextUrl.clone();
-        url.pathname = "/dashboard";
+        if (roleData?.role === "superadmin") {
+          url.pathname = "/admin";
+        } else {
+          url.pathname = "/dashboard";
+        }
         return NextResponse.redirect(url);
       }
     } catch (error) {

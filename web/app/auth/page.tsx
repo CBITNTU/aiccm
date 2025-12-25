@@ -197,6 +197,18 @@ export default function AuthPage() {
               return;
             }
 
+            // Check user role first - superadmins go to /admin
+            const { data: roleData } = await supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", session.user.id)
+              .single();
+
+            if (roleData?.role === "superadmin") {
+              router.push("/admin?email_verified=true");
+              return;
+            }
+
             // User is approved, check for company (owned or member)
             // Check if user owns any companies
             const { data: ownedCompanies } = await supabase

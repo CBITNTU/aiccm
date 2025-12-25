@@ -3,7 +3,7 @@ import { getPlatformName, getPlatformUrl } from "../index";
 export interface AdminNotificationEmailData {
   userName: string;
   userEmail: string;
-  signupType: "individual" | "new-company" | "join-company";
+  signupType: "individual" | "new-company" | "join-company" | "invited";
   companyName?: string;
   jobTitle?: string;
 }
@@ -16,6 +16,8 @@ export function getAdminNotificationEmailSubject(
       ? "Individual"
       : data.signupType === "new-company"
       ? "Company"
+      : data.signupType === "invited"
+      ? "Team Invitation"
       : "Company Join Request";
   return `[Action Required] New ${typeLabel} Signup: ${data.userName}`;
 }
@@ -32,6 +34,8 @@ export function getAdminNotificationEmailHtml(
       ? "Individual User"
       : signupType === "new-company"
       ? "New Company Registration"
+      : signupType === "invited"
+      ? "Team Invitation"
       : "Company Join Request";
 
   const signupTypeBadgeColor =
@@ -39,6 +43,8 @@ export function getAdminNotificationEmailHtml(
       ? "#3b82f6"
       : signupType === "new-company"
       ? "#10b981"
+      : signupType === "invited"
+      ? "#f59e0b"
       : "#8b5cf6";
 
   return `

@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import { TenderMatching } from "@/components/tenders/TenderMatching";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
+import { PendingInvitationsCard } from "@/components/company/PendingInvitationsCard";
 import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -88,6 +89,8 @@ export default function CompanyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [inviteRefreshTrigger, setInviteRefreshTrigger] = useState(0);
 
   // Edit states
   const [isEditingOverview, setIsEditingOverview] = useState(false);
@@ -127,14 +130,14 @@ export default function CompanyDetailPage() {
     const fetchCompanyData = async () => {
       try {
         // First, check if user has access (owner or approved member)
-        const isOwner = supabase
+        const ownerQuery = supabase
           .from("companies")
           .select("id")
           .eq("id", companyId)
           .eq("user_id", user.id)
           .single();
 
-        const isMember = supabase
+        const memberQuery = supabase
           .from("company_members")
           .select("company_id")
           .eq("company_id", companyId)
@@ -142,15 +145,19 @@ export default function CompanyDetailPage() {
           .eq("status", "approved")
           .single();
 
-        const [ownerResult, memberResult] = await Promise.all([isOwner, isMember]);
+        const [ownerResult, memberResult] = await Promise.all([ownerQuery, memberQuery]);
 
-        const hasAccess = !ownerResult.error || !memberResult.error;
+        const userIsOwner = !ownerResult.error;
+        const hasAccess = userIsOwner || !memberResult.error;
 
         if (!hasAccess) {
           console.log("User has no access to this company");
           router.push("/profile");
           return;
         }
+
+        // Set owner status for UI permissions
+        setIsOwner(userIsOwner);
 
         // User has access, fetch full company data
         const { data, error } = await supabase
@@ -1223,7 +1230,22 @@ export default function CompanyDetailPage() {
 
         {/* Team Tab */}
         <TabsContent value="team">
-          <TeamMembersCard companyId={companyId} variant="full" />
+          <div className="space-y-6">
+            <TeamMembersCard
+              companyId={companyId}
+              companyName={companyData.company_name}
+              variant="full"
+              isSmeOwner={isOwner}
+              currentUserId={user?.id}
+              onInviteSent={() => setInviteRefreshTrigger((n) => n + 1)}
+            />
+            {isOwner && (
+              <PendingInvitationsCard
+                companyId={companyId}
+                refreshTrigger={inviteRefreshTrigger}
+              />
+            )}
+          </div>
         </TabsContent>
 
         {/* Financial Tab */}

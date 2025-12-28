@@ -7,13 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "deploy": "vercel",
+    "deploy:prod": "vercel --prod",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
     "supabase:restart": "supabase restart",
     "supabase:logs": "supabase logs",
     "supabase:console": "supabase console",
-    "supabase:db-push": "supabase db push",
+    "supabase:link:prod": "supabase link --project-ref rvtdihlgmyptixeclwae",
+    "supabase:db-push": "supabase db push --local",
+    "supabase:db-push:prod": "supabase db push",
     "supabase:db-pull": "supabase db pull"
   },
   "dependencies": {

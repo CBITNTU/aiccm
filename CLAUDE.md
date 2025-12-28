@@ -15,27 +15,9 @@ Key features:
 - Geographic coverage analysis (UK-focused)
 - Real-time tender feeds with OpenAI-powered analysis
 
-## Project Status
-
-**IMPORTANT**: The migration from Vite to Next.js is **COMPLETE**. All new features must be implemented in the `web/` folder.
-
-Key points:
-
-- The `web/` folder contains the active Next.js application
-- The Supabase database remains unchanged
-- The root-level Vite app (`src/` folder) is **DEPRECATED** but kept for reference
-- Supabase Edge Functions (`supabase/functions/`) are **DEPRECATED** - use Next.js API routes instead
-- **ALL new features and changes should be made in `web/`**
-- **ALL new API endpoints should be created as Next.js API routes in `web/app/api/`**
-
 ## Development Commands
 
-### Next.js App (web/ folder) - Use these for development
-
 ```bash
-# Navigate to web folder
-cd web
-
 # Install dependencies
 npm install
 
@@ -52,14 +34,17 @@ npm run start
 npm run lint
 ```
 
-### Deprecated Vite App (root folder) - Reference only
+### Supabase Commands
 
 ```bash
-# These commands run the deprecated Vite app from the root folder
-npm i          # Install dependencies
-npm run dev    # Start dev server (http://[::]:8080)
-npm run build  # Build for production
-npm run lint   # Lint the codebase
+# Local development
+npm run supabase:start    # Start local Supabase
+npm run supabase:stop     # Stop local Supabase
+npm run supabase:db-push  # Push migrations to local database
+
+# Production
+npm run supabase:link:prod   # Link to production Supabase project (run once)
+npm run supabase:db-push:prod # Push migrations to production database
 ```
 
 ## Architecture
@@ -78,45 +63,57 @@ npm run lint   # Lint the codebase
 ### Project Structure
 
 ```
-web/                     # Next.js application (ACTIVE - use this for development)
-├── app/                 # Next.js App Router
-│   ├── layout.tsx       # Root layout with providers
-│   ├── page.tsx         # Landing page
-│   ├── api/             # Next.js API Routes (use this for all new endpoints)
-│   ├── auth/            # Authentication pages
-│   │   └── page.tsx     # Login/signup page
-│   ├── (protected)/     # Route group for authenticated pages
-│   │   ├── layout.tsx   # Protected layout with auth check
-│   │   ├── dashboard/   # Main dashboard
-│   │   ├── tenders/     # Tender browsing and matching
-│   │   ├── directory/   # Company directory
-│   │   ├── vo/          # Virtual Organization management
-│   │   ├── profile/     # User profile
-│   │   ├── onboarding/  # Company onboarding
-│   │   ├── company/     # Company details ([companyId])
-│   │   └── admin/       # Admin pages
-│   ├── not-found.tsx    # 404 page
-│   ├── error.tsx        # Error boundary
-│   └── loading.tsx      # Loading states
-├── components/          # React components
-│   ├── ui/              # shadcn/ui components
-│   └── layout/          # Layout components (Header, etc.)
-├── hooks/               # Custom React hooks
-├── lib/                 # Utilities
-│   ├── supabase/        # Supabase client (browser + server)
-│   └── utils.ts         # General utilities
-└── middleware.ts        # Auth middleware for route protection
+app/                     # Next.js App Router
+├── layout.tsx           # Root layout with providers
+├── page.tsx             # Landing page
+├── globals.css          # Global styles
+├── api/                 # Next.js API Routes
+├── auth/                # Authentication pages
+│   └── page.tsx         # Login/signup page
+├── (protected)/         # Route group for authenticated pages
+│   ├── layout.tsx       # Protected layout with auth check
+│   ├── dashboard/       # Main dashboard
+│   ├── tenders/         # Tender browsing and matching
+│   ├── directory/       # Company directory
+│   ├── vo/              # Virtual Organization management
+│   ├── profile/         # User profile
+│   ├── onboarding/      # Company onboarding
+│   ├── company/         # Company details ([companyId])
+│   ├── pending-approval/# User approval queue
+│   └── admin/           # Admin pages
+├── not-found.tsx        # 404 page
+├── error.tsx            # Error boundary
+└── loading.tsx          # Loading states
 
-src/                     # DEPRECATED - Vite + React app (kept for reference)
-├── components/          # React components
-├── pages/               # Route pages
-├── hooks/               # Custom React hooks
-├── integrations/        # Supabase client and types
-└── lib/                 # Utilities
+components/              # React components
+├── ui/                  # shadcn/ui components
+├── layout/              # Layout components (Header, etc.)
+├── admin/               # Admin-specific components
+├── company/             # Company-related components
+├── consulting/          # Consulting/VO components
+├── directory/           # Directory components
+├── onboarding/          # Onboarding components
+└── tenders/             # Tender-related components
 
-supabase/                # Backend (database only)
+hooks/                   # Custom React hooks
+├── useAuth.tsx
+├── useTaxonomies.tsx
+└── useUserRole.tsx
+
+lib/                     # Utilities
+├── supabase/            # Supabase client (browser + server)
+│   ├── server.ts        # Server-side client
+│   └── client.ts        # Client-side client
+├── api/                 # API utilities
+├── email/               # Email utilities
+├── cpvCodes.ts          # CPV code taxonomy
+└── utils.ts             # General utilities
+
+supabase/                # Supabase backend (database only)
 ├── migrations/          # Database migrations
-└── functions/           # DEPRECATED - Supabase Edge Functions (use Next.js API routes instead)
+└── config.toml          # Supabase configuration
+
+middleware.ts            # Auth middleware for route protection
 ```
 
 ### Key Architectural Patterns
@@ -139,7 +136,7 @@ supabase/                # Backend (database only)
 **UI Component Pattern**:
 
 - All UI components from shadcn/ui (installed via CLI, can be customized)
-- Components use `@/` path alias (resolves to `./web/` in Next.js app)
+- Components use `@/` path alias (resolves to `./*` from root)
 - Tailwind utility classes + CSS variables for theming
 - `cn()` utility for conditional classname merging
 
@@ -202,35 +199,39 @@ supabase/                # Backend (database only)
 
 ### Environment Variables
 
-Required in `web/.env.local` for Next.js app:
+**Local development** (`.env.local`):
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
+OPENAI_API_KEY=<your-openai-key>
+RESEND_API_KEY=<your-resend-key>
+PLATFORM_EMAIL_FROM="noreply@example.com"
+PLATFORM_NAME="AICCM Platform"
+PLATFORM_URL=http://localhost:3000
 ```
 
-Deprecated (for old Vite app in root `.env`):
+**Production** (`.env.production`):
 
 ```
-VITE_SUPABASE_URL=<your-supabase-url>
-VITE_SUPABASE_PUBLISHABLE_KEY=<your-supabase-anon-key>
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<production-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<production-service-role-key>
+OPENAI_API_KEY=<your-openai-key>
+RESEND_API_KEY=<your-resend-key>
+PLATFORM_EMAIL_FROM="noreply@yourdomain.com"
+PLATFORM_NAME="AICCM Platform"
+PLATFORM_URL=https://yourdomain.com
 ```
 
-Optional (user can provide via UI):
-
-- OpenAI API key (stored in localStorage, not in .env)
+Note: For Vercel deployment, environment variables are configured in the Vercel dashboard.
 
 ### TypeScript Configuration
 
-**Next.js app (`web/`):**
-
-- Path alias `@/*` maps to `./web/*`
+- Path alias `@/*` maps to `./*` (root directory)
+- Strict type checking enabled
 - Standard Next.js TypeScript configuration
-
-**Deprecated Vite app (root):**
-
-- Path alias `@/*` maps to `./src/*`
-- Relaxed strictness: `noImplicitAny: false`, `strictNullChecks: false`
 
 ### Important Implementation Notes
 
@@ -243,7 +244,7 @@ Optional (user can provide via UI):
 
 **Component Updates**:
 
-- UI components in `web/components/ui/` are from shadcn/ui
+- UI components in `components/ui/` are from shadcn/ui
 - These can be regenerated or updated via shadcn CLI
 - Do not manually edit unless customization is needed
 
@@ -254,7 +255,7 @@ Optional (user can provide via UI):
 
 **Routing (Next.js App Router)**:
 
-- File-based routing in `web/app/` directory
+- File-based routing in `app/` directory
 - `(protected)` route group for authenticated pages
 - `middleware.ts` handles auth checks at the edge
 - Dynamic routes use `[param]` folder naming (e.g., `company/[companyId]/`)
@@ -262,7 +263,7 @@ Optional (user can provide via UI):
 **Styling Approach**:
 
 - Tailwind utility-first
-- CSS variables in `web/app/globals.css` for theming
+- CSS variables in `app/globals.css` for theming
 - shadcn/ui components use CSS variables for consistent theming
 - No global CSS modules or styled-components
 
@@ -270,13 +271,13 @@ Optional (user can provide via UI):
 
 **Adding a new protected page**:
 
-1. Create a new folder in `web/app/(protected)/[page-name]/`
+1. Create a new folder in `app/(protected)/[page-name]/`
 2. Add `page.tsx` in that folder
-3. Add navigation link in `web/components/layout/Header.tsx`
+3. Add navigation link in `components/layout/Header.tsx`
 
-**Adding a new API endpoint** (use this instead of Supabase Edge Functions):
+**Adding a new API endpoint**:
 
-1. Create a new folder in `web/app/api/[endpoint-name]/`
+1. Create a new folder in `app/api/[endpoint-name]/`
 2. Add `route.ts` in that folder with HTTP method handlers
 
 ```typescript
@@ -350,11 +351,10 @@ const { data, isLoading, error } = useQuery({
 **Adding a shadcn/ui component**:
 
 ```bash
-cd web
 npx shadcn@latest add [component-name]
 ```
 
-This installs the component into `web/components/ui/` and updates necessary dependencies.
+This installs the component into `components/ui/` and updates necessary dependencies.
 
 ### Testing & Quality
 
@@ -363,6 +363,26 @@ This installs the component into `web/components/ui/` and updates necessary depe
 
 ### Deployment
 
-- Next.js app can be deployed to Vercel, Netlify, or any Node.js hosting
-- Build artifacts in `web/.next/` directory
-- Run `npm run build` in `web/` folder to create production build
+**Vercel Deployment**:
+
+```bash
+npm run deploy       # Deploy to Vercel preview
+npm run deploy:prod  # Deploy to Vercel production
+```
+
+**Database Migrations**:
+
+```bash
+# First time: link to production Supabase project
+npm run supabase:link:prod
+
+# Push migrations to production
+npm run supabase:db-push:prod
+```
+
+**Manual Build**:
+
+- Run `npm run build` to create production build
+- Build artifacts in `.next/` directory
+
+Note: Configure environment variables in Vercel dashboard before deploying.

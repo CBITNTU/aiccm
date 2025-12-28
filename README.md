@@ -1,73 +1,144 @@
-# Welcome to your Lovable project
+# AICCM
 
-## Project info
+A construction and consulting tender matching platform built with Next.js, React, TypeScript, and Supabase. AICCM facilitates matching companies with relevant tenders, managing consulting projects (Virtual Organizations), and providing AI-powered business intelligence.
 
-**URL**: https://lovable.dev/projects/4ed1e79f-70f3-4e9b-b241-28e99587d9b6
+## Features
 
-## How can I edit this code?
+- **Tender Matching** - AI-powered recommendations matching companies to relevant tenders
+- **Company Onboarding** - Profile management with AI-analyzed capabilities and competencies
+- **Virtual Organization (VO) Management** - Consulting project management combining multiple companies into teams
+- **CPV Taxonomy** - Common Procurement Vocabulary code-based classification system
+- **Geographic Coverage** - UK-focused coverage analysis with map visualizations
+- **AI Analysis** - OpenAI-powered tender feeds, company analysis, and chatbot
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Framework**: Next.js 16 + React 19 + TypeScript
+- **UI**: shadcn/ui + Radix UI + Tailwind CSS
+- **Database & Auth**: Supabase (PostgreSQL + Auth)
+- **State Management**: TanStack Query (React Query)
+- **AI**: OpenAI API (optional, user-provided key)
+- **Maps**: Leaflet
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/4ed1e79f-70f3-4e9b-b241-28e99587d9b6) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 18+
+- npm
+- Supabase account (for database and authentication)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Clone the repository:
 
-Follow these steps:
+```bash
+git clone <repository-url>
+cd aiccm
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Install dependencies:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+```bash
+npm install
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+3. Set up environment variables:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Create a `.env.local` file for local development:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
+OPENAI_API_KEY=<your-openai-key>
+RESEND_API_KEY=<your-resend-key>
+PLATFORM_EMAIL_FROM="noreply@example.com"
+PLATFORM_NAME="AICCM Platform"
+PLATFORM_URL=http://localhost:3000
+```
+
+Create a `.env.production` file for production configuration:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<production-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<production-service-role-key>
+```
+
+4. Run the development server:
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Project Structure
 
-**Use GitHub Codespaces**
+```
+app/                # Next.js App Router (pages and API routes)
+├── (protected)/    # Authenticated pages (dashboard, tenders, directory, etc.)
+├── api/            # API endpoints
+└── auth/           # Authentication pages
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+components/         # React components
+├── ui/             # shadcn/ui components
+└── layout/         # Layout components
 
-## What technologies are used for this project?
+hooks/              # Custom React hooks
+lib/                # Utilities and Supabase clients
+supabase/           # Database migrations
+```
 
-This project is built with:
+## Development
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+npm run dev       # Start development server
+npm run build     # Build for production
+npm run start     # Start production server
+npm run lint      # Lint the codebase
+```
 
-## How can I deploy this project?
+### Supabase Commands
 
-Simply open [Lovable](https://lovable.dev/projects/4ed1e79f-70f3-4e9b-b241-28e99587d9b6) and click on Share -> Publish.
+```bash
+# Local development
+npm run supabase:start    # Start local Supabase
+npm run supabase:stop     # Stop local Supabase
+npm run supabase:db-push  # Push migrations to local database
 
-## Can I connect a custom domain to my Lovable project?
+# Production
+npm run supabase:link:prod    # Link to production project (run once)
+npm run supabase:db-push:prod # Push migrations to production
+```
 
-Yes, you can!
+## Deployment
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Vercel
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```bash
+npm run deploy       # Deploy to Vercel preview
+npm run deploy:prod  # Deploy to Vercel production
+```
+
+Configure environment variables in the Vercel dashboard before deploying.
+
+### Database Migrations
+
+```bash
+# First time: link to production Supabase project
+npm run supabase:link:prod
+
+# Push migrations to production
+npm run supabase:db-push:prod
+```
+
+### Manual Build
+
+```bash
+npm run build
+npm run start
+```
+
+Build artifacts are generated in the `.next/` directory.

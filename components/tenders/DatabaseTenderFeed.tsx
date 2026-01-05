@@ -11,12 +11,13 @@ import {
   PoundSterling,
   ExternalLink,
   Tag as TagIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { TenderViewDialog } from "./TenderViewDialog";
 import { formatCpvCode } from "@/lib/cpvCodes";
 import { toast } from "sonner";
@@ -67,14 +68,21 @@ export function DatabaseTenderFeed({
   const [tenderTaxonomies, setTenderTaxonomies] = useState<
     Record<string, Array<{ id: string; name: string }>>
   >({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 25;
 
-  const fetchDatabaseTenders = async (search = "") => {
+  const fetchDatabaseTenders = async (search = "", page = 1) => {
     setLoading(true);
 
     try {
+      // Calculate pagination
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+
       let query = supabase
         .from("tenders")
-        .select("*")
+        .select("*", { count: 'exact' })
         .neq("status", "closed")
         .order("publication_date", { ascending: false });
 
@@ -125,12 +133,16 @@ export function DatabaseTenderFeed({
           query = query.in("id", ids);
         } else {
           setTenders([]);
+          setTotalCount(0);
           setLoading(false);
           return;
         }
       }
 
-      const { data, error } = await query;
+      // Apply pagination
+      query = query.range(startIndex, endIndex);
+
+      const { data, error, count } = await query;
 
       if (error) {
         console.error("Error fetching tenders:", error);
@@ -138,6 +150,7 @@ export function DatabaseTenderFeed({
       }
 
       setTenders((data as DatabaseTender[]) || []);
+      setTotalCount(count || 0);
 
       // Fetch taxonomies for the tenders
       if (data && data.length > 0) {
@@ -184,21 +197,30 @@ export function DatabaseTenderFeed({
   };
 
   const handleSearch = () => {
-    fetchDatabaseTenders(searchTerm);
+    setCurrentPage(1); // Reset to first page on new search
+    fetchDatabaseTenders(searchTerm, 1);
   };
 
   const handleRefresh = () => {
-    fetchDatabaseTenders(searchTerm);
+    fetchDatabaseTenders(searchTerm, currentPage);
   };
 
-  // Fetch tenders when filters change
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    // Don't fetch here - let useEffect handle it
+  };
+
+  // Reset to page 1 when filters change
   useEffect(() => {
-    fetchDatabaseTenders(searchTerm);
+    setCurrentPage(1);
   }, [filters]);
 
+  // Fetch tenders when filters, page, or supabase changes
   useEffect(() => {
-    fetchDatabaseTenders();
-  }, [supabase]);
+    if (!supabase) return;
+    fetchDatabaseTenders(searchTerm, currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, currentPage, supabase]);
 
   const formatBudget = (min?: number, max?: number) => {
     if (!min && !max) return "Budget not disclosed";
@@ -226,6 +248,10 @@ export function DatabaseTenderFeed({
     return daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
   };
 
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage - 1, totalCount - 1);
+
   return (
     <div className="space-y-6">
       <Card className="w-full">
@@ -233,7 +259,7 @@ export function DatabaseTenderFeed({
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span>All Database Tenders</span>
-              <Badge variant="outline">{tenders.length} open tenders</Badge>
+              <Badge variant="outline">{totalCount} open tenders</Badge>
             </div>
             <Button
               variant="outline"
@@ -264,6 +290,20 @@ export function DatabaseTenderFeed({
         </CardHeader>
 
         <CardContent>
+          {/* Results Summary */}
+          {!loading && totalCount > 0 && (
+            <div className="mb-4 flex items-center justify-between text-sm text-muted-foreground">
+              <p>
+                Showing {startIndex + 1}-{endIndex + 1} of {totalCount} tenders
+              </p>
+              {totalPages > 1 && (
+                <p>
+                  Page {currentPage} of {totalPages}
+                </p>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -274,9 +314,8 @@ export function DatabaseTenderFeed({
               No open tenders found in the database.
             </div>
           ) : (
-            <ScrollArea className="h-[600px]">
-              <div className="space-y-4">
-                {tenders.map((tender) => (
+            <div className="space-y-4">
+              {tenders.map((tender) => (
                   <Card
                     key={tender.id}
                     className="border-l-4 border-l-primary/20 hover:shadow-md transition-shadow cursor-pointer"
@@ -391,8 +430,66 @@ export function DatabaseTenderFeed({
                     </CardContent>
                   </Card>
                 ))}
-              </div>
-            </ScrollArea>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-8 flex items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      // Show first page, last page, current page, and pages around current
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            variant={page === currentPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(page)}
+                            disabled={loading}
+                            className="min-w-[40px]"
+                          >
+                            {page}
+                          </Button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span key={page} className="px-2">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages || loading}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

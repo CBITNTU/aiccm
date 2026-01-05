@@ -165,6 +165,7 @@ export const api = {
       tenders: unknown[];
       total: number;
       totalFetched: number;
+      actuallyImported?: number;
       hasMore: boolean;
       nextCursor?: string;
       isAdmin?: boolean;

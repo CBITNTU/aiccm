@@ -50,11 +50,13 @@ interface TenderFilters {
 interface DatabaseTenderFeedProps {
   supabase: SupabaseClient<Database>;
   filters?: TenderFilters;
+  onCreateProject?: (tenderId: string) => void;
 }
 
 export function DatabaseTenderFeed({
   supabase,
   filters = {},
+  onCreateProject,
 }: DatabaseTenderFeedProps) {
   const [tenders, setTenders] = useState<DatabaseTender[]>([]);
   const [loading, setLoading] = useState(false);
@@ -400,6 +402,7 @@ export function DatabaseTenderFeed({
         tender={selectedTender}
         open={!!selectedTender}
         onOpenChange={(open) => !open && setSelectedTender(null)}
+        onCreateProject={onCreateProject}
       />
     </div>
   );

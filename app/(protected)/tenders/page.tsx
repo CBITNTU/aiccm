@@ -15,11 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2, FileText, Bookmark, Target } from "lucide-react";
+import { Building2, FileText, Bookmark, Target, Plus } from "lucide-react";
 import { DatabaseTenderFeed } from "@/components/tenders/DatabaseTenderFeed";
 import { TenderFilters } from "@/components/tenders/TenderFilters";
 import { TenderMatching } from "@/components/tenders/TenderMatching";
 import { SavedTenders } from "@/components/tenders/SavedTenders";
+import { ProjectWizard } from "@/components/tenders/ProjectWizard";
+import { Button } from "@/components/ui/button";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -43,6 +45,8 @@ export default function TendersPage() {
   const [filters, setFilters] = useState<TenderFiltersState>({});
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [showProjectWizard, setShowProjectWizard] = useState(false);
+  const [initialTenderId, setInitialTenderId] = useState<string | null>(null);
 
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
@@ -109,14 +113,25 @@ export default function TendersPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Tender Opportunities
-        </h1>
-        <p className="text-muted-foreground">
-          Discover and track government and private sector tenders that match
-          your capabilities
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Tender Opportunities
+          </h1>
+          <p className="text-muted-foreground">
+            Discover and track government and private sector tenders that match
+            your capabilities
+          </p>
+        </div>
+        {selectedCompany && (
+          <Button
+            onClick={() => setShowProjectWizard(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Start Project
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -156,7 +171,16 @@ export default function TendersPage() {
           />
 
           {/* Database Tenders */}
-          <DatabaseTenderFeed supabase={supabase} filters={filters} />
+          <DatabaseTenderFeed
+            supabase={supabase}
+            filters={filters}
+            onCreateProject={(tenderId) => {
+              if (selectedCompany) {
+                setInitialTenderId(tenderId);
+                setShowProjectWizard(true);
+              }
+            }}
+          />
         </TabsContent>
 
         {/* Your Matches Tab */}
@@ -202,7 +226,13 @@ export default function TendersPage() {
 
           {/* TenderMatching Component */}
           {selectedCompany ? (
-            <TenderMatching companyId={selectedCompany.id} />
+            <TenderMatching
+              companyId={selectedCompany.id}
+              onCreateProject={(tenderId) => {
+                setInitialTenderId(tenderId);
+                setShowProjectWizard(true);
+              }}
+            />
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -217,6 +247,23 @@ export default function TendersPage() {
           <SavedTenders companyId={selectedCompany?.id} />
         </TabsContent>
       </Tabs>
+
+      {showProjectWizard && selectedCompany && (
+        <ProjectWizard
+          onClose={() => {
+            setShowProjectWizard(false);
+            setInitialTenderId(null);
+          }}
+          onProjectCreated={(projectId) => {
+            setShowProjectWizard(false);
+            setInitialTenderId(null);
+            // Optionally redirect to project page or show success message
+            console.log("Project created:", projectId);
+          }}
+          leadCompanyId={selectedCompany.id}
+          initialTenderId={initialTenderId}
+        />
+      )}
     </div>
   );
 }

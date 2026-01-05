@@ -21,6 +21,7 @@ import {
   Users,
   ExternalLink,
   Tag,
+  Plus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -56,6 +57,7 @@ interface TenderDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId?: string;
+  onCreateProject?: (tenderId: string, companyId?: string) => void;
 }
 
 export function TenderDetailDialog({
@@ -63,6 +65,7 @@ export function TenderDetailDialog({
   open,
   onOpenChange,
   companyId,
+  onCreateProject,
 }: TenderDetailDialogProps) {
   const router = useRouter();
   const [tenderDetails, setTenderDetails] = useState<{
@@ -244,11 +247,24 @@ export function TenderDetailDialog({
           <Separator />
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button onClick={handleApplySolo} className="w-full" size="lg">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button onClick={handleApplySolo} className="w-full" size="lg" variant="outline">
               <ExternalLink className="w-4 h-4 mr-2" />
               Go to Original Website
             </Button>
+            {onCreateProject && (
+              <Button
+                onClick={() => {
+                  onCreateProject(result.tender_id, companyId);
+                  onOpenChange(false);
+                }}
+                className="w-full"
+                size="lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Project
+              </Button>
+            )}
             <Button
               onClick={handleBuildTeam}
               variant="outline"
@@ -256,7 +272,7 @@ export function TenderDetailDialog({
               size="lg"
             >
               <Users className="w-4 h-4 mr-2" />
-              Build Your Consulting Team
+              Build Consulting Team
             </Button>
           </div>
 

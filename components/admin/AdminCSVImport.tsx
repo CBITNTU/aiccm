@@ -12,6 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { toast } from "sonner";
 import { Upload, FileText, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CSVRow {
   company_name: string;
@@ -49,6 +50,47 @@ const extractPostcode = (address: string): string => {
   return postcodeMatch ? postcodeMatch[1].trim().toUpperCase() : '';
 };
 
+// Helper function to parse comma-separated capabilities
+const parseCapabilities = (capabilitiesStr: string): string[] => {
+  if (!capabilitiesStr) return [];
+  
+  // Split by comma and clean up
+  return capabilitiesStr
+    .split(',')
+    .map(c => c.trim().toLowerCase())
+    .filter(c => c.length > 0);
+};
+
+// Helper function to match CSV capability to reference table (case-insensitive, fuzzy)
+const matchCapability = (csvCapability: string, refCapabilities: Array<{ id: string; name: string }>): string | null => {
+  if (!csvCapability || !refCapabilities.length) return null;
+  
+  const csvLower = csvCapability.toLowerCase().trim();
+  
+  // First try exact match (case-insensitive)
+  const exactMatch = refCapabilities.find(
+    ref => ref.name.toLowerCase() === csvLower
+  );
+  if (exactMatch) return exactMatch.id;
+  
+  // Try partial match (CSV capability is contained in reference name)
+  const partialMatch = refCapabilities.find(
+    ref => ref.name.toLowerCase().includes(csvLower) || csvLower.includes(ref.name.toLowerCase())
+  );
+  if (partialMatch) return partialMatch.id;
+  
+  // Try word-by-word matching (e.g., "CNC Machining" matches "CNC Machining", "machining" matches "CNC Machining")
+  const csvWords = csvLower.split(/\s+/);
+  const wordMatch = refCapabilities.find(ref => {
+    const refLower = ref.name.toLowerCase();
+    // Check if all words in CSV capability appear in reference name
+    return csvWords.every(word => refLower.includes(word));
+  });
+  if (wordMatch) return wordMatch.id;
+  
+  return null;
+};
+
 export function AdminCSVImport() {
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -59,6 +101,7 @@ export function AdminCSVImport() {
   const [errorCount, setErrorCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [preview, setPreview] = useState<CSVRow[]>([]);
+  const [updateExisting, setUpdateExisting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -213,8 +256,26 @@ export function AdminCSVImport() {
       let skippedCount = 0;
       const errorList: string[] = [];
 
+      // Fetch all reference capabilities once for matching
+      const { data: refCapabilities, error: refError } = await supabase
+        .from('company_capabilities_ref')
+        .select('id, name');
+
+      if (refError) {
+        console.warn('Failed to fetch reference capabilities:', refError);
+        toast.warning('Capability matching disabled - failed to load reference list');
+      }
+
+      const capabilitiesRef = refCapabilities || [];
+
       for (let i = 0; i < total; i++) {
         const company = companies[i];
+
+        // Update progress immediately
+        setProgress(((i + 1) / total) * 100);
+        setImportedCount(successCount);
+        setSkippedCount(skippedCount);
+        setErrors(errorList);
 
         try {
           // Check if company already exists (by name or companies house number)
@@ -241,7 +302,88 @@ export function AdminCSVImport() {
           }
 
           if (existing) {
-            skippedCount++;
+            if (updateExisting) {
+              // Update existing company's capabilities
+              // Extract postcode from full address if not already set
+              let postcode = company.postcode;
+              if (!postcode && company.full_address) {
+                postcode = extractPostcode(company.full_address);
+              }
+
+              // Build description with SIC codes if available
+              let description = company.description || '';
+              if (company.sic_codes) {
+                if (description) {
+                  description += `\n\nSIC Codes: ${company.sic_codes}`;
+                } else {
+                  description = `SIC Codes: ${company.sic_codes}`;
+                }
+              }
+
+              // Update company fields (optional - only update if CSV has new data)
+              const updateData: Partial<Database['public']['Tables']['companies']['Update']> = {};
+              if (company.contact_email) updateData.contact_email = company.contact_email;
+              if (company.contact_phone) updateData.contact_phone = company.contact_phone;
+              if (postcode) updateData.postcode = postcode;
+              if (company.full_address) updateData.address = company.full_address;
+              if (description) updateData.description = description;
+              if (company.website_url) updateData.website_url = company.website_url;
+              if (company.key_capabilities) updateData.key_capabilities = company.key_capabilities;
+
+              if (Object.keys(updateData).length > 0) {
+                const { error: updateError } = await supabase
+                  .from('companies')
+                  .update(updateData)
+                  .eq('id', existing.id);
+
+                if (updateError) {
+                  console.warn(`Failed to update company ${company.company_name}:`, updateError);
+                }
+              }
+
+              // Delete existing capability links
+              const { error: deleteError } = await supabase
+                .from('company_capabilities')
+                .delete()
+                .eq('company_id', existing.id);
+
+              if (deleteError) {
+                console.warn(`Failed to delete existing capabilities for ${company.company_name}:`, deleteError);
+              }
+
+              // Smart mapping: Parse and link new capabilities
+              if (company.key_capabilities && capabilitiesRef.length > 0) {
+                const csvCapabilities = parseCapabilities(company.key_capabilities);
+                const matchedCapabilityIds: string[] = [];
+
+                for (const csvCap of csvCapabilities) {
+                  const matchedId = matchCapability(csvCap, capabilitiesRef);
+                  if (matchedId && !matchedCapabilityIds.includes(matchedId)) {
+                    matchedCapabilityIds.push(matchedId);
+                  }
+                }
+
+                // Insert matched capabilities into junction table
+                if (matchedCapabilityIds.length > 0) {
+                  const capabilityLinks = matchedCapabilityIds.map(capId => ({
+                    company_id: existing.id,
+                    capability_id: capId
+                  }));
+
+                  const { error: linkError } = await supabase
+                    .from('company_capabilities')
+                    .insert(capabilityLinks);
+
+                  if (linkError) {
+                    console.warn(`Failed to link capabilities for ${company.company_name}:`, linkError);
+                  }
+                }
+              }
+
+              successCount++;
+            } else {
+              skippedCount++;
+            }
             continue;
           }
 
@@ -263,7 +405,7 @@ export function AdminCSVImport() {
 
           // Insert new company as system company
           // user_id is null for system companies (made nullable in migration)
-          const { error } = await supabase
+          const { data: insertedCompany, error: insertError } = await supabase
             .from('companies')
             .insert({
               company_name: company.company_name,
@@ -274,28 +416,67 @@ export function AdminCSVImport() {
               address: company.full_address || null, // Store full address if available
               description: description || null,
               website_url: company.website_url || null,
-              key_capabilities: company.key_capabilities || null,
+              key_capabilities: company.key_capabilities || null, // Keep raw text for reference
               certifications: company.certifications || null,
               user_id: null, // NULL for system companies (not empty string)
               is_system_company: true,
               status: 'active'
-            } as Database['public']['Tables']['companies']['Insert']);
+            } as Database['public']['Tables']['companies']['Insert'])
+            .select('id')
+            .single();
 
-          if (error) {
-            errorList.push(`${company.company_name}: ${error.message}`);
+          if (insertError || !insertedCompany) {
+            errorList.push(`${company.company_name}: ${insertError?.message || 'Failed to insert company'}`);
             setErrorCount(errorList.length);
-          } else {
-            successCount++;
+            continue;
           }
+
+          // Smart mapping: Parse and link capabilities
+          if (company.key_capabilities && capabilitiesRef.length > 0) {
+            const csvCapabilities = parseCapabilities(company.key_capabilities);
+            const matchedCapabilityIds: string[] = [];
+
+            for (const csvCap of csvCapabilities) {
+              const matchedId = matchCapability(csvCap, capabilitiesRef);
+              if (matchedId && !matchedCapabilityIds.includes(matchedId)) {
+                matchedCapabilityIds.push(matchedId);
+              }
+            }
+
+            // Insert matched capabilities into junction table
+            if (matchedCapabilityIds.length > 0) {
+              const capabilityLinks = matchedCapabilityIds.map(capId => ({
+                company_id: insertedCompany.id,
+                capability_id: capId
+              }));
+
+              const { error: linkError } = await supabase
+                .from('company_capabilities')
+                .insert(capabilityLinks);
+
+              if (linkError) {
+                console.warn(`Failed to link capabilities for ${company.company_name}:`, linkError);
+                // Don't fail the import, just log the warning
+              }
+            }
+          }
+
+          successCount++;
         } catch (err) {
           errorList.push(`${company.company_name}: ${err instanceof Error ? err.message : String(err)}`);
           setErrorCount(errorList.length);
         }
 
+        // Final update for this iteration
         setImportedCount(successCount);
         setSkippedCount(skippedCount);
         setErrors(errorList);
-        setProgress(((i + 1) / total) * 100);
+
+        // Allow React to update the UI by yielding to the event loop
+        // This ensures the progress bar updates in real-time
+        if (i % 5 === 0 || i === total - 1) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
       }
 
       toast.success(
@@ -360,6 +541,22 @@ export function AdminCSVImport() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Update Existing Companies Option */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="update-existing"
+            checked={updateExisting}
+            onCheckedChange={(checked) => setUpdateExisting(checked === true)}
+            disabled={isImporting}
+          />
+          <Label
+            htmlFor="update-existing"
+            className="text-sm font-normal cursor-pointer"
+          >
+            Update existing companies' capabilities (re-map capabilities from CSV)
+          </Label>
         </div>
 
         {/* Preview */}

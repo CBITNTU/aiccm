@@ -24,18 +24,18 @@ DROP POLICY IF EXISTS "Users can create VOs for their companies" ON public.virtu
 DROP POLICY IF EXISTS "Lead companies can update VOs" ON public.virtual_organizations;
 
 -- New policy: Project owners can view their projects
+-- Use security definer functions to avoid recursion
 CREATE POLICY "Project owners can view their projects"
 ON public.virtual_organizations
 FOR SELECT
 USING (
   project_owner_id = auth.uid()
   OR
-  EXISTS (
-    SELECT 1 FROM public.vo_members vm 
-    JOIN public.companies c ON vm.company_id = c.id 
-    WHERE vm.vo_id = virtual_organizations.id 
-    AND c.user_id = auth.uid()
-  )
+  -- User owns the lead company (using security definer to avoid recursion)
+  public.user_owns_company(auth.uid(), lead_company_id)
+  OR
+  -- User is a member (using security definer to avoid recursion)
+  public.user_is_vo_member(auth.uid(), id)
 );
 
 -- New policy: Project owners can create projects

@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronRight, ChevronLeft, CheckCircle2 } from "lucide-react";
+import { ChevronRight, ChevronLeft, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { TenderSelectionStep } from "./TenderSelectionStep";
-import { TaxonomyTreeSelector } from "./TaxonomyTreeSelector";
+import { CapabilityTreeSelector } from "./CapabilityTreeSelector";
 import { CompanySelectionStep } from "./CompanySelectionStep";
 import { ProjectSummaryStep } from "./ProjectSummaryStep";
+import { api } from "@/lib/api/client";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
 
-type Taxonomy = Database["public"]["Tables"]["taxonomies"]["Row"];
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface ProjectWizardProps {
@@ -28,10 +30,12 @@ export function ProjectWizard({
 }: ProjectWizardProps) {
   const [currentStep, setCurrentStep] = useState(initialTenderId ? 2 : 1);
   const [selectedTenderId, setSelectedTenderId] = useState<string | null>(initialTenderId);
-  const [selectedTaxonomies, setSelectedTaxonomies] = useState<string[]>([]);
+  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([]);
   const [selectedCompanies, setSelectedCompanies] = useState<Company[]>([]);
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
+  const [isLoadingCapabilities, setIsLoadingCapabilities] = useState(false);
+  const [aiSuggestedCapabilities, setAiSuggestedCapabilities] = useState<string[]>([]);
 
   const steps = [
     { number: 1, title: "Select Tender", description: "Choose the tender for this project" },
@@ -40,13 +44,70 @@ export function ProjectWizard({
     { number: 4, title: "Review & Create", description: "Review your selections and create the project" },
   ];
 
-  const handleTaxonomySelection = (taxonomyIds: string[]) => {
-    setSelectedTaxonomies(taxonomyIds);
+  const handleCapabilitySelection = (capabilityIds: string[]) => {
+    setSelectedCapabilities(capabilityIds);
   };
 
   const handleCompanySelection = (companies: Company[]) => {
     setSelectedCompanies(companies);
   };
+
+  // Fetch AI-suggested capabilities when entering step 2 with a selected tender
+  useEffect(() => {
+    const fetchSuggestedCapabilities = async () => {
+      if (!selectedTenderId || currentStep !== 2) return;
+
+      // Only fetch if we don't have any selected capabilities yet (first time)
+      if (selectedCapabilities.length > 0) return;
+
+      // Check if user is authenticated
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.warn("User not authenticated, skipping AI suggestions");
+        return;
+      }
+
+      setIsLoadingCapabilities(true);
+      try {
+        const result = await api.suggestCapabilities(selectedTenderId);
+        
+        if (result.suggestedCapabilityIds && result.suggestedCapabilityIds.length > 0) {
+          setSelectedCapabilities(result.suggestedCapabilityIds);
+          setAiSuggestedCapabilities(result.suggestedCapabilityIds);
+          toast.success(
+            `AI suggested ${result.suggestedCapabilityIds.length} capabilities. You can edit the selection.`
+          );
+        } else {
+          toast.info("No specific capabilities were suggested. Please select manually.");
+        }
+      } catch (error: any) {
+        console.error("Error fetching suggested capabilities:", error);
+        if (error?.status === 401) {
+          toast.error("Please log in to use AI suggestions. You can still select capabilities manually.");
+        } else {
+          toast.error("Failed to get AI suggestions. Please select capabilities manually.");
+        }
+      } finally {
+        setIsLoadingCapabilities(false);
+      }
+    };
+
+    // Small delay to ensure step transition is complete
+    const timer = setTimeout(() => {
+      fetchSuggestedCapabilities();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [selectedTenderId, currentStep]);
+
+  // Reset AI suggestions when tender changes (but keep if user already selected)
+  useEffect(() => {
+    if (selectedTenderId && selectedCapabilities.length === 0) {
+      setAiSuggestedCapabilities([]);
+    }
+  }, [selectedTenderId]);
 
   const handleNext = () => {
     if (currentStep === 1) {
@@ -55,8 +116,8 @@ export function ProjectWizard({
       }
     }
     if (currentStep === 2) {
-      if (selectedTaxonomies.length === 0) {
-        return; // Can't proceed without selecting taxonomies
+      if (selectedCapabilities.length === 0) {
+        return; // Can't proceed without selecting capabilities
       }
     }
     if (currentStep === 3) {
@@ -73,7 +134,7 @@ export function ProjectWizard({
 
   const canProceed = () => {
     if (currentStep === 1) return selectedTenderId !== null;
-    if (currentStep === 2) return selectedTaxonomies.length > 0;
+    if (currentStep === 2) return selectedCapabilities.length > 0;
     if (currentStep === 3) return selectedCompanies.length > 0;
     return true;
   };
@@ -150,15 +211,31 @@ export function ProjectWizard({
           )}
 
           {currentStep === 2 && (
-            <TaxonomyTreeSelector
-              selectedTaxonomies={selectedTaxonomies}
-              onSelectionChange={handleTaxonomySelection}
-            />
+            <div className="space-y-4">
+              {isLoadingCapabilities && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>AI is analyzing the tender and suggesting relevant capabilities...</span>
+                </div>
+              )}
+              {aiSuggestedCapabilities.length > 0 && !isLoadingCapabilities && (
+                <div className="flex items-center gap-2 text-sm bg-primary/10 text-primary p-3 rounded-lg">
+                  <Sparkles className="w-4 h-4" />
+                  <span>
+                    AI suggested {aiSuggestedCapabilities.length} capabilities. You can edit the selection below.
+                  </span>
+                </div>
+              )}
+              <CapabilityTreeSelector
+                selectedCapabilities={selectedCapabilities}
+                onSelectionChange={handleCapabilitySelection}
+              />
+            </div>
           )}
 
           {currentStep === 3 && (
             <CompanySelectionStep
-              selectedTaxonomyIds={selectedTaxonomies}
+              selectedCapabilityIds={selectedCapabilities}
               selectedCompanies={selectedCompanies}
               onSelectionChange={handleCompanySelection}
             />
@@ -167,7 +244,7 @@ export function ProjectWizard({
           {currentStep === 4 && (
             <ProjectSummaryStep
               selectedTenderId={selectedTenderId}
-              selectedTaxonomies={selectedTaxonomies}
+              selectedCapabilities={selectedCapabilities}
               selectedCompanies={selectedCompanies}
               projectName={projectName}
               projectDescription={projectDescription}

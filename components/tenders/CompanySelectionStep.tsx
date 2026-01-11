@@ -16,25 +16,25 @@ import { toast } from "sonner";
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface CompanySelectionStepProps {
-  selectedTaxonomyIds: string[];
+  selectedCapabilityIds: string[];
   selectedCompanies: Company[];
   onSelectionChange: (companies: Company[]) => void;
 }
 
-interface CompanyWithTaxonomies extends Company {
-  taxonomies?: Array<{ id: string; name: string }>;
+interface CompanyWithCapabilities extends Company {
+  capabilities?: Array<{ id: string; name: string }>;
 }
 
 export function CompanySelectionStep({
-  selectedTaxonomyIds,
+  selectedCapabilityIds,
   selectedCompanies,
   onSelectionChange,
 }: CompanySelectionStepProps) {
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
-  const [companies, setCompanies] = useState<CompanyWithTaxonomies[]>([]);
+  const [companies, setCompanies] = useState<CompanyWithCapabilities[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCompanyDetail, setSelectedCompanyDetail] = useState<CompanyWithTaxonomies | null>(null);
+  const [selectedCompanyDetail, setSelectedCompanyDetail] = useState<CompanyWithCapabilities | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -43,68 +43,92 @@ export function CompanySelectionStep({
   }, []);
 
   useEffect(() => {
-    if (supabase && selectedTaxonomyIds.length > 0) {
+    if (supabase && selectedCapabilityIds.length > 0) {
       fetchCompanies();
     } else {
       setCompanies([]);
       setLoading(false);
     }
-  }, [supabase, selectedTaxonomyIds]);
+  }, [supabase, selectedCapabilityIds]);
 
   const fetchCompanies = async () => {
-    if (!supabase || selectedTaxonomyIds.length === 0) return;
+    if (!supabase || selectedCapabilityIds.length === 0) return;
 
     try {
       setLoading(true);
 
-      // Find companies that have at least one of the selected taxonomies
-      const { data: companyTaxonomies, error: ctError } = await supabase
-        .from("company_taxonomies")
-        .select("company_id")
-        .in("taxonomy_id", selectedTaxonomyIds);
+      // Use a join query to avoid URL length issues with large company lists
+      // This directly joins company_capabilities with companies
+      const { data: companyCapabilitiesData, error: joinError } = await supabase
+        .from("company_capabilities")
+        .select(`
+          company_id,
+          companies!inner(
+            id,
+            company_name,
+            companies_house_number,
+            contact_email,
+            contact_phone,
+            postcode,
+            address,
+            description,
+            website_url,
+            key_capabilities,
+            certifications,
+            status,
+            user_id,
+            is_system_company,
+            created_at,
+            updated_at
+          )
+        `)
+        .in("capability_id", selectedCapabilityIds);
 
-      if (ctError) throw ctError;
+      if (joinError) throw joinError;
 
-      const companyIds = [
-        ...new Set(companyTaxonomies?.map((ct) => ct.company_id) || []),
-      ];
+      // Deduplicate companies (a company may have multiple matching capabilities)
+      // and filter by status
+      const uniqueCompanies = new Map<string, CompanyWithCapabilities>();
+      
+      (companyCapabilitiesData || []).forEach((item: any) => {
+        const company = item.companies;
+        if (
+          company &&
+          (company.status === "active" || company.status === "pending_review") &&
+          !uniqueCompanies.has(company.id)
+        ) {
+          uniqueCompanies.set(company.id, {
+            ...company,
+            capabilities: [],
+          });
+        }
+      });
 
-      if (companyIds.length === 0) {
-        setCompanies([]);
-        setLoading(false);
-        return;
-      }
+      // Convert map to array and sort
+      const companiesArray = Array.from(uniqueCompanies.values()).sort((a, b) =>
+        a.company_name.localeCompare(b.company_name)
+      );
 
-      // Fetch company details (include active and pending_review companies)
-      const { data: companiesData, error: companiesError } = await supabase
-        .from("companies")
-        .select("*")
-        .in("id", companyIds)
-        .in("status", ["active", "pending_review"])
-        .order("company_name", { ascending: true });
-
-      if (companiesError) throw companiesError;
-
-      // Fetch taxonomies for each company
-      const companiesWithTaxonomies = await Promise.all(
-        (companiesData || []).map(async (company) => {
-          const { data: taxonomies } = await supabase
-            .from("company_taxonomies")
-            .select("taxonomy_id, taxonomies(id, name)")
+      // Fetch capabilities for each company (only the selected ones)
+      const companiesWithCapabilities = await Promise.all(
+        companiesArray.map(async (company) => {
+          const { data: capabilities } = await supabase
+            .from("company_capabilities")
+            .select("capability_id, company_capabilities_ref(id, name)")
             .eq("company_id", company.id)
-            .in("taxonomy_id", selectedTaxonomyIds);
+            .in("capability_id", selectedCapabilityIds);
 
           return {
             ...company,
-            taxonomies: taxonomies?.map((t: any) => ({
-              id: t.taxonomies.id,
-              name: t.taxonomies.name,
+            capabilities: capabilities?.map((c: any) => ({
+              id: c.company_capabilities_ref.id,
+              name: c.company_capabilities_ref.name,
             })) || [],
           };
         })
       );
 
-      setCompanies(companiesWithTaxonomies);
+      setCompanies(companiesWithCapabilities);
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast.error("Failed to load companies");
@@ -113,7 +137,7 @@ export function CompanySelectionStep({
     }
   };
 
-  const handleCompanyToggle = (company: CompanyWithTaxonomies, checked: boolean) => {
+  const handleCompanyToggle = (company: CompanyWithCapabilities, checked: boolean) => {
     if (checked) {
       onSelectionChange([...selectedCompanies, company]);
     } else {
@@ -135,7 +159,7 @@ export function CompanySelectionStep({
     );
   });
 
-  const viewCompanyDetails = (company: CompanyWithTaxonomies) => {
+  const viewCompanyDetails = (company: CompanyWithCapabilities) => {
     setSelectedCompanyDetail(company);
     setDetailDialogOpen(true);
   };
@@ -149,7 +173,7 @@ export function CompanySelectionStep({
     );
   }
 
-  if (selectedTaxonomyIds.length === 0) {
+  if (selectedCapabilityIds.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         Please select capabilities in the previous step.
@@ -224,10 +248,10 @@ export function CompanySelectionStep({
                           )}
 
                           <div className="flex flex-wrap gap-2 mb-3">
-                            {company.taxonomies && company.taxonomies.length > 0 ? (
-                              company.taxonomies.map((tax) => (
-                                <Badge key={tax.id} variant="secondary">
-                                  {tax.name}
+                            {company.capabilities && company.capabilities.length > 0 ? (
+                              company.capabilities.map((cap) => (
+                                <Badge key={cap.id} variant="secondary">
+                                  {cap.name}
                                 </Badge>
                               ))
                             ) : (
@@ -381,13 +405,13 @@ export function CompanySelectionStep({
                 </div>
               )}
 
-              {selectedCompanyDetail.taxonomies && selectedCompanyDetail.taxonomies.length > 0 && (
+              {selectedCompanyDetail.capabilities && selectedCompanyDetail.capabilities.length > 0 && (
                 <div>
                   <h4 className="font-semibold mb-2">Matching Capabilities</h4>
                   <div className="flex flex-wrap gap-2">
-                    {selectedCompanyDetail.taxonomies.map((tax) => (
-                      <Badge key={tax.id} variant="secondary">
-                        {tax.name}
+                    {selectedCompanyDetail.capabilities.map((cap) => (
+                      <Badge key={cap.id} variant="secondary">
+                        {cap.name}
                       </Badge>
                     ))}
                   </div>

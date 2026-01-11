@@ -15,11 +15,10 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
-type Taxonomy = Database["public"]["Tables"]["taxonomies"]["Row"];
 
 interface ProjectSummaryStepProps {
   selectedTenderId: string | null;
-  selectedTaxonomies: string[];
+  selectedCapabilities: string[];
   selectedCompanies: Company[];
   projectName: string;
   projectDescription: string;
@@ -32,7 +31,7 @@ interface ProjectSummaryStepProps {
 
 export function ProjectSummaryStep({
   selectedTenderId,
-  selectedTaxonomies,
+  selectedCapabilities,
   selectedCompanies,
   projectName,
   projectDescription,
@@ -44,7 +43,7 @@ export function ProjectSummaryStep({
 }: ProjectSummaryStepProps) {
   const { user } = useAuth();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
-  const [taxonomyNames, setTaxonomyNames] = useState<Map<string, string>>(new Map());
+  const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(new Map());
   const [tenderInfo, setTenderInfo] = useState<{ title: string; buyer: string } | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -55,14 +54,14 @@ export function ProjectSummaryStep({
 
   useEffect(() => {
     if (supabase) {
-      if (selectedTaxonomies.length > 0) {
-        fetchTaxonomyNames();
+      if (selectedCapabilities.length > 0) {
+        fetchCapabilityNames();
       }
       if (selectedTenderId) {
         fetchTenderInfo();
       }
     }
-  }, [supabase, selectedTaxonomies, selectedTenderId]);
+  }, [supabase, selectedCapabilities, selectedTenderId]);
 
   const fetchTenderInfo = async () => {
     if (!supabase || !selectedTenderId) return;
@@ -81,24 +80,24 @@ export function ProjectSummaryStep({
     }
   };
 
-  const fetchTaxonomyNames = async () => {
+  const fetchCapabilityNames = async () => {
     if (!supabase) return;
 
     try {
       const { data, error } = await supabase
-        .from("taxonomies")
+        .from("company_capabilities_ref")
         .select("id, name")
-        .in("id", selectedTaxonomies);
+        .in("id", selectedCapabilities);
 
       if (error) throw error;
 
       const nameMap = new Map<string, string>();
-      data?.forEach((tax) => {
-        nameMap.set(tax.id, tax.name);
+      data?.forEach((cap) => {
+        nameMap.set(cap.id, cap.name);
       });
-      setTaxonomyNames(nameMap);
+      setCapabilityNames(nameMap);
     } catch (error) {
-      console.error("Error fetching taxonomy names:", error);
+      console.error("Error fetching capability names:", error);
     }
   };
 
@@ -231,14 +230,14 @@ export function ProjectSummaryStep({
           <CardTitle className="text-lg">Selected Capabilities</CardTitle>
         </CardHeader>
         <CardContent>
-          {selectedTaxonomies.length === 0 ? (
+          {selectedCapabilities.length === 0 ? (
             <p className="text-sm text-muted-foreground">No capabilities selected</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {selectedTaxonomies.map((taxId) => {
-                const name = taxonomyNames.get(taxId) || taxId;
+              {selectedCapabilities.map((capId) => {
+                const name = capabilityNames.get(capId) || capId;
                 return (
-                  <Badge key={taxId} variant="secondary">
+                  <Badge key={capId} variant="secondary">
                     {name}
                   </Badge>
                 );

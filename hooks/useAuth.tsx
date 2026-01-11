@@ -12,10 +12,18 @@ import { User, Session, SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
 
+interface ProfileData {
+  approval_status: string | null;
+  onboarding_completed_at: string | null;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  profile: ProfileData | null;
+  isOnboarding: boolean;
+  isPendingApproval: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -23,6 +31,9 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  profile: null,
+  isOnboarding: false,
+  isPendingApproval: false,
   signOut: async () => {},
 });
 
@@ -38,6 +49,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
     null
   );
@@ -114,8 +126,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
+  // Fetch profile data when user changes
+  useEffect(() => {
+    if (!supabase || !user) {
+      setProfile(null);
+      return;
+    }
+
+    const fetchProfile = async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase.from("profiles") as any)
+          .select("approval_status, onboarding_completed_at")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching profile:", error);
+          setProfile(null);
+        } else {
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        setProfile(null);
+      }
+    };
+
+    fetchProfile();
+  }, [supabase, user]);
+
+  // Computed flags for onboarding and pending approval states
+  const isOnboarding = useMemo(() => {
+    return !!user && !profile?.onboarding_completed_at;
+  }, [user, profile]);
+
+  const isPendingApproval = useMemo(() => {
+    return !!user && !!profile?.onboarding_completed_at && profile?.approval_status === "pending";
+  }, [user, profile]);
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, profile, isOnboarding, isPendingApproval, signOut }}>
       {children}
     </AuthContext.Provider>
   );

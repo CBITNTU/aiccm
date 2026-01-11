@@ -111,6 +111,7 @@ export function getPlatformName(): string {
 // Re-export templates
 export * from "./templates/welcome-verification";
 export * from "./templates/verification-resend";
+export * from "./templates/signup-verification";
 export * from "./templates/admin-notification";
 export * from "./templates/company-join-request";
 export * from "./templates/approval-notification";

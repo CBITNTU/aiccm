@@ -25,8 +25,11 @@ interface HeaderProps {
 
 export function Header({ variant = "landing" }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, signOut, isOnboarding, isPendingApproval } = useAuth();
   const { isAdmin } = useUserRole();
+
+  // Hide navigation items during onboarding or pending approval
+  const showFullNavigation = !isOnboarding && !isPendingApproval;
 
   const handleSignOut = async () => {
     setIsMenuOpen(false);
@@ -60,7 +63,7 @@ export function Header({ variant = "landing" }: HeaderProps) {
           </Link>
 
           {/* Desktop Navigation */}
-          {variant === "app" && (
+          {variant === "app" && showFullNavigation && (
             <nav className="hidden md:flex items-center space-x-1">
               {navigationItems.map((item) => (
                 <Button
@@ -117,28 +120,32 @@ export function Header({ variant = "landing" }: HeaderProps) {
               </div>
             ) : (
               <div className="hidden md:flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center"
-                  asChild
-                >
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Dashboard
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center"
-                  asChild
-                >
-                  <Link href="/profile">
-                    <User className="w-4 h-4 mr-2" />
-                    Profile
-                  </Link>
-                </Button>
+                {showFullNavigation && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center"
+                      asChild
+                    >
+                      <Link href="/dashboard">
+                        <LayoutDashboard className="w-4 h-4 mr-2" />
+                        Dashboard
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center"
+                      asChild
+                    >
+                      <Link href="/profile">
+                        <User className="w-4 h-4 mr-2" />
+                        Profile
+                      </Link>
+                    </Button>
+                  </>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -172,51 +179,55 @@ export function Header({ variant = "landing" }: HeaderProps) {
         {isMenuOpen && variant === "app" && (
           <div className="md:hidden border-t border-border">
             <div className="py-4 space-y-2">
-              <Button
-                variant="ghost"
-                className="w-full justify-start space-x-3 text-muted-foreground"
-                asChild
-              >
-                <Link href="/dashboard">
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>Dashboard</span>
-                </Link>
-              </Button>
-              {navigationItems.map((item) => (
-                <Button
-                  key={item.name}
-                  variant="ghost"
-                  className="w-full justify-start space-x-3 text-muted-foreground"
-                  asChild
-                >
-                  <Link href={item.href}>
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                </Button>
-              ))}
-              {isAdmin && (
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start space-x-3 text-muted-foreground"
-                  asChild
-                >
-                  <Link href="/admin">
-                    <Shield className="w-4 h-4" />
-                    <span>Admin</span>
-                  </Link>
-                </Button>
+              {showFullNavigation && (
+                <>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start space-x-3 text-muted-foreground"
+                    asChild
+                  >
+                    <Link href="/dashboard">
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </Button>
+                  {navigationItems.map((item) => (
+                    <Button
+                      key={item.name}
+                      variant="ghost"
+                      className="w-full justify-start space-x-3 text-muted-foreground"
+                      asChild
+                    >
+                      <Link href={item.href}>
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.name}</span>
+                      </Link>
+                    </Button>
+                  ))}
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start space-x-3 text-muted-foreground"
+                      asChild
+                    >
+                      <Link href="/admin">
+                        <Shield className="w-4 h-4" />
+                        <span>Admin</span>
+                      </Link>
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start space-x-3 text-muted-foreground"
+                    asChild
+                  >
+                    <Link href="/profile">
+                      <User className="w-4 h-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </Button>
+                </>
               )}
-              <Button
-                variant="ghost"
-                className="w-full justify-start space-x-3 text-muted-foreground"
-                asChild
-              >
-                <Link href="/profile">
-                  <User className="w-4 h-4" />
-                  <span>Profile</span>
-                </Link>
-              </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start space-x-3 text-muted-foreground"

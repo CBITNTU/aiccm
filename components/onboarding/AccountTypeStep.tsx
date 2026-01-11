@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { User, Building2, Loader2, Search, Users, FileText } from "lucide-react";
+import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
 interface AccountTypeStepProps {
   onComplete: (accountType: "individual" | "business") => void;
@@ -29,7 +30,7 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          step: 3,
+          step: ONBOARDING_STEPS.ACCOUNT_TYPE,
           data: { accountType: selectedType },
         }),
       });

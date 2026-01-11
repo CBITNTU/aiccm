@@ -9,6 +9,7 @@ import { AccountTypeStep } from "@/components/onboarding/AccountTypeStep";
 import { CompanyInfoStep } from "@/components/onboarding/CompanyInfoStep";
 import { PendingApprovalStep } from "@/components/onboarding/PendingApprovalStep";
 import { Loader2 } from "lucide-react";
+import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
 interface OnboardingState {
   currentStep: number;
@@ -25,18 +26,18 @@ interface OnboardingState {
 }
 
 const STEP_LABELS = [
-  { step: 1, label: "Verify Email" },
-  { step: 2, label: "Profile" },
-  { step: 3, label: "Account Type" },
-  { step: 4, label: "Company" },
-  { step: 5, label: "Complete" },
+  { step: ONBOARDING_STEPS.EMAIL_VERIFICATION, label: "Verify Email" },
+  { step: ONBOARDING_STEPS.PROFILE_INFO, label: "Profile" },
+  { step: ONBOARDING_STEPS.ACCOUNT_TYPE, label: "Account Type" },
+  { step: ONBOARDING_STEPS.COMPANY_INFO, label: "Company" },
+  { step: ONBOARDING_STEPS.COMPLETE, label: "Complete" },
 ];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [state, setState] = useState<OnboardingState>({
-    currentStep: 1,
+    currentStep: ONBOARDING_STEPS.EMAIL_VERIFICATION,
     emailVerified: false,
     email: "",
     accountType: null,
@@ -67,11 +68,11 @@ export default function OnboardingPage() {
       }
 
       // Determine current step based on data
-      let currentStep = data.currentStep || 1;
+      let currentStep = data.currentStep || ONBOARDING_STEPS.EMAIL_VERIFICATION;
 
-      // If email is verified but step is still 1, advance to 2
-      if (data.emailVerified && currentStep === 1) {
-        currentStep = 2;
+      // If email is verified but step is still EMAIL_VERIFICATION, advance to PROFILE_INFO
+      if (data.emailVerified && currentStep === ONBOARDING_STEPS.EMAIL_VERIFICATION) {
+        currentStep = ONBOARDING_STEPS.PROFILE_INFO;
       }
 
       // Get company name if applicable
@@ -131,14 +132,14 @@ export default function OnboardingPage() {
     setState((prev) => ({
       ...prev,
       emailVerified: true,
-      currentStep: 2,
+      currentStep: ONBOARDING_STEPS.PROFILE_INFO,
     }));
   };
 
   const handleProfileComplete = () => {
     setState((prev) => ({
       ...prev,
-      currentStep: 3,
+      currentStep: ONBOARDING_STEPS.ACCOUNT_TYPE,
     }));
     // Refetch to get updated data
     fetchOnboardingState();
@@ -146,19 +147,19 @@ export default function OnboardingPage() {
 
   const handleAccountTypeComplete = (accountType: "individual" | "business") => {
     if (accountType === "individual") {
-      // Skip to step 5 (complete)
+      // Skip to COMPLETE step
       setState((prev) => ({
         ...prev,
         accountType,
         signupType: "individual",
-        currentStep: 5,
+        currentStep: ONBOARDING_STEPS.COMPLETE,
       }));
     } else {
-      // Go to company info step
+      // Go to COMPANY_INFO step
       setState((prev) => ({
         ...prev,
         accountType,
-        currentStep: 4,
+        currentStep: ONBOARDING_STEPS.COMPANY_INFO,
       }));
     }
   };
@@ -166,7 +167,7 @@ export default function OnboardingPage() {
   const handleCompanyComplete = () => {
     setState((prev) => ({
       ...prev,
-      currentStep: 5,
+      currentStep: ONBOARDING_STEPS.COMPLETE,
     }));
     // Refetch to get company name
     fetchOnboardingState();
@@ -176,7 +177,7 @@ export default function OnboardingPage() {
   const getVisibleSteps = () => {
     if (state.accountType === "individual") {
       // Individual: skip company step
-      return STEP_LABELS.filter((s) => s.step !== 4);
+      return STEP_LABELS.filter((s) => s.step !== ONBOARDING_STEPS.COMPANY_INFO);
     }
     return STEP_LABELS;
   };
@@ -193,7 +194,6 @@ export default function OnboardingPage() {
   }
 
   const visibleSteps = getVisibleSteps();
-  const currentStepIndex = visibleSteps.findIndex((s) => s.step === state.currentStep);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -254,14 +254,14 @@ export default function OnboardingPage() {
 
       {/* Step Content */}
       <div className="mt-8">
-        {state.currentStep === 1 && (
+        {state.currentStep === ONBOARDING_STEPS.EMAIL_VERIFICATION && (
           <EmailVerificationStep
             email={state.email}
             onVerified={handleEmailVerified}
           />
         )}
 
-        {state.currentStep === 2 && (
+        {state.currentStep === ONBOARDING_STEPS.PROFILE_INFO && (
           <ProfileInfoStep
             initialData={{
               firstName: state.profile.firstName || undefined,
@@ -272,18 +272,18 @@ export default function OnboardingPage() {
           />
         )}
 
-        {state.currentStep === 3 && (
+        {state.currentStep === ONBOARDING_STEPS.ACCOUNT_TYPE && (
           <AccountTypeStep onComplete={handleAccountTypeComplete} />
         )}
 
-        {state.currentStep === 4 && (
+        {state.currentStep === ONBOARDING_STEPS.COMPANY_INFO && (
           <CompanyInfoStep
             userEmail={state.email}
             onComplete={handleCompanyComplete}
           />
         )}
 
-        {state.currentStep === 5 && (
+        {state.currentStep === ONBOARDING_STEPS.COMPLETE && (
           <PendingApprovalStep
             signupType={state.signupType}
             companyName={state.companyName}

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { User, Briefcase, Loader2 } from "lucide-react";
+import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
 interface ProfileInfoStepProps {
   initialData?: {
@@ -46,7 +47,7 @@ export function ProfileInfoStep({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          step: 2,
+          step: ONBOARDING_STEPS.PROFILE_INFO,
           data: {
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),

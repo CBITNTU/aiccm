@@ -1,15 +1,16 @@
 import { createApiClient, createAdminClient, apiResponse, apiError } from "@/lib/api";
+import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
 /**
  * GET /api/onboarding/check-verification
  *
  * Checks if the current user's email is verified.
- * If verified, updates their onboarding step to 2 (profile info).
+ * If verified, updates their onboarding step to PROFILE_INFO.
  *
  * Returns:
  * - verified: boolean - whether email is verified
  * - email: string - the user's email address (for display)
- * - nextStep: number - the next onboarding step (2 if verified, 1 if not)
+ * - nextStep: number - the next onboarding step
  */
 export async function GET() {
   try {
@@ -25,22 +26,22 @@ export async function GET() {
 
     const isVerified = !!user.email_confirmed_at;
 
-    // If verified, update onboarding step to 2 (if still on step 1)
+    // If verified, update onboarding step to PROFILE_INFO (if still on EMAIL_VERIFICATION)
     if (isVerified) {
       const adminClient = createAdminClient();
 
-      // Only update if currently on step 1
+      // Only update if currently on EMAIL_VERIFICATION step
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (adminClient.from("profiles") as any)
-        .update({ onboarding_step: 2 })
+        .update({ onboarding_step: ONBOARDING_STEPS.PROFILE_INFO })
         .eq("user_id", user.id)
-        .eq("onboarding_step", 1);
+        .eq("onboarding_step", ONBOARDING_STEPS.EMAIL_VERIFICATION);
     }
 
     return apiResponse({
       verified: isVerified,
       email: user.email,
-      nextStep: isVerified ? 2 : 1,
+      nextStep: isVerified ? ONBOARDING_STEPS.PROFILE_INFO : ONBOARDING_STEPS.EMAIL_VERIFICATION,
     });
   } catch (error) {
     console.error("Check verification error:", error);

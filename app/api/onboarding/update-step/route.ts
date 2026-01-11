@@ -12,6 +12,7 @@ import {
   getCompanyJoinRequestEmailSubject,
   getCompanyJoinRequestEmailHtml,
 } from "@/lib/email";
+import { ONBOARDING_STEPS, isValidStep } from "@/lib/onboarding";
 
 interface ProfileData {
   firstName: string;
@@ -73,7 +74,8 @@ export async function POST(request: NextRequest) {
     const body: UpdateStepRequest = await request.json();
     const { step, data } = body;
 
-    if (!step || step < 2 || step > 5) {
+    // Validate step (must be between PROFILE_INFO and COMPLETE, not EMAIL_VERIFICATION which is automatic)
+    if (!step || !isValidStep(step) || step < ONBOARDING_STEPS.PROFILE_INFO) {
       return apiError("Invalid step number", 400);
     }
 
@@ -92,13 +94,14 @@ export async function POST(request: NextRequest) {
 
     // Validate step progression (can only go forward from current step or revisit)
     // Allow revisiting previous steps for editing
-    if (step > ((profile.onboarding_step as number) || 1) + 1) {
+    const currentStep = (profile.onboarding_step as number) || ONBOARDING_STEPS.EMAIL_VERIFICATION;
+    if (step > currentStep + 1) {
       return apiError("Cannot skip steps", 400);
     }
 
     // Handle step-specific logic
     switch (step) {
-      case 2: {
+      case ONBOARDING_STEPS.PROFILE_INFO: {
         // Profile Information
         const profileData = data as ProfileData;
         if (!profileData?.firstName || !profileData?.lastName || !profileData?.jobTitle) {
@@ -111,7 +114,7 @@ export async function POST(request: NextRequest) {
             first_name: profileData.firstName,
             last_name: profileData.lastName,
             job_title: profileData.jobTitle,
-            onboarding_step: 3,
+            onboarding_step: ONBOARDING_STEPS.ACCOUNT_TYPE,
           })
           .eq("user_id", user.id);
 
@@ -122,19 +125,21 @@ export async function POST(request: NextRequest) {
 
         return apiResponse({
           success: true,
-          nextStep: 3,
+          nextStep: ONBOARDING_STEPS.ACCOUNT_TYPE,
           message: "Profile information saved",
         });
       }
 
-      case 3: {
+      case ONBOARDING_STEPS.ACCOUNT_TYPE: {
         // Account Type Selection
         const accountData = data as AccountTypeData;
         if (!accountData?.accountType || !["individual", "business"].includes(accountData.accountType)) {
           return apiError("Valid account type is required", 400);
         }
 
-        const nextStep = accountData.accountType === "business" ? 4 : 5;
+        const nextStep = accountData.accountType === "business"
+          ? ONBOARDING_STEPS.COMPANY_INFO
+          : ONBOARDING_STEPS.COMPLETE;
         const updates: Record<string, unknown> = {
           account_type: accountData.accountType,
           onboarding_step: nextStep,
@@ -164,7 +169,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      case 4: {
+      case ONBOARDING_STEPS.COMPANY_INFO: {
         // Company Information (only for business accounts)
         const companyData = data as CompanyData;
         if (!companyData?.action) {
@@ -225,7 +230,7 @@ export async function POST(request: NextRequest) {
           const { error: profileUpdateError } = await (adminClient.from("profiles") as any)
             .update({
               signup_type: "new-company",
-              onboarding_step: 5,
+              onboarding_step: ONBOARDING_STEPS.COMPLETE,
             })
             .eq("user_id", user.id);
 
@@ -235,7 +240,7 @@ export async function POST(request: NextRequest) {
 
           return apiResponse({
             success: true,
-            nextStep: 5,
+            nextStep: ONBOARDING_STEPS.COMPLETE,
             companyId: company.id,
             message: `Company "${createData.companyName}" created successfully`,
           });
@@ -307,7 +312,7 @@ export async function POST(request: NextRequest) {
           await (adminClient.from("profiles") as any)
             .update({
               signup_type: "join-company",
-              onboarding_step: 5,
+              onboarding_step: ONBOARDING_STEPS.COMPLETE,
             })
             .eq("user_id", user.id);
 
@@ -350,7 +355,7 @@ export async function POST(request: NextRequest) {
 
           return apiResponse({
             success: true,
-            nextStep: 5,
+            nextStep: ONBOARDING_STEPS.COMPLETE,
             message: `Request to join "${company.company_name}" submitted`,
           });
         }
@@ -358,12 +363,12 @@ export async function POST(request: NextRequest) {
         return apiError("Invalid company action", 400);
       }
 
-      case 5: {
+      case ONBOARDING_STEPS.COMPLETE: {
         // Mark onboarding as complete
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: completeError } = await (adminClient.from("profiles") as any)
           .update({
-            onboarding_step: 5,
+            onboarding_step: ONBOARDING_STEPS.COMPLETE,
             onboarding_completed_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -474,7 +479,7 @@ export async function GET() {
     }
 
     return apiResponse({
-      currentStep: (profile.onboarding_step as number) || 1,
+      currentStep: (profile.onboarding_step as number) || ONBOARDING_STEPS.EMAIL_VERIFICATION,
       completed: !!profile.onboarding_completed_at,
       accountType: profile.account_type as string | null,
       signupType: profile.signup_type as string | null,

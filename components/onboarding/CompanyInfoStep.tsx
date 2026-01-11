@@ -19,6 +19,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
 interface CompanySearchResult {
   id: string;
@@ -128,7 +129,7 @@ export function CompanyInfoStep({ userEmail, onComplete }: CompanyInfoStepProps)
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          step: 4,
+          step: ONBOARDING_STEPS.COMPANY_INFO,
           data: {
             action: "create",
             companyName: createForm.companyName.trim(),
@@ -174,7 +175,7 @@ export function CompanyInfoStep({ userEmail, onComplete }: CompanyInfoStepProps)
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          step: 4,
+          step: ONBOARDING_STEPS.COMPANY_INFO,
           data: {
             action: "join",
             companyId: joinForm.selectedCompany.id,

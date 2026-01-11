@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Clock, Mail, Loader2 } from "lucide-react";
+import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
 interface PendingApprovalStepProps {
   signupType?: string | null;
@@ -26,7 +27,7 @@ export function PendingApprovalStep({
       await fetch("/api/onboarding/update-step", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: 5 }),
+        body: JSON.stringify({ step: ONBOARDING_STEPS.COMPLETE }),
       });
 
       // Redirect to pending approval page

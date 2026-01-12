@@ -21,6 +21,7 @@ interface LookupCompanyResponse {
   existingCompany?: {
     id: string;
     company_name: string;
+    has_admin: boolean;
   };
 }
 
@@ -160,6 +161,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingCompany) {
+      // Check if company has any approved admins
+      const { data: adminCheck } = await supabase
+        .from("company_members")
+        .select("id")
+        .eq("company_id", existingCompany.id)
+        .eq("role", "admin")
+        .eq("status", "approved")
+        .limit(1);
+
       return apiResponse<LookupCompanyResponse>({
         success: false,
         error: "This company is already registered on our platform.",
@@ -167,6 +177,7 @@ export async function POST(request: NextRequest) {
         existingCompany: {
           id: existingCompany.id,
           company_name: existingCompany.company_name,
+          has_admin: (adminCheck?.length ?? 0) > 0,
         },
       });
     }

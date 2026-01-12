@@ -10,9 +10,6 @@ import { hashToken, isExpired } from "@/lib/utils/invite-token";
 
 export interface SignupInviteRequest {
   token: string;
-  firstName: string;
-  lastName: string;
-  jobTitle: string;
   password: string;
 }
 
@@ -36,10 +33,10 @@ export interface AcceptInviteResponse {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token, firstName, lastName, jobTitle, password } = body as SignupInviteRequest;
+    const { token, password } = body as SignupInviteRequest;
 
     // Validate required fields
-    if (!token || !firstName || !lastName || !password) {
+    if (!token || !password) {
       return apiError("Missing required fields", 400);
     }
 
@@ -110,11 +107,6 @@ export async function POST(request: NextRequest) {
         password,
         options: {
           redirectTo: getPlatformUrl("/auth/callback"),
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            job_title: jobTitle,
-          },
         },
       });
 
@@ -134,7 +126,6 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = linkData.user.id;
-    const userName = `${firstName} ${lastName}`;
 
     // Immediately confirm email (since they used invite link)
     const { error: confirmError } = await supabase.auth.admin.updateUserById(
@@ -147,7 +138,7 @@ export async function POST(request: NextRequest) {
       // Continue anyway - not critical
     }
 
-    // Update profile with invited_to_company_id and signup_type
+    // Update profile with invited_to_company_id, signup_type, and onboarding_step
     // The database trigger creates the profile, so we need to update it
     // Wait a moment to ensure trigger has completed
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -163,6 +154,7 @@ export async function POST(request: NextRequest) {
       .update({
         signup_type: "invited",
         invited_to_company_id: invitation.company_id,
+        onboarding_step: 2, // Start at PROFILE_INFO step (skip email verification)
       })
       .eq("user_id", userId)
       .select();
@@ -183,6 +175,7 @@ export async function POST(request: NextRequest) {
         .update({
           signup_type: "invited",
           invited_to_company_id: invitation.company_id,
+          onboarding_step: 2, // Start at PROFILE_INFO step (skip email verification)
         })
         .eq("user_id", userId)
         .select();
@@ -227,6 +220,7 @@ export async function POST(request: NextRequest) {
       .eq("id", invitation.id);
 
     // Notify superadmins about new invited user signup
+    // Note: Name and job title will be collected during onboarding
     const { data: superadmins } = await supabase
       .from("user_roles")
       .select("user_id")
@@ -245,11 +239,10 @@ export async function POST(request: NextRequest) {
 
       if (adminEmails.length > 0) {
         const adminNotificationData = {
-          userName,
+          userName: invitation.email, // Name will be collected during onboarding
           userEmail: invitation.email,
           signupType: "invited" as const,
           companyName: company.company_name,
-          jobTitle,
         };
 
         await sendEmail({
@@ -372,11 +365,16 @@ export async function PUT(request: NextRequest) {
       invited_by: invitation.invited_by,
     });
 
-    // Update profile to track invited company (for approval flow)
+    // Update profile to track invited company and show confirmation step
+    // Set onboarding_step to 4 (COMPANY_INFO) to show the invited company confirmation
+    // Set signup_type to "invited" so onboarding knows to show confirmation flow
     await supabase
       .from("profiles")
       .update({
         invited_to_company_id: invitation.company_id,
+        signup_type: "invited",
+        onboarding_step: 4, // Show confirmation step
+        onboarding_completed_at: null, // Reset so onboarding flow is triggered
       })
       .eq("user_id", user.id);
 

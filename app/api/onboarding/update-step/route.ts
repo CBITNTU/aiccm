@@ -27,6 +27,9 @@ interface AccountTypeData {
 interface NewCompanyData {
   action: "create";
   companyName: string;
+  companiesHouseNumber?: string;
+  websiteUrl?: string;
+  address?: string;
   contactEmail?: string;
   contactPhone?: string;
 }
@@ -38,7 +41,11 @@ interface JoinCompanyData {
   message?: string;
 }
 
-type CompanyData = NewCompanyData | JoinCompanyData;
+interface InvitedConfirmData {
+  action: "invited-confirm";
+}
+
+type CompanyData = NewCompanyData | JoinCompanyData | InvitedConfirmData;
 
 interface UpdateStepRequest {
   step: number;
@@ -108,13 +115,20 @@ export async function POST(request: NextRequest) {
           return apiError("First name, last name, and job title are required", 400);
         }
 
+        // Determine next step based on signup type
+        // Invited users skip account type and go to company confirmation
+        const isInvitedUser = profile.signup_type === "invited";
+        const nextStep = isInvitedUser
+          ? ONBOARDING_STEPS.COMPANY_INFO
+          : ONBOARDING_STEPS.ACCOUNT_TYPE;
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: updateError } = await (adminClient.from("profiles") as any)
           .update({
             first_name: profileData.firstName,
             last_name: profileData.lastName,
             job_title: profileData.jobTitle,
-            onboarding_step: ONBOARDING_STEPS.ACCOUNT_TYPE,
+            onboarding_step: nextStep,
           })
           .eq("user_id", user.id);
 
@@ -125,8 +139,10 @@ export async function POST(request: NextRequest) {
 
         return apiResponse({
           success: true,
-          nextStep: ONBOARDING_STEPS.ACCOUNT_TYPE,
-          message: "Profile information saved",
+          nextStep,
+          message: isInvitedUser
+            ? "Profile saved. Confirm your company membership."
+            : "Profile information saved",
         });
       }
 
@@ -170,10 +186,33 @@ export async function POST(request: NextRequest) {
       }
 
       case ONBOARDING_STEPS.COMPANY_INFO: {
-        // Company Information (only for business accounts)
+        // Company Information (for business accounts or invited user confirmation)
         const companyData = data as CompanyData;
         if (!companyData?.action) {
-          return apiError("Company action (create or join) is required", 400);
+          return apiError("Company action is required", 400);
+        }
+
+        // Handle invited user confirmation
+        if (companyData.action === "invited-confirm") {
+          // Invited user is confirming their company membership
+          // Just move to the complete step - the company membership was already created
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: updateError } = await (adminClient.from("profiles") as any)
+            .update({
+              onboarding_step: ONBOARDING_STEPS.COMPLETE,
+            })
+            .eq("user_id", user.id);
+
+          if (updateError) {
+            console.error("Profile update error:", updateError);
+            return apiError("Failed to update profile", 500);
+          }
+
+          return apiResponse({
+            success: true,
+            nextStep: ONBOARDING_STEPS.COMPLETE,
+            message: "Company membership confirmed",
+          });
         }
 
         if (companyData.action === "create") {
@@ -192,6 +231,9 @@ export async function POST(request: NextRequest) {
               contact_email: createData.contactEmail || user.email,
               contact_phone: createData.contactPhone || null,
               contact_person: `${profile.first_name} ${profile.last_name}`,
+              companies_house_number: createData.companiesHouseNumber || null,
+              website_url: createData.websiteUrl || null,
+              address: createData.address || null,
             })
             .select()
             .single();
@@ -470,12 +512,55 @@ export async function GET() {
     const adminClient = createAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile, error: profileError } = await (adminClient.from("profiles") as any)
-      .select("onboarding_step, onboarding_completed_at, account_type, signup_type, first_name, last_name, job_title")
+      .select("onboarding_step, onboarding_completed_at, account_type, signup_type, first_name, last_name, job_title, invited_to_company_id")
       .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) {
       return apiError("Profile not found", 404);
+    }
+
+    // Fetch invited company info if user is invited
+    let invitedCompanyInfo: { companyName: string; inviterName: string } | null = null;
+    if (profile.signup_type === "invited" && profile.invited_to_company_id) {
+      // Get company name
+      const { data: company } = await adminClient
+        .from("companies")
+        .select("company_name")
+        .eq("id", profile.invited_to_company_id)
+        .single();
+
+      // Get inviter name from team_invitations
+      const { data: invitation } = user.email
+        ? await adminClient
+            .from("team_invitations")
+            .select("invited_by")
+            .eq("company_id", profile.invited_to_company_id)
+            .eq("email", user.email)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single()
+        : { data: null };
+
+      let inviterName = "Your team";
+      if (invitation?.invited_by) {
+        const { data: inviterProfile } = await adminClient
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("user_id", invitation.invited_by)
+          .single();
+
+        if (inviterProfile) {
+          inviterName = `${inviterProfile.first_name || ""} ${inviterProfile.last_name || ""}`.trim() || "Your team";
+        }
+      }
+
+      if (company) {
+        invitedCompanyInfo = {
+          companyName: company.company_name,
+          inviterName,
+        };
+      }
     }
 
     return apiResponse({
@@ -490,6 +575,7 @@ export async function GET() {
       },
       emailVerified: !!user.email_confirmed_at,
       email: user.email,
+      invitedCompanyInfo,
     });
   } catch (error) {
     console.error("Get onboarding state error:", error);

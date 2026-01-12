@@ -15,11 +15,15 @@ interface ProfileInfoStepProps {
     lastName?: string;
     jobTitle?: string;
   };
+  companyContext?: {
+    companyName: string;
+  };
   onComplete: () => void;
 }
 
 export function ProfileInfoStep({
   initialData,
+  companyContext,
   onComplete,
 }: ProfileInfoStepProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -80,9 +84,15 @@ export function ProfileInfoStep({
           <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full mx-auto mb-4 flex items-center justify-center">
             <User className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
-          <CardTitle className="text-2xl">Your Profile</CardTitle>
+          <CardTitle className="text-2xl">
+            {companyContext
+              ? `Complete Your Profile to Join ${companyContext.companyName}`
+              : "Your Profile"}
+          </CardTitle>
           <p className="text-muted-foreground mt-2">
-            Tell us a bit about yourself
+            {companyContext
+              ? "Tell us a bit about yourself before joining your team"
+              : "Tell us a bit about yourself"}
           </p>
         </CardHeader>
         <CardContent>

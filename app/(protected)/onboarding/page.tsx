@@ -8,6 +8,7 @@ import { ProfileInfoStep } from "@/components/onboarding/ProfileInfoStep";
 import { AccountTypeStep } from "@/components/onboarding/AccountTypeStep";
 import { CompanyInfoStep } from "@/components/onboarding/CompanyInfoStep";
 import { PendingApprovalStep } from "@/components/onboarding/PendingApprovalStep";
+import { InvitedCompanyInfoStep } from "@/components/onboarding/InvitedCompanyInfoStep";
 import { Loader2 } from "lucide-react";
 import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
@@ -23,6 +24,10 @@ interface OnboardingState {
     jobTitle: string | null;
   };
   companyName: string | null;
+  invitedCompanyInfo: {
+    companyName: string;
+    inviterName: string;
+  } | null;
 }
 
 const STEP_LABELS = [
@@ -48,6 +53,7 @@ export default function OnboardingPage() {
       jobTitle: null,
     },
     companyName: null,
+    invitedCompanyInfo: null,
   });
 
   // Fetch current onboarding state
@@ -77,7 +83,11 @@ export default function OnboardingPage() {
 
       // Get company name if applicable
       let companyName: string | null = null;
-      if (data.signupType === "new-company" || data.signupType === "join-company") {
+
+      // For invited users, get company name from invitedCompanyInfo
+      if (data.signupType === "invited" && data.invitedCompanyInfo) {
+        companyName = data.invitedCompanyInfo.companyName;
+      } else if (data.signupType === "new-company" || data.signupType === "join-company") {
         // Fetch company name from backend
         const supabase = createClient();
         const { data: userData } = await supabase.auth.getUser();
@@ -116,6 +126,7 @@ export default function OnboardingPage() {
         signupType: data.signupType || null,
         profile: data.profile || { firstName: null, lastName: null, jobTitle: null },
         companyName,
+        invitedCompanyInfo: data.invitedCompanyInfo || null,
       });
     } catch (error) {
       console.error("Error fetching onboarding state:", error);
@@ -137,11 +148,28 @@ export default function OnboardingPage() {
   };
 
   const handleProfileComplete = () => {
+    // For invited users, skip account type and go to company confirmation
+    if (state.signupType === "invited") {
+      setState((prev) => ({
+        ...prev,
+        currentStep: ONBOARDING_STEPS.COMPANY_INFO,
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        currentStep: ONBOARDING_STEPS.ACCOUNT_TYPE,
+      }));
+    }
+    // Refetch to get updated data
+    fetchOnboardingState();
+  };
+
+  const handleInvitedCompanyConfirm = () => {
     setState((prev) => ({
       ...prev,
-      currentStep: ONBOARDING_STEPS.ACCOUNT_TYPE,
+      currentStep: ONBOARDING_STEPS.COMPLETE,
     }));
-    // Refetch to get updated data
+    // Refetch to ensure state is synced
     fetchOnboardingState();
   };
 
@@ -173,8 +201,17 @@ export default function OnboardingPage() {
     fetchOnboardingState();
   };
 
-  // Get steps to display based on account type
+  // Get steps to display based on account type and signup type
   const getVisibleSteps = () => {
+    // Invited users: skip email verification and account type steps
+    if (state.signupType === "invited") {
+      return [
+        { step: ONBOARDING_STEPS.PROFILE_INFO, label: "Profile" },
+        { step: ONBOARDING_STEPS.COMPANY_INFO, label: "Company" },
+        { step: ONBOARDING_STEPS.COMPLETE, label: "Complete" },
+      ];
+    }
+
     if (state.accountType === "individual") {
       // Individual: skip company step
       return STEP_LABELS.filter((s) => s.step !== ONBOARDING_STEPS.COMPANY_INFO);
@@ -268,20 +305,37 @@ export default function OnboardingPage() {
               lastName: state.profile.lastName || undefined,
               jobTitle: state.profile.jobTitle || undefined,
             }}
+            companyContext={
+              state.signupType === "invited" && state.invitedCompanyInfo
+                ? { companyName: state.invitedCompanyInfo.companyName }
+                : undefined
+            }
             onComplete={handleProfileComplete}
           />
         )}
 
-        {state.currentStep === ONBOARDING_STEPS.ACCOUNT_TYPE && (
-          <AccountTypeStep onComplete={handleAccountTypeComplete} />
-        )}
+        {state.currentStep === ONBOARDING_STEPS.ACCOUNT_TYPE &&
+          state.signupType !== "invited" && (
+            <AccountTypeStep onComplete={handleAccountTypeComplete} />
+          )}
 
-        {state.currentStep === ONBOARDING_STEPS.COMPANY_INFO && (
-          <CompanyInfoStep
-            userEmail={state.email}
-            onComplete={handleCompanyComplete}
-          />
-        )}
+        {state.currentStep === ONBOARDING_STEPS.COMPANY_INFO &&
+          state.signupType === "invited" &&
+          state.invitedCompanyInfo && (
+            <InvitedCompanyInfoStep
+              companyName={state.invitedCompanyInfo.companyName}
+              inviterName={state.invitedCompanyInfo.inviterName}
+              onComplete={handleInvitedCompanyConfirm}
+            />
+          )}
+
+        {state.currentStep === ONBOARDING_STEPS.COMPANY_INFO &&
+          state.signupType !== "invited" && (
+            <CompanyInfoStep
+              userEmail={state.email}
+              onComplete={handleCompanyComplete}
+            />
+          )}
 
         {state.currentStep === ONBOARDING_STEPS.COMPLETE && (
           <PendingApprovalStep

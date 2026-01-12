@@ -58,6 +58,7 @@ interface TenderDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   companyId?: string;
   onCreateProject?: (tenderId: string, companyId?: string) => void;
+  readOnly?: boolean;
 }
 
 export function TenderDetailDialog({
@@ -66,6 +67,7 @@ export function TenderDetailDialog({
   onOpenChange,
   companyId,
   onCreateProject,
+  readOnly = false,
 }: TenderDetailDialogProps) {
   const router = useRouter();
   const [tenderDetails, setTenderDetails] = useState<{
@@ -252,7 +254,7 @@ export function TenderDetailDialog({
               <ExternalLink className="w-4 h-4 mr-2" />
               Go to Original Website
             </Button>
-            {onCreateProject && (
+            {onCreateProject && !readOnly && (
               <Button
                 onClick={() => {
                   onCreateProject(result.tender_id, companyId);
@@ -265,15 +267,17 @@ export function TenderDetailDialog({
                 Create Project
               </Button>
             )}
-            <Button
-              onClick={handleBuildTeam}
-              variant="outline"
-              className="w-full"
-              size="lg"
-            >
-              <Users className="w-4 h-4 mr-2" />
-              Build Consulting Team
-            </Button>
+            {!readOnly && (
+              <Button
+                onClick={handleBuildTeam}
+                variant="outline"
+                className="w-full"
+                size="lg"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Build Consulting Team
+              </Button>
+            )}
           </div>
 
           <Separator />

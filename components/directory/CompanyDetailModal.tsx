@@ -94,12 +94,14 @@ interface CompanyDetailModalProps {
   company: (PublicCompany | Company) | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  readOnly?: boolean;
 }
 
 export function CompanyDetailModal({
   company,
   open,
   onOpenChange,
+  readOnly = false,
 }: CompanyDetailModalProps) {
   const { user } = useAuth();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
@@ -441,7 +443,7 @@ export function CompanyDetailModal({
                 <Award className="h-5 w-5" />
                 Performance Benchmark
               </h3>
-              {isOwner && (
+              {isOwner && !readOnly && (
                 <Button
                   variant="outline"
                   size="sm"

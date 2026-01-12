@@ -17,6 +17,7 @@ import {
   Lock,
   AlertCircle,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
@@ -43,6 +44,9 @@ export default function AuthPage() {
 
   // Email verification state
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+
+  // Signup success state - stores email on successful signup
+  const [signupSuccessEmail, setSignupSuccessEmail] = useState<string | null>(null);
 
   // Initialize supabase client on mount
   useEffect(() => {
@@ -217,12 +221,8 @@ export default function AuthPage() {
         throw new Error(data.error || "Failed to create account");
       }
 
-      // Show success message - user needs to verify email first
-      toast.success("Account Created!", {
-        description: "Please check your email and click the verification link to continue.",
-      });
-
-      // Clear form and stay on auth page
+      // Store email and show success screen
+      setSignupSuccessEmail(signUpData.email);
       setSignUpData({ email: "", password: "", confirmPassword: "" });
     } catch (error: unknown) {
       console.error("Sign up error:", error);
@@ -296,6 +296,57 @@ export default function AuthPage() {
               <p className="text-muted-foreground">
                 Please wait while we verify your email address...
               </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show success screen after signup
+  if (signupSuccessEmail) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header variant="landing" />
+        <div className="max-w-md mx-auto px-4 pt-20 pb-16">
+          <Card className="card-professional">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+              <CardTitle className="text-2xl">Account Created!</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center">
+                <p className="text-muted-foreground mb-2">
+                  We&apos;ve sent a verification link to:
+                </p>
+                <p className="font-medium text-foreground text-lg">{signupSuccessEmail}</p>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">Next steps:</p>
+                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                  <li>Check your email inbox (and spam folder)</li>
+                  <li>Click the verification link in the email</li>
+                  <li>Complete your profile setup</li>
+                </ol>
+              </div>
+
+              <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg text-sm">
+                <Mail className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <span className="text-amber-800 dark:text-amber-200">
+                  The verification link expires in 24 hours
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setSignupSuccessEmail(null)}
+              >
+                Back to Sign In
+              </Button>
             </CardContent>
           </Card>
         </div>

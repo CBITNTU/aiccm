@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Header } from "@/components/layout/Header";
+import { Sidenav } from "@/components/layout/Sidenav";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { EmailVerifiedToast } from "@/components/EmailVerifiedToast";
 
@@ -15,6 +16,7 @@ export default function ProtectedLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -39,9 +41,29 @@ export default function ProtectedLayout({
       <Suspense fallback={null}>
         <EmailVerifiedToast />
       </Suspense>
-      <Header variant="app" />
-      <EmailVerificationBanner />
-      <main>{children}</main>
+
+      {/* Mobile Header */}
+      <div className="md:hidden">
+        <Header
+          variant="app"
+          onMobileMenuToggle={() => setMobileMenuOpen(true)}
+        />
+      </div>
+
+      {/* Main Layout */}
+      <div className="flex min-h-screen">
+        {/* Sidenav - handles both desktop and mobile */}
+        <Sidenav
+          mobileOpen={mobileMenuOpen}
+          onMobileOpenChange={setMobileMenuOpen}
+        />
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-h-screen">
+          <EmailVerificationBanner />
+          <main className="flex-1">{children}</main>
+        </div>
+      </div>
     </div>
   );
 }

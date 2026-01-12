@@ -60,14 +60,21 @@ export async function updateSession(request: NextRequest) {
     "/pending-approval",
     "/profile",
     "/onboarding",
+    "/tenders",
+    "/directory",
+  ];
+
+  // Paths that onboarding users can access (browse while completing onboarding)
+  const onboardingAllowedPaths = [
+    "/onboarding",
+    "/tenders",
+    "/directory",
   ];
 
   // Paths that require full approval (redirect pending users)
   const approvalRequiredPaths = [
     "/dashboard",
     "/onboarding",
-    "/tenders",
-    "/directory",
     "/companies",
     "/company",
     "/vo",
@@ -79,6 +86,10 @@ export async function updateSession(request: NextRequest) {
   );
 
   const isPendingAllowedPath = pendingAllowedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
+  const isOnboardingAllowedPath = onboardingAllowedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
@@ -113,8 +124,8 @@ export async function updateSession(request: NextRequest) {
         const isPendingApprovalPath = request.nextUrl.pathname.startsWith("/pending-approval");
 
         // If onboarding not completed, redirect to onboarding
-        // (unless already on /onboarding)
-        if (!profile.onboarding_completed_at && !isOnboardingPath) {
+        // (unless on an allowed path like /onboarding, /tenders, /directory)
+        if (!profile.onboarding_completed_at && !isOnboardingAllowedPath) {
           const url = request.nextUrl.clone();
           url.pathname = "/onboarding";
           return NextResponse.redirect(url);

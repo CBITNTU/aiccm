@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AdminDataImport } from "@/components/admin/AdminDataImport";
 import { AdminCompanyManager } from "@/components/admin/AdminCompanyManager";
+import { AdminCSVImport } from "@/components/admin/AdminCSVImport";
 import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminTaxonomyEditor from "@/components/admin/AdminTaxonomyEditor";
@@ -325,6 +326,7 @@ export default function AdminPage() {
         {/* Companies Tab */}
         {activeTab === "companies" && (
           <div className="space-y-6">
+            <AdminCSVImport />
             <AdminDataImport />
             <AdminCompanyManager />
           </div>

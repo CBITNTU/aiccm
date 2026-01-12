@@ -340,13 +340,12 @@ export function AdminDataImport() {
 
           if (!existing) {
             // Insert as system company
-            // Note: user_id is set to empty string for system companies
-            // as null is not allowed in the TypeScript types
+            // user_id is null for system companies (made nullable in migration)
             const { error } = await supabase
               .from('companies')
               .insert({
                 ...company,
-                user_id: '' as string, // System company placeholder
+                user_id: null, // NULL for system companies (not empty string)
                 is_system_company: true,
                 status: 'active'
               } as Database['public']['Tables']['companies']['Insert']);

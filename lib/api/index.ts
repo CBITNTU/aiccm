@@ -84,13 +84,11 @@ export async function checkSuperadminRole(userId: string): Promise<boolean> {
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .single();
+    .eq("role", "superadmin")
+    .limit(1);
 
-  if (error || !data) {
-    return false;
-  }
-
-  return data.role === "superadmin";
+  // If we get any results, user has superadmin role
+  return !error && data && data.length > 0;
 }
 
 // OpenAI client singleton

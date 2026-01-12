@@ -60,9 +60,10 @@ interface MatchingResult {
 
 interface TenderMatchingProps {
   companyId?: string;
+  onCreateProject?: (tenderId: string) => void;
 }
 
-export function TenderMatching({ companyId }: TenderMatchingProps) {
+export function TenderMatching({ companyId, onCreateProject }: TenderMatchingProps) {
   const { user } = useAuth();
   const [matchingResults, setMatchingResults] = useState<MatchingResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
@@ -674,6 +675,7 @@ export function TenderMatching({ companyId }: TenderMatchingProps) {
             onOpenChange={setDialogOpen}
             result={selectedResult}
             companyId={selectedCompanyId || undefined}
+            onCreateProject={onCreateProject ? (tenderId) => onCreateProject(tenderId) : undefined}
           />
         )}
       </div>

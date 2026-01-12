@@ -17,6 +17,7 @@ import {
   PoundSterling,
   ExternalLink,
   Tag as TagIcon,
+  Plus,
 } from "lucide-react";
 import { formatCpvCode } from "@/lib/cpvCodes";
 
@@ -39,12 +40,14 @@ interface TenderViewDialogProps {
   tender: Tender | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreateProject?: (tenderId: string) => void;
 }
 
 export function TenderViewDialog({
   tender,
   open,
   onOpenChange,
+  onCreateProject,
 }: TenderViewDialogProps) {
   if (!tender) return null;
 
@@ -182,19 +185,33 @@ export function TenderViewDialog({
 
           {/* Actions */}
           <Separator />
-          <div className="flex justify-end gap-2">
-            {tender.reference_number && (
-              <Button asChild>
-                <a
-                  href={`https://www.find-tender.service.gov.uk/Notice/${tender.reference_number}?origin=SearchResults`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View on Find a Tender
-                </a>
+          <div className="flex justify-between gap-2">
+            {onCreateProject && (
+              <Button
+                onClick={() => {
+                  onCreateProject(tender.id);
+                  onOpenChange(false);
+                }}
+                variant="default"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Project
               </Button>
             )}
+            <div className="flex gap-2 ml-auto">
+              {tender.reference_number && (
+                <Button asChild variant="outline">
+                  <a
+                    href={`https://www.find-tender.service.gov.uk/Notice/${tender.reference_number}?origin=SearchResults`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    View on Find a Tender
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>

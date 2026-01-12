@@ -13,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Building2 } from "lucide-react";
+import { Search, Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { CompanyCard } from "@/components/directory/CompanyCard";
 import { CompanyDetailModal } from "@/components/directory/CompanyDetailModal";
 import { TaxonomyFilter } from "@/components/directory/TaxonomyFilter";
@@ -57,6 +58,9 @@ export default function DirectoryPage() {
     null
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 25;
 
   // Initialize supabase client
   useEffect(() => {
@@ -64,12 +68,40 @@ export default function DirectoryPage() {
     setSupabase(client);
   }, []);
 
-  // Fetch companies
+  // Fetch companies with server-side pagination and filtering
   useEffect(() => {
     if (!supabase) return;
 
     const fetchCompanies = async () => {
       try {
+        setLoading(true);
+        
+        // Calculate pagination
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage - 1;
+
+        // First, get company IDs if taxonomy filter is applied
+        let filteredCompanyIds: string[] | null = null;
+        if (selectedTaxonomies.length > 0) {
+          const { data: companyIds, error: taxonomyError } = await supabase
+            .from("company_taxonomies")
+            .select("company_id")
+            .in("taxonomy_id", selectedTaxonomies);
+
+          if (taxonomyError) {
+            console.error("Error fetching taxonomy companies:", taxonomyError);
+          } else if (companyIds && companyIds.length > 0) {
+            filteredCompanyIds = [...new Set(companyIds.map((c) => c.company_id))];
+          } else {
+            // No companies match these taxonomies
+            setCompanies([]);
+            setTotalCount(0);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Build base query
         let query = supabase
           .from("companies")
           .select(
@@ -93,38 +125,46 @@ export default function DirectoryPage() {
             created_at,
             updated_at,
             user_id
-          `
+          `,
+            { count: 'exact' } // Get total count
           )
-          .eq("status", "active")
-          .order("company_name");
+          .eq("status", "active");
 
-        // Apply taxonomy filter
-        if (selectedTaxonomies.length > 0) {
-          const { data: companyIds, error: taxonomyError } = await supabase
-            .from("company_taxonomies")
-            .select("company_id")
-            .in("taxonomy_id", selectedTaxonomies);
-
-          if (taxonomyError) {
-            console.error("Error fetching taxonomy companies:", taxonomyError);
-          } else if (companyIds && companyIds.length > 0) {
-            const ids = [...new Set(companyIds.map((c) => c.company_id))];
-            query = query.in("id", ids);
-          } else {
-            // No companies match these taxonomies
-            setCompanies([]);
-            setLoading(false);
-            return;
-          }
+        // Apply taxonomy filter if we have filtered IDs
+        if (filteredCompanyIds) {
+          query = query.in("id", filteredCompanyIds);
         }
 
-        const { data, error } = await query;
+        // Apply search filter at database level
+        if (searchTerm.trim()) {
+          query = query.or(
+            `company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+          );
+        }
+
+        // Apply location filter at database level
+        if (selectedLocation !== "all" && selectedLocation.trim()) {
+          query = query.ilike("postcode", `%${selectedLocation}%`);
+        }
+
+        // Apply capability filter at database level
+        if (selectedCapability !== "all" && selectedCapability.trim()) {
+          query = query.ilike("key_capabilities", `%${selectedCapability}%`);
+        }
+
+        // Apply pagination and ordering
+        query = query
+          .order("company_name")
+          .range(startIndex, endIndex);
+
+        const { data, error, count } = await query;
 
         if (error) {
           throw error;
         }
 
         setCompanies(data || []);
+        setTotalCount(count || 0);
       } catch (error) {
         console.error("Error fetching companies:", error);
         toast.error("Failed to load companies");
@@ -134,47 +174,73 @@ export default function DirectoryPage() {
     };
 
     fetchCompanies();
-  }, [supabase, selectedTaxonomies]);
+  }, [supabase, selectedTaxonomies, currentPage, searchTerm, selectedLocation, selectedCapability]);
 
-  const filteredCompanies = companies.filter((company) => {
-    const matchesSearch =
-      company.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (company.description &&
-        company.description.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Fetch unique locations and capabilities for filter dropdowns (separate lightweight query)
+  const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
+  const [uniqueCapabilities, setUniqueCapabilities] = useState<string[]>([]);
 
-    const matchesLocation =
-      selectedLocation === "all" ||
-      (company.postcode &&
-        company.postcode
-          .toLowerCase()
-          .includes(selectedLocation.toLowerCase()));
+  useEffect(() => {
+    if (!supabase) return;
 
-    const matchesCapability =
-      selectedCapability === "all" ||
-      (company.key_capabilities &&
-        company.key_capabilities
-          .toLowerCase()
-          .includes(selectedCapability.toLowerCase()));
+    const fetchFilterOptions = async () => {
+      try {
+        // Fetch just postcodes and capabilities for filter dropdowns
+        const { data: companiesData } = await supabase
+          .from("companies")
+          .select("postcode, key_capabilities")
+          .eq("status", "active")
+          .limit(5000); // Get enough to build filter options
 
-    return matchesSearch && matchesLocation && matchesCapability;
-  });
+        if (companiesData) {
+          const locations = [
+            ...new Set(
+              companiesData
+                .map((c) => c.postcode)
+                .filter((p) => p && p.trim() !== "")
+            ),
+          ];
+          const capabilities = [
+            ...new Set(
+              companiesData
+                .flatMap((c) =>
+                  c.key_capabilities
+                    ? c.key_capabilities.split(",").map((cap) => cap.trim())
+                    : []
+                )
+                .filter((cap) => cap && cap.trim() !== "")
+            ),
+          ];
+          setUniqueLocations(locations);
+          setUniqueCapabilities(capabilities);
+        }
+      } catch (error) {
+        console.error("Error fetching filter options:", error);
+      }
+    };
 
-  const uniqueLocations = [
-    ...new Set(companies.map((c) => c.postcode).filter(Boolean)),
-  ];
-  const uniqueCapabilities = [
-    ...new Set(
-      companies.flatMap((c) =>
-        c.key_capabilities
-          ? c.key_capabilities.split(",").map((cap) => cap.trim())
-          : []
-      )
-    ),
-  ];
+    fetchFilterOptions();
+  }, [supabase]);
 
   const handleCompanyClick = (company: PublicCompany) => {
     setSelectedCompany(company);
     setIsModalOpen(true);
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedLocation, selectedCapability, selectedTaxonomies]);
+
+  // Calculate pagination (now based on server-side total count)
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (loading) {
@@ -228,11 +294,15 @@ export default function DirectoryPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All locations</SelectItem>
-                  {uniqueLocations.map((location) => (
-                    <SelectItem key={location} value={location || "unknown"}>
-                      {location}
-                    </SelectItem>
-                  ))}
+                  {uniqueLocations.map((location) => {
+                    // Ensure we never use empty string as value
+                    const safeValue = location && location.trim() ? location.trim() : "unknown";
+                    return (
+                      <SelectItem key={location} value={safeValue}>
+                        {location}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
 
@@ -245,11 +315,15 @@ export default function DirectoryPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All capabilities</SelectItem>
-                  {uniqueCapabilities.map((capability) => (
-                    <SelectItem key={capability} value={capability}>
-                      {capability}
-                    </SelectItem>
-                  ))}
+                  {uniqueCapabilities.map((capability) => {
+                    // Ensure we never use empty string as value
+                    const safeValue = capability && capability.trim() ? capability.trim() : "unknown";
+                    return (
+                      <SelectItem key={capability} value={safeValue}>
+                        {capability}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -265,14 +339,25 @@ export default function DirectoryPage() {
         </Card>
 
         {/* Results Summary */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <p className="text-muted-foreground">
-            Showing {filteredCompanies.length} of {companies.length} companies
+            {totalCount > 0 ? (
+              <>
+                Showing {startIndex + 1}-{endIndex} of {totalCount} companies
+              </>
+            ) : (
+              "No companies found"
+            )}
           </p>
+          {totalPages > 1 && (
+            <p className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </p>
+          )}
         </div>
 
         {/* Companies Grid */}
-        {filteredCompanies.length === 0 ? (
+        {companies.length === 0 && !loading ? (
           <Card>
             <CardContent className="text-center py-12">
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -283,15 +368,75 @@ export default function DirectoryPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredCompanies.map((company) => (
-              <CompanyCard
-                key={company.id}
-                company={company}
-                onClick={handleCompanyClick}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {companies.map((company) => (
+                <CompanyCard
+                  key={company.id}
+                  company={company}
+                  onClick={handleCompanyClick}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className="min-w-[2.5rem]"
+                        >
+                          {page}
+                        </Button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return (
+                        <span key={page} className="px-2 text-muted-foreground">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         <CompanyDetailModal

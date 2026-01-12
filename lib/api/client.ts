@@ -27,6 +27,7 @@ export async function apiCall<T>(
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include", // Include cookies for authentication
     ...(body && { body: JSON.stringify(body) }),
   });
 
@@ -165,12 +166,37 @@ export const api = {
       tenders: unknown[];
       total: number;
       totalFetched: number;
+      actuallyImported?: number;
       hasMore: boolean;
       nextCursor?: string;
       isAdmin?: boolean;
       source: string;
       duplicatesSkipped?: number;
     }>("fetch-uk-tenders", {
+      body: options || {},
+    }),
+
+  // Fetch TED tenders
+  fetchTEDTenders: (options?: {
+    page?: number;
+    limit?: number;
+    iterationNextToken?: string;
+    adminImport?: boolean;
+    dateFrom?: string;
+    dateTo?: string;
+  }) =>
+    apiCall<{
+      tenders: unknown[];
+      total: number;
+      totalFetched: number;
+      actuallyImported?: number;
+      hasMore: boolean;
+      nextPage?: number | null;
+      nextToken?: string | null;
+      isAdmin?: boolean;
+      source: string;
+      duplicatesSkipped?: number;
+    }>("fetch-ted-tenders", {
       body: options || {},
     }),
 
@@ -188,5 +214,15 @@ export const api = {
       errors?: string[];
     }>("prefill-company-data", {
       body: data,
+    }),
+
+  // Suggest capabilities for a tender
+  suggestCapabilities: (tenderId: string) =>
+    apiCall<{
+      suggestedCapabilityIds: string[];
+      suggestedCapabilityNames: string[];
+      totalCapabilities: number;
+    }>("suggest-capabilities", {
+      body: { tenderId },
     }),
 };

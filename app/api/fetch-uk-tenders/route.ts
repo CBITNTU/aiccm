@@ -192,17 +192,31 @@ async function fetchFromFindTenderAPI(
   });
 
   if (!response.ok) {
+    // Preserve 429 status for rate limiting detection
+    if (response.status === 429) {
+      const error: Error & { status?: number } = new Error(
+        `Rate limited (429): ${response.statusText}. Please wait before retrying.`
+      );
+      error.status = 429;
+      throw error;
+    }
     throw new Error(
       `Find a Tender API error: ${response.status} ${response.statusText}`
     );
   }
 
   const data = await response.json();
+  const releasesCount = data.releases?.length || 0;
   console.log(
-    `Received ${
-      data.releases?.length || 0
-    } releases from API (Admin: ${isAdmin})`
+    `Received ${releasesCount} releases from API (Admin: ${isAdmin})`
   );
+
+  // Log pagination info for debugging
+  if (data.links?.next) {
+    console.log("Next page available:", data.links.next.href);
+  } else {
+    console.log("No more pages available");
+  }
 
   return data;
 }
@@ -328,6 +342,7 @@ export async function POST(request: NextRequest) {
       const newTenders = tendersToInsert.filter(
         (t) => !existingRefs.has(t.reference_number)
       );
+      const duplicatesCount = tendersToInsert.length - newTenders.length;
 
       if (newTenders.length > 0) {
         const { data: insertedTenders, error: insertError } = await supabase
@@ -344,7 +359,7 @@ export async function POST(request: NextRequest) {
           console.error("Error importing tenders:", insertError);
         } else {
           console.log(
-            `Successfully imported ${newTenders.length} new tenders to database`
+            `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`
           );
 
           // Note: Auto-tagging with AI would require calling the analyze-tender API route
@@ -357,17 +372,76 @@ export async function POST(request: NextRequest) {
           }
         }
       } else {
-        console.log("No new tenders to import - all were duplicates");
+        console.log(`No new tenders to import - all ${tendersToInsert.length} were duplicates`);
       }
+
+      // Extract pagination info from OCDS response
+      // Note: links.next can be either a string (URL) or an object with href property
+      const links = ocdsData.links as
+        | Record<string, string | { href?: string }>
+        | undefined;
+      
+      let nextCursor: string | null = null;
+      
+      // Handle both cases: links.next as string or as object with href
+      const nextUrlString = typeof links?.next === 'string' 
+        ? links.next 
+        : (links?.next as { href?: string })?.href;
+      
+      if (nextUrlString) {
+        try {
+          const nextUrl = new URL(nextUrlString);
+          nextCursor = nextUrl.searchParams.get("cursor");
+          console.log("Extracted nextCursor:", nextCursor?.substring(0, 50) + "...");
+        } catch (e) {
+          console.error("Error parsing next URL:", e, nextUrlString);
+        }
+      }
+
+      // Return actual imported count (newTenders) not filteredTenders
+      const actuallyImported = newTenders.length;
+      
+      // If we got exactly 100 results (the API limit), there might be more pages
+      // even if nextCursor is not explicitly provided
+      const gotMaxResults = tenders.length >= 100;
+      const hasMorePages = (!!nextCursor || gotMaxResults) && isAdmin;
+      
+      console.log(`Pagination: hasMore=${hasMorePages}, nextCursor=${nextCursor}, gotMaxResults=${gotMaxResults}, isAdmin=${isAdmin}, tenders.length=${tenders.length}`);
+
+      return apiResponse({
+        tenders: filteredTenders, // Still return all filtered tenders for display
+        total: filteredTenders.length,
+        totalFetched: tenders.length, // Total fetched from API
+        actuallyImported: actuallyImported, // Actually saved to DB
+        hasMore: hasMorePages,
+        nextCursor: isAdmin ? nextCursor : null,
+        isAdmin,
+        source: "find_tender_api",
+        duplicatesSkipped: duplicatesCount, // Actual duplicates from DB check
+      });
     }
 
-    // Extract pagination info from OCDS response
+    // Extract pagination info from OCDS response (when not importing)
+    // Note: links.next can be either a string (URL) or an object with href property
     const links = ocdsData.links as
-      | Record<string, { href?: string }>
+      | Record<string, string | { href?: string }>
       | undefined;
-    const nextCursor = links?.next?.href
-      ? new URL(links.next.href).searchParams.get("cursor")
-      : null;
+    
+    let nextCursor: string | null = null;
+    
+    // Handle both cases: links.next as string or as object with href
+    const nextUrlString = typeof links?.next === 'string' 
+      ? links.next 
+      : (links?.next as { href?: string })?.href;
+    
+    if (nextUrlString) {
+      try {
+        const nextUrl = new URL(nextUrlString);
+        nextCursor = nextUrl.searchParams.get("cursor");
+      } catch (e) {
+        console.error("Error parsing next URL (non-import):", e, nextUrlString);
+      }
+    }
 
     return apiResponse({
       tenders: filteredTenders,
@@ -377,9 +451,7 @@ export async function POST(request: NextRequest) {
       nextCursor: isAdmin ? nextCursor : null,
       isAdmin,
       source: "find_tender_api",
-      duplicatesSkipped: adminImport
-        ? tenders.length - filteredTenders.length
-        : 0,
+      duplicatesSkipped: 0,
     });
   } catch (error) {
     console.error("Error in fetch-uk-tenders:", error);

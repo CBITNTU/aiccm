@@ -75,7 +75,7 @@ export default function DirectoryPage() {
     const fetchCompanies = async () => {
       try {
         setLoading(true);
-        
+
         // Calculate pagination
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage - 1;
@@ -91,7 +91,9 @@ export default function DirectoryPage() {
           if (taxonomyError) {
             console.error("Error fetching taxonomy companies:", taxonomyError);
           } else if (companyIds && companyIds.length > 0) {
-            filteredCompanyIds = [...new Set(companyIds.map((c) => c.company_id))];
+            filteredCompanyIds = [
+              ...new Set(companyIds.map((c) => c.company_id)),
+            ];
           } else {
             // No companies match these taxonomies
             setCompanies([]);
@@ -126,7 +128,7 @@ export default function DirectoryPage() {
             updated_at,
             user_id
           `,
-            { count: 'exact' } // Get total count
+            { count: "exact" } // Get total count
           )
           .eq("status", "active");
 
@@ -153,9 +155,7 @@ export default function DirectoryPage() {
         }
 
         // Apply pagination and ordering
-        query = query
-          .order("company_name")
-          .range(startIndex, endIndex);
+        query = query.order("company_name").range(startIndex, endIndex);
 
         const { data, error, count } = await query;
 
@@ -174,7 +174,14 @@ export default function DirectoryPage() {
     };
 
     fetchCompanies();
-  }, [supabase, selectedTaxonomies, currentPage, searchTerm, selectedLocation, selectedCapability]);
+  }, [
+    supabase,
+    selectedTaxonomies,
+    currentPage,
+    searchTerm,
+    selectedLocation,
+    selectedCapability,
+  ]);
 
   // Fetch unique locations and capabilities for filter dropdowns (separate lightweight query)
   const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
@@ -197,7 +204,10 @@ export default function DirectoryPage() {
             ...new Set(
               companiesData
                 .map((c) => c.postcode)
-                .filter((p) => p && p.trim() !== "")
+                .filter(
+                  (p): p is string =>
+                    p !== null && p !== undefined && p.trim() !== ""
+                )
             ),
           ];
           const capabilities = [
@@ -208,7 +218,10 @@ export default function DirectoryPage() {
                     ? c.key_capabilities.split(",").map((cap) => cap.trim())
                     : []
                 )
-                .filter((cap) => cap && cap.trim() !== "")
+                .filter(
+                  (cap): cap is string =>
+                    cap !== null && cap !== undefined && cap.trim() !== ""
+                )
             ),
           ];
           setUniqueLocations(locations);
@@ -240,7 +253,7 @@ export default function DirectoryPage() {
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
     // Scroll to top when page changes
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (loading) {
@@ -296,7 +309,8 @@ export default function DirectoryPage() {
                   <SelectItem value="all">All locations</SelectItem>
                   {uniqueLocations.map((location) => {
                     // Ensure we never use empty string as value
-                    const safeValue = location && location.trim() ? location.trim() : "unknown";
+                    const safeValue =
+                      location && location.trim() ? location.trim() : "unknown";
                     return (
                       <SelectItem key={location} value={safeValue}>
                         {location}
@@ -317,7 +331,10 @@ export default function DirectoryPage() {
                   <SelectItem value="all">All capabilities</SelectItem>
                   {uniqueCapabilities.map((capability) => {
                     // Ensure we never use empty string as value
-                    const safeValue = capability && capability.trim() ? capability.trim() : "unknown";
+                    const safeValue =
+                      capability && capability.trim()
+                        ? capability.trim()
+                        : "unknown";
                     return (
                       <SelectItem key={capability} value={safeValue}>
                         {capability}
@@ -393,36 +410,43 @@ export default function DirectoryPage() {
                 </Button>
 
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    // Show first page, last page, current page, and pages around current
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => goToPage(page)}
-                          className="min-w-[2.5rem]"
-                        >
-                          {page}
-                        </Button>
-                      );
-                    } else if (
-                      page === currentPage - 2 ||
-                      page === currentPage + 2
-                    ) {
-                      return (
-                        <span key={page} className="px-2 text-muted-foreground">
-                          ...
-                        </span>
-                      );
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => {
+                      // Show first page, last page, current page, and pages around current
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => goToPage(page)}
+                            className="min-w-[2.5rem]"
+                          >
+                            {page}
+                          </Button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span
+                            key={page}
+                            className="px-2 text-muted-foreground"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
                     }
-                    return null;
-                  })}
+                  )}
                 </div>
 
                 <Button

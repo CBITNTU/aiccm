@@ -45,7 +45,9 @@ export function CapabilityTreeSelector({
       } else {
         setCapabilities(data || []);
         // Auto-expand all categories by default
-        const categories = new Set(data?.map((c) => c.category).filter(Boolean) || []);
+        const categories = new Set(
+          data?.map((c) => c.category).filter((cat): cat is string => cat !== null && cat !== undefined) || []
+        );
         setExpandedCategories(categories);
       }
       setLoading(false);

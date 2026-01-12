@@ -47,7 +47,7 @@ export type Database = {
           status: string | null
           system_extracted: Json | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           website_url: string | null
         }
         Insert: {
@@ -82,7 +82,7 @@ export type Database = {
           status?: string | null
           system_extracted?: Json | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           website_url?: string | null
         }
         Update: {
@@ -157,6 +157,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      company_capabilities: {
+        Row: {
+          capability_id: string
+          company_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          capability_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          capability_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_capabilities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_capabilities_capability_id_fkey"
+            columns: ["capability_id"]
+            isOneToOne: false
+            referencedRelation: "company_capabilities_ref"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_capabilities_ref: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       matching_results: {
         Row: {

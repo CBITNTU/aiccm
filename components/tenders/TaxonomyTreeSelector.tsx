@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import type { ReactElement } from "react";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -136,7 +137,7 @@ export function TaxonomyTreeSelector({
     return selectedTaxonomies.includes(taxonomyId);
   };
 
-  const renderNode = (node: TaxonomyNode, depth: number = 0): JSX.Element => {
+  const renderNode = (node: TaxonomyNode, depth: number = 0): ReactElement => {
     const isExpanded = expandedNodes.has(node.id);
     const isSelected = isTaxonomySelected(node.id);
     const hasChildren = node.children.length > 0;

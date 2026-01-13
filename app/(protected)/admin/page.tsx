@@ -24,7 +24,8 @@ import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminTaxonomyEditor from "@/components/admin/AdminTaxonomyEditor";
 import AdminApprovals from "@/components/admin/AdminApprovals";
-import { UserCog, Tags, ClipboardCheck } from "lucide-react";
+import AdminOnboarding from "@/components/admin/AdminOnboarding";
+import { UserCog, Tags, ClipboardCheck, UserPlus } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 
@@ -187,6 +188,7 @@ export default function AdminPage() {
             {[
               { id: "overview", label: "Overview", icon: BarChart3 },
               { id: "approvals", label: "Approvals", icon: ClipboardCheck },
+              { id: "onboarding", label: "Onboarding", icon: UserPlus },
               { id: "companies", label: "Companies", icon: Building2 },
               { id: "tenders", label: "Tenders", icon: FileText },
               { id: "users", label: "Users", icon: UserCog },
@@ -323,6 +325,9 @@ export default function AdminPage() {
         {/* Approvals Tab */}
         {activeTab === "approvals" && <AdminApprovals />}
 
+        {/* Onboarding Tab */}
+        {activeTab === "onboarding" && <AdminOnboarding />}
+
         {/* Companies Tab */}
         {activeTab === "companies" && (
           <div className="space-y-6">
@@ -352,6 +357,7 @@ export default function AdminPage() {
         {/* Other tabs placeholder */}
         {activeTab !== "overview" &&
           activeTab !== "approvals" &&
+          activeTab !== "onboarding" &&
           activeTab !== "companies" &&
           activeTab !== "tenders" &&
           activeTab !== "users" &&

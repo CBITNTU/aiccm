@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -11,31 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Building2,
   Mail,
   Lock,
-  User,
   AlertCircle,
-  Search,
-  CheckCircle,
-  Clock,
-  Users,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
-
-interface CompanySearchResult {
-  id: string;
-  company_name: string;
-  has_admin: boolean;
-}
-
-type SignupType = "individual" | "with-company";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -45,60 +30,23 @@ export default function AuthPage() {
   );
   const router = useRouter();
 
-  // Form states
+  // Form states - simplified to just email and password
   const [signUpData, setSignUpData] = useState({
-    firstName: "",
-    lastName: "",
-    jobTitle: "",
     email: "",
     password: "",
     confirmPassword: "",
-    signupType: "individual" as SignupType,
-    companyName: "",
-    existingCompanyId: null as string | null,
-    isNewCompany: false,
-    joinMessage: "",
-    // New company fields
-    companiesHouseNumber: "",
-    websiteUrl: "",
-    contactPerson: "",
-    contactEmail: "",
-    contactPhone: "",
-    isVerifiedByCH: false,
   });
-
-  // Companies House lookup state
-  interface CHLookupData {
-    companyName: string;
-    registeredAddress: string;
-    companyStatus: string;
-    companyType?: string;
-  }
-  const [isLookingUp, setIsLookingUp] = useState(false);
-  const [lookupError, setLookupError] = useState<string | null>(null);
-  const [lookupData, setLookupData] = useState<CHLookupData | null>(null);
 
   const [signInData, setSignInData] = useState({
     email: "",
     password: "",
   });
 
-  // Company search state
-  const [companySearchResults, setCompanySearchResults] = useState<
-    CompanySearchResult[]
-  >([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
-  const [selectedCompany, setSelectedCompany] =
-    useState<CompanySearchResult | null>(null);
-
-  // Signup success state
-  const [signupSuccess, setSignupSuccess] = useState(false);
-  const [signupMessage, setSignupMessage] = useState("");
-
   // Email verification state
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const [emailVerified, setEmailVerified] = useState(false);
+
+  // Signup success state - stores email on successful signup
+  const [signupSuccessEmail, setSignupSuccessEmail] = useState<string | null>(null);
 
   // Initialize supabase client on mount
   useEffect(() => {
@@ -128,7 +76,7 @@ export default function AuthPage() {
       if (accessToken && refreshToken && (type === "signup" || type === "magiclink")) {
         // This is an email verification - show loading state
         setIsVerifyingEmail(true);
-        setError(null); // Clear any server-side error
+        setError(null);
 
         // Manually set the session from the hash tokens
         supabase.auth.setSession({
@@ -155,34 +103,48 @@ export default function AuthPage() {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth page - Auth state change:", event, session?.user?.id);
       if (event === "SIGNED_IN" && session) {
-        // Check if this was an email verification (from hash tokens)
+        // Check if this was an email verification
         const wasVerifyingEmail = isVerifyingEmail;
         if (wasVerifyingEmail) {
-          setEmailVerified(true);
           setIsVerifyingEmail(false);
           // Clean up the URL
           window.history.replaceState(null, "", "/auth");
           toast.success("Email verified!", {
-            description: "Your email has been verified successfully.",
+            description: "Your email has been verified. Redirecting to complete your profile...",
           });
+
+          // Update onboarding step to 2 if currently on step 1
+          try {
+            await fetch("/api/onboarding/check-verification");
+          } catch (e) {
+            console.error("Error updating onboarding step:", e);
+          }
         }
 
         // Add small delay to ensure any pending database operations complete
         setTimeout(async () => {
-          // Check user approval status
           try {
-            const { data: profile, error: profileError } = await supabase
-              .from("profiles")
-              .select("approval_status")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: profile, error: profileError } = await (supabase
+              .from("profiles") as any)
+              .select("approval_status, onboarding_completed_at")
               .eq("user_id", session.user.id)
               .single();
 
             if (profileError) {
               console.error("Error checking profile:", profileError);
-              router.push("/pending-approval");
+              // Default to onboarding for new users
+              router.push("/onboarding");
               return;
             }
 
+            // If onboarding not completed, go to onboarding
+            if (!profile?.onboarding_completed_at) {
+              router.push("/onboarding");
+              return;
+            }
+
+            // If onboarding complete but pending approval
             if (profile?.approval_status === "pending") {
               router.push("/pending-approval");
               return;
@@ -197,7 +159,7 @@ export default function AuthPage() {
               return;
             }
 
-            // Check user role first - superadmins go to /admin
+            // Check user role - superadmins go to /admin
             const { data: roleData } = await supabase
               .from("user_roles")
               .select("role")
@@ -205,36 +167,15 @@ export default function AuthPage() {
               .single();
 
             if (roleData?.role === "superadmin") {
-              router.push("/admin?email_verified=true");
+              router.push("/admin");
               return;
             }
 
-            // User is approved, check for company (owned or member)
-            // Check if user owns any companies
-            const { data: ownedCompanies } = await supabase
-              .from("companies")
-              .select("id")
-              .eq("user_id", session.user.id);
-
-            // Check if user is an approved member of any company
-            const { data: memberCompanies } = await supabase
-              .from("company_members")
-              .select("company_id")
-              .eq("user_id", session.user.id)
-              .eq("status", "approved");
-
-            const hasCompany =
-              (ownedCompanies && ownedCompanies.length > 0) ||
-              (memberCompanies && memberCompanies.length > 0);
-
-            if (hasCompany) {
-              router.push("/dashboard?email_verified=true");
-            } else {
-              router.push("/profile?email_verified=true");
-            }
+            // Default: go to dashboard
+            router.push("/dashboard");
           } catch (error) {
             console.error("Error checking user status:", error);
-            router.push("/profile");
+            router.push("/onboarding");
           }
         }, 100);
       }
@@ -242,168 +183,6 @@ export default function AuthPage() {
 
     return () => subscription.unsubscribe();
   }, [supabase, router, isVerifyingEmail]);
-
-  // Debounced company search
-  const searchCompanies = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setCompanySearchResults([]);
-      setShowCompanyDropdown(false);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await fetch(
-        `/api/search-companies?q=${encodeURIComponent(query)}`
-      );
-      const data = await response.json();
-
-      if (data.companies) {
-        setCompanySearchResults(data.companies);
-        setShowCompanyDropdown(true);
-      }
-    } catch (error) {
-      console.error("Company search error:", error);
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
-
-  // Debounce the search
-  useEffect(() => {
-    if (signUpData.signupType !== "with-company") return;
-
-    const timer = setTimeout(() => {
-      if (signUpData.companyName && !selectedCompany) {
-        searchCompanies(signUpData.companyName);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [
-    signUpData.companyName,
-    signUpData.signupType,
-    selectedCompany,
-    searchCompanies,
-  ]);
-
-  const handleCompanySelect = (company: CompanySearchResult) => {
-    setSelectedCompany(company);
-    setSignUpData({
-      ...signUpData,
-      companyName: company.company_name,
-      existingCompanyId: company.id,
-      isNewCompany: false,
-    });
-    setShowCompanyDropdown(false);
-  };
-
-  const handleCompanyNameChange = (value: string) => {
-    setSignUpData({
-      ...signUpData,
-      companyName: value,
-      existingCompanyId: null,
-      isNewCompany: false,
-    });
-    setSelectedCompany(null);
-  };
-
-  const handleCreateNewCompany = () => {
-    setSignUpData({
-      ...signUpData,
-      existingCompanyId: null,
-      isNewCompany: true,
-    });
-    setShowCompanyDropdown(false);
-    setSelectedCompany(null);
-  };
-
-  // Companies House lookup handler
-  const handleLookup = async () => {
-    const companyNumber = signUpData.companiesHouseNumber.trim();
-
-    // Client-side validation
-    if (!companyNumber) {
-      setLookupError("Please enter a company number");
-      return;
-    }
-
-    // Basic format check (8 digits or 2 letters + 6 digits)
-    const cleanNumber = companyNumber.replace(/\s/g, "").toUpperCase();
-    const isValidFormat =
-      /^\d{1,8}$/.test(cleanNumber) ||
-      /^(SC|NI|OC|SO|NC|NL|R0|IP|SP|IC|SI|NP)\d{6}$/.test(cleanNumber);
-
-    if (!isValidFormat) {
-      setLookupError(
-        "Invalid format. Enter 8 digits (e.g., 12345678) or 2 letters + 6 digits (e.g., SC123456)"
-      );
-      return;
-    }
-
-    setIsLookingUp(true);
-    setLookupError(null);
-    setLookupData(null);
-
-    try {
-      const response = await fetch("/api/lookup-company", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyNumber: cleanNumber }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        // Handle specific error codes
-        if (data.errorCode === "DUPLICATE") {
-          setLookupError(
-            `This company is already registered: "${data.existingCompany?.company_name}". Please contact support if you believe this is an error.`
-          );
-        } else if (data.errorCode === "NOT_FOUND") {
-          setLookupError(
-            "Company not found on Companies House. Please check the number and try again."
-          );
-        } else if (data.errorCode === "INVALID_FORMAT") {
-          setLookupError(data.error || "Invalid company number format");
-        } else {
-          setLookupError(
-            data.error || "Failed to look up company. Please try again."
-          );
-        }
-        return;
-      }
-
-      // Success - auto-fill company name and mark as verified
-      setLookupData(data.data);
-      setSignUpData({
-        ...signUpData,
-        companyName: data.data.companyName,
-        companiesHouseNumber: cleanNumber,
-        isVerifiedByCH: true,
-      });
-
-      toast.success("Company Verified", {
-        description: `Found: ${data.data.companyName}`,
-      });
-    } catch (error) {
-      console.error("Lookup error:", error);
-      setLookupError("Failed to connect to Companies House. Please try again.");
-    } finally {
-      setIsLookingUp(false);
-    }
-  };
-
-  // Reset verification when company number changes
-  const handleCompanyNumberChange = (value: string) => {
-    setSignUpData({
-      ...signUpData,
-      companiesHouseNumber: value,
-      isVerifiedByCH: false,
-    });
-    setLookupError(null);
-    setLookupData(null);
-  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -423,27 +202,8 @@ export default function AuthPage() {
       return;
     }
 
-    if (
-      signUpData.signupType === "with-company" &&
-      !signUpData.companyName.trim()
-    ) {
-      setError("Please enter a company name");
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Determine the actual signup type for the API
-      let apiSignupType: "individual" | "new-company" | "join-company";
-
-      if (signUpData.signupType === "individual") {
-        apiSignupType = "individual";
-      } else if (signUpData.existingCompanyId) {
-        apiSignupType = "join-company";
-      } else {
-        apiSignupType = "new-company";
-      }
-
+      // Call simplified signup API
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
@@ -452,21 +212,6 @@ export default function AuthPage() {
         body: JSON.stringify({
           email: signUpData.email,
           password: signUpData.password,
-          firstName: signUpData.firstName,
-          lastName: signUpData.lastName,
-          jobTitle: signUpData.jobTitle,
-          signupType: apiSignupType,
-          companyName: signUpData.companyName || undefined,
-          existingCompanyId: signUpData.existingCompanyId || undefined,
-          message: signUpData.joinMessage || undefined,
-          // New company fields (only for new-company signups)
-          ...(apiSignupType === "new-company" && {
-            companiesHouseNumber: signUpData.companiesHouseNumber || undefined,
-            websiteUrl: signUpData.websiteUrl || undefined,
-            contactPerson: signUpData.contactPerson || undefined,
-            contactEmail: signUpData.contactEmail || undefined,
-            contactPhone: signUpData.contactPhone || undefined,
-          }),
         }),
       });
 
@@ -476,13 +221,9 @@ export default function AuthPage() {
         throw new Error(data.error || "Failed to create account");
       }
 
-      // Show success state
-      setSignupSuccess(true);
-      setSignupMessage(data.message);
-
-      toast.success("Account Created!", {
-        description: "Please check your email for further instructions.",
-      });
+      // Store email and show success screen
+      setSignupSuccessEmail(signUpData.email);
+      setSignUpData({ email: "", password: "", confirmPassword: "" });
     } catch (error: unknown) {
       console.error("Sign up error:", error);
       const errorMessage =
@@ -519,7 +260,7 @@ export default function AuthPage() {
         error instanceof Error ? error.message : "Failed to sign in";
       if (errorMessage === "Email not confirmed") {
         setError(
-          "Please check your email and click the confirmation link before signing in."
+          "Please check your email and click the verification link before signing in."
         );
       } else if (errorMessage === "Email logins are disabled") {
         setError(
@@ -563,68 +304,46 @@ export default function AuthPage() {
   }
 
   // Show success screen after signup
-  if (signupSuccess) {
+  if (signupSuccessEmail) {
     return (
       <div className="min-h-screen bg-background">
         <Header variant="landing" />
-
         <div className="max-w-md mx-auto px-4 pt-20 pb-16">
           <Card className="card-professional">
-            <CardContent className="pt-8 pb-8 text-center">
-              <div className="w-16 h-16 bg-amber-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Clock className="w-8 h-8 text-amber-600" />
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">
-                Account Pending Approval
-              </h2>
-              <p className="text-muted-foreground mb-4">{signupMessage}</p>
-              <div className="bg-muted p-4 rounded-lg text-left text-sm">
-                <p className="font-medium mb-2">What happens next?</p>
-                <ul className="space-y-2 text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>You&apos;ll receive a welcome email shortly</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                    <span>
-                      Our team will review your application within 24-48 hours
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Mail className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>You&apos;ll be notified by email once approved</span>
-                  </li>
-                </ul>
+              <CardTitle className="text-2xl">Account Created!</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center">
+                <p className="text-muted-foreground mb-2">
+                  We&apos;ve sent a verification link to:
+                </p>
+                <p className="font-medium text-foreground text-lg">{signupSuccessEmail}</p>
               </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">Next steps:</p>
+                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                  <li>Check your email inbox (and spam folder)</li>
+                  <li>Click the verification link in the email</li>
+                  <li>Complete your profile setup</li>
+                </ol>
+              </div>
+
+              <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg text-sm">
+                <Mail className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <span className="text-amber-800 dark:text-amber-200">
+                  The verification link expires in 24 hours
+                </span>
+              </div>
+
               <Button
-                className="mt-6"
                 variant="outline"
-                onClick={() => {
-                  setSignupSuccess(false);
-                  setSignUpData({
-                    firstName: "",
-                    lastName: "",
-                    jobTitle: "",
-                    email: "",
-                    password: "",
-                    confirmPassword: "",
-                    signupType: "individual",
-                    companyName: "",
-                    existingCompanyId: null,
-                    isNewCompany: false,
-                    joinMessage: "",
-                    companiesHouseNumber: "",
-                    websiteUrl: "",
-                    contactPerson: "",
-                    contactEmail: "",
-                    contactPhone: "",
-                    isVerifiedByCH: false,
-                  });
-                  // Reset lookup state
-                  setLookupData(null);
-                  setLookupError(null);
-                }}
+                className="w-full"
+                onClick={() => setSignupSuccessEmail(null)}
               >
                 Back to Sign In
               </Button>
@@ -726,469 +445,6 @@ export default function AuthPage() {
 
               <TabsContent value="signup" className="space-y-4 mt-6">
                 <form onSubmit={handleSignUp} className="space-y-4">
-                  {/* Signup Type Selection */}
-                  <div className="space-y-3">
-                    <Label>How would you like to sign up?</Label>
-                    <RadioGroup
-                      value={signUpData.signupType}
-                      onValueChange={(value: SignupType) => {
-                        setSignUpData({
-                          ...signUpData,
-                          signupType: value,
-                          companyName: "",
-                          existingCompanyId: null,
-                          isNewCompany: false,
-                        });
-                        setSelectedCompany(null);
-                        setCompanySearchResults([]);
-                      }}
-                      className="grid grid-cols-2 gap-3"
-                    >
-                      <div>
-                        <RadioGroupItem
-                          value="individual"
-                          id="signup-individual"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="signup-individual"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <User className="mb-2 h-6 w-6" />
-                          <span className="text-sm font-medium">
-                            Individual
-                          </span>
-                          <span className="text-xs text-muted-foreground text-center mt-1">
-                            Browse without company
-                          </span>
-                        </Label>
-                      </div>
-                      <div>
-                        <RadioGroupItem
-                          value="with-company"
-                          id="signup-company"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="signup-company"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <Building2 className="mb-2 h-6 w-6" />
-                          <span className="text-sm font-medium">
-                            With Company
-                          </span>
-                          <span className="text-xs text-muted-foreground text-center mt-1">
-                            Join or create company
-                          </span>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {/* Personal Information */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-firstname">First Name</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="signup-firstname"
-                          type="text"
-                          placeholder="First name"
-                          value={signUpData.firstName}
-                          onChange={(e) =>
-                            setSignUpData({
-                              ...signUpData,
-                              firstName: e.target.value,
-                            })
-                          }
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-lastname">Last Name</Label>
-                      <Input
-                        id="signup-lastname"
-                        type="text"
-                        placeholder="Last name"
-                        value={signUpData.lastName}
-                        onChange={(e) =>
-                          setSignUpData({
-                            ...signUpData,
-                            lastName: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-jobtitle">Job Title / Role</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="signup-jobtitle"
-                        type="text"
-                        placeholder="e.g. CEO, Manager, Engineer"
-                        value={signUpData.jobTitle}
-                        onChange={(e) =>
-                          setSignUpData({
-                            ...signUpData,
-                            jobTitle: e.target.value,
-                          })
-                        }
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Company Field (conditional) */}
-                  {signUpData.signupType === "with-company" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-company-name">Company Name</Label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="signup-company-name"
-                          type="text"
-                          placeholder="Search or enter company name"
-                          value={signUpData.companyName}
-                          onChange={(e) =>
-                            handleCompanyNameChange(e.target.value)
-                          }
-                          onFocus={() => {
-                            // Show dropdown if user has typed at least 2 chars and hasn't selected a company
-                            if (signUpData.companyName.length >= 2 && !selectedCompany && !signUpData.isNewCompany) {
-                              setShowCompanyDropdown(true);
-                            }
-                          }}
-                          className="pl-10"
-                          required
-                        />
-                        {isSearching && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Company Search Results Dropdown */}
-                      {showCompanyDropdown && (
-                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
-                          {companySearchResults.length > 0 ? (
-                            <>
-                              {companySearchResults.map((company) => (
-                                <button
-                                  key={company.id}
-                                  type="button"
-                                  className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
-                                  onClick={() => handleCompanySelect(company)}
-                                >
-                                  <span className="font-medium">
-                                    {company.company_name}
-                                  </span>
-                                  {company.has_admin && (
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Users className="w-3 h-3" />
-                                      Has members
-                                    </span>
-                                  )}
-                                </button>
-                              ))}
-                              <button
-                                type="button"
-                                className="w-full px-4 py-2 text-left hover:bg-accent border-t text-primary font-medium"
-                                onClick={handleCreateNewCompany}
-                              >
-                                + Create &quot;{signUpData.companyName}&quot; as
-                                new company
-                              </button>
-                            </>
-                          ) : (
-                            <div className="p-2">
-                              <p className="text-sm text-muted-foreground px-2 py-1">
-                                No matching companies found
-                              </p>
-                              <button
-                                type="button"
-                                className="w-full px-4 py-2 text-left hover:bg-accent text-primary font-medium rounded"
-                                onClick={handleCreateNewCompany}
-                              >
-                                + Create &quot;{signUpData.companyName}&quot; as
-                                new company
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Selected Company or New Company Status */}
-                      {selectedCompany && (
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 rounded-md text-sm text-blue-800 dark:text-blue-200">
-                          <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          <span>
-                            Joining existing company:{" "}
-                            <strong>{selectedCompany.company_name}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            className="ml-auto text-xs text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
-                            onClick={() => {
-                              setSelectedCompany(null);
-                              setSignUpData({
-                                ...signUpData,
-                                existingCompanyId: null,
-                              });
-                            }}
-                          >
-                            Clear
-                          </button>
-                        </div>
-                      )}
-
-                      {signUpData.isNewCompany && (
-                        <>
-                          <div className="flex items-center justify-between gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md text-sm text-green-800 dark:text-green-200">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                              <span>
-                                Creating new company:{" "}
-                                <strong>{signUpData.companyName}</strong>
-                              </span>
-                            </div>
-                            {signUpData.isVerifiedByCH && (
-                              <Badge
-                                variant="outline"
-                                className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700 text-xs"
-                              >
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Verified
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* New Company Details Fields */}
-                          <div className="space-y-3 mt-3 p-3 border rounded-md bg-muted/30">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Company Details (optional but recommended)
-                            </p>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="signup-company-house-number">
-                                Companies House Number
-                              </Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  id="signup-company-house-number"
-                                  type="text"
-                                  placeholder="e.g. 12345678"
-                                  maxLength={10}
-                                  value={signUpData.companiesHouseNumber}
-                                  onChange={(e) =>
-                                    handleCompanyNumberChange(e.target.value)
-                                  }
-                                  disabled={signUpData.isVerifiedByCH}
-                                  className={
-                                    signUpData.isVerifiedByCH
-                                      ? "border-green-500 bg-green-50 dark:bg-green-950"
-                                      : ""
-                                  }
-                                />
-                                <Button
-                                  type="button"
-                                  variant={signUpData.isVerifiedByCH ? "outline" : "secondary"}
-                                  onClick={handleLookup}
-                                  disabled={
-                                    isLookingUp ||
-                                    !signUpData.companiesHouseNumber.trim() ||
-                                    signUpData.isVerifiedByCH
-                                  }
-                                  className="shrink-0"
-                                >
-                                  {isLookingUp ? (
-                                    <>
-                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                      Looking up...
-                                    </>
-                                  ) : signUpData.isVerifiedByCH ? (
-                                    <>
-                                      <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                                      Verified
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Search className="w-4 h-4 mr-2" />
-                                      Lookup
-                                    </>
-                                  )}
-                                </Button>
-                              </div>
-
-                              {/* Lookup Error */}
-                              {lookupError && (
-                                <Alert variant="destructive" className="py-2">
-                                  <AlertCircle className="h-4 w-4" />
-                                  <AlertDescription className="text-xs">
-                                    {lookupError}
-                                  </AlertDescription>
-                                </Alert>
-                              )}
-
-                              {/* Verified Company Info Banner */}
-                              {signUpData.isVerifiedByCH && lookupData && (
-                                <div className="p-2 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-                                  <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
-                                    <CheckCircle className="w-4 h-4 text-green-600" />
-                                    <span className="font-medium">
-                                      Verified by Companies House
-                                    </span>
-                                  </div>
-                                  <div className="mt-1 text-xs text-green-700 dark:text-green-300 space-y-0.5">
-                                    <p>
-                                      <strong>Status:</strong>{" "}
-                                      {lookupData.companyStatus}
-                                    </p>
-                                    {lookupData.registeredAddress && (
-                                      <p>
-                                        <strong>Address:</strong>{" "}
-                                        {lookupData.registeredAddress}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="mt-1 text-xs text-green-600 dark:text-green-400 hover:underline"
-                                    onClick={() => {
-                                      setSignUpData({
-                                        ...signUpData,
-                                        companiesHouseNumber: "",
-                                        isVerifiedByCH: false,
-                                      });
-                                      setLookupData(null);
-                                      setLookupError(null);
-                                    }}
-                                  >
-                                    Change company number
-                                  </button>
-                                </div>
-                              )}
-
-                              {!signUpData.isVerifiedByCH && (
-                                <p className="text-xs text-muted-foreground">
-                                  Enter your Companies House number and click
-                                  Lookup to verify and auto-fill company details
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="signup-website-url">
-                                Company Website
-                              </Label>
-                              <Input
-                                id="signup-website-url"
-                                type="url"
-                                placeholder="https://www.example.com"
-                                value={signUpData.websiteUrl}
-                                onChange={(e) =>
-                                  setSignUpData({
-                                    ...signUpData,
-                                    websiteUrl: e.target.value,
-                                  })
-                                }
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-2">
-                                <Label htmlFor="signup-contact-person">
-                                  Contact Person
-                                </Label>
-                                <Input
-                                  id="signup-contact-person"
-                                  type="text"
-                                  placeholder="Your name"
-                                  value={signUpData.contactPerson}
-                                  onChange={(e) =>
-                                    setSignUpData({
-                                      ...signUpData,
-                                      contactPerson: e.target.value,
-                                    })
-                                  }
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="signup-contact-phone">
-                                  Contact Phone
-                                </Label>
-                                <Input
-                                  id="signup-contact-phone"
-                                  type="tel"
-                                  placeholder="+44 ..."
-                                  value={signUpData.contactPhone}
-                                  onChange={(e) =>
-                                    setSignUpData({
-                                      ...signUpData,
-                                      contactPhone: e.target.value,
-                                    })
-                                  }
-                                />
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="signup-contact-email">
-                                Company Contact Email
-                              </Label>
-                              <Input
-                                id="signup-contact-email"
-                                type="email"
-                                placeholder="contact@company.com"
-                                value={signUpData.contactEmail}
-                                onChange={(e) =>
-                                  setSignUpData({
-                                    ...signUpData,
-                                    contactEmail: e.target.value,
-                                  })
-                                }
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                Defaults to your signup email if left empty
-                              </p>
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Join Message (when joining existing company) */}
-                      {selectedCompany && (
-                        <div className="space-y-2 mt-3">
-                          <Label htmlFor="signup-join-message">
-                            Message to Company Admin (optional)
-                          </Label>
-                          <Textarea
-                            id="signup-join-message"
-                            placeholder="Introduce yourself or explain why you want to join..."
-                            value={signUpData.joinMessage}
-                            onChange={(e) =>
-                              setSignUpData({
-                                ...signUpData,
-                                joinMessage: e.target.value,
-                              })
-                            }
-                            rows={2}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <div className="relative">
@@ -1217,7 +473,7 @@ export default function AuthPage() {
                       <Input
                         id="signup-password"
                         type="password"
-                        placeholder="Create a password"
+                        placeholder="Create a password (min 6 characters)"
                         value={signUpData.password}
                         onChange={(e) =>
                           setSignUpData({
@@ -1227,6 +483,7 @@ export default function AuthPage() {
                         }
                         className="pl-10"
                         required
+                        minLength={6}
                       />
                     </div>
                   </div>
@@ -1252,19 +509,9 @@ export default function AuthPage() {
                     </div>
                   </div>
 
-                  {/* Approval Notice */}
-                  <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-md text-sm">
-                    <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium text-amber-800 dark:text-amber-200">
-                        Approval Required
-                      </p>
-                      <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5">
-                        All new accounts require administrator approval before
-                        access is granted.
-                      </p>
-                    </div>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    After signing up, you&apos;ll verify your email and complete a quick profile setup.
+                  </p>
 
                   <Button
                     type="submit"

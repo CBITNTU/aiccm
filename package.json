@@ -18,7 +18,8 @@
     "supabase:link:prod": "supabase link --project-ref rvtdihlgmyptixeclwae",
     "supabase:db-push": "supabase db push --local",
     "supabase:db-push:prod": "supabase db push",
-    "supabase:db-pull": "supabase db pull"
+    "supabase:db-pull": "supabase db pull",
+    "supabase:db-reset": "supabase db reset"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

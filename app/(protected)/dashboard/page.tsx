@@ -195,13 +195,40 @@ export default function DashboardPage() {
 
     const fetchDashboardData = async () => {
       try {
-        // Fetch user's companies
-        const { data: userCompaniesData } = await supabase
+        // Fetch companies the user owns
+        const { data: ownedCompanies } = await supabase
           .from("companies")
           .select("*")
           .eq("user_id", user.id);
 
-        if (userCompaniesData && userCompaniesData.length > 0) {
+        // Also fetch companies where user is an approved member
+        const { data: memberships } = await supabase
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", user.id)
+          .eq("status", "approved");
+
+        // Fetch member companies (excluding already owned ones)
+        let memberCompanies: Company[] = [];
+        if (memberships && memberships.length > 0) {
+          const ownedIds = new Set((ownedCompanies || []).map((c) => c.id));
+          const memberCompanyIds = memberships
+            .map((m) => m.company_id)
+            .filter((id) => !ownedIds.has(id));
+
+          if (memberCompanyIds.length > 0) {
+            const { data: memberCompaniesData } = await supabase
+              .from("companies")
+              .select("*")
+              .in("id", memberCompanyIds);
+            memberCompanies = memberCompaniesData || [];
+          }
+        }
+
+        // Combine owned and member companies
+        const userCompaniesData = [...(ownedCompanies || []), ...memberCompanies];
+
+        if (userCompaniesData.length > 0) {
           setUserCompanies(userCompaniesData);
           // Auto-select first company
           setSelectedCompany(userCompaniesData[0]);

@@ -1,46 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
-import {
-  Building2,
-  Menu,
-  User,
-  LogOut,
-  X,
-  Search,
-  Users,
-  FileText,
-  Settings,
-  LayoutDashboard,
-  Shield,
-} from "lucide-react";
+import { Building2, Menu, LogOut } from "lucide-react";
 
 interface HeaderProps {
   variant?: "landing" | "app";
+  onMobileMenuToggle?: () => void;
 }
 
-export function Header({ variant = "landing" }: HeaderProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+export function Header({ variant = "landing", onMobileMenuToggle }: HeaderProps) {
   const { user, signOut } = useAuth();
-  const { isAdmin } = useUserRole();
 
   const handleSignOut = async () => {
-    setIsMenuOpen(false);
     await signOut();
   };
 
-  const navigationItems = [
-    { name: "Tenders", href: "/tenders", icon: FileText },
-    { name: "Company Directory", href: "/directory", icon: Search },
-    { name: "Consulting Team Builder", href: "/vo", icon: Users },
-  ];
-
   return (
-    <header className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
+    <header className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand */}
@@ -58,37 +36,6 @@ export function Header({ variant = "landing" }: HeaderProps) {
               </p>
             </div>
           </Link>
-
-          {/* Desktop Navigation */}
-          {variant === "app" && (
-            <nav className="hidden md:flex items-center space-x-1">
-              {navigationItems.map((item) => (
-                <Button
-                  key={item.name}
-                  variant="ghost"
-                  className="flex items-center space-x-2 text-muted-foreground hover:text-primary"
-                  asChild
-                >
-                  <Link href={item.href}>
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                </Button>
-              ))}
-              {isAdmin && (
-                <Button
-                  variant="ghost"
-                  className="flex items-center space-x-2 text-muted-foreground hover:text-primary"
-                  asChild
-                >
-                  <Link href="/admin">
-                    <Shield className="w-4 h-4" />
-                    <span>Admin</span>
-                  </Link>
-                </Button>
-              )}
-            </nav>
-          )}
 
           {/* Actions */}
           <div className="flex items-center space-x-3">
@@ -116,118 +63,19 @@ export function Header({ variant = "landing" }: HeaderProps) {
                 )}
               </div>
             ) : (
-              <div className="hidden md:flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center"
-                  asChild
-                >
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Dashboard
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center"
-                  asChild
-                >
-                  <Link href="/profile">
-                    <User className="w-4 h-4 mr-2" />
-                    Profile
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center"
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
-                </Button>
-              </div>
-            )}
-
-            {/* Mobile Menu Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="Toggle navigation menu"
-            >
-              {isMenuOpen ? (
-                <X className="w-5 h-5" />
-              ) : (
+              /* Mobile Menu Toggle - Only show for app variant on mobile */
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden"
+                onClick={onMobileMenuToggle}
+                aria-label="Toggle navigation menu"
+              >
                 <Menu className="w-5 h-5" />
-              )}
-            </Button>
+              </Button>
+            )}
           </div>
         </div>
-
-        {/* Mobile Navigation */}
-        {isMenuOpen && variant === "app" && (
-          <div className="md:hidden border-t border-border">
-            <div className="py-4 space-y-2">
-              <Button
-                variant="ghost"
-                className="w-full justify-start space-x-3 text-muted-foreground"
-                asChild
-              >
-                <Link href="/dashboard">
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>Dashboard</span>
-                </Link>
-              </Button>
-              {navigationItems.map((item) => (
-                <Button
-                  key={item.name}
-                  variant="ghost"
-                  className="w-full justify-start space-x-3 text-muted-foreground"
-                  asChild
-                >
-                  <Link href={item.href}>
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                </Button>
-              ))}
-              {isAdmin && (
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start space-x-3 text-muted-foreground"
-                  asChild
-                >
-                  <Link href="/admin">
-                    <Shield className="w-4 h-4" />
-                    <span>Admin</span>
-                  </Link>
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                className="w-full justify-start space-x-3 text-muted-foreground"
-                asChild
-              >
-                <Link href="/profile">
-                  <User className="w-4 h-4" />
-                  <span>Profile</span>
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start space-x-3 text-muted-foreground"
-                onClick={handleSignOut}
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
     </header>
   );

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
+import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
+import { OnboardingBanner } from "@/components/OnboardingBanner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +39,10 @@ interface TenderFiltersState {
 }
 
 export default function TendersPage() {
-  const { user } = useAuth();
+  const { user, isPendingApproval, isOnboarding } = useAuth();
+
+  // Users are restricted if they're pending approval OR still onboarding
+  const isRestrictedUser = isPendingApproval || isOnboarding;
   const searchParams = useSearchParams();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
     null
@@ -112,27 +117,30 @@ export default function TendersPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Tender Opportunities
-          </h1>
-          <p className="text-muted-foreground">
-            Discover and track government and private sector tenders that match
-            your capabilities
-          </p>
+    <div>
+      <OnboardingBanner />
+      <ReadOnlyBanner />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Tender Opportunities
+            </h1>
+            <p className="text-muted-foreground">
+              Discover and track government and private sector tenders that match
+              your capabilities
+            </p>
+          </div>
+          {selectedCompany && !isRestrictedUser && (
+            <Button
+              onClick={() => setShowProjectWizard(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Start Project
+            </Button>
+          )}
         </div>
-        {selectedCompany && (
-          <Button
-            onClick={() => setShowProjectWizard(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Start Project
-          </Button>
-        )}
-      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
@@ -174,12 +182,17 @@ export default function TendersPage() {
           <DatabaseTenderFeed
             supabase={supabase}
             filters={filters}
-            onCreateProject={(tenderId) => {
-              if (selectedCompany) {
-                setInitialTenderId(tenderId);
-                setShowProjectWizard(true);
-              }
-            }}
+            readOnly={isRestrictedUser}
+            onCreateProject={
+              isRestrictedUser
+                ? undefined
+                : (tenderId) => {
+                    if (selectedCompany) {
+                      setInitialTenderId(tenderId);
+                      setShowProjectWizard(true);
+                    }
+                  }
+            }
           />
         </TabsContent>
 
@@ -228,10 +241,15 @@ export default function TendersPage() {
           {selectedCompany ? (
             <TenderMatching
               companyId={selectedCompany.id}
-              onCreateProject={(tenderId) => {
-                setInitialTenderId(tenderId);
-                setShowProjectWizard(true);
-              }}
+              readOnly={isRestrictedUser}
+              onCreateProject={
+                isRestrictedUser
+                  ? undefined
+                  : (tenderId) => {
+                      setInitialTenderId(tenderId);
+                      setShowProjectWizard(true);
+                    }
+              }
             />
           ) : (
             <Card>
@@ -244,26 +262,27 @@ export default function TendersPage() {
 
         {/* Saved Tenders Tab */}
         <TabsContent value="saved" className="space-y-6">
-          <SavedTenders companyId={selectedCompany?.id} />
+          <SavedTenders companyId={selectedCompany?.id} readOnly={isRestrictedUser} />
         </TabsContent>
       </Tabs>
 
-      {showProjectWizard && selectedCompany && (
-        <ProjectWizard
-          onClose={() => {
-            setShowProjectWizard(false);
-            setInitialTenderId(null);
-          }}
-          onProjectCreated={(projectId) => {
-            setShowProjectWizard(false);
-            setInitialTenderId(null);
-            // Optionally redirect to project page or show success message
-            console.log("Project created:", projectId);
-          }}
-          leadCompanyId={selectedCompany.id}
-          initialTenderId={initialTenderId}
-        />
-      )}
+        {showProjectWizard && selectedCompany && (
+          <ProjectWizard
+            onClose={() => {
+              setShowProjectWizard(false);
+              setInitialTenderId(null);
+            }}
+            onProjectCreated={(projectId) => {
+              setShowProjectWizard(false);
+              setInitialTenderId(null);
+              // Optionally redirect to project page or show success message
+              console.log("Project created:", projectId);
+            }}
+            leadCompanyId={selectedCompany.id}
+            initialTenderId={initialTenderId}
+          />
+        )}
+      </div>
     </div>
   );
 }

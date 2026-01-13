@@ -16,7 +16,6 @@ import {
   CheckCircle,
   Loader2,
   UserPlus,
-  Briefcase,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
@@ -44,11 +43,8 @@ function InvitePageContent() {
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Form state for new users
+  // Form state for new users (simplified - only password)
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    jobTitle: "",
     password: "",
     confirmPassword: "",
   });
@@ -105,8 +101,8 @@ function InvitePageContent() {
     setError(null);
 
     // Validate form
-    if (!formData.firstName || !formData.lastName || !formData.password) {
-      setError("Please fill in all required fields");
+    if (!formData.password) {
+      setError("Please enter a password");
       return;
     }
 
@@ -123,14 +119,12 @@ function InvitePageContent() {
     setIsSubmitting(true);
 
     try {
+      // Create the account
       const response = await fetch("/api/auth/signup-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          jobTitle: formData.jobTitle,
           password: formData.password,
         }),
       });
@@ -141,14 +135,24 @@ function InvitePageContent() {
         throw new Error(data.error || "Failed to create account");
       }
 
-      setSuccess(true);
-      setSuccessMessage(data.message);
+      // Sign in the user automatically
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: invitation!.email!,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        // If sign-in fails, redirect to auth page with message
+        toast.success("Account created! Please sign in to continue.");
+        router.push("/auth?message=Account created. Please sign in to continue onboarding.");
+        return;
+      }
+
       toast.success("Account created successfully!");
 
-      // Redirect to pending approval page after a short delay
-      setTimeout(() => {
-        router.push("/auth?message=Account created. Please sign in to check your approval status.");
-      }, 2000);
+      // Redirect to onboarding to complete profile
+      router.push("/onboarding");
     } catch (err) {
       console.error("Signup error:", err);
       setError(err instanceof Error ? err.message : "Failed to create account");
@@ -174,14 +178,10 @@ function InvitePageContent() {
         throw new Error(data.error || "Failed to accept invitation");
       }
 
-      setSuccess(true);
-      setSuccessMessage(data.message);
       toast.success("Invitation accepted!");
 
-      // Redirect to dashboard or pending approval
-      setTimeout(() => {
-        router.push("/pending-approval");
-      }, 2000);
+      // Redirect to onboarding for confirmation step
+      router.push("/onboarding");
     } catch (err) {
       console.error("Accept invitation error:", err);
       setError(err instanceof Error ? err.message : "Failed to accept invitation");
@@ -380,7 +380,7 @@ function InvitePageContent() {
     );
   }
 
-  // New user - show signup form
+  // New user - show simplified signup form (password only)
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-gray-100">
       <Header />
@@ -408,53 +408,6 @@ function InvitePageContent() {
                 <p className="text-sm text-muted-foreground">
                   Email: <span className="font-medium text-foreground">{invitation.email}</span>
                 </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name *</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="firstName"
-                      placeholder="John"
-                      className="pl-10"
-                      value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name *</Label>
-                  <Input
-                    id="lastName"
-                    placeholder="Smith"
-                    value={formData.lastName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, lastName: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="jobTitle">Job Title</Label>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="jobTitle"
-                    placeholder="Project Manager"
-                    className="pl-10"
-                    value={formData.jobTitle}
-                    onChange={(e) =>
-                      setFormData({ ...formData, jobTitle: e.target.value })
-                    }
-                  />
-                </div>
               </div>
 
               <div className="space-y-2">
@@ -510,7 +463,7 @@ function InvitePageContent() {
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                After creating your account, a platform administrator will review your membership request.
+                You&apos;ll complete your profile in the next step.
               </p>
             </form>
           </CardContent>

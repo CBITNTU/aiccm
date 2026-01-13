@@ -1,285 +1,261 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Globe,
-  Mail,
-  Phone,
-  MapPin,
-  Plus,
-  DollarSign,
-} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { User, Briefcase, Phone, Mail, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface ProfileData {
+  firstName: string;
+  lastName: string;
+  jobTitle: string;
+  phone: string;
+  email: string;
+}
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const router = useRouter();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
-  );
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<ProfileData>({
+    firstName: "",
+    lastName: "",
+    jobTitle: "",
+    phone: "",
+    email: "",
+  });
 
-  // Initialize supabase client
+  // Fetch profile data on mount
   useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-      setLoading(false);
-    }
-  }, []);
-
-  // Fetch company data
-  useEffect(() => {
-    if (!supabase || !user) return;
-
-    const fetchCompanyData = async () => {
-      console.log("Profile: Checking companies for user:", user.id);
-
+    const fetchProfile = async () => {
       try {
-        // First check if user owns any companies
-        const { data: ownedCompanies, error: ownedError } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+        const response = await fetch("/api/profile/update");
+        const data = await response.json();
 
-        if (ownedError) throw ownedError;
-
-        // Also check if user is an approved member of any company
-        const { data: memberships } = await supabase
-          .from("company_members")
-          .select("company_id")
-          .eq("user_id", user.id)
-          .eq("status", "approved");
-
-        // Fetch companies the user is a member of (but doesn't own)
-        let memberCompanies: Company[] = [];
-        if (memberships && memberships.length > 0) {
-          // Filter out companies already in ownedCompanies
-          const ownedIds = new Set((ownedCompanies || []).map((c) => c.id));
-          const memberCompanyIds = memberships
-            .map((m) => m.company_id)
-            .filter((id) => !ownedIds.has(id));
-
-          if (memberCompanyIds.length > 0) {
-            const { data: memberCompaniesData } = await supabase
-              .from("companies")
-              .select("*")
-              .in("id", memberCompanyIds);
-            memberCompanies = memberCompaniesData || [];
-          }
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to fetch profile");
         }
 
-        // Combine owned and member companies
-        const allCompanies = [...(ownedCompanies || []), ...memberCompanies];
-
-        console.log(
-          "Profile: Found companies:",
-          allCompanies.length,
-          { owned: ownedCompanies?.length || 0, member: memberCompanies.length }
-        );
-
-        if (allCompanies.length === 0) {
-          // No companies found, redirect to onboarding
-          console.log("Profile: No companies found, redirecting to onboarding");
-          router.push("/onboarding?mode=create");
-          return;
-        }
-
-        console.log("Profile: User has companies, showing profile");
-        setCompanies(allCompanies);
-      } catch (error) {
-        console.error("Error fetching company data:", error);
-        toast.error("Error", {
-          description: "Failed to load company data",
+        setFormData({
+          firstName: data.profile.firstName || "",
+          lastName: data.profile.lastName || "",
+          jobTitle: data.profile.jobTitle || "",
+          phone: data.profile.phone || "",
+          email: data.profile.email || user?.email || "",
         });
-        // If there's an error, also try redirecting to onboarding as fallback
-        router.push("/onboarding?mode=create");
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        toast.error("Failed to load profile data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCompanyData();
-  }, [supabase, user, router]);
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
 
-  const handleCompanyClick = (company: Company) => {
-    router.push(`/company/${company.id}`);
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
 
-  const handleAddCompany = () => {
-    router.push("/onboarding?mode=create");
+    // Validation
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
+      !formData.jobTitle.trim()
+    ) {
+      setError("Please fill in all required fields");
+      setSaving(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          jobTitle: formData.jobTitle.trim(),
+          phone: formData.phone.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update profile");
+      }
+
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to update profile";
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
         <p className="text-muted-foreground">Loading your profile...</p>
       </div>
     );
   }
 
-  if (companies.length === 0) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+  return (
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Profile</h1>
         <p className="text-muted-foreground">
-          No company profile found. Redirecting to onboarding...
+          Manage your personal information
         </p>
       </div>
-    );
-  }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Your Companies
-            </h1>
-            <p className="text-muted-foreground">
-              Manage and view details for all your registered companies
-            </p>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <User className="w-8 h-8 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl">Personal Information</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Update your personal details below
+              </p>
+            </div>
           </div>
-          <Button onClick={handleAddCompany}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add New Company
-          </Button>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email (read-only) */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  className="pl-10 bg-muted"
+                  disabled
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Email cannot be changed
+              </p>
+            </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {companies.map((company) => (
-          <Card
-            key={company.id}
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => handleCompanyClick(company)}
-          >
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <CardTitle className="text-lg mb-2">
-                    {company.company_name}
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        company.status === "active" ? "default" : "secondary"
-                      }
-                      className={
-                        company.status === "active"
-                          ? "bg-green-600"
-                          : "bg-gray-600"
-                      }
-                    >
-                      {company.status}
-                    </Badge>
-                    {company.is_system_company && (
-                      <Badge variant="outline">Verified</Badge>
-                    )}
-                  </div>
+            {/* First Name and Last Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">
+                  First Name <span className="text-destructive">*</span>
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="First name"
+                    value={formData.firstName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, firstName: e.target.value })
+                    }
+                    className="pl-10"
+                    required
+                  />
                 </div>
               </div>
-              {company.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
-                  {company.description}
-                </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName">
+                  Last Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Last name"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Job Title */}
+            <div className="space-y-2">
+              <Label htmlFor="jobTitle">
+                Job Title / Role <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="jobTitle"
+                  type="text"
+                  placeholder="e.g. CEO, Project Manager, Engineer"
+                  value={formData.jobTitle}
+                  onChange={(e) =>
+                    setFormData({ ...formData, jobTitle: e.target.value })
+                  }
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="Your phone number"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button type="submit" className="w-full" disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
               )}
-            </CardHeader>
-
-            <CardContent>
-              <div className="space-y-3">
-                {company.postcode && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span>{company.postcode}</span>
-                  </div>
-                )}
-                {company.website_url && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Globe className="w-4 h-4 text-muted-foreground" />
-                    <span className="truncate">Website Available</span>
-                  </div>
-                )}
-                {company.contact_email && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span className="truncate">{company.contact_email}</span>
-                  </div>
-                )}
-                {company.contact_phone && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="w-4 h-4 text-muted-foreground" />
-                    <span>{company.contact_phone}</span>
-                  </div>
-                )}
-
-                {/* Financial Data */}
-                {company.financial_data &&
-                  typeof company.financial_data === "object" &&
-                  Object.keys(company.financial_data).length > 0 && (
-                    <>
-                      <Separator className="my-3" />
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold mb-2">
-                          <DollarSign className="w-4 h-4 text-muted-foreground" />
-                          <span>Financial Information</span>
-                        </div>
-                        {Object.entries(company.financial_data)
-                          .slice(0, 3)
-                          .map(([key, field]) => (
-                            <div
-                              key={key}
-                              className="flex justify-between items-center text-sm"
-                            >
-                              <span className="text-muted-foreground capitalize">
-                                {key.replace(/([A-Z])/g, " $1").trim()}
-                              </span>
-                              <span className="font-medium">
-                                {typeof field === "object" &&
-                                field !== null &&
-                                "value" in field
-                                  ? (
-                                      field as { value: number }
-                                    ).value?.toLocaleString() || "N/A"
-                                  : "N/A"}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    </>
-                  )}
-              </div>
-
-              <div className="mt-4 pt-3 border-t">
-                <p className="text-xs text-muted-foreground text-center">
-                  Click to view full details
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

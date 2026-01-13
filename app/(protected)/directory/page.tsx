@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/useAuth";
+import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
+import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,6 +48,10 @@ type PublicCompany = Pick<
 >;
 
 export default function DirectoryPage() {
+  const { isPendingApproval, isOnboarding } = useAuth();
+
+  // Users are restricted if they're pending approval OR still onboarding
+  const isRestrictedUser = isPendingApproval || isOnboarding;
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
     null
   );
@@ -268,6 +275,8 @@ export default function DirectoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <OnboardingBanner />
+      <ReadOnlyBanner />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -467,6 +476,7 @@ export default function DirectoryPage() {
           company={selectedCompany}
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
+          readOnly={isRestrictedUser}
         />
       </main>
     </div>

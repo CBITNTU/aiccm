@@ -41,6 +41,7 @@ interface TenderViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreateProject?: (tenderId: string) => void;
+  readOnly?: boolean;
 }
 
 export function TenderViewDialog({
@@ -48,6 +49,7 @@ export function TenderViewDialog({
   open,
   onOpenChange,
   onCreateProject,
+  readOnly = false,
 }: TenderViewDialogProps) {
   if (!tender) return null;
 

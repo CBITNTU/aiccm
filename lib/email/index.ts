@@ -7,7 +7,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const PLATFORM_NAME = process.env.PLATFORM_NAME || "AICCM Platform";
 const PLATFORM_EMAIL_FROM =
   process.env.PLATFORM_EMAIL_FROM || "noreply@aiccm.com";
-const PLATFORM_URL = process.env.PLATFORM_URL || "http://localhost:3000";
+const PLATFORM_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -111,6 +111,7 @@ export function getPlatformName(): string {
 // Re-export templates
 export * from "./templates/welcome-verification";
 export * from "./templates/verification-resend";
+export * from "./templates/signup-verification";
 export * from "./templates/admin-notification";
 export * from "./templates/company-join-request";
 export * from "./templates/approval-notification";

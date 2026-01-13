@@ -61,9 +61,10 @@ interface MatchingResult {
 interface TenderMatchingProps {
   companyId?: string;
   onCreateProject?: (tenderId: string) => void;
+  readOnly?: boolean;
 }
 
-export function TenderMatching({ companyId, onCreateProject }: TenderMatchingProps) {
+export function TenderMatching({ companyId, onCreateProject, readOnly = false }: TenderMatchingProps) {
   const { user } = useAuth();
   const [matchingResults, setMatchingResults] = useState<MatchingResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
@@ -414,7 +415,8 @@ export function TenderMatching({ companyId, onCreateProject }: TenderMatchingPro
           </div>
           <Button
             onClick={runAnalysis}
-            disabled={analyzing || loading || !selectedCompanyId}
+            disabled={analyzing || loading || !selectedCompanyId || readOnly}
+            title={readOnly ? "Action restricted for pending accounts" : undefined}
           >
             {analyzing ? (
               <>
@@ -460,7 +462,7 @@ export function TenderMatching({ companyId, onCreateProject }: TenderMatchingPro
                       Reset All Filters
                     </Button>
                   )}
-                {matchingResults.length === 0 && selectedCompanyId && (
+                {matchingResults.length === 0 && selectedCompanyId && !readOnly && (
                   <Button onClick={runAnalysis} disabled={analyzing}>
                     <Target className="w-4 h-4 mr-2" />
                     {analyzing ? "Analyzing..." : "Start Analysis"}
@@ -642,6 +644,8 @@ export function TenderMatching({ companyId, onCreateProject }: TenderMatchingPro
                         onClick={() =>
                           toggleBookmark(result.id, result.is_bookmarked)
                         }
+                        disabled={readOnly}
+                        title={readOnly ? "Action restricted for pending accounts" : undefined}
                       >
                         <Bookmark
                           className={`w-4 h-4 ${
@@ -653,7 +657,8 @@ export function TenderMatching({ companyId, onCreateProject }: TenderMatchingPro
                         variant="ghost"
                         size="sm"
                         onClick={() => deleteResult(result.id)}
-                        disabled={deleting === result.id}
+                        disabled={deleting === result.id || readOnly}
+                        title={readOnly ? "Action restricted for pending accounts" : undefined}
                       >
                         {deleting === result.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -675,7 +680,8 @@ export function TenderMatching({ companyId, onCreateProject }: TenderMatchingPro
             onOpenChange={setDialogOpen}
             result={selectedResult}
             companyId={selectedCompanyId || undefined}
-            onCreateProject={onCreateProject ? (tenderId) => onCreateProject(tenderId) : undefined}
+            onCreateProject={readOnly ? undefined : (onCreateProject ? (tenderId) => onCreateProject(tenderId) : undefined)}
+            readOnly={readOnly}
           />
         )}
       </div>

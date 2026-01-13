@@ -11,13 +11,30 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      // Determine the redirect path based on user role
-      let next = nextParam ?? "/dashboard";
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!nextParam) {
-        // No explicit next param, check user role for default redirect
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+      if (user) {
+        // Check user's onboarding and approval status
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: profile } = await (supabase.from("profiles") as any)
+          .select("approval_status, onboarding_completed_at")
+          .eq("user_id", user.id)
+          .single();
+
+        let next = nextParam ?? "/dashboard";
+
+        // Determine redirect based on user status
+        if (!profile?.onboarding_completed_at) {
+          // User hasn't completed onboarding
+          next = "/onboarding";
+        } else if (profile?.approval_status === "pending") {
+          // User has completed onboarding but is pending approval
+          next = "/pending-approval";
+        } else if (profile?.approval_status === "rejected") {
+          // User was rejected
+          next = "/auth?rejected=true";
+        } else {
+          // User is approved, check role for default redirect
           const { data: roleData } = await supabase
             .from("user_roles")
             .select("role")
@@ -26,25 +43,27 @@ export async function GET(request: Request) {
 
           if (roleData?.role === "superadmin") {
             next = "/admin";
+          } else {
+            next = nextParam ?? "/dashboard";
           }
         }
-      }
 
-      const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocalEnv = process.env.NODE_ENV === "development";
+        const forwardedHost = request.headers.get("x-forwarded-host");
+        const isLocalEnv = process.env.NODE_ENV === "development";
 
-      // Add query param if this was an email verification
-      const isEmailVerification = type === "signup" || type === "magiclink";
-      const redirectPath = isEmailVerification
-        ? `${next}${next.includes("?") ? "&" : "?"}email_verified=true`
-        : next;
+        // Add query param if this was an email verification
+        const isEmailVerification = type === "signup" || type === "magiclink";
+        const redirectPath = isEmailVerification
+          ? `${next}${next.includes("?") ? "&" : "?"}email_verified=true`
+          : next;
 
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${redirectPath}`);
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`);
-      } else {
-        return NextResponse.redirect(`${origin}${redirectPath}`);
+        if (isLocalEnv) {
+          return NextResponse.redirect(`${origin}${redirectPath}`);
+        } else if (forwardedHost) {
+          return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`);
+        } else {
+          return NextResponse.redirect(`${origin}${redirectPath}`);
+        }
       }
     }
   }

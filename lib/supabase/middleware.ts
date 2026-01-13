@@ -59,14 +59,22 @@ export async function updateSession(request: NextRequest) {
   const pendingAllowedPaths = [
     "/pending-approval",
     "/profile",
+    "/onboarding",
+    "/tenders",
+    "/directory",
+  ];
+
+  // Paths that onboarding users can access (browse while completing onboarding)
+  const onboardingAllowedPaths = [
+    "/onboarding",
+    "/tenders",
+    "/directory",
   ];
 
   // Paths that require full approval (redirect pending users)
   const approvalRequiredPaths = [
     "/dashboard",
     "/onboarding",
-    "/tenders",
-    "/directory",
     "/companies",
     "/company",
     "/vo",
@@ -81,6 +89,10 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path)
   );
 
+  const isOnboardingAllowedPath = onboardingAllowedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
   const isApprovalRequiredPath = approvalRequiredPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
@@ -92,13 +104,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // For authenticated users, check approval status
-  if (user && isApprovalRequiredPath) {
+  // For authenticated users, check onboarding and approval status
+  if (user && isProtectedPath) {
     try {
-      // Check user's approval status from profiles table
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("approval_status")
+      // Check user's profile including onboarding status
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profile, error } = await (supabase
+        .from("profiles") as any)
+        .select("approval_status, onboarding_step, onboarding_completed_at")
         .eq("user_id", user.id)
         .single();
 
@@ -107,24 +120,44 @@ export async function updateSession(request: NextRequest) {
         // If we can't fetch profile, allow access (fail open for existing users)
         // This handles cases where the profile might not exist yet
       } else if (profile) {
-        // If user is pending, redirect to pending-approval page
-        if (profile.approval_status === "pending") {
+        const isOnboardingPath = request.nextUrl.pathname.startsWith("/onboarding");
+        const isPendingApprovalPath = request.nextUrl.pathname.startsWith("/pending-approval");
+
+        // If onboarding not completed, redirect to onboarding
+        // (unless on an allowed path like /onboarding, /tenders, /directory)
+        if (!profile.onboarding_completed_at && !isOnboardingAllowedPath) {
           const url = request.nextUrl.clone();
-          url.pathname = "/pending-approval";
+          url.pathname = "/onboarding";
           return NextResponse.redirect(url);
         }
 
-        // If user is rejected, redirect to auth with signout
-        // (The auth page will handle showing the rejection message)
-        if (profile.approval_status === "rejected") {
-          const url = request.nextUrl.clone();
-          url.pathname = "/auth";
-          url.searchParams.set("rejected", "true");
-          return NextResponse.redirect(url);
+        // If onboarding is complete, check approval status
+        if (profile.onboarding_completed_at) {
+          // If user is pending approval and trying to access restricted paths
+          if (profile.approval_status === "pending" && isApprovalRequiredPath) {
+            const url = request.nextUrl.clone();
+            url.pathname = "/pending-approval";
+            return NextResponse.redirect(url);
+          }
+
+          // If user is rejected, redirect to auth with signout
+          if (profile.approval_status === "rejected") {
+            const url = request.nextUrl.clone();
+            url.pathname = "/auth";
+            url.searchParams.set("rejected", "true");
+            return NextResponse.redirect(url);
+          }
+
+          // If user is approved but on /onboarding, redirect to dashboard
+          if (profile.approval_status === "approved" && isOnboardingPath) {
+            const url = request.nextUrl.clone();
+            url.pathname = "/dashboard";
+            return NextResponse.redirect(url);
+          }
         }
       }
     } catch (error) {
-      console.error("Middleware: Error checking approval status:", error);
+      console.error("Middleware: Error checking status:", error);
       // Fail open - allow access if we can't check status
     }
   }
@@ -132,13 +165,21 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from auth page (but not /auth/invite for accepting invitations)
   const isAuthInvitePath = request.nextUrl.pathname.startsWith("/auth/invite");
   if (user && request.nextUrl.pathname === "/auth" && !isAuthInvitePath) {
-    // First check their approval status
+    // Check their profile status
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("approval_status")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profile } = await (supabase
+        .from("profiles") as any)
+        .select("approval_status, onboarding_completed_at")
         .eq("user_id", user.id)
         .single();
+
+      // If onboarding not completed, redirect to onboarding
+      if (profile && !profile.onboarding_completed_at) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/onboarding";
+        return NextResponse.redirect(url);
+      }
 
       if (profile?.approval_status === "pending") {
         const url = request.nextUrl.clone();
@@ -151,7 +192,7 @@ export async function updateSession(request: NextRequest) {
         return supabaseResponse;
       }
     } catch (error) {
-      console.error("Middleware: Error checking approval for auth redirect:", error);
+      console.error("Middleware: Error checking profile for auth redirect:", error);
     }
 
     // Approved users: check role and redirect accordingly

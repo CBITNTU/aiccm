@@ -53,9 +53,10 @@ interface MatchingResult {
 
 interface SavedTendersProps {
   companyId?: string;
+  readOnly?: boolean;
 }
 
-export function SavedTenders({ companyId }: SavedTendersProps) {
+export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps) {
   const { user } = useAuth();
   const [savedResults, setSavedResults] = useState<MatchingResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
@@ -414,6 +415,8 @@ export function SavedTenders({ companyId }: SavedTendersProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => removeBookmark(result.id)}
+                      disabled={readOnly}
+                      title={readOnly ? "Action restricted for pending accounts" : undefined}
                     >
                       <Bookmark className="w-4 h-4 fill-current" />
                     </Button>
@@ -431,6 +434,7 @@ export function SavedTenders({ companyId }: SavedTendersProps) {
           onOpenChange={setDialogOpen}
           result={selectedResult}
           companyId={selectedResult.company_id}
+          readOnly={readOnly}
         />
       )}
     </div>

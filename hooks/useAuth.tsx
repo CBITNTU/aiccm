@@ -25,6 +25,7 @@ interface AuthContextType {
   isOnboarding: boolean;
   isPendingApproval: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   isOnboarding: false,
   isPendingApproval: false,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const useAuth = () => {
@@ -78,6 +80,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       window.location.replace("/");
     }
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from("profiles") as any)
+        .select("approval_status, onboarding_completed_at")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Error refreshing profile:", error);
+        setProfile(null);
+      } else {
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error("Error refreshing profile:", err);
+      setProfile(null);
+    }
+  }, [user]);
 
   // Initialize auth state - get session first, then set up listener
   useEffect(() => {
@@ -174,7 +201,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, profile]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, profile, isOnboarding, isPendingApproval, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, profile, isOnboarding, isPendingApproval, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

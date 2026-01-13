@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Clock, Mail, Loader2 } from "lucide-react";
@@ -17,6 +18,7 @@ export function PendingApprovalStep({
   companyName,
 }: PendingApprovalStepProps) {
   const router = useRouter();
+  const { refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleComplete = async () => {
@@ -24,11 +26,16 @@ export function PendingApprovalStep({
 
     try {
       // Mark onboarding as complete
-      await fetch("/api/onboarding/update-step", {
+      const response = await fetch("/api/onboarding/update-step", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ step: ONBOARDING_STEPS.COMPLETE }),
       });
+
+      // Refresh auth profile state before navigation
+      if (response.ok) {
+        await refreshProfile();
+      }
 
       // Redirect to pending approval page
       router.push("/pending-approval");

@@ -68,6 +68,12 @@ const navigationItems: NavigationItem[] = [
     hideForPending: true,
   },
   {
+    name: "My Companies",
+    href: "/my-companies",
+    icon: Building2,
+    hideForPending: false,
+  },
+  {
     name: "Profile",
     href: "/profile",
     icon: User,

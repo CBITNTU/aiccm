@@ -20,7 +20,10 @@ import { Button } from "@/components/ui/button";
 import { FileText, Bookmark, Target, Plus, Loader2 } from "lucide-react";
 import { DatabaseTenderFeed } from "@/components/tenders/DatabaseTenderFeed";
 import { TenderSearchBar } from "@/components/tenders/TenderSearchBar";
-import { TenderMatching, MatchingFiltersState } from "@/components/tenders/TenderMatching";
+import {
+  TenderMatching,
+  MatchingFiltersState,
+} from "@/components/tenders/TenderMatching";
 import { SavedTenders } from "@/components/tenders/SavedTenders";
 import { ProjectWizard } from "@/components/tenders/ProjectWizard";
 import { api } from "@/lib/api/client";
@@ -45,7 +48,9 @@ export default function TendersPage() {
   // Users are restricted if they're pending approval OR still onboarding
   const isRestrictedUser = isPendingApproval || isOnboarding;
   const searchParams = useSearchParams();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null
+  );
   const [filters, setFilters] = useState<TenderFiltersState>({});
   const [matchingFilters, setMatchingFilters] = useState<MatchingFiltersState>({
     sortBy: "overall_score",
@@ -145,7 +150,9 @@ export default function TendersPage() {
       if (data.up_to_date) {
         toast.success("All tenders are up to date - no new analysis needed");
       } else {
-        toast.success(`Analysis complete! Found ${data.analyzed_count} new matches.`);
+        toast.success(
+          `Analysis complete! Found ${data.analyzed_count} new matches.`
+        );
       }
     } catch (error) {
       console.error("Error running analysis:", error);
@@ -172,7 +179,9 @@ export default function TendersPage() {
         {/* Page Header */}
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Tender Opportunities</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              Tender Opportunities
+            </h1>
             <p className="text-muted-foreground mt-1">
               Discover tenders matching your business capabilities
             </p>
@@ -265,13 +274,19 @@ export default function TendersPage() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <span className="text-sm text-muted-foreground">No companies found</span>
+                  <span className="text-sm text-muted-foreground">
+                    No companies found
+                  </span>
                 )}
               </div>
               <Button
                 onClick={runAnalysis}
                 disabled={analyzing || !selectedCompany || isRestrictedUser}
-                title={isRestrictedUser ? "Action restricted for pending accounts" : undefined}
+                title={
+                  isRestrictedUser
+                    ? "Action restricted for pending accounts"
+                    : undefined
+                }
               >
                 {analyzing ? (
                   <>
@@ -312,7 +327,10 @@ export default function TendersPage() {
 
           {/* Saved Tenders Tab */}
           <TabsContent value="saved" className="space-y-4">
-            <SavedTenders companyId={selectedCompany?.id} readOnly={isRestrictedUser} />
+            <SavedTenders
+              companyId={selectedCompany?.id}
+              readOnly={isRestrictedUser}
+            />
           </TabsContent>
         </Tabs>
 

@@ -9,7 +9,6 @@ import { OnboardingBanner } from "@/components/OnboardingBanner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -17,13 +16,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2, FileText, Bookmark, Target, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { FileText, Bookmark, Target, Plus, Loader2 } from "lucide-react";
 import { DatabaseTenderFeed } from "@/components/tenders/DatabaseTenderFeed";
-import { TenderFilters } from "@/components/tenders/TenderFilters";
-import { TenderMatching } from "@/components/tenders/TenderMatching";
+import { TenderSearchBar } from "@/components/tenders/TenderSearchBar";
+import {
+  TenderMatching,
+  MatchingFiltersState,
+} from "@/components/tenders/TenderMatching";
 import { SavedTenders } from "@/components/tenders/SavedTenders";
 import { ProjectWizard } from "@/components/tenders/ProjectWizard";
-import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api/client";
+import { toast } from "sonner";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -48,10 +52,18 @@ export default function TendersPage() {
     null
   );
   const [filters, setFilters] = useState<TenderFiltersState>({});
+  const [matchingFilters, setMatchingFilters] = useState<MatchingFiltersState>({
+    sortBy: "overall_score",
+    sortDirection: "desc",
+    minScore: 0,
+    maxScore: 100,
+    showApplied: "all",
+  });
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [showProjectWizard, setShowProjectWizard] = useState(false);
   const [initialTenderId, setInitialTenderId] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
@@ -92,19 +104,62 @@ export default function TendersPage() {
     };
 
     fetchCompanies();
-  }, [supabase, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, user]); // intentionally excluding selectedCompany to only auto-select once
 
   const handleFiltersChange = (newFilters: TenderFiltersState) => {
     setFilters(newFilters);
   };
 
-  const handleCompanySelect = useCallback((companyId: string) => {
-    const company = companies.find((c) => c.id === companyId);
-    setSelectedCompany(company || null);
-  }, [companies]);
+  const handleMatchingFiltersChange = (newFilters: MatchingFiltersState) => {
+    setMatchingFilters(newFilters);
+  };
+
+  const handleCompanySelect = useCallback(
+    (companyId: string) => {
+      const company = companies.find((c) => c.id === companyId);
+      setSelectedCompany(company || null);
+    },
+    [companies]
+  );
 
   const resetFilters = () => {
     setFilters({ selectedTaxonomies: [] });
+  };
+
+  const resetMatchingFilters = () => {
+    setMatchingFilters({
+      sortBy: "overall_score",
+      sortDirection: "desc",
+      minScore: 0,
+      maxScore: 100,
+      showApplied: "all",
+    });
+  };
+
+  const runAnalysis = async () => {
+    if (!selectedCompany) {
+      toast.error("Please select a company to analyze");
+      return;
+    }
+
+    setAnalyzing(true);
+    try {
+      const data = await api.matchTenders(selectedCompany.id);
+
+      if (data.up_to_date) {
+        toast.success("All tenders are up to date - no new analysis needed");
+      } else {
+        toast.success(
+          `Analysis complete! Found ${data.analyzed_count} new matches.`
+        );
+      }
+    } catch (error) {
+      console.error("Error running analysis:", error);
+      toast.error("Failed to run tender analysis. Please try again.");
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   if (!supabase) {
@@ -120,15 +175,15 @@ export default function TendersPage() {
     <div>
       <OnboardingBanner />
       <ReadOnlyBanner />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Page Header */}
+        <div className="mb-6 flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="text-2xl font-bold text-foreground">
               Tender Opportunities
             </h1>
-            <p className="text-muted-foreground">
-              Discover and track government and private sector tenders that match
-              your capabilities
+            <p className="text-muted-foreground mt-1">
+              Discover tenders matching your business capabilities
             </p>
           </div>
           {selectedCompany && !isRestrictedUser && (
@@ -142,105 +197,122 @@ export default function TendersPage() {
           )}
         </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="tenders" className="flex items-center space-x-2">
-            <FileText className="w-4 h-4" />
-            <span>All Tenders</span>
-          </TabsTrigger>
-          <TabsTrigger value="matches" className="flex items-center space-x-2">
-            <Target className="w-4 h-4" />
-            <span>Your Matches</span>
-          </TabsTrigger>
-          <TabsTrigger value="saved" className="flex items-center space-x-2">
-            <Bookmark className="w-4 h-4" />
-            <span>Saved Tenders</span>
-          </TabsTrigger>
-        </TabsList>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="inline-flex h-10 items-center justify-start rounded-lg bg-muted p-1 mb-6">
+            <TabsTrigger
+              value="tenders"
+              className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              All Tenders
+            </TabsTrigger>
+            <TabsTrigger
+              value="matches"
+              className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Target className="w-4 h-4 mr-2" />
+              Your Matches
+            </TabsTrigger>
+            <TabsTrigger
+              value="saved"
+              className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Bookmark className="w-4 h-4 mr-2" />
+              Saved
+            </TabsTrigger>
+          </TabsList>
 
-        {/* All Tenders Tab */}
-        <TabsContent value="tenders" className="space-y-6">
-          <div className="bg-primary/5 border-l-4 border-primary p-4 rounded-lg mb-6">
-            <h3 className="font-semibold text-foreground mb-2">
-              Database Tender Opportunities
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Browse all tender opportunities from our comprehensive database.
-              Use filters to find relevant opportunities that match your business
-              capabilities.
-            </p>
-          </div>
-
-          {/* Filters */}
-          <TenderFilters
-            onFiltersChange={handleFiltersChange}
-            filters={filters}
-            onReset={resetFilters}
-          />
-
-          {/* Database Tenders */}
-          <DatabaseTenderFeed
-            supabase={supabase}
-            filters={filters}
-            readOnly={isRestrictedUser}
-            onCreateProject={
-              isRestrictedUser
-                ? undefined
-                : (tenderId) => {
-                    if (selectedCompany) {
-                      setInitialTenderId(tenderId);
-                      setShowProjectWizard(true);
+          {/* All Tenders Tab */}
+          <TabsContent value="tenders" className="space-y-4">
+            <TenderSearchBar
+              filterType="database"
+              databaseFilters={filters}
+              onDatabaseFiltersChange={handleFiltersChange}
+              onReset={resetFilters}
+              placeholder="Search by title, buyer, location, or description..."
+            />
+            <DatabaseTenderFeed
+              supabase={supabase}
+              filters={filters}
+              readOnly={isRestrictedUser}
+              onCreateProject={
+                isRestrictedUser
+                  ? undefined
+                  : (tenderId) => {
+                      if (selectedCompany) {
+                        setInitialTenderId(tenderId);
+                        setShowProjectWizard(true);
+                      }
                     }
-                  }
-            }
-          />
-        </TabsContent>
+              }
+            />
+          </TabsContent>
 
-        {/* Your Matches Tab */}
-        <TabsContent value="matches" className="space-y-6">
-          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg mb-6 dark:bg-green-950/20">
-            <h3 className="font-semibold text-foreground mb-2">
-              AI-Powered Tender Matching
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Based on your company profile, we analyze tender opportunities and
-              provide match scores with detailed recommendations.
-            </p>
-          </div>
+          {/* Your Matches Tab */}
+          <TabsContent value="matches" className="space-y-4">
+            {/* Company selector + Run Analysis header */}
+            <div className="flex items-center justify-between gap-4 pb-2">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  Matching for:
+                </span>
+                {companies.length > 0 ? (
+                  <Select
+                    value={selectedCompany?.id || ""}
+                    onValueChange={handleCompanySelect}
+                  >
+                    <SelectTrigger className="w-[220px] h-9">
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.company_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    No companies found
+                  </span>
+                )}
+              </div>
+              <Button
+                onClick={runAnalysis}
+                disabled={analyzing || !selectedCompany || isRestrictedUser}
+                title={
+                  isRestrictedUser
+                    ? "Action restricted for pending accounts"
+                    : undefined
+                }
+              >
+                {analyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Target className="w-4 h-4 mr-2" />
+                    Run Analysis
+                  </>
+                )}
+              </Button>
+            </div>
 
-          {/* Company Selector */}
-          {companies.length > 0 && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Select Company
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Select
-                  value={selectedCompany?.id || ""}
-                  onValueChange={handleCompanySelect}
-                >
-                  <SelectTrigger className="w-full md:w-[300px]">
-                    <SelectValue placeholder="Select a company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.company_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-          )}
+            <TenderSearchBar
+              filterType="matching"
+              matchingFilters={matchingFilters}
+              onMatchingFiltersChange={handleMatchingFiltersChange}
+              onReset={resetMatchingFilters}
+              placeholder="Search matches by title, buyer, or location..."
+            />
 
-          {/* TenderMatching Component */}
-          {selectedCompany ? (
             <TenderMatching
-              companyId={selectedCompany.id}
+              companyId={selectedCompany?.id}
+              filters={matchingFilters}
               readOnly={isRestrictedUser}
               onCreateProject={
                 isRestrictedUser
@@ -251,20 +323,16 @@ export default function TendersPage() {
                     }
               }
             />
-          ) : (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                Select a company to see matching results.
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+          </TabsContent>
 
-        {/* Saved Tenders Tab */}
-        <TabsContent value="saved" className="space-y-6">
-          <SavedTenders companyId={selectedCompany?.id} readOnly={isRestrictedUser} />
-        </TabsContent>
-      </Tabs>
+          {/* Saved Tenders Tab */}
+          <TabsContent value="saved" className="space-y-4">
+            <SavedTenders
+              companyId={selectedCompany?.id}
+              readOnly={isRestrictedUser}
+            />
+          </TabsContent>
+        </Tabs>
 
         {showProjectWizard && selectedCompany && (
           <ProjectWizard
@@ -275,7 +343,6 @@ export default function TendersPage() {
             onProjectCreated={(projectId) => {
               setShowProjectWizard(false);
               setInitialTenderId(null);
-              // Optionally redirect to project page or show success message
               console.log("Project created:", projectId);
             }}
             leadCompanyId={selectedCompany.id}

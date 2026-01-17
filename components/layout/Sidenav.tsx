@@ -71,13 +71,13 @@ const navigationItems: NavigationItem[] = [
     name: "My Companies",
     href: "/my-companies",
     icon: Building2,
-    hideForPending: false,
+    hideForPending: true,
   },
   {
     name: "Profile",
     href: "/profile",
     icon: User,
-    hideForPending: false,
+    hideForPending: true,
   },
   {
     name: "Admin",
@@ -140,9 +140,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   // Get user display info
   const userDisplayName = user?.email?.split("@")[0] || "User";
   const userEmail = user?.email || "";
-  const userInitials = userDisplayName
-    .slice(0, 2)
-    .toUpperCase();
+  const userInitials = userDisplayName.slice(0, 2).toUpperCase();
 
   // Sidebar content (shared between desktop and mobile)
   const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (

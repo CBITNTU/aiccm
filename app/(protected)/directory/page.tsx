@@ -7,21 +7,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/useAuth";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, Building2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { CompanyCard } from "@/components/directory/CompanyCard";
+import { CompanyCardNew } from "@/components/directory/CompanyCardNew";
 import { CompanyDetailModal } from "@/components/directory/CompanyDetailModal";
-import { TaxonomyFilter } from "@/components/directory/TaxonomyFilter";
+import { DirectorySearchBar } from "@/components/directory/DirectorySearchBar";
+import { DirectoryResultsHeader } from "@/components/directory/DirectoryResultsHeader";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
@@ -47,27 +39,38 @@ type PublicCompany = Pick<
   | "user_id"
 >;
 
+interface DirectoryFilters {
+  searchTerm: string;
+  location: string;
+  capability: string;
+  selectedTaxonomies: string[];
+}
+
+const defaultFilters: DirectoryFilters = {
+  searchTerm: "",
+  location: "all",
+  capability: "all",
+  selectedTaxonomies: [],
+};
+
 export default function DirectoryPage() {
   const { isPendingApproval, isOnboarding } = useAuth();
 
   // Users are restricted if they're pending approval OR still onboarding
   const isRestrictedUser = isPendingApproval || isOnboarding;
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
-  );
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
   const [companies, setCompanies] = useState<PublicCompany[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
-  const [selectedCapability, setSelectedCapability] = useState<string>("all");
-  const [selectedTaxonomies, setSelectedTaxonomies] = useState<string[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<PublicCompany | null>(
-    null
-  );
+  const [filters, setFilters] = useState<DirectoryFilters>(defaultFilters);
+  const [selectedCompany, setSelectedCompany] = useState<PublicCompany | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 25;
+
+  // Filter options for dropdowns
+  const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
+  const [uniqueCapabilities, setUniqueCapabilities] = useState<string[]>([]);
 
   // Initialize supabase client
   useEffect(() => {
@@ -89,11 +92,11 @@ export default function DirectoryPage() {
 
         // First, get company IDs if taxonomy filter is applied
         let filteredCompanyIds: string[] | null = null;
-        if (selectedTaxonomies.length > 0) {
+        if (filters.selectedTaxonomies.length > 0) {
           const { data: companyIds, error: taxonomyError } = await supabase
             .from("company_taxonomies")
             .select("company_id")
-            .in("taxonomy_id", selectedTaxonomies);
+            .in("taxonomy_id", filters.selectedTaxonomies);
 
           if (taxonomyError) {
             console.error("Error fetching taxonomy companies:", taxonomyError);
@@ -135,7 +138,7 @@ export default function DirectoryPage() {
             updated_at,
             user_id
           `,
-            { count: "exact" } // Get total count
+            { count: "exact" }
           )
           .eq("status", "active");
 
@@ -145,20 +148,20 @@ export default function DirectoryPage() {
         }
 
         // Apply search filter at database level
-        if (searchTerm.trim()) {
+        if (filters.searchTerm.trim()) {
           query = query.or(
-            `company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+            `company_name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`
           );
         }
 
         // Apply location filter at database level
-        if (selectedLocation !== "all" && selectedLocation.trim()) {
-          query = query.ilike("postcode", `%${selectedLocation}%`);
+        if (filters.location !== "all" && filters.location.trim()) {
+          query = query.ilike("postcode", `%${filters.location}%`);
         }
 
         // Apply capability filter at database level
-        if (selectedCapability !== "all" && selectedCapability.trim()) {
-          query = query.ilike("key_capabilities", `%${selectedCapability}%`);
+        if (filters.capability !== "all" && filters.capability.trim()) {
+          query = query.ilike("key_capabilities", `%${filters.capability}%`);
         }
 
         // Apply pagination and ordering
@@ -181,30 +184,19 @@ export default function DirectoryPage() {
     };
 
     fetchCompanies();
-  }, [
-    supabase,
-    selectedTaxonomies,
-    currentPage,
-    searchTerm,
-    selectedLocation,
-    selectedCapability,
-  ]);
+  }, [supabase, filters, currentPage]);
 
-  // Fetch unique locations and capabilities for filter dropdowns (separate lightweight query)
-  const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
-  const [uniqueCapabilities, setUniqueCapabilities] = useState<string[]>([]);
-
+  // Fetch unique locations and capabilities for filter dropdowns
   useEffect(() => {
     if (!supabase) return;
 
     const fetchFilterOptions = async () => {
       try {
-        // Fetch just postcodes and capabilities for filter dropdowns
         const { data: companiesData } = await supabase
           .from("companies")
           .select("postcode, key_capabilities")
           .eq("status", "active")
-          .limit(5000); // Get enough to build filter options
+          .limit(5000);
 
         if (companiesData) {
           const locations = [
@@ -247,37 +239,40 @@ export default function DirectoryPage() {
     setIsModalOpen(true);
   };
 
+  const handleFiltersChange = (newFilters: DirectoryFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleResetFilters = () => {
+    setFilters(defaultFilters);
+  };
+
+  const handleRefresh = () => {
+    // Trigger re-fetch by toggling a dependency - the useEffect will re-run
+    setFilters({ ...filters });
+  };
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedLocation, selectedCapability, selectedTaxonomies]);
+  }, [filters]);
 
-  // Calculate pagination (now based on server-side total count)
+  // Calculate pagination
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-    // Scroll to top when page changes
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Loading companies...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <OnboardingBanner />
       <ReadOnlyBanner />
       <main className="container mx-auto px-4 py-8">
+        {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Companies Directory
@@ -287,117 +282,61 @@ export default function DirectoryPage() {
           </p>
         </div>
 
-        {/* Filters */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
-              Search & Filter
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search companies..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+        {/* Search Bar with Filters */}
+        <DirectorySearchBar
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          onReset={handleResetFilters}
+          uniqueLocations={uniqueLocations}
+          uniqueCapabilities={uniqueCapabilities}
+        />
 
-              <Select
-                value={selectedLocation}
-                onValueChange={setSelectedLocation}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All locations</SelectItem>
-                  {uniqueLocations.map((location) => {
-                    // Ensure we never use empty string as value
-                    const safeValue =
-                      location && location.trim() ? location.trim() : "unknown";
-                    return (
-                      <SelectItem key={location} value={safeValue}>
-                        {location}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+        {/* Results Header */}
+        {!loading && totalCount > 0 && (
+          <DirectoryResultsHeader
+            total={totalCount}
+            start={startIndex + 1}
+            end={endIndex}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            loading={loading}
+            onRefresh={handleRefresh}
+          />
+        )}
 
-              <Select
-                value={selectedCapability}
-                onValueChange={setSelectedCapability}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by capability" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All capabilities</SelectItem>
-                  {uniqueCapabilities.map((capability) => {
-                    // Ensure we never use empty string as value
-                    const safeValue =
-                      capability && capability.trim()
-                        ? capability.trim()
-                        : "unknown";
-                    return (
-                      <SelectItem key={capability} value={safeValue}>
-                        {capability}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2" />
+            <span className="text-muted-foreground">Loading companies...</span>
+          </div>
+        )}
 
-            {/* Taxonomy Filters */}
-            <div className="border-t pt-4">
-              <TaxonomyFilter
-                selectedTaxonomies={selectedTaxonomies}
-                onTaxonomiesChange={setSelectedTaxonomies}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Results Summary */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-muted-foreground">
-            {totalCount > 0 ? (
-              <>
-                Showing {startIndex + 1}-{endIndex} of {totalCount} companies
-              </>
-            ) : (
-              "No companies found"
-            )}
-          </p>
-          {totalPages > 1 && (
-            <p className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
+        {/* Empty State */}
+        {!loading && companies.length === 0 && (
+          <div className="text-center py-16">
+            <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No companies found</h3>
+            <p className="text-muted-foreground mb-4">
+              Try adjusting your search or filter criteria
             </p>
-          )}
-        </div>
+            {(filters.searchTerm ||
+              filters.location !== "all" ||
+              filters.capability !== "all" ||
+              filters.selectedTaxonomies.length > 0) && (
+              <Button variant="outline" onClick={handleResetFilters}>
+                Clear all filters
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Companies Grid */}
-        {companies.length === 0 && !loading ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No companies found</h3>
-              <p className="text-muted-foreground">
-                Try adjusting your search or filter criteria
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
+        {!loading && companies.length > 0 && (
           <>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {companies.map((company) => (
-                <CompanyCard
+                <CompanyCardNew
                   key={company.id}
                   company={company}
                   onClick={handleCompanyClick}
@@ -421,7 +360,6 @@ export default function DirectoryPage() {
                 <div className="flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                     (page) => {
-                      // Show first page, last page, current page, and pages around current
                       if (
                         page === 1 ||
                         page === totalPages ||
@@ -430,9 +368,7 @@ export default function DirectoryPage() {
                         return (
                           <Button
                             key={page}
-                            variant={
-                              currentPage === page ? "default" : "outline"
-                            }
+                            variant={currentPage === page ? "default" : "outline"}
                             size="sm"
                             onClick={() => goToPage(page)}
                             className="min-w-[2.5rem]"
@@ -445,10 +381,7 @@ export default function DirectoryPage() {
                         page === currentPage + 2
                       ) {
                         return (
-                          <span
-                            key={page}
-                            className="px-2 text-muted-foreground"
-                          >
+                          <span key={page} className="px-2 text-muted-foreground">
                             ...
                           </span>
                         );
@@ -472,6 +405,7 @@ export default function DirectoryPage() {
           </>
         )}
 
+        {/* Company Detail Modal */}
         <CompanyDetailModal
           company={selectedCompany}
           open={isModalOpen}

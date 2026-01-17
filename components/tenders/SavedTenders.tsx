@@ -3,27 +3,12 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  TrendingUp,
-  MapPin,
-  Eye,
-  Loader2,
-  Bookmark,
-  Search,
-} from "lucide-react";
+import { Bookmark, Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
+import { TenderMatchCard } from "./TenderMatchCard";
 
 interface MatchingResult {
   id: string;
@@ -61,9 +46,7 @@ export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps)
   const [savedResults, setSavedResults] = useState<MatchingResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedResult, setSelectedResult] = useState<MatchingResult | null>(
-    null
-  );
+  const [selectedResult, setSelectedResult] = useState<MatchingResult | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
 
@@ -149,281 +132,83 @@ export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps)
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600";
-    if (score >= 60) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  const formatBudget = (min?: number, max?: number): string => {
-    if (!min && !max) return "Not specified";
-    if (min && max && min !== max) {
-      return `£${min.toLocaleString()} - £${max.toLocaleString()}`;
-    }
-    if (min) return `£${min.toLocaleString()}`;
-    if (max) return `£${max.toLocaleString()}`;
-    return "Not specified";
-  };
-
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const isDeadlineSoon = (deadline: string): boolean => {
-    if (!deadline) return false;
-    const deadlineDate = new Date(deadline);
-    const today = new Date();
-    const daysUntilDeadline = Math.ceil(
-      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
-  };
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Your Saved Tenders</h2>
-        <p className="text-muted-foreground">
-          Tenders you&apos;ve bookmarked for later review
-          {keyword && filteredResults.length !== savedResults.length && (
-            <span className="ml-2 text-primary font-medium">
-              (Showing {filteredResults.length} of {savedResults.length} saved
-              tenders)
-            </span>
-          )}
-        </p>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Saved Tenders</h2>
+          <p className="text-sm text-muted-foreground">
+            {savedResults.length} saved tender{savedResults.length !== 1 ? "s" : ""}
+            {keyword && filteredResults.length !== savedResults.length && (
+              <span className="ml-1">
+                ({filteredResults.length} shown)
+              </span>
+            )}
+          </p>
+        </div>
       </div>
 
-      {/* Keyword Search */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-2">
-            <Label htmlFor="savedKeyword" className="flex items-center gap-2">
-              <Search className="w-4 h-4" />
-              Search your saved tenders
-            </Label>
-            <Input
-              id="savedKeyword"
-              placeholder="Search by title, buyer, location, or description..."
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              className="w-full"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          className="pl-10 h-11"
+          placeholder="Search saved tenders..."
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+        />
+        {keyword && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+            onClick={() => setKeyword("")}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
 
       {loading ? (
-        <div className="min-h-[400px] flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading saved tenders...</p>
-          </div>
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading saved tenders...</span>
         </div>
       ) : savedResults.length === 0 ? (
-        <Card className="min-h-[300px]">
-          <CardContent className="flex items-center justify-center h-full py-12">
-            <div className="text-center">
-              <Bookmark className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                No saved tenders yet
-              </h3>
-              <p className="text-muted-foreground">
-                Go to &quot;Your Matches&quot; and click the bookmark icon to
-                save tenders for later review.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="text-center py-16">
+          <Bookmark className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No saved tenders yet</h3>
+          <p className="text-muted-foreground">
+            Go to &quot;Your Matches&quot; and click the bookmark icon to save tenders for
+            later review.
+          </p>
+        </div>
       ) : filteredResults.length === 0 ? (
-        <Card className="min-h-[300px]">
-          <CardContent className="flex items-center justify-center h-full py-12">
-            <div className="text-center">
-              <Search className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No matching results</h3>
-              <p className="text-muted-foreground">
-                No saved tenders match your search &quot;{keyword}&quot;. Try
-                different keywords.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setKeyword("")}
-              >
-                Clear Search
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="text-center py-16">
+          <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No matching results</h3>
+          <p className="text-muted-foreground mb-4">
+            No saved tenders match your search &quot;{keyword}&quot;
+          </p>
+          <Button variant="outline" onClick={() => setKeyword("")}>
+            Clear Search
+          </Button>
+        </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="space-y-3">
           {filteredResults.map((result) => (
-            <Card key={result.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-1">
-                      {result.tenders.title}
-                    </CardTitle>
-                    <CardDescription className="flex items-center space-x-4 text-sm">
-                      <span className="flex items-center">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        {result.tenders.buyer}
-                      </span>
-                      <span>{result.tenders.location}</span>
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge
-                      variant={
-                        result.overall_score >= 80
-                          ? "default"
-                          : result.overall_score >= 60
-                            ? "secondary"
-                            : "outline"
-                      }
-                      className="text-lg px-3 py-1"
-                    >
-                      <TrendingUp className="w-4 h-4 mr-1" />
-                      {result.overall_score}%
-                    </Badge>
-                    {result.is_applied && (
-                      <Badge variant="secondary">Applied</Badge>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                <div
-                  className="grid grid-cols-4 gap-2 mb-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
-                  onClick={() => {
-                    setSelectedResult(result);
-                    setDialogOpen(true);
-                  }}
-                >
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">
-                      Capability
-                    </div>
-                    <div
-                      className={`text-sm font-medium ${getScoreColor(result.capability_score)}`}
-                    >
-                      {result.capability_score}%
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">
-                      Experience
-                    </div>
-                    <div
-                      className={`text-sm font-medium ${getScoreColor(result.experience_score)}`}
-                    >
-                      {result.experience_score}%
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">Location</div>
-                    <div
-                      className={`text-sm font-medium ${getScoreColor(result.location_score)}`}
-                    >
-                      {result.location_score}%
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">
-                      Certification
-                    </div>
-                    <div
-                      className={`text-sm font-medium ${getScoreColor(result.certification_score)}`}
-                    >
-                      {result.certification_score}%
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className="cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
-                  onClick={() => {
-                    setSelectedResult(result);
-                    setDialogOpen(true);
-                  }}
-                >
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-2">
-                    <div>
-                      <span className="font-medium">Budget:</span>{" "}
-                      {formatBudget(
-                        result.tenders.budget_min,
-                        result.tenders.budget_max
-                      )}
-                    </div>
-                    <div>
-                      <span className="font-medium">Deadline:</span>{" "}
-                      <span
-                        className={
-                          isDeadlineSoon(result.tenders.deadline)
-                            ? "text-red-600 font-medium"
-                            : ""
-                        }
-                      >
-                        {result.tenders.deadline
-                          ? formatDate(result.tenders.deadline)
-                          : "Not specified"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {result.tenders.description}
-                  </p>
-
-                  {result.match_reasons && result.match_reasons.length > 0 && (
-                    <div className="mb-3">
-                      <div className="text-xs font-medium text-muted-foreground mb-1">
-                        Key Matches:
-                      </div>
-                      <div className="text-xs text-green-700 dark:text-green-400">
-                        {result.match_reasons[0]}
-                        {result.match_reasons.length > 1 &&
-                          ` (+${result.match_reasons.length - 1} more)`}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t">
-                  <span className="text-xs text-muted-foreground">
-                    Saved {formatDate(result.created_at)}
-                  </span>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedResult(result);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      View Details
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeBookmark(result.id)}
-                      disabled={readOnly}
-                      title={readOnly ? "Action restricted for pending accounts" : undefined}
-                    >
-                      <Bookmark className="w-4 h-4 fill-current" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <TenderMatchCard
+              key={result.id}
+              result={result}
+              onViewDetails={() => {
+                setSelectedResult(result);
+                setDialogOpen(true);
+              }}
+              onBookmark={() => removeBookmark(result.id)}
+              onDelete={() => removeBookmark(result.id)}
+              readOnly={readOnly}
+            />
           ))}
         </div>
       )}

@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,12 +20,12 @@ import {
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
 
+// Use singleton client - createClient() returns the same instance
+const supabase = createClient();
+
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
-  );
   const router = useRouter();
 
   // Form states - simplified to just email and password
@@ -42,28 +40,16 @@ export default function AuthPage() {
     password: "",
   });
 
-  // Email verification state
+  // Email verification state - use ref to avoid dependency array issues
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const isVerifyingEmailRef = useRef(false);
 
   // Signup success state - stores email on successful signup
   const [signupSuccessEmail, setSignupSuccessEmail] = useState<string | null>(null);
 
-  // Initialize supabase client on mount
-  useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-      setError(
-        "Configuration error. Please ensure environment variables are set."
-      );
-    }
-  }, []);
-
   // Handle hash fragment tokens (from email verification links)
   useEffect(() => {
-    if (typeof window === "undefined" || !supabase) return;
+    if (typeof window === "undefined") return;
 
     const hash = window.location.hash;
     if (hash && hash.includes("access_token")) {
@@ -76,6 +62,7 @@ export default function AuthPage() {
       if (accessToken && refreshToken && (type === "signup" || type === "magiclink")) {
         // This is an email verification - show loading state
         setIsVerifyingEmail(true);
+        isVerifyingEmailRef.current = true;
         setError(null);
 
         // Manually set the session from the hash tokens
@@ -86,31 +73,34 @@ export default function AuthPage() {
           if (error) {
             console.error("Failed to set session from hash:", error);
             setIsVerifyingEmail(false);
+            isVerifyingEmailRef.current = false;
             setError("Failed to verify email. Please try again.");
           }
           // onAuthStateChange will handle the rest
         });
       }
     }
-  }, [supabase]);
+  }, []);
 
+  // Auth state change listener - only handles email verification
+  // Middleware handles all redirects for authenticated users
   useEffect(() => {
-    if (!supabase) return;
-
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth page - Auth state change:", event, session?.user?.id);
+
       if (event === "SIGNED_IN" && session) {
-        // Check if this was an email verification
-        const wasVerifyingEmail = isVerifyingEmail;
-        if (wasVerifyingEmail) {
+        // Check if this was an email verification (using ref to avoid stale closure)
+        if (isVerifyingEmailRef.current) {
           setIsVerifyingEmail(false);
-          // Clean up the URL
+          isVerifyingEmailRef.current = false;
+
+          // Clean up the URL hash
           window.history.replaceState(null, "", "/auth");
+
           toast.success("Email verified!", {
-            description: "Your email has been verified. Redirecting to complete your profile...",
+            description: "Redirecting to complete your profile...",
           });
 
           // Update onboarding step to 2 if currently on step 1
@@ -121,68 +111,13 @@ export default function AuthPage() {
           }
         }
 
-        // Add small delay to ensure any pending database operations complete
-        setTimeout(async () => {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: profile, error: profileError } = await (supabase
-              .from("profiles") as any)
-              .select("approval_status, onboarding_completed_at")
-              .eq("user_id", session.user.id)
-              .single();
-
-            if (profileError) {
-              console.error("Error checking profile:", profileError);
-              // Default to onboarding for new users
-              router.push("/onboarding");
-              return;
-            }
-
-            // If onboarding not completed, go to onboarding
-            if (!profile?.onboarding_completed_at) {
-              router.push("/onboarding");
-              return;
-            }
-
-            // If onboarding complete but pending approval
-            if (profile?.approval_status === "pending") {
-              router.push("/pending-approval");
-              return;
-            }
-
-            if (profile?.approval_status === "rejected") {
-              toast.error("Account Access Denied", {
-                description:
-                  "Your account application was not approved. Please contact support.",
-              });
-              await supabase.auth.signOut();
-              return;
-            }
-
-            // Check user role - superadmins go to /admin
-            const { data: roleData } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", session.user.id)
-              .single();
-
-            if (roleData?.role === "superadmin") {
-              router.push("/admin");
-              return;
-            }
-
-            // Default: go to dashboard
-            router.push("/dashboard");
-          } catch (error) {
-            console.error("Error checking user status:", error);
-            router.push("/onboarding");
-          }
-        }, 100);
+        // Let middleware handle the redirect - trigger a refresh
+        router.refresh();
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase, router, isVerifyingEmail]);
+  }, [router]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,10 +171,6 @@ export default function AuthPage() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) {
-      setError("Client not initialized");
-      return;
-    }
     setError(null);
     setIsLoading(true);
 
@@ -252,8 +183,11 @@ export default function AuthPage() {
       if (error) throw error;
 
       toast.success("Welcome back!", {
-        description: "Successfully signed in to your account.",
+        description: "Redirecting...",
       });
+
+      // Let middleware handle the redirect
+      router.refresh();
     } catch (error: unknown) {
       console.error("Sign in error:", error);
       const errorMessage =

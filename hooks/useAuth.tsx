@@ -7,10 +7,10 @@ import {
   useContext,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
-import { User, Session, SupabaseClient } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
 
 interface ProfileData {
   approval_status: string | null;
@@ -25,6 +25,7 @@ interface AuthContextType {
   isOnboarding: boolean;
   isPendingApproval: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   isOnboarding: false,
   isPendingApproval: false,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const useAuth = () => {
@@ -45,25 +47,17 @@ export const useAuth = () => {
   return context;
 };
 
+// Use singleton client - createClient() returns the same instance
+const supabase = createClient();
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
-  );
 
-  // Initialize supabase client only on client side
-  useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-      setLoading(false);
-    }
-  }, []);
+  // Track if component is mounted to prevent state updates after unmount
+  const mountedRef = useRef(true);
 
   const signOut = useCallback(async () => {
     try {
@@ -73,9 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         sessionStorage.clear();
       }
 
-      if (supabase) {
-        await supabase.auth.signOut({ scope: "global" });
-      }
+      await supabase.auth.signOut({ scope: "global" });
 
       setUser(null);
       setSession(null);
@@ -87,30 +79,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Still redirect even if there's an error
       window.location.replace("/");
     }
-  }, [supabase]);
+  }, []);
 
-  useEffect(() => {
-    if (!supabase) return;
+  const refreshProfile = useCallback(async () => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
 
-    // Set up auth state listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state change:", event, session?.user?.id);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from("profiles") as any)
+        .select("approval_status, onboarding_completed_at")
+        .eq("user_id", user.id)
+        .single();
 
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-
-      // Handle sign out event specifically
-      if (event === "SIGNED_OUT") {
-        setSession(null);
-        setUser(null);
+      if (error) {
+        console.error("Error refreshing profile:", error);
+        setProfile(null);
+      } else {
+        setProfile(data);
       }
-    });
+    } catch (err) {
+      console.error("Error refreshing profile:", err);
+      setProfile(null);
+    }
+  }, [user]);
 
-    // Get initial session
+  // Initialize auth state - get session first, then set up listener
+  useEffect(() => {
+    mountedRef.current = true;
+
+    // Get initial session FIRST to avoid race condition
     supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!mountedRef.current) return;
+
       if (error) {
         console.error("Error getting initial session:", error);
         setSession(null);
@@ -123,15 +126,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+    // Then set up listener for subsequent auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return;
 
-  // Fetch profile data when user changes
+      console.log("Auth state change:", event, session?.user?.id);
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      // Handle sign out event specifically
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Fetch profile data when user changes - with abort controller
   useEffect(() => {
-    if (!supabase || !user) {
+    if (!user) {
       setProfile(null);
       return;
     }
+
+    const abortController = new AbortController();
 
     const fetchProfile = async () => {
       try {
@@ -139,7 +166,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data, error } = await (supabase.from("profiles") as any)
           .select("approval_status, onboarding_completed_at")
           .eq("user_id", user.id)
-          .single();
+          .single()
+          .abortSignal(abortController.signal);
+
+        if (abortController.signal.aborted) return;
 
         if (error) {
           console.error("Error fetching profile:", error);
@@ -148,13 +178,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setProfile(data);
         }
       } catch (err) {
+        if (abortController.signal.aborted) return;
         console.error("Error fetching profile:", err);
         setProfile(null);
       }
     };
 
     fetchProfile();
-  }, [supabase, user]);
+
+    return () => {
+      abortController.abort();
+    };
+  }, [user]);
 
   // Computed flags for onboarding and pending approval states
   const isOnboarding = useMemo(() => {
@@ -166,7 +201,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, profile]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, profile, isOnboarding, isPendingApproval, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, profile, isOnboarding, isPendingApproval, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

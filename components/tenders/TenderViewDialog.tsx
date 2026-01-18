@@ -34,6 +34,8 @@ interface Tender {
   budget_max?: number | null;
   reference_number?: string | null;
   cpv_codes?: string[] | null;
+  ai_summary?: string | null;
+  ai_capability_taxonomy?: string[] | null;
 }
 
 interface TenderViewDialogProps {
@@ -154,11 +156,27 @@ export function TenderViewDialog({
 
           <Separator />
 
+          {/* AI Summary (if available) */}
+          {tender.ai_summary && (
+            <>
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <span className="text-blue-500">✨</span>
+                  AI Summary
+                </h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  {tender.ai_summary}
+                </p>
+              </div>
+              <Separator />
+            </>
+          )}
+
           {/* Description */}
           <div>
             <h4 className="font-semibold mb-2">Description</h4>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {tender.description}
+              {tender.description || "No description available"}
             </p>
           </div>
 

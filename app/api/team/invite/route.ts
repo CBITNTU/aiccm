@@ -5,6 +5,7 @@ import {
   apiError,
   getAuthenticatedUser,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
   getTeamInvitationEmailSubject,
@@ -192,6 +193,20 @@ export async function POST(request: NextRequest) {
       to: normalizedEmail,
       subject: getTeamInvitationEmailSubject(emailData),
       html: getTeamInvitationEmailHtml(emailData),
+    });
+
+    // Log invitation event
+    await logApiEvent(request, {
+      actionType: "company_member_invited",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "company",
+      entityId: companyId,
+      details: {
+        invitationId: invitation.id,
+        inviteeEmail: normalizedEmail,
+        companyName: company.company_name,
+      },
     });
 
     return apiResponse<CreateInvitationResponse>({

@@ -80,15 +80,64 @@ export function TenderMatching({
 
   const analyzing = externalAnalyzing ?? internalAnalyzing;
 
+  const fetchMatchingResults = async () => {
+    setLoading(true);
+    try {
+      if (!companyId) {
+        setMatchingResults([]);
+        return;
+      }
+
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("matching_results")
+        .select(
+          `
+          *,
+          tenders (
+            title,
+            buyer,
+            description,
+            location,
+            deadline,
+            budget_min,
+            budget_max
+          )
+        `
+        )
+        .eq("company_id", companyId);
+
+      if (error) throw error;
+      setMatchingResults((data as MatchingResult[]) || []);
+    } catch (error) {
+      console.error("Error fetching matching results:", error);
+      toast.error("Failed to fetch matching results");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user && companyId) {
       fetchMatchingResults();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, companyId]);
 
+  // Memoize filtered results to avoid infinite loops
   useEffect(() => {
     applyFiltersAndSorting();
-  }, [matchingResults, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    matchingResults,
+    filters.keyword,
+    filters.sortBy,
+    filters.sortDirection,
+    filters.minScore,
+    filters.maxScore,
+    filters.showApplied,
+    filters.quickFilter,
+  ]);
 
   const applyFiltersAndSorting = () => {
     let filtered = [...matchingResults];
@@ -175,43 +224,6 @@ export function TenderMatching({
     });
 
     setFilteredResults(filtered);
-  };
-
-  const fetchMatchingResults = async () => {
-    setLoading(true);
-    try {
-      if (!companyId) {
-        setMatchingResults([]);
-        return;
-      }
-
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("matching_results")
-        .select(
-          `
-          *,
-          tenders (
-            title,
-            buyer,
-            description,
-            location,
-            deadline,
-            budget_min,
-            budget_max
-          )
-        `
-        )
-        .eq("company_id", companyId);
-
-      if (error) throw error;
-      setMatchingResults((data as MatchingResult[]) || []);
-    } catch (error) {
-      console.error("Error fetching matching results:", error);
-      toast.error("Failed to fetch matching results");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const runAnalysis = async () => {

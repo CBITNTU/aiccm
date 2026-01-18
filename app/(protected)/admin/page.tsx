@@ -21,6 +21,8 @@ import { AdminDataImport } from "@/components/admin/AdminDataImport";
 import { AdminCompanyManager } from "@/components/admin/AdminCompanyManager";
 import { AdminCSVImport } from "@/components/admin/AdminCSVImport";
 import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
+import { TenderAIRegeneration } from "@/components/admin/TenderAIRegeneration";
+import { CompanyAIRegeneration } from "@/components/admin/CompanyAIRegeneration";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminTaxonomyEditor from "@/components/admin/AdminTaxonomyEditor";
 import AdminApprovals from "@/components/admin/AdminApprovals";
@@ -331,16 +333,28 @@ export default function AdminPage() {
         {/* Companies Tab */}
         {activeTab === "companies" && (
           <div className="space-y-6">
-            <AdminCSVImport />
-            <AdminDataImport />
-            <AdminCompanyManager />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Company Management</h3>
+                <CompanyAIRegeneration />
+              </div>
+              <AdminCSVImport />
+              <AdminDataImport />
+              <AdminCompanyManager />
+            </div>
           </div>
         )}
 
         {/* Tenders Tab */}
         {activeTab === "tenders" && (
           <div className="space-y-6">
-            <AdminTenderImport />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Tender Management</h3>
+                <TenderAIRegeneration />
+              </div>
+              <AdminTenderImport />
+            </div>
           </div>
         )}
 

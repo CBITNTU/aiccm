@@ -6,6 +6,7 @@ import {
   getSignupVerificationEmailHtml,
   getPlatformUrl,
 } from "@/lib/email";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export interface SignupRequest {
   email: string;
@@ -93,6 +94,16 @@ export async function POST(request: NextRequest) {
       to: email,
       subject: getSignupVerificationEmailSubject(),
       html: getSignupVerificationEmailHtml({ verificationLink }),
+    });
+
+    // Log signup event
+    await logApiEvent(request, {
+      actionType: "user_signup",
+      userId,
+      userEmail: email,
+      details: {
+        emailVerified: false,
+      },
     });
 
     // Return success response

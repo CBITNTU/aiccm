@@ -5,6 +5,7 @@ import {
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
   getAdminNotificationEmailSubject,
@@ -280,6 +281,35 @@ export async function POST(request: NextRequest) {
             console.error("Profile update error:", profileUpdateError);
           }
 
+          // Queue AI processing jobs for new company (capability taxonomy generation)
+          // This will dynamically create new capabilities based on company data
+          try {
+            const { enqueueJob } = await import("@/lib/services/queueService");
+            await enqueueJob({
+              jobType: "company_taxonomy",
+              entityType: "company",
+              entityId: company.id,
+              priority: 5,
+            });
+            console.log(`Queued company_taxonomy job for new company: ${company.id}`);
+          } catch (queueError) {
+            console.error("Failed to queue company taxonomy job:", queueError);
+            // Don't fail company creation if queueing fails
+          }
+
+          // Log company creation during onboarding
+          await logApiEvent(request, {
+            actionType: "company_created",
+            userId: user.id,
+            userEmail: user.email || undefined,
+            entityType: "company",
+            entityId: company.id,
+            details: {
+              companyName: createData.companyName,
+              onboardingStep: step,
+            },
+          }).catch(() => {});
+
           return apiResponse({
             success: true,
             nextStep: ONBOARDING_STEPS.COMPLETE,
@@ -474,6 +504,18 @@ export async function POST(request: NextRequest) {
             });
           }
         }
+
+        // Log onboarding completion
+        await logApiEvent(request, {
+          actionType: "user_signup", // Onboarding completion is part of signup flow
+          userId: user.id,
+          userEmail: user.email || undefined,
+          details: {
+            onboardingCompleted: true,
+            signupType: profile.signup_type,
+            accountType: profile.account_type,
+          },
+        }).catch(() => {});
 
         return apiResponse({
           success: true,

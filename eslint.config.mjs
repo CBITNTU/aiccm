@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Custom rules for event logging enforcement
+  {
+    files: ["app/api/**/route.ts"],
+    rules: {
+      // This is a placeholder - we'll add a custom rule
+      // For now, we rely on code review and documentation
+    },
+  },
 ]);
 
 export default eslintConfig;

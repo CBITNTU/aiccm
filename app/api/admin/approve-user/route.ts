@@ -6,6 +6,7 @@ import {
   getAuthenticatedUser,
   checkSuperadminRole,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
   getApprovalNotificationEmailSubject,
@@ -372,6 +373,21 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // Log admin approval
+      await logApiEvent(request, {
+        actionType: "admin_user_approved",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "user",
+        entityId: userId,
+        details: {
+          approvedUserId: userId,
+          approvedUserName: userName,
+          signupType,
+          companyName,
+        },
+      });
+
       return apiResponse<ApproveUserResponse>({
         success: true,
         message: `User ${userName} has been approved`,
@@ -407,6 +423,22 @@ export async function POST(request: NextRequest) {
           html: getApprovalNotificationEmailHtml(emailData),
         });
       }
+
+      // Log admin rejection
+      await logApiEvent(request, {
+        actionType: "admin_user_rejected",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "user",
+        entityId: userId,
+        details: {
+          rejectedUserId: userId,
+          rejectedUserName: userName,
+          rejectionReason: rejectionReason || "No reason provided",
+          signupType,
+          companyName,
+        },
+      });
 
       return apiResponse<ApproveUserResponse>({
         success: true,

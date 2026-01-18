@@ -6,6 +6,7 @@ import {
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import type { TenderMatchResult } from "@/lib/api/types";
 
 interface CompanyData {
@@ -254,6 +255,19 @@ export async function POST(request: NextRequest) {
         console.error(`Failed to analyze tender ${tender.id}:`, error);
       }
     }
+
+    // Log matching completion
+    await logApiEvent(request, {
+      actionType: "matching_completed",
+      userId: user?.id || null,
+      userEmail: user?.email || undefined,
+      entityType: "company",
+      entityId: companyData.id,
+      details: {
+        analyzedCount: results.length,
+        companyName: companyData.company_name,
+      },
+    }).catch(() => {});
 
     return apiResponse({
       message: "Tender analysis completed",

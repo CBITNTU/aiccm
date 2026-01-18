@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { getAuthenticatedUser, createAdminClient, chatCompletion, apiResponse, apiError } from "@/lib/api";
+import { getAuthenticatedUser, createAdminClient, chatCompletion, apiResponse, apiError, parseAIJsonResponse } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,11 +68,24 @@ export async function POST(request: NextRequest) {
 
     // Create AI prompt
     const systemPrompt = `You are an expert at analyzing tenders and identifying required capabilities. 
-Your task is to analyze a tender description and select the most relevant capabilities from a provided list.
+Your task is to analyze a tender description and identify relevant capabilities.
 
-Return ONLY a JSON array of capability names (strings) that are relevant for this tender.
-Be selective - only include capabilities that are clearly needed or highly relevant.
-Return an empty array if no capabilities are clearly relevant.`;
+CRITICAL FORMATTING RULES:
+- Return ONLY valid JSON - nothing else
+- NO comments (// or /* */) anywhere in the response
+- NO explanations or text before or after the JSON
+- NO markdown code blocks (no \`\`\`json\`\`\`)
+- Start with { and end with }
+- Use only double quotes for strings
+
+Return a JSON object with two arrays:
+1. "existing": Array of capability names (strings) from the provided list that are relevant
+2. "new": Array of objects with "name" and "category" for new capabilities not in the list that are needed
+
+Example (copy this exact format, no comments):
+{"existing": ["Capability Name 1", "Capability Name 2"], "new": [{"name": "New Capability", "category": "Category Name"}]}
+
+Be selective - only include capabilities that are clearly needed or highly relevant.`;
 
     // Format budget range
     const budgetRange = tender.budget_min || tender.budget_max
@@ -90,9 +104,12 @@ ${tender.cpv_codes && tender.cpv_codes.length > 0 ? `CPV Codes: ${tender.cpv_cod
 Available Capabilities:
 ${capabilitiesList}
 
-Based on the tender details above, return a JSON array of capability names that are relevant for this tender. 
-Only include capabilities that are clearly needed based on the tender description.
-Return the array in this exact format: ["Capability Name 1", "Capability Name 2", ...]`;
+Based on the tender details above, return ONLY a valid JSON object (no comments, no explanations, no markdown) with:
+- "existing": Array of capability names from the provided list that match
+- "new": Array of new capabilities with "name" and "category" if the tender requires capabilities not in the list
+
+Example format:
+{"existing": ["Construction", "Project Management"], "new": [{"name": "Bridge Engineering", "category": "Construction"}]}`;
 
     // Call OpenAI
     const response = await chatCompletion(systemPrompt, userPrompt, {
@@ -102,20 +119,67 @@ Return the array in this exact format: ["Capability Name 1", "Capability Name 2"
     });
 
     // Parse AI response
-    let suggestedCapabilityNames: string[] = [];
+    let existingCapabilityNames: string[] = [];
+    let newCapabilities: Array<{ name: string; category: string }> = [];
+    
     try {
-      // Try to extract JSON array from response
-      const jsonMatch = response.match(/\[[\s\S]*?\]/);
-      if (jsonMatch) {
-        suggestedCapabilityNames = JSON.parse(jsonMatch[0]);
-      }
+      // Use parseAIJsonResponse to handle comments
+      const parsed = parseAIJsonResponse<{ existing?: string[]; new?: Array<{ name: string; category: string }> }>(response);
+      existingCapabilityNames = Array.isArray(parsed.existing) ? parsed.existing : [];
+      newCapabilities = Array.isArray(parsed.new) ? parsed.new : [];
     } catch (e) {
       console.error("Failed to parse AI response:", e);
-      // Return empty array if parsing fails
+      // Fallback: try to extract just existing names as array
+      try {
+        const arrayMatch = response.match(/\[[\s\S]*?\]/);
+        if (arrayMatch) {
+          existingCapabilityNames = JSON.parse(arrayMatch[0]);
+        }
+      } catch (e2) {
+        console.error("Failed to parse as array too:", e2);
+      }
     }
 
-    // Map capability names to IDs
-    const suggestedCapabilityIds = suggestedCapabilityNames
+    // Create new capabilities if needed
+    const createdCapabilityIds: string[] = [];
+    for (const newCap of newCapabilities) {
+      if (!newCap.name || !newCap.category) continue;
+
+      // Check if capability already exists (case-insensitive)
+      const existing = capabilities.find(
+        (c) => c.name.toLowerCase() === newCap.name.toLowerCase()
+      );
+
+      if (existing) {
+        // Use existing capability - add to existing list if not already there
+        if (!existingCapabilityNames.find(n => n.toLowerCase() === existing.name.toLowerCase())) {
+          existingCapabilityNames.push(existing.name);
+        }
+      } else {
+        // Create new capability
+        const { data: created, error: createError } = await adminSupabase
+          .from("company_capabilities_ref")
+          .insert({
+            name: newCap.name,
+            category: newCap.category,
+            // New capabilities are created without is_active dependency
+          })
+          .select("id")
+          .single();
+
+        if (!createError && created) {
+          const newId = (created as unknown as { id: string }).id;
+          createdCapabilityIds.push(newId);
+          // Also add to existing list so it gets returned
+          existingCapabilityNames.push(newCap.name);
+        } else {
+          console.error("Failed to create new capability:", createError);
+        }
+      }
+    }
+
+    // Map capability names to IDs (for existing capabilities)
+    const suggestedCapabilityIds = existingCapabilityNames
       .map((name) => {
         const cap = capabilities.find(
           (c) => c.name.toLowerCase() === name.toLowerCase()
@@ -124,10 +188,27 @@ Return the array in this exact format: ["Capability Name 1", "Capability Name 2"
       })
       .filter((id): id is string => id !== undefined);
 
+    // Combine existing and newly created IDs
+    const allCapabilityIds = [...suggestedCapabilityIds, ...createdCapabilityIds];
+
+    // Log capability suggestion event
+    await logApiEvent(request, {
+      actionType: "tender_viewed", // User is viewing/analyzing tender
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "tender",
+      entityId: tenderId,
+      details: {
+        suggestedCapabilitiesCount: suggestedCapabilityIds.length,
+        totalCapabilities: capabilities.length,
+      },
+    }).catch(() => {}); // Don't fail if logging fails
+
     return apiResponse({
-      suggestedCapabilityIds,
-      suggestedCapabilityNames,
-      totalCapabilities: capabilities.length,
+      suggestedCapabilityIds: allCapabilityIds,
+      suggestedCapabilityNames: existingCapabilityNames,
+      newCapabilitiesCreated: newCapabilities.length,
+      totalCapabilities: capabilities.length + createdCapabilityIds.length,
     });
   } catch (error) {
     console.error("Error suggesting capabilities:", error);

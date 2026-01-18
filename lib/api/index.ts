@@ -129,7 +129,7 @@ export async function chatCompletion(
   return response.choices[0]?.message?.content || "";
 }
 
-// Parse JSON from AI response (handles markdown code blocks)
+// Parse JSON from AI response (handles markdown code blocks and comments)
 export function parseAIJsonResponse<T>(content: string): T {
   let cleanContent = content.trim();
 
@@ -145,5 +145,134 @@ export function parseAIJsonResponse<T>(content: string): T {
     }
   }
 
-  return JSON.parse(cleanContent);
+  // Strip comments (// and /* */) from JSON before parsing
+  // Use a state machine to properly handle strings and comments
+  
+  // First, remove multi-line comments (/* ... */) - these are easier to handle
+  cleanContent = cleanContent.replace(/\/\*[\s\S]*?\*\//g, '');
+  
+  // Then remove single-line comments (// ...) but be careful not to remove // inside strings
+  let inString = false;
+  let escapeNext = false;
+  let result = '';
+  let i = 0;
+  
+  while (i < cleanContent.length) {
+    const char = cleanContent[i];
+    const nextChar = i + 1 < cleanContent.length ? cleanContent[i + 1] : null;
+    
+    if (escapeNext) {
+      result += char;
+      escapeNext = false;
+      i++;
+      continue;
+    }
+    
+    if (char === '\\') {
+      escapeNext = true;
+      result += char;
+      i++;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      i++;
+      continue;
+    }
+    
+    // If we see // and we're not in a string, skip to end of line
+    if (!inString && char === '/' && nextChar === '/') {
+      // Skip to end of line (don't include the // or the rest of the line)
+      while (i < cleanContent.length && cleanContent[i] !== '\n' && cleanContent[i] !== '\r') {
+        i++;
+      }
+      // Don't add the newline either - just skip it
+      if (i < cleanContent.length && (cleanContent[i] === '\n' || cleanContent[i] === '\r')) {
+        i++;
+        if (i < cleanContent.length && cleanContent[i] === '\n' && cleanContent[i - 1] === '\r') {
+          i++;
+        }
+      }
+      continue;
+    }
+    
+    result += char;
+    i++;
+  }
+  
+  cleanContent = result.trim();
+  
+  // Clean up any trailing commas before closing braces/brackets
+  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Aggressive fallback: Remove any remaining // comments that might have slipped through
+  // This handles cases where comments appear after commas, colons, or values
+  // We do this by finding // that's not inside quotes (simplified check)
+  let finalResult = '';
+  let inString2 = false;
+  let escapeNext2 = false;
+  
+  for (let j = 0; j < cleanContent.length; j++) {
+    const char = cleanContent[j];
+    const nextChar = j + 1 < cleanContent.length ? cleanContent[j + 1] : null;
+    
+    if (escapeNext2) {
+      finalResult += char;
+      escapeNext2 = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      escapeNext2 = true;
+      finalResult += char;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString2 = !inString2;
+      finalResult += char;
+      continue;
+    }
+    
+    // Skip // comments that aren't in strings
+    if (!inString2 && char === '/' && nextChar === '/') {
+      // Skip to end of line
+      while (j < cleanContent.length && cleanContent[j] !== '\n' && cleanContent[j] !== '\r') {
+        j++;
+      }
+      continue;
+    }
+    
+    finalResult += char;
+  }
+  
+  cleanContent = finalResult.trim();
+  
+  // Final cleanup: remove trailing commas
+  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
+
+  try {
+    return JSON.parse(cleanContent);
+  } catch (error) {
+    // If parsing still fails, log the problematic content for debugging
+    if (error instanceof SyntaxError) {
+      console.error("JSON parsing failed after comment stripping:");
+      console.error("Error:", error.message);
+      console.error("Content (first 500 chars):", cleanContent.substring(0, 500));
+      // Try one more time with aggressive comment removal
+      const aggressiveClean = cleanContent
+        .replace(/\/\/[^\n\r]*/g, '') // Remove any remaining // comments
+        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove any remaining /* */ comments
+        .replace(/,(\s*[}\]])/g, '$1'); // Clean trailing commas
+      try {
+        return JSON.parse(aggressiveClean);
+      } catch (e2) {
+        console.error("Aggressive cleaning also failed");
+        throw error; // Throw original error
+      }
+    }
+    throw error;
+  }
 }

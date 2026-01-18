@@ -57,12 +57,58 @@ export function CompanySelectionStep({
     try {
       setLoading(true);
 
+      console.log(`🔍 Fetching companies with ${selectedCapabilityIds.length} capability ID(s):`, selectedCapabilityIds);
+
+      // First, check if this capability exists in company_capabilities_ref
+      const { data: capabilityCheck } = await supabase
+        .from("company_capabilities_ref")
+        .select("id, name, category")
+        .in("id", selectedCapabilityIds);
+      
+      console.log(`📋 Capability check - Found ${capabilityCheck?.length || 0} capability(ies) in ref table:`, capabilityCheck?.map(c => ({ id: c.id, name: c.name })));
+
+      // Check how many companies have capabilities assigned
+      const { count: totalCompanyCapabilities } = await supabase
+        .from("company_capabilities")
+        .select("*", { count: "exact", head: true });
+      
+      console.log(`📊 Total company-capability links in database: ${totalCompanyCapabilities || 0}`);
+      
+      if ((totalCompanyCapabilities || 0) === 0) {
+        console.warn("⚠️ WARNING: The company_capabilities junction table is empty!");
+        console.warn("⚠️ Companies need to be processed by the AI service to populate capabilities.");
+        console.warn("⚠️ Please run 'Regenerate All Company Capabilities' in the admin panel.");
+      }
+
+      // First, check how many company_capabilities links exist for these capability IDs (without join)
+      const { count: linkCount, error: countError } = await supabase
+        .from("company_capabilities")
+        .select("*", { count: "exact", head: true })
+        .in("capability_id", selectedCapabilityIds);
+      
+      console.log(`🔗 Found ${linkCount || 0} company-capability links for these capability IDs`);
+      
+      // If no links exist for these capability IDs, they might be newly created capabilities
+      // that haven't been assigned to companies yet
+      if ((linkCount || 0) === 0) {
+        console.warn("⚠️ WARNING: No companies have these specific capabilities assigned!");
+        console.warn("⚠️ These capabilities may have been newly created by AI but companies haven't been processed yet.");
+        console.warn("⚠️ Capability IDs:", selectedCapabilityIds);
+        
+        // Let's check if ANY companies have capabilities at all
+        const { count: totalLinks } = await supabase
+          .from("company_capabilities")
+          .select("*", { count: "exact", head: true });
+        console.log(`📊 Total company-capability links in entire database: ${totalLinks || 0}`);
+      }
+
       // Use a join query to avoid URL length issues with large company lists
       // This directly joins company_capabilities with companies
       const { data: companyCapabilitiesData, error: joinError } = await supabase
         .from("company_capabilities")
         .select(`
           company_id,
+          capability_id,
           companies!inner(
             id,
             company_name,
@@ -84,7 +130,19 @@ export function CompanySelectionStep({
         `)
         .in("capability_id", selectedCapabilityIds);
 
-      if (joinError) throw joinError;
+      if (joinError) {
+        console.error("❌ Error fetching companies by capabilities:", joinError);
+        console.error("❌ Join error details:", JSON.stringify(joinError, null, 2));
+        throw joinError;
+      }
+
+      console.log(`📊 Found ${companyCapabilitiesData?.length || 0} company-capability matches after join`);
+      
+      // If we have links but no results after join, RLS might be filtering companies
+      if ((linkCount || 0) > 0 && (companyCapabilitiesData?.length || 0) === 0) {
+        console.warn("⚠️ WARNING: Company-capability links exist but join returned 0 results!");
+        console.warn("⚠️ This suggests RLS policies on 'companies' table are filtering out results.");
+      }
 
       // Deduplicate companies (a company may have multiple matching capabilities)
       // and filter by status
@@ -128,10 +186,11 @@ export function CompanySelectionStep({
         })
       );
 
+      console.log(`✅ Loaded ${companiesWithCapabilities.length} unique companies with matching capabilities`);
       setCompanies(companiesWithCapabilities);
     } catch (error) {
-      console.error("Error fetching companies:", error);
-      toast.error("Failed to load companies");
+      console.error("❌ Error fetching companies:", error);
+      toast.error("Failed to load companies. Make sure companies have been processed and have capabilities assigned.");
     } finally {
       setLoading(false);
     }
@@ -201,10 +260,34 @@ export function CompanySelectionStep({
 
       {filteredCompanies.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            {companies.length === 0
-              ? "No companies found with the selected capabilities."
-              : "No companies match your search."}
+          <CardContent className="py-12 text-center space-y-4">
+            <p className="text-muted-foreground">
+              {companies.length === 0
+                ? "No companies found with the selected capabilities."
+                : "No companies match your search."}
+            </p>
+            {companies.length === 0 && (
+              <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-left max-w-2xl mx-auto">
+                <p className="text-sm text-yellow-900 dark:text-yellow-100 font-medium mb-2">
+                  Why no companies are showing:
+                </p>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
+                  The selected capabilities are not assigned to any companies yet. This can happen when:
+                </p>
+                <ul className="text-sm text-yellow-800 dark:text-yellow-200 list-disc list-inside mb-2 space-y-1">
+                  <li>The AI created new capabilities that companies don't have yet</li>
+                  <li>Companies haven't been processed to have these specific capabilities assigned</li>
+                </ul>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>Solution:</strong> Go back to Step 2 and select capabilities that companies actually have. 
+                  If you're an admin, you can run "Regenerate All Company Capabilities" to process companies, 
+                  but note that newly created capabilities won't be assigned unless companies are manually updated.
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
+                  Tip: The AI should suggest capabilities from companies that already exist, not create brand new ones.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (

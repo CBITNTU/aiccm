@@ -266,6 +266,47 @@ const AdminTaxonomyEditor = () => {
     }
   };
 
+  const handleResetCapabilities = async () => {
+    const confirmReset = window.confirm(
+      "⚠️ WARNING: This will DELETE ALL capabilities and company-capability links!\n\n" +
+      "This action cannot be undone. All companies will have their capabilities cleared.\n\n" +
+      "After reset, you should run 'Regenerate All Company Capabilities' to repopulate.\n\n" +
+      "Are you sure you want to proceed?"
+    );
+
+    if (!confirmReset) return;
+
+    try {
+      setIsRegenerating(true);
+
+      const response = await fetch('/api/admin/reset-capabilities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to reset capabilities");
+      }
+
+      // Refresh the capability list to show base capabilities
+      await fetchCapabilities();
+      
+      toast.success(
+        `✅ Reset complete! Deleted ${data.deletedCapabilities} capabilities and ${data.deletedLinks} links. ` +
+        `Reseeded ${data.reseededCapabilities} base capabilities. You can now run 'Regenerate All Company Capabilities' to assign companies to these capabilities.`
+      );
+    } catch (error) {
+      console.error("Error resetting capabilities:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to reset capabilities"
+      );
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   const handleRegenerateCapabilities = async () => {
     try {
       setIsRegenerating(true);
@@ -273,10 +314,7 @@ const AdminTaxonomyEditor = () => {
       // Clear previous batch ID so progress tracker resets
       setRegenerationBatchId(null);
       
-      // FIRST: Reset capabilities list via API (has admin permissions)
-      // This happens in the API endpoint, but we refresh UI immediately after
-      
-      // THEN: Start regeneration (which will reset capabilities in the API)
+      // Start regeneration (which will reset capabilities in the API if needed)
       const response = await fetch('/api/admin/regenerate-company-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -291,10 +329,12 @@ const AdminTaxonomyEditor = () => {
 
       setRegenerationBatchId(data.batchId);
       
-      // Immediately refresh UI to show reset list (capabilities were reset in API before queuing jobs)
-      await fetchCapabilities();
+      // Refresh UI after a short delay to show reset capabilities
+      setTimeout(() => {
+        fetchCapabilities();
+      }, 2000);
       
-      toast.success(`Capabilities list reset. Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`);
+      toast.success(`Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`);
     } catch (error) {
       console.error("Error regenerating company capabilities:", error);
       toast.error(
@@ -326,6 +366,15 @@ const AdminTaxonomyEditor = () => {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                variant="destructive" 
+                onClick={handleResetCapabilities}
+                disabled={isRegenerating || batch?.status === "processing"}
+                title="Delete ALL capabilities and links. Cannot be undone."
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Reset List
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={handleRegenerateCapabilities}

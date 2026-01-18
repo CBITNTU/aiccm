@@ -92,33 +92,19 @@ export async function POST(request: NextRequest) {
 
     // RESET CAPABILITIES LIST: Delete all capabilities NOT in base categories
     // This happens FIRST before queuing jobs, so the list resets immediately
+    // Using VERY BROAD, SIMPLE categories only - keep it minimal!
     console.log("🔄 Resetting capabilities list to base categories only...");
     const baseCategories = [
-      "Agriculture & Forestry",
-      "Assembly & Fabrication",
-      "Business Processes",
-      "Casting, Moulding, Forming, & Forging",
       "Construction",
-      "Craft and Trade Processes",
-      "Design",
-      "Electrical & Electronics",
-      "Eroding (EDM)",
-      "ICT Process",
-      "Industrial Furnaces",
-      "Machining",
-      "Metal Forming & Press-work",
-      "Printing, Photography & Ink Stamps",
-      "Prototyping",
-      "Quality, Statistics & Measurement",
-      "Renewable Energy",
-      "Renewable Materials",
-      "Research & Development",
       "Services",
-      "Sintering",
-      "Supply Chain",
-      "Surface treatment & coating",
-      "Tooling",
-      "Welding, brazing & soldering",
+      "ICT Process",
+      "Design",
+      "Manufacturing",
+      "Engineering",
+      "Healthcare",
+      "Education",
+      "Logistics",
+      "Energy",
     ];
     
     // Delete all capabilities NOT in base categories

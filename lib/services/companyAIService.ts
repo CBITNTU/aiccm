@@ -365,32 +365,18 @@ export async function generateCompanySummaryAndTaxonomy(
   }
 
   // Define base/generic categories for full regeneration mode
+  // VERY BROAD, SIMPLE categories only - keep it minimal!
   const baseCategories = [
-    "Agriculture & Forestry",
-    "Assembly & Fabrication",
-    "Business Processes",
-    "Casting, Moulding, Forming, & Forging",
     "Construction",
-    "Craft and Trade Processes",
-    "Design",
-    "Electrical & Electronics",
-    "Eroding (EDM)",
-    "ICT Process",
-    "Industrial Furnaces",
-    "Machining",
-    "Metal Forming & Press-work",
-    "Printing, Photography & Ink Stamps",
-    "Prototyping",
-    "Quality, Statistics & Measurement",
-    "Renewable Energy",
-    "Renewable Materials",
-    "Research & Development",
     "Services",
-    "Sintering",
-    "Supply Chain",
-    "Surface treatment & coating",
-    "Tooling",
-    "Welding, brazing & soldering",
+    "ICT Process",
+    "Design",
+    "Manufacturing",
+    "Engineering",
+    "Healthcare",
+    "Education",
+    "Logistics",
+    "Energy",
   ];
 
   // Fetch existing capabilities - show ALL capabilities so AI can see custom categories too
@@ -429,31 +415,41 @@ export async function generateCompanySummaryAndTaxonomy(
 
 ${regenerationMode}
 
-CRITICAL RULES - READ CAREFULLY:
+CRITICAL PRIORITY ORDER - READ CAREFULLY:
+
+PRIORITY 1: ASSIGN TO EXISTING CATEGORIES AND CAPABILITIES
+- FIRST: Review the provided capabilities list carefully
+- ALWAYS try to assign the company to EXISTING categories and subcategories from the list
+- Match company capabilities to existing items - even if the match isn't perfect, use the closest existing item
+- ONLY create new categories/subcategories if absolutely necessary and no logical match exists
+
+PRIORITY 2: IF NO EXISTING MATCH (only then):
+- Create new BROAD archetype categories ONLY if truly needed (e.g., "Healthcare", "Environmental")
+- NEVER create new categories if an existing one could work (e.g., use "Services" category instead of creating "Healthcare Services")
+- Create new capability names that are BROAD and generic, not overly specific
 
 UNDERSTAND THE HIERARCHY:
 - CATEGORIES = BROAD ARCHETYPES (e.g., "Healthcare", "IT", "Environmental", "Construction", "Services")
 - CAPABILITY NAMES = More specific items under a category (e.g., "Software Engineering" under "IT", "Services" under "Healthcare")
 
-CATEGORY RULES (MOST IMPORTANT):
-1. Use existing categories from the provided list when available (e.g., "Services", "Construction", "ICT Process")
-2. You CAN create new BROAD archetype categories if needed (e.g., "Healthcare", "Environmental", "IT") - but ONLY if they're truly broad archetypes
+CATEGORY RULES:
+1. FIRST PRIORITY: Use existing categories from the provided list - ALWAYS check if an existing category fits before creating new ones
+2. SECOND PRIORITY: Only create new BROAD archetype categories if NO existing category is a logical match
 3. NEVER create multiple specific categories for the same archetype:
-   - BAD: "Healthcare Services", "Healthcare Equipment", "Healthcare Logistics" as separate categories
-   - GOOD: "Healthcare" as ONE category with capability names: "Services", "Equipment Supply", "Logistics"
-4. Categories are VERY BROAD archetypes - think industry/sector level, not specific services
+   - BAD: "Healthcare Services", "Healthcare Equipment" as separate categories
+   - GOOD: "Healthcare" as ONE category with capability names: "Services", "Equipment Supply"
 
 CAPABILITY NAME RULES:
-1. ALWAYS prefer EXISTING capabilities from the provided list
-2. When creating new capabilities, keep names BROAD and generic:
+1. FIRST PRIORITY: ALWAYS prefer EXISTING capabilities from the provided list - assign companies to existing items
+2. SECOND PRIORITY: Only create new capabilities if no existing one is a reasonable match
+3. When creating new capabilities, keep names BROAD and generic:
    - GOOD: "Services", "Equipment Supply", "Software Engineering"
    - BAD: "Healthcare Compliance Services", "Healthcare Equipment Supply"
-3. If a company does healthcare work, create capability names like "Services", "Equipment Supply" under the "Healthcare" category
-4. Select 2-5 capabilities - be conservative and use broad names
+4. Select 2-5 capabilities - be conservative and prioritize existing ones
 
-NEVER CREATE:
-- Multiple categories for the same archetype (e.g., don't create both "Healthcare" AND "Healthcare Services" as categories)
-- Overly specific capability names (e.g., "Healthcare Compliance Services" - use "Services" under "Healthcare" category instead)
+NEVER CREATE NEW ITEMS IF:
+- An existing category/capability could reasonably represent the company's capabilities
+- You haven't thoroughly checked the existing list for matches
 
 CRITICAL FORMATTING RULES:
 - Return ONLY valid JSON - nothing else

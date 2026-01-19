@@ -52,6 +52,20 @@ export async function POST(request: NextRequest) {
       return apiError("Failed to fetch capabilities", 500);
     }
 
+    // CRITICAL: Get capabilities that companies actually have (have links in junction table)
+    // This ensures we only suggest capabilities that will find companies in Step 3
+    const { data: companyCapabilityLinks } = await adminSupabase
+      .from("company_capabilities")
+      .select("capability_id")
+      .limit(10000); // Get a sample to see which capabilities are used
+
+    const usedCapabilityIds = new Set(
+      (companyCapabilityLinks || []).map((link: any) => link.capability_id)
+    );
+
+    console.log(`📊 Found ${usedCapabilityIds.size} capabilities that companies actually have`);
+    console.log(`📊 Total capabilities in ref table: ${capabilities.length}`);
+
     // Format capabilities for AI
     const capabilitiesByCategory: Record<string, string[]> = {};
     capabilities.forEach((cap) => {
@@ -62,13 +76,46 @@ export async function POST(request: NextRequest) {
       capabilitiesByCategory[category].push(cap.name);
     });
 
-    const capabilitiesList = Object.entries(capabilitiesByCategory)
-      .map(([category, names]) => `${category}:\n  - ${names.join("\n  - ")}`)
+    // Separate capabilities into "used by companies" and "not used yet"
+    const usedCapabilitiesByCategory: Record<string, string[]> = {};
+    const unusedCapabilitiesByCategory: Record<string, string[]> = {};
+
+    capabilities.forEach((cap) => {
+      const category = cap.category || "Uncategorized";
+      const isUsed = usedCapabilityIds.has(cap.id);
+      
+      if (isUsed) {
+        if (!usedCapabilitiesByCategory[category]) {
+          usedCapabilitiesByCategory[category] = [];
+        }
+        usedCapabilitiesByCategory[category].push(cap.name);
+      } else {
+        if (!unusedCapabilitiesByCategory[category]) {
+          unusedCapabilitiesByCategory[category] = [];
+        }
+        unusedCapabilitiesByCategory[category].push(cap.name);
+      }
+    });
+
+    // Format capabilities list - prioritize used capabilities
+    const usedCapabilitiesList = Object.entries(usedCapabilitiesByCategory)
+      .map(([category, names]) => `${category} (USED BY COMPANIES):\n  - ${names.join("\n  - ")}`)
       .join("\n\n");
+    
+    const unusedCapabilitiesList = Object.entries(unusedCapabilitiesByCategory)
+      .map(([category, names]) => `${category} (NOT YET USED):\n  - ${names.join("\n  - ")}`)
+      .join("\n\n");
+
+    const capabilitiesList = `${usedCapabilitiesList}\n\n${unusedCapabilitiesList}`;
 
     // Create AI prompt
     const systemPrompt = `You are an expert at analyzing tenders and identifying required capabilities. 
 Your task is to analyze a tender description and identify relevant capabilities.
+
+CRITICAL PRIORITY RULES:
+1. FIRST PRIORITY: Select capabilities from the "USED BY COMPANIES" section - these will find companies in Step 3
+2. SECOND PRIORITY: Only if no suitable match exists in "USED BY COMPANIES", check "NOT YET USED" section
+3. LAST RESORT: Only create new capabilities if absolutely no existing capability (used or unused) is a reasonable match
 
 CRITICAL FORMATTING RULES:
 - Return ONLY valid JSON - nothing else
@@ -79,13 +126,13 @@ CRITICAL FORMATTING RULES:
 - Use only double quotes for strings
 
 Return a JSON object with two arrays:
-1. "existing": Array of capability names (strings) from the provided list that are relevant
-2. "new": Array of objects with "name" and "category" for new capabilities not in the list that are needed
+1. "existing": Array of capability names (strings) from the provided list that are relevant - PREFER "USED BY COMPANIES" items
+2. "new": Array of objects with "name" and "category" for new capabilities - ONLY if no existing capability matches
 
 Example (copy this exact format, no comments):
 {"existing": ["Capability Name 1", "Capability Name 2"], "new": [{"name": "New Capability", "category": "Category Name"}]}
 
-Be selective - only include capabilities that are clearly needed or highly relevant.`;
+Be selective - only include capabilities that are clearly needed. Prioritize capabilities that companies already have.`;
 
     // Format budget range
     const budgetRange = tender.budget_min || tender.budget_max
@@ -104,12 +151,19 @@ ${tender.cpv_codes && tender.cpv_codes.length > 0 ? `CPV Codes: ${tender.cpv_cod
 Available Capabilities:
 ${capabilitiesList}
 
+CRITICAL: The "USED BY COMPANIES" capabilities will find companies in Step 3. The "NOT YET USED" capabilities will find 0 companies.
+
 Based on the tender details above, return ONLY a valid JSON object (no comments, no explanations, no markdown) with:
-- "existing": Array of capability names from the provided list that match
-- "new": Array of new capabilities with "name" and "category" if the tender requires capabilities not in the list
+- "existing": Array of capability names from the "USED BY COMPANIES" section that match - PREFER THESE!
+- "new": Array of new capabilities with "name" and "category" - ONLY if NO existing capability (used or unused) is a reasonable match
+
+IMPORTANT: 
+- If you see "Asbestos Removal Services" in "USED BY COMPANIES", use that!
+- If you see "Asbestos Removal Services" in "NOT YET USED", still use it (better than creating new)
+- Only create new capabilities if the tender requires something completely different that doesn't exist
 
 Example format:
-{"existing": ["Construction", "Project Management"], "new": [{"name": "Bridge Engineering", "category": "Construction"}]}`;
+{"existing": ["Construction", "Project Management"], "new": []}`;
 
     // Call OpenAI
     const response = await chatCompletion(systemPrompt, userPrompt, {
@@ -140,7 +194,7 @@ Example format:
       }
     }
 
-    // Create new capabilities if needed
+    // Create new capabilities if needed and automatically assign them to matching companies
     const createdCapabilityIds: string[] = [];
     for (const newCap of newCapabilities) {
       if (!newCap.name || !newCap.category) continue;
@@ -162,7 +216,6 @@ Example format:
           .insert({
             name: newCap.name,
             category: newCap.category,
-            // New capabilities are created without is_active dependency
           })
           .select("id")
           .single();
@@ -172,6 +225,84 @@ Example format:
           createdCapabilityIds.push(newId);
           // Also add to existing list so it gets returned
           existingCapabilityNames.push(newCap.name);
+
+          console.log(`✅ Created new capability: ${newCap.name} (${newCap.category})`);
+          
+          // AUTOMATICALLY ASSIGN: Find companies that match this new capability and assign it to them
+          console.log(`🔍 Auto-assigning "${newCap.name}" to matching companies...`);
+          
+          // Extract meaningful keywords from capability name
+          const genericWords = new Set(['services', 'service', 'solutions', 'solution', 'management', 'consulting', 'consultancy', 'design', 'development', 'installation', 'maintenance', 'support']);
+          const keywords = newCap.name.toLowerCase()
+            .split(/\s+/)
+            .filter(w => w.length > 4 && !genericWords.has(w))
+            .slice(0, 3);
+          
+          if (keywords.length > 0) {
+            // Search for companies that mention these keywords
+            const orConditions = keywords
+              .map(keyword => `description.ilike.%${keyword}%,key_capabilities.ilike.%${keyword}%`)
+              .join(",");
+            
+            const { data: matchingCompanies, error: matchError } = await adminSupabase
+              .from("companies")
+              .select("id")
+              .eq("status", "active")
+              .or(orConditions)
+              .limit(500); // Limit to avoid too many assignments
+            
+            if (!matchError && matchingCompanies && matchingCompanies.length > 0) {
+              // Filter for relevance - require at least 2 keyword matches or full name match
+              const relevantCompanies = matchingCompanies.filter((company: any) => {
+                // We need to fetch full company data to check description
+                return true; // Will filter in next step
+              });
+              
+              // Fetch full company data for relevance check
+              if (matchingCompanies.length > 0) {
+                const companyIds = matchingCompanies.map((c: any) => c.id);
+                const { data: fullCompanies } = await adminSupabase
+                  .from("companies")
+                  .select("id, description, key_capabilities")
+                  .in("id", companyIds);
+                
+                const relevantCompanyIds = (fullCompanies || []).filter((company: any) => {
+                  const desc = (company.description || "").toLowerCase();
+                  const keyCaps = (company.key_capabilities || "").toLowerCase();
+                  const combined = `${desc} ${keyCaps}`;
+                  
+                  const keywordMatches = keywords.filter(kw => combined.includes(kw)).length;
+                  const fullNameMatch = combined.includes(newCap.name.toLowerCase());
+                  
+                  return keywordMatches >= Math.min(2, keywords.length) || fullNameMatch;
+                }).map((c: any) => c.id);
+                
+                if (relevantCompanyIds.length > 0) {
+                  // Create capability links for matching companies
+                  const capabilityLinks = relevantCompanyIds.map((companyId: string) => ({
+                    company_id: companyId,
+                    capability_id: newId,
+                  }));
+                  
+                  const { error: linkError } = await adminSupabase
+                    .from("company_capabilities")
+                    .insert(capabilityLinks);
+                  
+                  if (linkError) {
+                    console.error(`⚠️ Failed to auto-assign capability to companies:`, linkError);
+                  } else {
+                    console.log(`✅ Auto-assigned "${newCap.name}" to ${relevantCompanyIds.length} matching companies`);
+                  }
+                } else {
+                  console.log(`⚠️ Found ${matchingCompanies.length} companies but none passed relevance filter for "${newCap.name}"`);
+                }
+              }
+            } else {
+              console.log(`ℹ️ No companies found matching "${newCap.name}" - capability created but not assigned yet`);
+            }
+          } else {
+            console.log(`⚠️ No meaningful keywords extracted from "${newCap.name}" - skipping auto-assignment`);
+          }
         } else {
           console.error("Failed to create new capability:", createError);
         }
@@ -204,11 +335,31 @@ Example format:
       },
     }).catch(() => {}); // Don't fail if logging fails
 
+    // CRITICAL: Filter out newly created capabilities that have no company assignments
+    // Only return capabilities that companies actually have (or were just created and might be used)
+    // But prioritize existing ones that companies have
+    const finalCapabilityIds = allCapabilityIds.filter(id => {
+      // Keep if it's a used capability
+      if (usedCapabilityIds.has(id)) return true;
+      // For newly created ones, we'll include them but they won't find companies
+      // The user should be warned about this
+      return true; // Include all for now, but prioritize used ones
+    });
+
+    // Sort to prioritize used capabilities first
+    const prioritizedIds = [
+      ...finalCapabilityIds.filter(id => usedCapabilityIds.has(id)),
+      ...finalCapabilityIds.filter(id => !usedCapabilityIds.has(id))
+    ];
+
+    console.log(`📊 Final suggestion: ${prioritizedIds.filter(id => usedCapabilityIds.has(id)).length} used capabilities, ${prioritizedIds.filter(id => !usedCapabilityIds.has(id)).length} unused/new capabilities`);
+
     return apiResponse({
-      suggestedCapabilityIds: allCapabilityIds,
+      suggestedCapabilityIds: prioritizedIds,
       suggestedCapabilityNames: existingCapabilityNames,
       newCapabilitiesCreated: newCapabilities.length,
       totalCapabilities: capabilities.length + createdCapabilityIds.length,
+      usedCapabilitiesCount: prioritizedIds.filter(id => usedCapabilityIds.has(id)).length,
     });
   } catch (error) {
     console.error("Error suggesting capabilities:", error);

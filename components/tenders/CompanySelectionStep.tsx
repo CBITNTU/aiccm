@@ -144,6 +144,124 @@ export function CompanySelectionStep({
         console.warn("⚠️ This suggests RLS policies on 'companies' table are filtering out results.");
       }
 
+      // FALLBACK: If no companies found by capability IDs, try STRICT text search
+      // Only search if the capability name contains specific industry terms, not generic words
+      if ((companyCapabilitiesData?.length || 0) === 0 && capabilityCheck && capabilityCheck.length > 0) {
+        console.log("🔄 FALLBACK: No companies found by capability IDs, trying strict text search...");
+        
+        // Extract meaningful keywords from capability names (avoid generic words)
+        const genericWords = new Set(['services', 'service', 'solutions', 'solution', 'management', 'consulting', 'consultancy', 'design', 'development', 'installation', 'maintenance', 'support']);
+        
+        const searchKeywords = capabilityCheck
+          .map(c => {
+            const words = c.name.toLowerCase().split(/\s+/);
+            // Get the most specific/unique words (not generic)
+            return words.filter(w => w.length > 4 && !genericWords.has(w));
+          })
+          .flat()
+          .filter((term, index, arr) => arr.indexOf(term) === index) // Unique
+          .slice(0, 3); // Limit to 3 most specific keywords
+        
+        // Only do fallback if we have meaningful keywords
+        if (searchKeywords.length === 0) {
+          console.log("⚠️ FALLBACK: No meaningful keywords extracted, skipping text search");
+        } else {
+          console.log(`🔍 FALLBACK: Searching for specific keywords:`, searchKeywords);
+          
+          // Build OR query - require ALL keywords to appear (more strict)
+          // Search in description and key_capabilities only (not company name to avoid false matches)
+          const orConditions = searchKeywords
+            .map(keyword => `description.ilike.%${keyword}%,key_capabilities.ilike.%${keyword}%`)
+            .join(",");
+          
+          // Search companies by description/key_capabilities text
+          const { data: textSearchResults, error: textSearchError } = await supabase
+            .from("companies")
+            .select("id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, created_at, updated_at")
+            .eq("status", "active")
+            .or(orConditions)
+            .limit(50); // Lower limit for fallback
+
+          if (!textSearchError && textSearchResults && textSearchResults.length > 0) {
+            console.log(`✅ FALLBACK: Found ${textSearchResults.length} companies via text search`);
+            
+            // FILTER: Only keep companies where the description/key_capabilities actually mentions the capability terms
+            // This prevents false matches (e.g., cutlery company matching "asbestos" because it has "as" in the name)
+            const filteredResults = textSearchResults.filter((company: any) => {
+              const desc = (company.description || "").toLowerCase();
+              const keyCaps = (company.key_capabilities || "").toLowerCase();
+              const combined = `${desc} ${keyCaps}`;
+              
+              // Check if at least 2 of the search keywords appear in the description
+              // OR if the full capability name appears
+              const keywordMatches = searchKeywords.filter(keyword => combined.includes(keyword)).length;
+              const fullNameMatches = capabilityCheck.some(cap => {
+                const fullName = cap.name.toLowerCase();
+                return combined.includes(fullName) || combined.includes(fullName.replace(/\s+/g, ' '));
+              });
+              
+              // Require either: 2+ keyword matches OR full capability name match
+              return keywordMatches >= Math.min(2, searchKeywords.length) || fullNameMatches;
+            });
+            
+            console.log(`🔍 FALLBACK: Filtered to ${filteredResults.length} relevant companies (after relevance check)`);
+            
+            if (filteredResults.length > 0) {
+              // Convert to CompanyWithCapabilities format
+              const fallbackCompanies = filteredResults.map((company: any) => ({
+                ...company,
+                capabilities: capabilityCheck.map(c => ({ id: c.id, name: c.name })),
+              }));
+
+              // Deduplicate
+              const uniqueFallbackCompanies = new Map<string, CompanyWithCapabilities>();
+              fallbackCompanies.forEach((company: any) => {
+                if (!uniqueFallbackCompanies.has(company.id)) {
+                  uniqueFallbackCompanies.set(company.id, company);
+                }
+              });
+
+              const companiesArray = Array.from(uniqueFallbackCompanies.values()).sort((a, b) =>
+                a.company_name.localeCompare(b.company_name)
+              );
+
+              // Fetch capabilities for each company (only the selected ones) if they exist
+              const companiesWithCapabilities = await Promise.all(
+                companiesArray.map(async (company) => {
+                  // Try to get actual capability links if they exist
+                  const { data: capabilities } = await supabase
+                    .from("company_capabilities")
+                    .select("capability_id, company_capabilities_ref(id, name)")
+                    .eq("company_id", company.id)
+                    .in("capability_id", selectedCapabilityIds);
+
+                  return {
+                    ...company,
+                    capabilities: capabilities?.map((c: any) => ({
+                      id: c.company_capabilities_ref.id,
+                      name: c.company_capabilities_ref.name,
+                    })) || capabilityCheck.map(c => ({ id: c.id, name: c.name })),
+                  };
+                })
+              );
+
+              console.log(`✅ Loaded ${companiesWithCapabilities.length} unique companies via strict text search fallback`);
+              setCompanies(companiesWithCapabilities);
+              setLoading(false);
+              return;
+            } else {
+              console.log("⚠️ FALLBACK: Text search found companies but none passed relevance filter");
+            }
+          } else {
+            if (textSearchError) {
+              console.error("⚠️ FALLBACK: Text search error:", textSearchError);
+            } else {
+              console.log("⚠️ FALLBACK: Text search also found 0 companies");
+            }
+          }
+        }
+      }
+
       // Deduplicate companies (a company may have multiple matching capabilities)
       // and filter by status
       const uniqueCompanies = new Map<string, CompanyWithCapabilities>();

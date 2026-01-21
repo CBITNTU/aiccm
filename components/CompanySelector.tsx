@@ -94,7 +94,7 @@ export function CompanySelector({
   };
 
   const handleAddCompany = () => {
-    router.push("/onboarding?mode=create");
+    router.push("/my-companies/new");
   };
 
   if (loading) {

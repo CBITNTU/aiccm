@@ -8,7 +8,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 
 // Platform configuration
-const PLATFORM_NAME = process.env.PLATFORM_NAME || "AICCM Platform";
+const PLATFORM_NAME = process.env.PLATFORM_NAME || "TNDRX Platform";
 const PLATFORM_EMAIL_FROM =
   process.env.PLATFORM_EMAIL_FROM || "noreply@contact.tndrx.com";
 const PLATFORM_URL = process.env.PLATFORM_URL ? process.env.PLATFORM_URL : 'http://localhost:3000';

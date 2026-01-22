@@ -133,7 +133,7 @@ function SidebarContent({
           {(!isCollapsed || isMobile) && (
             <div className="overflow-hidden">
               <h1 className="text-lg font-bold text-primary leading-tight">
-                CCM
+                TNDRX
               </h1>
             </div>
           )}
@@ -263,7 +263,7 @@ function SidebarContent({
 
 export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { user, signOut, isPendingApproval, isOnboarding } = useAuth();
+  const { user, signOut, isPendingApproval, isOnboarding, profile } = useAuth();
   const { isAdmin } = useUserRole();
   const pathname = usePathname();
 
@@ -273,7 +273,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   // Load collapsed state from localStorage
   useEffect(() => {
     const stored = localStorage.getItem("sidenav-collapsed");
-    if (stored !== null) {
+    if (stored !== null) { 
       setIsCollapsed(stored === "true");
     }
   }, []);
@@ -309,9 +309,9 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const handleNavClick = () => {
     onMobileOpenChange(false);
   };
-
+  
   // Get user display info
-  const userDisplayName = user?.email?.split("@")[0] || "User";
+  const userDisplayName = profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : user?.email?.split("@")[0] || "User";
   const userEmail = user?.email || "";
   const userInitials = userDisplayName.slice(0, 2).toUpperCase();
 

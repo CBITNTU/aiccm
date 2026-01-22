@@ -20,6 +20,14 @@ export interface MatchingFiltersState {
   quickFilter?: string | null;
 }
 
+const DEFAULT_FILTERS: MatchingFiltersState = {
+  sortBy: "overall_score",
+  sortDirection: "desc",
+  minScore: 0,
+  maxScore: 100,
+  showApplied: "all",
+};
+
 interface MatchingResult {
   id: string;
   tender_id: string;
@@ -57,13 +65,7 @@ interface TenderMatchingProps {
 
 export function TenderMatching({
   companyId,
-  filters = {
-    sortBy: "overall_score",
-    sortDirection: "desc",
-    minScore: 0,
-    maxScore: 100,
-    showApplied: "all",
-  },
+  filters: filtersProp,
   onCreateProject,
   readOnly = false,
   onAnalyze,
@@ -80,6 +82,20 @@ export function TenderMatching({
 
   const analyzing = externalAnalyzing ?? internalAnalyzing;
 
+  // Use stable filter reference to prevent infinite re-renders
+  const filters = filtersProp ?? DEFAULT_FILTERS;
+  
+  // Serialize filter values for stable dependency comparison
+  const filtersKey = JSON.stringify([
+    filters.keyword,
+    filters.sortBy,
+    filters.sortDirection,
+    filters.minScore,
+    filters.maxScore,
+    filters.showApplied,
+    filters.quickFilter,
+  ]);
+
   useEffect(() => {
     if (user && companyId) {
       fetchMatchingResults();
@@ -88,7 +104,8 @@ export function TenderMatching({
 
   useEffect(() => {
     applyFiltersAndSorting();
-  }, [matchingResults, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchingResults, filtersKey]);
 
   const applyFiltersAndSorting = () => {
     let filtered = [...matchingResults];

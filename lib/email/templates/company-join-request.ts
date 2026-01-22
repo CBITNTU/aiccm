@@ -2,6 +2,7 @@ import { getPlatformName, getPlatformUrl } from "../index";
 
 export interface CompanyJoinRequestEmailData {
   companyAdminName: string;
+  companyId: string;
   companyName: string;
   requesterName: string;
   requesterEmail: string;
@@ -20,6 +21,7 @@ export function getCompanyJoinRequestEmailHtml(
 ): string {
   const {
     companyAdminName,
+    companyId,
     companyName,
     requesterName,
     requesterEmail,
@@ -27,7 +29,7 @@ export function getCompanyJoinRequestEmailHtml(
     message,
   } = data;
   const platformName = getPlatformName();
-  const membersUrl = getPlatformUrl("/company/members");
+  const membersUrl = getPlatformUrl(`/company/${companyId}?tab=team`);
 
   return `
 <!DOCTYPE html>

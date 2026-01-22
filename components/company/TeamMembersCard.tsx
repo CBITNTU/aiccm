@@ -307,21 +307,28 @@ export function TeamMembersCard({
                 ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() || "Unknown"
                 : "Unknown";
               const isAdmin = member.role === "admin";
+              const isPendingPlatformApproval = member.status === "pending_platform_approval";
 
               return (
                 <div
                   key={member.id}
                   className="flex items-center gap-2 text-sm"
                 >
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                    {isAdmin ? (
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isPendingPlatformApproval ? "bg-yellow-100" : "bg-primary/10"}`}>
+                    {isPendingPlatformApproval ? (
+                      <Clock className="w-3 h-3 text-yellow-600" />
+                    ) : isAdmin ? (
                       <Shield className="w-3 h-3 text-primary" />
                     ) : (
                       <Users className="w-3 h-3 text-muted-foreground" />
                     )}
                   </div>
                   <span className="truncate">{userName}</span>
-                  {isAdmin && (
+                  {isPendingPlatformApproval ? (
+                    <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                      Pending
+                    </Badge>
+                  ) : isAdmin && (
                     <Badge variant="secondary" className="text-xs">
                       Admin
                     </Badge>
@@ -473,26 +480,34 @@ export function TeamMembersCard({
                     : "Unknown";
                   const isAdmin = member.role === "admin";
                   const isSelf = currentUserId === member.user_id;
+                  const isPendingPlatformApproval = member.status === "pending_platform_approval";
                   const adminCount = members.filter((m) => m.role === "admin").length;
-                  const canRemove = isSmeOwner && !isSelf && !(isAdmin && adminCount === 1);
+                  const canRemove = isSmeOwner && !isSelf && !isPendingPlatformApproval && !(isAdmin && adminCount === 1);
 
                   return (
                     <div
                       key={member.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className={`flex items-center justify-between p-3 border rounded-lg ${isPendingPlatformApproval ? "bg-muted/30" : ""}`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          {isAdmin ? (
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPendingPlatformApproval ? "bg-yellow-100" : "bg-primary/10"}`}>
+                          {isPendingPlatformApproval ? (
+                            <Clock className="w-4 h-4 text-yellow-600" />
+                          ) : isAdmin ? (
                             <Shield className="w-4 h-4 text-primary" />
                           ) : (
                             <Users className="w-4 h-4 text-muted-foreground" />
                           )}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">{userName}</span>
-                            {isAdmin && (
+                            {isPendingPlatformApproval && (
+                              <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                                Pending Platform Approval
+                              </Badge>
+                            )}
+                            {isAdmin && !isPendingPlatformApproval && (
                               <Badge className="bg-primary/10 text-primary text-xs">
                                 Admin
                               </Badge>
@@ -510,7 +525,7 @@ export function TeamMembersCard({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">
-                          Joined {formatDate(member.created_at)}
+                          {isPendingPlatformApproval ? "Requested" : "Joined"} {formatDate(member.created_at)}
                         </span>
                         {canRemove && (
                           <Button

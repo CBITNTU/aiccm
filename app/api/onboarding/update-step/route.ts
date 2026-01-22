@@ -379,6 +379,7 @@ export async function POST(request: NextRequest) {
               if (admin.email) {
                 const emailData = {
                   companyAdminName: `${admin.first_name || ""} ${admin.last_name || ""}`.trim() || "Admin",
+                  companyId: joinData.companyId,
                   companyName: company.company_name,
                   requesterName: userName,
                   requesterEmail: user.email || "",

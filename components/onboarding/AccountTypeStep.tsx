@@ -56,7 +56,7 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
     <div className="w-full max-w-2xl mx-auto">
       <Card className="card-professional">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">How would you like to use AICCM?</CardTitle>
+          <CardTitle className="text-2xl">How would you like to use TNDRX?</CardTitle>
           <p className="text-muted-foreground mt-2">
             Choose the option that best describes your needs
           </p>

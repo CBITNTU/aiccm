@@ -223,6 +223,18 @@ export async function POST(request: NextRequest) {
             return apiError("Company name is required", 400);
           }
 
+          // Require at least website URL
+          if (!createData.websiteUrl || !createData.websiteUrl.trim()) {
+            return apiError("Website URL is required. Please provide at least a website for your company.", 400);
+          }
+
+          // Basic URL validation
+          const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+          const websiteUrl = createData.websiteUrl.trim();
+          if (!urlPattern.test(websiteUrl) && !websiteUrl.startsWith("http://") && !websiteUrl.startsWith("https://")) {
+            return apiError("Please enter a valid website URL (e.g., example.com or https://example.com)", 400);
+          }
+
           const { data: company, error: companyError } = await adminClient
             .from("companies")
             .insert({

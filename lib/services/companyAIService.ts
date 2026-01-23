@@ -102,39 +102,7 @@ export async function generateCompanyCapabilityTaxonomy(
     throw new Error(`Failed to fetch company: ${error?.message || "Company not found"}`);
   }
 
-  // Define base/generic categories for full regeneration mode
-  // These are the top-level, generic categories that should be used as starting point
-  // IMPORTANT: Keep this comprehensive to match the actual categories in the database
-  const baseCategories = [
-    "Agriculture & Forestry",
-    "Assembly & Fabrication",
-    "Business Processes",
-    "Casting, Moulding, Forming, & Forging",
-    "Construction",
-    "Craft and Trade Processes",
-    "Design",
-    "Electrical & Electronics",
-    "Eroding (EDM)",
-    "ICT Process",
-    "Industrial Furnaces",
-    "Machining",
-    "Metal Forming & Press-work",
-    "Printing, Photography & Ink Stamps",
-    "Prototyping",
-    "Quality, Statistics & Measurement",
-    "Renewable Energy",
-    "Renewable Materials",
-    "Research & Development",
-    "Services",
-    "Sintering",
-    "Supply Chain",
-    "Surface treatment & coating",
-    "Tooling",
-    "Welding, brazing & soldering",
-  ];
-
-  // Fetch existing capabilities - show ALL capabilities so AI can see custom categories too
-  // This prevents the AI from creating duplicate categories that already exist
+  // Fetch existing capabilities from static list
   const { data: existingCapabilities, error: capsError } = await supabase
     .from("company_capabilities_ref")
     .select("id, name, category")
@@ -161,36 +129,15 @@ export async function generateCompanyCapabilityTaxonomy(
     )
     .join("\n\n");
 
-  const regenerationMode = fullRegeneration 
-    ? "FULL REGENERATION MODE: Prefer existing capabilities from the provided list. You CAN create new BROAD archetype categories (e.g., 'Healthcare', 'Environmental') if they don't exist, but NEVER create multiple specific categories for the same archetype. Keep capability names broad and generic."
-    : "INCREMENTAL MODE: Review the company's current capabilities and make additions/removals as needed. You can use any capability from the full list and create new broad categories when needed.";
-
   const systemPrompt = `You are an expert at analyzing companies and identifying their capabilities.
-Your task is to analyze a company profile and identify relevant capabilities.
+Your task is to analyze a company profile and identify relevant capabilities from the STATIC list provided.
 
-${regenerationMode}
-
-CRITICAL RULES - READ CAREFULLY:
-
-UNDERSTAND THE HIERARCHY:
-- CATEGORIES = BROAD ARCHETYPES (e.g., "Healthcare", "IT", "Environmental", "Construction", "Services")
-- CAPABILITY NAMES = More specific items under a category (e.g., "Software Engineering" under "IT", "Services" under "Healthcare")
-
-CATEGORY RULES (MOST IMPORTANT):
-1. Use existing categories from the provided list when available (e.g., "Services", "Construction", "ICT Process")
-2. You CAN create new BROAD archetype categories if needed (e.g., "Healthcare", "Environmental", "IT") - but ONLY if they're truly broad archetypes
-3. NEVER create multiple specific categories for the same archetype:
-   - BAD: "Healthcare Services", "Healthcare Equipment", "Healthcare Logistics" as separate categories
-   - GOOD: "Healthcare" as ONE category with capability names: "Services", "Equipment Supply", "Logistics"
-4. Categories are VERY BROAD archetypes - think industry/sector level, not specific services
-
-CAPABILITY NAME RULES:
-1. ALWAYS prefer EXISTING capabilities from the provided list
-2. When creating new capabilities, keep names BROAD and generic:
-   - GOOD: "Services", "Equipment Supply", "Software Engineering"
-   - BAD: "Healthcare Compliance Services", "Healthcare Equipment Supply"
-3. If a company does healthcare work, create capability names like "Services", "Equipment Supply" under the "Healthcare" category
-4. Select 2-5 capabilities - be conservative and use broad names
+CRITICAL RULES - STATIC CAPABILITIES LIST:
+- ONLY assign capabilities from the provided STATIC list - DO NOT create new capabilities
+- Review the provided capabilities list carefully and match the company to existing items
+- Even if the match isn't perfect, use the closest existing capability from the list
+- The list is static - no new categories or capabilities can be created
+- Select 2-5 capabilities that best match the company
 
 CRITICAL FORMATTING RULES:
 - Return ONLY valid JSON - nothing else
@@ -199,14 +146,13 @@ CRITICAL FORMATTING RULES:
 - NO markdown code blocks (no \`\`\`json\`\`\`)
 - Start with { and end with }
 - Use only double quotes for strings
-- Do NOT add comments after values like "id", // comment
+- Do NOT add comments after values
 
-Return a JSON object with two arrays:
-1. "existing": Array of capability IDs (strings) from the provided list that accurately represent the company
-2. "new": Array of objects with "name" and "category" for new capabilities not in the list
+Return a JSON object with one array:
+- "existing": Array of capability IDs (strings) from the provided STATIC list that accurately represent the company
 
 Example (copy this exact format, no comments):
-{"existing": ["capability-id-1", "capability-id-2"], "new": [{"name": "New Capability", "category": "Category Name"}]}
+{"existing": ["capability-id-1", "capability-id-2"]}
 
 Be accurate and comprehensive - include all capabilities the company clearly has.`;
 
@@ -218,10 +164,10 @@ ${company.certifications ? `Certifications: ${company.certifications}` : ""}
 ${company.equipment ? `Equipment: ${company.equipment}` : ""}
 ${company.past_projects ? `Past Projects: ${company.past_projects}` : ""}
 
-Available Capabilities:
+Available Capabilities (STATIC LIST - DO NOT CREATE NEW ONES):
 ${capabilitiesList}
 
-Analyze this company and return ONLY a valid JSON object (no comments, no explanations, no markdown) with relevant capability IDs and any new capabilities needed.`;
+Analyze this company and return ONLY a valid JSON object (no comments, no explanations, no markdown) with relevant capability IDs from the STATIC list only.`;
 
   // Call OpenAI with rate limiting
   const response = await runLLM(
@@ -236,16 +182,14 @@ Analyze this company and return ONLY a valid JSON object (no comments, no explan
     3000 // Estimated tokens
   );
 
-  // Parse AI response
+  // Parse AI response - only existing capabilities, no new ones
   let existingIds: string[] = [];
-  let newCapabilities: Array<{ name: string; category: string }> = [];
 
   try {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
-      newCapabilities = Array.isArray(parsed.new) ? parsed.new : [];
     }
   } catch (e) {
     console.error("Failed to parse AI response for capabilities:", e);
@@ -256,43 +200,8 @@ Analyze this company and return ONLY a valid JSON object (no comments, no explan
     }
   }
 
-  // Create new capabilities and remove duplicates
-  const createdIds: string[] = [];
-  for (const newCap of newCapabilities) {
-    if (!newCap.name || !newCap.category) continue;
-
-    // Check if capability already exists (case-insensitive)
-    const existing = existingCapabilities.find(
-      (c) => c.name.toLowerCase() === newCap.name.toLowerCase()
-    );
-
-    if (existing) {
-      // Use existing capability
-      if (!existingIds.includes(existing.id)) {
-        existingIds.push(existing.id);
-      }
-    } else {
-      // Create new capability
-      const { data: created, error: createError } = await supabase
-        .from("company_capabilities_ref")
-        .insert({
-          name: newCap.name,
-          category: newCap.category,
-        })
-        .select("id")
-        .single();
-
-      if (!createError && created) {
-        createdIds.push((created as unknown as { id: string }).id);
-      }
-    }
-  }
-
-  // Combine existing and newly created IDs
-  const allCapabilityIds = [...existingIds, ...createdIds];
-
-  // Remove duplicates
-  const uniqueIds = Array.from(new Set(allCapabilityIds));
+  // Only use existing capabilities from static list
+  const uniqueIds = Array.from(new Set(existingIds));
 
   // Store taxonomy in database
   const { error: updateError } = await (supabase
@@ -364,23 +273,7 @@ export async function generateCompanySummaryAndTaxonomy(
     throw new Error(`Failed to fetch company: ${error?.message || "Company not found"}`);
   }
 
-  // Define base/generic categories for full regeneration mode
-  // VERY BROAD, SIMPLE categories only - keep it minimal!
-  const baseCategories = [
-    "Construction",
-    "Services",
-    "ICT Process",
-    "Design",
-    "Manufacturing",
-    "Engineering",
-    "Healthcare",
-    "Education",
-    "Logistics",
-    "Energy",
-  ];
-
-  // Fetch existing capabilities - show ALL capabilities so AI can see custom categories too
-  // This prevents the AI from creating duplicate categories that already exist
+  // Fetch existing capabilities from static list
   const { data: existingCapabilities, error: capsError } = await supabase
     .from("company_capabilities_ref")
     .select("id, name, category")
@@ -407,49 +300,14 @@ export async function generateCompanySummaryAndTaxonomy(
     )
     .join("\n\n");
 
-  const regenerationMode = fullRegeneration 
-    ? "FULL REGENERATION MODE: Prefer existing capabilities from the provided list. You CAN create new BROAD archetype categories (e.g., 'Healthcare', 'Environmental') if they don't exist, but NEVER create multiple specific categories for the same archetype. Keep capability names broad and generic."
-    : "INCREMENTAL MODE: Review the company's current capabilities and make additions/removals as needed. You can create new broad categories when needed.";
-
   const systemPrompt = `You are an expert at analyzing companies. Generate BOTH a summary AND capability taxonomy in a single response.
 
-${regenerationMode}
-
-CRITICAL PRIORITY ORDER - READ CAREFULLY:
-
-PRIORITY 1: ASSIGN TO EXISTING CATEGORIES AND CAPABILITIES
-- FIRST: Review the provided capabilities list carefully
-- ALWAYS try to assign the company to EXISTING categories and subcategories from the list
-- Match company capabilities to existing items - even if the match isn't perfect, use the closest existing item
-- ONLY create new categories/subcategories if absolutely necessary and no logical match exists
-
-PRIORITY 2: IF NO EXISTING MATCH (only then):
-- Create new BROAD archetype categories ONLY if truly needed (e.g., "Healthcare", "Environmental")
-- NEVER create new categories if an existing one could work (e.g., use "Services" category instead of creating "Healthcare Services")
-- Create new capability names that are BROAD and generic, not overly specific
-
-UNDERSTAND THE HIERARCHY:
-- CATEGORIES = BROAD ARCHETYPES (e.g., "Healthcare", "IT", "Environmental", "Construction", "Services")
-- CAPABILITY NAMES = More specific items under a category (e.g., "Software Engineering" under "IT", "Services" under "Healthcare")
-
-CATEGORY RULES:
-1. FIRST PRIORITY: Use existing categories from the provided list - ALWAYS check if an existing category fits before creating new ones
-2. SECOND PRIORITY: Only create new BROAD archetype categories if NO existing category is a logical match
-3. NEVER create multiple specific categories for the same archetype:
-   - BAD: "Healthcare Services", "Healthcare Equipment" as separate categories
-   - GOOD: "Healthcare" as ONE category with capability names: "Services", "Equipment Supply"
-
-CAPABILITY NAME RULES:
-1. FIRST PRIORITY: ALWAYS prefer EXISTING capabilities from the provided list - assign companies to existing items
-2. SECOND PRIORITY: Only create new capabilities if no existing one is a reasonable match
-3. When creating new capabilities, keep names BROAD and generic:
-   - GOOD: "Services", "Equipment Supply", "Software Engineering"
-   - BAD: "Healthcare Compliance Services", "Healthcare Equipment Supply"
-4. Select 2-5 capabilities - be conservative and prioritize existing ones
-
-NEVER CREATE NEW ITEMS IF:
-- An existing category/capability could reasonably represent the company's capabilities
-- You haven't thoroughly checked the existing list for matches
+CRITICAL RULES - STATIC CAPABILITIES LIST:
+- ONLY assign capabilities from the provided STATIC list - DO NOT create new capabilities
+- Review the provided capabilities list carefully and match the company to existing items
+- Even if the match isn't perfect, use the closest existing capability from the list
+- The list is static - no new categories or capabilities can be created
+- Select 2-5 capabilities that best match the company
 
 CRITICAL FORMATTING RULES:
 - Return ONLY valid JSON - nothing else
@@ -462,11 +320,10 @@ CRITICAL FORMATTING RULES:
 
 Return a JSON object with:
 1. "summary": A concise 200-word professional summary covering core competencies, achievements, certifications, market position, and unique value propositions
-2. "existing": Array of capability IDs (strings) from the provided list
-3. "new": Array of objects with "name" and "category" for new capabilities not in the list
+2. "existing": Array of capability IDs (strings) from the provided STATIC list only
 
 Example (copy this exact format, no comments):
-{"summary": "Company summary text here...", "existing": ["capability-id-1", "capability-id-2"], "new": [{"name": "New Capability", "category": "Category Name"}]}`;
+{"summary": "Company summary text here...", "existing": ["capability-id-1", "capability-id-2"]}`;
 
   const userPrompt = `Company Details:
 Name: ${company.company_name || "N/A"}
@@ -478,13 +335,12 @@ ${company.past_projects ? `Past Projects: ${company.past_projects}` : ""}
 ${company.website_url ? `Website: ${company.website_url}` : ""}
 ${company.postcode ? `Location: ${company.postcode}` : ""}
 
-Available Capabilities:
+Available Capabilities (STATIC LIST - DO NOT CREATE NEW ONES):
 ${capabilitiesList}
 
 Generate a JSON object with:
 - "summary": Professional 200-word company summary
-- "existing": Array of relevant capability IDs from the list above
-- "new": Array of new capabilities (if needed) with "name" and "category"
+- "existing": Array of relevant capability IDs from the STATIC list above only
 
 Return ONLY valid JSON (no comments, no explanations, no markdown).`;
 
@@ -501,16 +357,14 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
     3500 // Estimated tokens for combined request
   );
 
-  // Parse AI response
+  // Parse AI response - only existing capabilities, no new ones
   let summary = "";
   let existingIds: string[] = [];
-  let newCapabilities: Array<{ name: string; category: string }> = [];
 
   try {
     const parsed = JSON.parse(response);
     summary = parsed.summary || "";
     existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
-    newCapabilities = Array.isArray(parsed.new) ? parsed.new : [];
   } catch (e) {
     console.error("Failed to parse AI response for combined summary/taxonomy:", e);
     // Try to extract just summary if JSON parsing fails
@@ -520,39 +374,8 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
     }
   }
 
-  // Create new capabilities if needed
-  const createdIds: string[] = [];
-  for (const newCap of newCapabilities) {
-    if (!newCap.name || !newCap.category) continue;
-
-    const existing = existingCapabilities.find(
-      (c) => c.name.toLowerCase() === newCap.name.toLowerCase()
-    );
-
-    if (existing) {
-      if (!existingIds.includes(existing.id)) {
-        existingIds.push(existing.id);
-      }
-    } else {
-      // Create new capability
-      const { data: created, error: createError } = await supabase
-        .from("company_capabilities_ref")
-        .insert({
-          name: newCap.name,
-          category: newCap.category,
-        })
-        .select("id")
-        .single();
-
-      if (!createError && created) {
-        createdIds.push((created as unknown as { id: string }).id);
-      }
-    }
-  }
-
-  // Combine existing and newly created IDs
-  const allCapabilityIds = [...existingIds, ...createdIds];
-  const uniqueIds = Array.from(new Set(allCapabilityIds));
+  // Only use existing capabilities from static list
+  const uniqueIds = Array.from(new Set(existingIds));
 
   // Store both summary and taxonomy in database
   const { error: updateError } = await (supabase

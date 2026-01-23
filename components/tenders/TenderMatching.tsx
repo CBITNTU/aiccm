@@ -232,8 +232,19 @@ export function TenderMatching({
       return;
     }
 
+    // Prevent multiple simultaneous analyses
+    if (analyzing) {
+      return;
+    }
+
     if (onAnalyze) {
-      onAnalyze();
+      try {
+        await onAnalyze();
+        // Refresh results after external analysis
+        await fetchMatchingResults();
+      } catch (error) {
+        console.error("Error in external analysis handler:", error);
+      }
       return;
     }
 
@@ -244,13 +255,15 @@ export function TenderMatching({
       if (data.up_to_date) {
         toast.success("All tenders are up to date - no new analysis needed");
       } else {
-        toast.success(`Analysis complete! Found ${data.analyzed_count} new matches.`);
+        toast.success(`Analysis complete! Found ${data.analyzed_count || 0} new matches.`);
       }
 
-      fetchMatchingResults();
-    } catch (error) {
+      // Refresh results after analysis
+      await fetchMatchingResults();
+    } catch (error: any) {
       console.error("Error running analysis:", error);
-      toast.error("Failed to run tender analysis. Please try again.");
+      const errorMessage = error?.message || "Failed to run tender analysis. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setInternalAnalyzing(false);
     }

@@ -278,6 +278,22 @@ export function CompanyInfoStep({
       return;
     }
 
+    // Require at least website URL
+    if (!createForm.websiteUrl || !createForm.websiteUrl.trim()) {
+      setError("Website URL is required. Please provide at least a website for your company.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Basic URL validation
+    const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+    const websiteUrl = createForm.websiteUrl.trim();
+    if (!urlPattern.test(websiteUrl) && !websiteUrl.startsWith("http://") && !websiteUrl.startsWith("https://")) {
+      setError("Please enter a valid website URL (e.g., example.com or https://example.com)");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/onboarding/update-step", {
         method: "POST",

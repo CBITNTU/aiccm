@@ -7,6 +7,7 @@ import {
   apiError,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { runLLM } from "@/lib/services/llmLimiter";
 import type { TenderMatchResult } from "@/lib/api/types";
 
 interface CompanyData {
@@ -37,72 +38,172 @@ interface TenderData {
   contact_info: unknown;
 }
 
+/**
+ * AI-based scoring similar to grant-matching's approach
+ * Uses LLM to deeply evaluate company-tender match with weighted criteria
+ */
 async function analyzeTenderMatch(
   company: CompanyData,
   tender: TenderData
 ): Promise<TenderMatchResult> {
+  // Build company profile text (like grant-matching builds researcher profile)
+  const companyProfile = [
+    `Company: ${company.company_name}`,
+    company.description ? `Description: ${company.description}` : '',
+    company.key_capabilities ? `Capabilities: ${company.key_capabilities}` : '',
+    company.past_projects ? `Past Projects: ${company.past_projects}` : '',
+    company.certifications ? `Certifications: ${company.certifications}` : '',
+    company.equipment ? `Equipment: ${company.equipment}` : '',
+    company.postcode || company.location ? `Location: ${company.postcode || company.location}` : '',
+  ].filter(Boolean).join('\n');
+
+  // Build tender information (like grant-matching's grant info)
+  const tenderInfo = [
+    `Title: ${tender.title}`,
+    tender.description ? `Description: ${tender.description}` : '',
+    `Buyer: ${tender.buyer}`,
+    tender.location ? `Location: ${tender.location}` : '',
+    tender.budget_min && tender.budget_max 
+      ? `Budget: £${tender.budget_min.toLocaleString()} - £${tender.budget_max.toLocaleString()}`
+      : tender.budget_min 
+        ? `Budget: £${tender.budget_min.toLocaleString()}+`
+        : tender.budget_max
+          ? `Budget: Up to £${tender.budget_max.toLocaleString()}`
+          : '',
+    tender.deadline ? `Deadline: ${new Date(tender.deadline).toLocaleDateString()}` : '',
+    tender.cpv_codes && tender.cpv_codes.length > 0 ? `CPV Codes: ${tender.cpv_codes.join(', ')}` : '',
+    tender.requirements ? `Requirements: ${JSON.stringify(tender.requirements)}` : '',
+  ].filter(Boolean).join('\n');
+
+  // Use weighted scoring approach like grant-matching
   const prompt = `
-You are an expert in construction tender matching. Analyze how well this company matches this tender opportunity.
+Objective:
+Evaluate the relevance of a tender opportunity to the company's profile by assessing compatibility across critical dimensions. Use a weighted scoring system to quantify alignment.
 
-COMPANY PROFILE:
-- Name: ${company.company_name}
-- Description: ${company.description || "Not provided"}
-- Key Capabilities: ${company.key_capabilities || "Not provided"}
-- Location: ${company.postcode || company.location || "Not provided"}
-- Past Projects: ${company.past_projects || "Not provided"}
-- Certifications: ${company.certifications || "Not provided"}
-- Equipment: ${company.equipment || "Not provided"}
-- Safety Rating: ${company.safety_rating || "Not provided"}
-- Digital Maturity: ${company.digital_maturity || "Not provided"}
+Company Profile:
+${companyProfile}
 
-TENDER OPPORTUNITY:
-- Title: ${tender.title}
-- Description: ${tender.description || "Not provided"}
-- Buyer: ${tender.buyer}
-- Location: ${tender.location || "Not provided"}
-- Budget: ${tender.budget_min && tender.budget_max ? `£${tender.budget_min} - £${tender.budget_max}` : "Not specified"}
-- Deadline: ${tender.deadline || "Not specified"}
-- CPV Codes: ${tender.cpv_codes?.join(", ") || "Not provided"}
-- Requirements: ${JSON.stringify(tender.requirements) || "Not provided"}
+Tender Information:
+${tenderInfo}
 
-Please provide a detailed analysis with scores (0-100) for:
-1. Overall Match Score
-2. Capability Match Score
-3. Experience Match Score
-4. Location Match Score
-5. Certification Match Score
+Evaluation Criteria & Weighting:
+Capability Match (40 points) - Does the company have the required skills, equipment, and experience?
+Experience Match (25 points) - Does the company's past projects demonstrate relevant experience?
+Location Match (15 points) - Geographic proximity and location fit
+Certification Match (20 points) - Does the company have required certifications and qualifications?
 
-Also provide:
-- 3-5 key match reasons
-- 3-5 improvement suggestions
-- A summary of strengths and weaknesses
+Final Scoring & Relevance Classification
+Total Score: [0-100]
 
-Respond in valid JSON format only:
-{
-  "overall_score": number,
-  "capability_score": number,
-  "experience_score": number,
-  "location_score": number,
-  "certification_score": number,
-  "match_reasons": ["reason1", "reason2", ...],
-  "improvement_suggestions": ["suggestion1", "suggestion2", ...],
-  "ai_analysis": {
-    "summary": "Brief summary of the match",
-    "strengths": ["strength1", "strength2", ...],
-    "weaknesses": ["weakness1", "weakness2", ...],
-    "recommendations": ["rec1", "rec2", ...]
+Please evaluate the match strictly and exclusively in the following format (ALL integers, no fractions):
+
+Total Score: [0-100]
+Criteria Scores:
+Capability Match: [0-40]
+Experience Match: [0-25]
+Location Match: [0-15]
+Certification Match: [0-20]
+
+Category Rationales:
+Capability Match: <1–2 sentences>
+Experience Match: <1–2 sentences>
+Location Match: <1–2 sentences>
+Certification Match: <1–2 sentences>
+
+Summary Explanation: <~200 words>
+Alignment Rationale: <~100 words>
+`;
+
+  const systemPrompt = "You are an expert in construction and procurement tender matching. Always respond with valid text in the exact format specified above.";
+
+  try {
+    const estTokens = Math.ceil((prompt.length + companyProfile.length + tenderInfo.length) / 4) + 400;
+    const raw = await runLLM(async () => {
+      const response = await chatCompletion(systemPrompt, prompt, {
+        model: "gpt-4o-mini",
+        temperature: 0.2,
+        maxTokens: 2000,
+      });
+      return response;
+    }, estTokens);
+
+    // Parse the response (similar to grant-matching's parseStrictOutput)
+    const getInt = (label: string, max?: number) => {
+      const rx = new RegExp(`${label}:\\s*(\\d+)`);
+      const m = raw.match(rx);
+      const n = m ? parseInt(m[1], 10) : 0;
+      const clamped = max != null ? Math.min(Math.max(0, n), max) : n;
+      return Number.isFinite(clamped) ? clamped : 0;
+    };
+
+    const total = getInt('Total Score', 100);
+    const capabilityScore = getInt('Capability Match', 40);
+    const experienceScore = getInt('Experience Match', 25);
+    const locationScore = getInt('Location Match', 15);
+    const certificationScore = getInt('Certification Match', 20);
+
+    // Parse rationales
+    const sectionMatch = raw.match(/Category Rationales:\s*([\s\S]*?)\n\s*Summary Explanation:/);
+    const section = sectionMatch ? sectionMatch[1] : '';
+    const grab = (label: string) => {
+      const rx = new RegExp(`${label}:\\s*([\\s\\S]*?)(?:\n|$)`);
+      const m = section.match(rx);
+      return m ? m[1].trim() : '';
+    };
+
+    const summaryMatch = raw.match(/Summary Explanation:\s*([\s\S]*?)\nAlignment Rationale:/);
+    const rationaleMatch = raw.match(/Alignment Rationale:\s*([\s\S]*)$/);
+
+    const matchReasons: string[] = [];
+    const capabilityRationale = grab('Capability Match');
+    const experienceRationale = grab('Experience Match');
+    const locationRationale = grab('Location Match');
+    const certificationRationale = grab('Certification Match');
+
+    if (capabilityScore > 20) matchReasons.push(capabilityRationale || 'Strong capability alignment');
+    if (experienceScore > 12) matchReasons.push(experienceRationale || 'Relevant experience demonstrated');
+    if (locationScore > 7) matchReasons.push(locationRationale || 'Good geographic fit');
+    if (certificationScore > 10) matchReasons.push(certificationRationale || 'Certifications match requirements');
+
+    const improvementSuggestions: string[] = [];
+    if (capabilityScore < 20) improvementSuggestions.push('Enhance capability descriptions to better match tender requirements');
+    if (experienceScore < 12) improvementSuggestions.push('Add more relevant past project examples');
+    if (certificationScore < 10) improvementSuggestions.push('Obtain or highlight relevant certifications');
+
+    return {
+      overall_score: Math.max(0, Math.min(100, total)),
+      capability_score: Math.max(0, Math.min(100, Math.round((capabilityScore / 40) * 100))),
+      experience_score: Math.max(0, Math.min(100, Math.round((experienceScore / 25) * 100))),
+      location_score: Math.max(0, Math.min(100, Math.round((locationScore / 15) * 100))),
+      certification_score: Math.max(0, Math.min(100, Math.round((certificationScore / 20) * 100))),
+      match_reasons: matchReasons.length > 0 ? matchReasons : ['Limited match - review details'],
+      improvement_suggestions: improvementSuggestions.length > 0 ? improvementSuggestions : ['Profile alignment could be improved'],
+      ai_analysis: {
+        summary: summaryMatch ? summaryMatch[1].trim() : 'Match analysis completed',
+        strengths: matchReasons,
+        weaknesses: improvementSuggestions,
+        recommendations: improvementSuggestions.length > 0 ? improvementSuggestions : ['Continue building relevant capabilities'],
+      },
+    };
+  } catch (error) {
+    console.error('Error in AI matching:', error);
+    // Fallback to conservative scores
+    return {
+      overall_score: 30,
+      capability_score: 20,
+      experience_score: 15,
+      location_score: 50,
+      certification_score: 15,
+      match_reasons: ['AI analysis unavailable - manual review recommended'],
+      improvement_suggestions: ['Unable to generate suggestions'],
+      ai_analysis: {
+        summary: 'AI analysis failed - please review manually',
+        strengths: [],
+        weaknesses: ['Analysis unavailable'],
+        recommendations: ['Manual review required'],
+      },
+    };
   }
-}`;
-
-  const systemPrompt =
-    "You are a construction industry expert specializing in tender matching analysis. Always respond with valid JSON only.";
-
-  const response = await chatCompletion(systemPrompt, prompt, {
-    temperature: 0.3,
-    maxTokens: 2000,
-  });
-
-  return parseAIJsonResponse<TenderMatchResult>(response);
 }
 
 export async function POST(request: NextRequest) {
@@ -163,6 +264,22 @@ export async function POST(request: NextRequest) {
 
     const companyData = company as CompanyData;
     console.log("Found company:", companyData.company_name);
+
+    // Fetch company capabilities from junction table
+    const { data: companyCapabilities } = await supabase
+      .from("company_capabilities")
+      .select("company_capabilities_ref(name, category)")
+      .eq("company_id", companyData.id);
+
+    const capabilityNames = (companyCapabilities || [])
+      .map((cc: any) => cc.company_capabilities_ref?.name)
+      .filter(Boolean)
+      .join(" ");
+
+    // Add capabilities to company data for matching
+    if (capabilityNames) {
+      companyData.key_capabilities = (companyData.key_capabilities || "") + " " + capabilityNames;
+    }
 
     // Get open tenders that haven't been analyzed for this company recently (within last 7 days)
     const sevenDaysAgo = new Date();

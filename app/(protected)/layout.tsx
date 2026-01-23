@@ -2,27 +2,32 @@
 
 import { Suspense, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Sidenav } from "@/components/layout/Sidenav";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { EmailVerifiedToast } from "@/components/EmailVerifiedToast";
 
-export default function ProtectedLayout({
+function ProtectedLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/auth");
+      // Build the full current URL to preserve as redirectTo
+      const currentUrl = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "");
+      const encodedRedirectTo = encodeURIComponent(currentUrl);
+      router.push(`/auth?redirectTo=${encodedRedirectTo}`);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname, searchParams]);
 
   if (loading) {
     return (
@@ -65,5 +70,23 @@ export default function ProtectedLayout({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      }
+    >
+      <ProtectedLayoutContent>{children}</ProtectedLayoutContent>
+    </Suspense>
   );
 }

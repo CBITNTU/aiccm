@@ -15,6 +15,8 @@ import { createClient } from "@/lib/supabase/client";
 interface ProfileData {
   approval_status: string | null;
   onboarding_completed_at: string | null;
+  first_name: string | null;
+  last_name: string | null;
 }
 
 interface AuthContextType {
@@ -164,7 +166,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase.from("profiles") as any)
-          .select("approval_status, onboarding_completed_at")
+          .select("approval_status, onboarding_completed_at, first_name, last_name")
           .eq("user_id", user.id)
           .single()
           .abortSignal(abortController.signal);

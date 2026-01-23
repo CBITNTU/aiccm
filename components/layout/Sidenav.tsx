@@ -88,62 +88,32 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
-export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const { user, signOut, isPendingApproval, isOnboarding } = useAuth();
-  const { isAdmin } = useUserRole();
-  const pathname = usePathname();
+interface SidebarContentProps {
+  isMobile?: boolean;
+  isCollapsed: boolean;
+  toggleCollapsed: () => void;
+  filteredNavItems: NavigationItem[];
+  isActiveRoute: (href: string) => boolean;
+  handleNavClick: () => void;
+  handleSignOut: () => void;
+  userDisplayName: string;
+  userEmail: string;
+  userInitials: string;
+}
 
-  // Users are restricted if they're pending approval OR still onboarding
-  const isRestrictedUser = isPendingApproval || isOnboarding;
-
-  // Load collapsed state from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem("sidenav-collapsed");
-    if (stored !== null) {
-      setIsCollapsed(stored === "true");
-    }
-  }, []);
-
-  // Toggle collapsed state
-  const toggleCollapsed = () => {
-    const newState = !isCollapsed;
-    setIsCollapsed(newState);
-    localStorage.setItem("sidenav-collapsed", String(newState));
-  };
-
-  // Filter navigation based on user status
-  const filteredNavItems = navigationItems.filter((item) => {
-    if (item.adminOnly && !isAdmin) return false;
-    // Hide restricted items for both pending and onboarding users
-    if (item.hideForPending && isRestrictedUser) return false;
-    return true;
-  });
-
-  // Check if route is active
-  const isActiveRoute = (href: string) => {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard";
-    }
-    return pathname.startsWith(href);
-  };
-
-  const handleSignOut = async () => {
-    onMobileOpenChange(false);
-    await signOut();
-  };
-
-  const handleNavClick = () => {
-    onMobileOpenChange(false);
-  };
-
-  // Get user display info
-  const userDisplayName = user?.email?.split("@")[0] || "User";
-  const userEmail = user?.email || "";
-  const userInitials = userDisplayName.slice(0, 2).toUpperCase();
-
-  // Sidebar content (shared between desktop and mobile)
-  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+function SidebarContent({
+  isMobile = false,
+  isCollapsed,
+  toggleCollapsed,
+  filteredNavItems,
+  isActiveRoute,
+  handleNavClick,
+  handleSignOut,
+  userDisplayName,
+  userEmail,
+  userInitials,
+}: SidebarContentProps) {
+  return (
     <div className="flex flex-col h-full">
       {/* Logo section */}
       <div
@@ -163,7 +133,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
           {(!isCollapsed || isMobile) && (
             <div className="overflow-hidden">
               <h1 className="text-lg font-bold text-primary leading-tight">
-                CCM
+                TNDRX
               </h1>
             </div>
           )}
@@ -289,6 +259,74 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
       </div>
     </div>
   );
+}
+
+export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, signOut, isPendingApproval, isOnboarding, profile } = useAuth();
+  const { isAdmin } = useUserRole();
+  const pathname = usePathname();
+
+  // Users are restricted if they're pending approval OR still onboarding
+  const isRestrictedUser = isPendingApproval || isOnboarding;
+
+  // Load collapsed state from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem("sidenav-collapsed");
+    if (stored !== null) { 
+      setIsCollapsed(stored === "true");
+    }
+  }, []);
+
+  // Toggle collapsed state
+  const toggleCollapsed = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem("sidenav-collapsed", String(newState));
+  };
+
+  // Filter navigation based on user status
+  const filteredNavItems = navigationItems.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
+    // Hide restricted items for both pending and onboarding users
+    if (item.hideForPending && isRestrictedUser) return false;
+    return true;
+  });
+
+  // Check if route is active
+  const isActiveRoute = (href: string) => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+    return pathname.startsWith(href);
+  };
+
+  const handleSignOut = async () => {
+    onMobileOpenChange(false);
+    await signOut();
+  };
+
+  const handleNavClick = () => {
+    onMobileOpenChange(false);
+  };
+  
+  // Get user display info
+  const userDisplayName = profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : user?.email?.split("@")[0] || "User";
+  const userEmail = user?.email || "";
+  const userInitials = userDisplayName.slice(0, 2).toUpperCase();
+
+  // Shared props for SidebarContent
+  const sidebarProps = {
+    isCollapsed,
+    toggleCollapsed,
+    filteredNavItems,
+    isActiveRoute,
+    handleNavClick,
+    handleSignOut,
+    userDisplayName,
+    userEmail,
+    userInitials,
+  };
 
   return (
     <>
@@ -299,13 +337,13 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
           isCollapsed ? "w-16" : "w-64"
         )}
       >
-        <SidebarContent />
+        <SidebarContent {...sidebarProps} />
       </aside>
 
       {/* Mobile Sidenav (Sheet) */}
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
         <SheetContent side="left" className="w-72 p-0">
-          <SidebarContent isMobile />
+          <SidebarContent {...sidebarProps} isMobile />
         </SheetContent>
       </Sheet>
 

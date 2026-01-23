@@ -319,6 +319,27 @@ export async function GET(request: NextRequest) {
       return apiError("Failed to fetch members", 500);
     }
 
+    // Get users who have been approved by company admin but are awaiting platform admin approval
+    // These are in company_join_requests with status "approved_by_admin"
+    const { data: pendingPlatformApproval, error: pendingError } = await supabase
+      .from("company_join_requests")
+      .select(`
+        id,
+        user_id,
+        company_id,
+        company_name_requested,
+        status,
+        created_at
+      `)
+      .in("company_id", companyIds)
+      .eq("status", "approved_by_admin")
+      .order("created_at", { ascending: false });
+
+    if (pendingError) {
+      console.error("Error fetching pending platform approvals:", pendingError);
+      // Non-fatal, continue with empty array
+    }
+
     // Enrich with user profile info
     const enrichedRequests = await Promise.all(
       (joinRequests || []).map(async (req) => {
@@ -364,9 +385,40 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    // Enrich pending platform approval users and add them to members with special status
+    const enrichedPendingApprovals = await Promise.all(
+      (pendingPlatformApproval || []).map(async (req) => {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("email, first_name, last_name, job_title")
+          .eq("user_id", req.user_id)
+          .single();
+
+        return {
+          id: req.id,
+          company_id: req.company_id,
+          user_id: req.user_id,
+          role: "member" as const, // Default role for pending members
+          status: "pending_platform_approval", // Custom status for UI
+          created_at: req.created_at,
+          user: profile
+            ? {
+                email: profile.email,
+                firstName: profile.first_name,
+                lastName: profile.last_name,
+                jobTitle: profile.job_title,
+              }
+            : null,
+        };
+      })
+    );
+
+    // Combine approved members with pending platform approval members
+    const allMembers = [...enrichedMembers, ...enrichedPendingApprovals];
+
     return apiResponse({
       requests: enrichedRequests,
-      members: enrichedMembers,
+      members: allMembers,
     });
   } catch (error) {
     console.error("Get company requests error:", error);

@@ -1,6 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Validate redirectTo URL to prevent open redirect attacks
+function isValidRedirectUrl(url: string): boolean {
+  // Only allow relative paths starting with /
+  if (!url.startsWith("/")) return false;
+  // Prevent protocol-relative URLs
+  if (url.startsWith("//")) return false;
+  // Don't redirect back to auth
+  if (url.startsWith("/auth")) return false;
+  return true;
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -101,6 +112,9 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
+    // Preserve the original URL as redirectTo parameter
+    const originalUrl = request.nextUrl.pathname + request.nextUrl.search;
+    url.searchParams.set("redirectTo", originalUrl);
     return NextResponse.redirect(url);
   }
 
@@ -148,8 +162,20 @@ export async function updateSession(request: NextRequest) {
             return NextResponse.redirect(url);
           }
 
-          // If user is approved but on /onboarding, redirect to dashboard
+          // If user is approved but on /onboarding, redirect to their destination
           if (profile.approval_status === "approved" && isOnboardingPath) {
+            // Check for redirectTo parameter
+            const redirectTo = request.nextUrl.searchParams.get("redirectTo");
+            
+            if (redirectTo && isValidRedirectUrl(redirectTo)) {
+              const url = request.nextUrl.clone();
+              const [pathname, search] = redirectTo.split("?");
+              url.pathname = pathname;
+              url.search = search ? `?${search}` : "";
+              return NextResponse.redirect(url);
+            }
+            
+            // Fallback to dashboard
             const url = request.nextUrl.clone();
             url.pathname = "/dashboard";
             return NextResponse.redirect(url);
@@ -165,6 +191,9 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from auth page (but not /auth/invite for accepting invitations)
   const isAuthInvitePath = request.nextUrl.pathname.startsWith("/auth/invite");
   if (user && request.nextUrl.pathname === "/auth" && !isAuthInvitePath) {
+    // Get redirectTo parameter if present
+    const redirectTo = request.nextUrl.searchParams.get("redirectTo");
+    
     // Check their profile status
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -178,12 +207,24 @@ export async function updateSession(request: NextRequest) {
       if (profile && !profile.onboarding_completed_at) {
         const url = request.nextUrl.clone();
         url.pathname = "/onboarding";
+        // Preserve redirectTo for after onboarding completes
+        if (redirectTo && isValidRedirectUrl(redirectTo)) {
+          url.searchParams.set("redirectTo", redirectTo);
+        } else {
+          url.searchParams.delete("redirectTo");
+        }
         return NextResponse.redirect(url);
       }
 
       if (profile?.approval_status === "pending") {
         const url = request.nextUrl.clone();
         url.pathname = "/pending-approval";
+        // Preserve redirectTo for after approval
+        if (redirectTo && isValidRedirectUrl(redirectTo)) {
+          url.searchParams.set("redirectTo", redirectTo);
+        } else {
+          url.searchParams.delete("redirectTo");
+        }
         return NextResponse.redirect(url);
       }
 
@@ -195,7 +236,17 @@ export async function updateSession(request: NextRequest) {
       console.error("Middleware: Error checking profile for auth redirect:", error);
     }
 
-    // Approved users: check role and redirect accordingly
+    // Approved users: redirect to redirectTo if valid, otherwise check role
+    if (redirectTo && isValidRedirectUrl(redirectTo)) {
+      const url = request.nextUrl.clone();
+      // Parse the redirectTo URL to extract pathname and search params
+      const [pathname, search] = redirectTo.split("?");
+      url.pathname = pathname;
+      url.search = search ? `?${search}` : "";
+      return NextResponse.redirect(url);
+    }
+
+    // Fallback: check role and redirect accordingly
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
@@ -221,7 +272,18 @@ export async function updateSession(request: NextRequest) {
         .single();
 
       if (profile?.approval_status === "approved") {
-        // Check role and redirect accordingly
+        // Check for redirectTo parameter
+        const redirectTo = request.nextUrl.searchParams.get("redirectTo");
+        
+        if (redirectTo && isValidRedirectUrl(redirectTo)) {
+          const url = request.nextUrl.clone();
+          const [pathname, search] = redirectTo.split("?");
+          url.pathname = pathname;
+          url.search = search ? `?${search}` : "";
+          return NextResponse.redirect(url);
+        }
+
+        // Fallback: check role and redirect accordingly
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")

@@ -20,6 +20,14 @@ export interface MatchingFiltersState {
   quickFilter?: string | null;
 }
 
+const DEFAULT_FILTERS: MatchingFiltersState = {
+  sortBy: "overall_score",
+  sortDirection: "desc",
+  minScore: 0,
+  maxScore: 100,
+  showApplied: "all",
+};
+
 interface MatchingResult {
   id: string;
   tender_id: string;
@@ -57,13 +65,7 @@ interface TenderMatchingProps {
 
 export function TenderMatching({
   companyId,
-  filters = {
-    sortBy: "overall_score",
-    sortDirection: "desc",
-    minScore: 0,
-    maxScore: 100,
-    showApplied: "all",
-  },
+  filters: filtersProp,
   onCreateProject,
   readOnly = false,
   onAnalyze,
@@ -79,6 +81,20 @@ export function TenderMatching({
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const analyzing = externalAnalyzing ?? internalAnalyzing;
+
+  // Use stable filter reference to prevent infinite re-renders
+  const filters = filtersProp ?? DEFAULT_FILTERS;
+  
+  // Serialize filter values for stable dependency comparison
+  const filtersKey = JSON.stringify([
+    filters.keyword,
+    filters.sortBy,
+    filters.sortDirection,
+    filters.minScore,
+    filters.maxScore,
+    filters.showApplied,
+    filters.quickFilter,
+  ]);
 
   const fetchMatchingResults = async () => {
     setLoading(true);
@@ -128,16 +144,7 @@ export function TenderMatching({
   useEffect(() => {
     applyFiltersAndSorting();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    matchingResults,
-    filters.keyword,
-    filters.sortBy,
-    filters.sortDirection,
-    filters.minScore,
-    filters.maxScore,
-    filters.showApplied,
-    filters.quickFilter,
-  ]);
+  }, [matchingResults, filtersKey]);
 
   const applyFiltersAndSorting = () => {
     let filtered = [...matchingResults];
@@ -260,9 +267,9 @@ export function TenderMatching({
 
       // Refresh results after analysis
       await fetchMatchingResults();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error running analysis:", error);
-      const errorMessage = error?.message || "Failed to run tender analysis. Please try again.";
+      const errorMessage = error instanceof Error ? error.message : "Failed to run tender analysis. Please try again.";
       toast.error(errorMessage);
     } finally {
       setInternalAnalyzing(false);

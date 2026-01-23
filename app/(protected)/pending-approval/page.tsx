@@ -297,11 +297,11 @@ export default function PendingApprovalPage() {
               <p>
                 Have questions? Contact us at{" "}
                 <a
-                  href="mailto:support@aiccm.com"
+                  href="mailto:support@tndrx.com"
                   className="text-primary hover:underline"
                 >
-                  support@aiccm.com
-                </a>
+                  support@tndrx.com
+                </a> 
               </p>
             </div>
           </CardContent>

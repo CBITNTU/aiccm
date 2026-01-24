@@ -86,6 +86,21 @@ export async function POST(request: NextRequest) {
         return apiError("Company name is required", 400);
       }
 
+      // Validate website URL is required
+      if (!createData.websiteUrl?.trim()) {
+        return apiError("Website URL is required. Please provide at least a website for your company.", 400);
+      }
+
+      // Validate website URL format
+      try {
+        const url = new URL(createData.websiteUrl.trim());
+        if (!url.protocol.startsWith('http')) {
+          return apiError("Website URL must start with http:// or https://", 400);
+        }
+      } catch {
+        return apiError("Please provide a valid website URL (e.g., https://example.com)", 400);
+      }
+
       const { data: company, error: companyError } = await adminClient
         .from("companies")
         .insert({

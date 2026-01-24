@@ -205,7 +205,38 @@ export async function POST(request: NextRequest) {
       return apiError("User not found", 404);
     }
 
-    if (profile.approval_status !== "pending") {
+    // Check if user is already approved but has a pending company
+    // This handles the case where approved users create new companies
+    let pendingCompany: { id: string; company_name: string; companies_house_number: string | null; website_url: string | null } | null = null;
+    
+    console.log("Approval check:", {
+      userId,
+      approval_status: profile.approval_status,
+    });
+    
+    if (profile.approval_status === "approved") {
+      // Check if they have a pending company
+      const { data: companyData, error: companyError } = await supabase
+        .from("companies")
+        .select("id, company_name, companies_house_number, website_url")
+        .eq("user_id", userId)
+        .eq("status", "pending_review")
+        .maybeSingle(); // Use maybeSingle() instead of single() to avoid error if no company
+      
+      console.log("Pending company check:", {
+        companyData,
+        companyError,
+        hasPendingCompany: !!companyData,
+      });
+      
+      if (companyData) {
+        pendingCompany = companyData;
+        // User is approved but has pending company - we'll handle this in the approval flow
+      } else {
+        // User is approved and has no pending company - can't approve again
+        return apiError("User is already approved and has no pending company", 400);
+      }
+    } else if (profile.approval_status !== "pending") {
       return apiError(
         `User is already ${profile.approval_status}`,
         400
@@ -283,7 +314,72 @@ export async function POST(request: NextRequest) {
     const userName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "User";
 
     if (approved) {
-      // Approve the user
+      // If user is already approved but has a pending company, just approve the company
+      if (profile.approval_status === "approved" && pendingCompany) {
+        console.log("Approving pending company for already-approved user:", {
+          userId,
+          companyId: pendingCompany.id,
+          companyName: pendingCompany.company_name,
+        });
+        
+        // Approve the company membership
+        const { error: memberError } = await supabase
+          .from("company_members")
+          .update({
+            status: "approved",
+            approved_at: new Date().toISOString(),
+            approved_by: user.id,
+          })
+          .eq("user_id", userId)
+          .eq("status", "pending");
+
+        if (memberError) {
+          console.error("Error approving company membership:", memberError);
+        }
+
+        // Update company status to active
+        const { error: companyError } = await supabase
+          .from("companies")
+          .update({ status: "active" })
+          .eq("id", pendingCompany.id)
+          .eq("status", "pending_review");
+
+        if (companyError) {
+          console.error("Error updating company status:", companyError);
+          return apiError("Failed to approve company", 500);
+        }
+
+        // Trigger AI prefill in the background
+        triggerAIPrefill(pendingCompany.id, {
+          companyName: pendingCompany.company_name,
+          companyNumber: pendingCompany.companies_house_number,
+          websiteUrl: pendingCompany.website_url,
+        }).catch((err) => {
+          console.error("Background AI prefill error:", err);
+        });
+
+        // Log admin approval
+        await logApiEvent(request, {
+          actionType: "admin_company_approved",
+          userId: user.id,
+          userEmail: user.email || undefined,
+          entityType: "company",
+          entityId: pendingCompany.id,
+          details: {
+            approvedCompanyId: pendingCompany.id,
+            approvedCompanyName: pendingCompany.company_name,
+            ownerUserId: userId,
+            ownerUserName: userName,
+          },
+        });
+
+        return apiResponse<ApproveUserResponse>({
+          success: true,
+          message: `Company "${pendingCompany.company_name}" has been approved`,
+        });
+      }
+
+      // Approve the user (only if they're pending)
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
@@ -476,14 +572,47 @@ export async function GET(request: NextRequest) {
       .eq("approval_status", "pending")
       .order("created_at", { ascending: false });
 
+    // Also get approved users who have pending companies (companies with status "pending_review")
+    // These are users who created companies after being approved
+    const { data: pendingCompanies } = await supabase
+      .from("companies")
+      .select("user_id, id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone, created_at")
+      .eq("status", "pending_review")
+      .order("created_at", { ascending: false });
+
+    // Get profiles for users with pending companies
+    const pendingCompanyUserIds = (pendingCompanies || []).map(c => c.user_id);
+    let approvedUsersWithPendingCompanies: typeof pendingUsers = [];
+    
+    if (pendingCompanyUserIds.length > 0) {
+      const { data: approvedUsers } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("user_id", pendingCompanyUserIds)
+        .eq("approval_status", "approved");
+      
+      approvedUsersWithPendingCompanies = approvedUsers || [];
+    }
+
     if (error) {
       console.error("Error fetching pending users:", error);
       return apiError("Failed to fetch pending users", 500);
     }
 
+    // Combine pending users and approved users with pending companies
+    const allUsersToProcess = [
+      ...(pendingUsers || []),
+      ...approvedUsersWithPendingCompanies
+    ];
+
+    // Create a map of company data by user_id for quick lookup
+    const companyMap = new Map(
+      (pendingCompanies || []).map(c => [c.user_id, c])
+    );
+
     // Enrich with role and company info
     const enrichedUsers = await Promise.all(
-      (pendingUsers || []).map(async (profile) => {
+      allUsersToProcess.map(async (profile) => {
         // Get role
         const { data: roleData } = await supabase
           .from("user_roles")
@@ -506,7 +635,24 @@ export async function GET(request: NextRequest) {
           contact_phone: string | null;
         } | null = null;
 
-        if (roleData?.role === "sme-owner") {
+        // Check if user has a pending company (from the map or by query)
+        const pendingCompany = companyMap.get(profile.user_id);
+        
+        if (pendingCompany) {
+          // User has a pending company - this is a new-company signup
+          company = {
+            id: pendingCompany.id,
+            company_name: pendingCompany.company_name,
+            companies_house_number: pendingCompany.companies_house_number,
+            website_url: pendingCompany.website_url,
+            contact_person: pendingCompany.contact_person,
+            contact_email: pendingCompany.contact_email,
+            contact_phone: pendingCompany.contact_phone,
+          };
+          companyName = pendingCompany.company_name;
+          signupType = "new-company";
+        } else if (roleData?.role === "sme-owner") {
+          // Fallback: query for company if not in pending companies map
           const { data: companyData } = await supabase
             .from("companies")
             .select("id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone")

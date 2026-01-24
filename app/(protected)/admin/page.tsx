@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   Building2,
@@ -126,9 +126,18 @@ const getActivityIcon = (type: string) => {
 };
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "overview");
   const { isAdmin, loading: roleLoading } = useUserRole();
   const router = useRouter();
+
+  // Sync tab with URL parameter
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl, activeTab]);
 
   // Check admin access
   useEffect(() => {
@@ -199,7 +208,10 @@ export default function AdminPage() {
               <Button
                 key={tab.id}
                 variant={activeTab === tab.id ? "default" : "ghost"}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  router.push(`/admin?tab=${tab.id}`);
+                }}
                 className="flex items-center space-x-2"
               >
                 <tab.icon className="w-4 h-4" />

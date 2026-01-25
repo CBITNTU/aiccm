@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useTaxonomies, type Taxonomy } from "@/hooks/useTaxonomies";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,7 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Edit, Trash2, ChevronRight, ChevronDown, Folder, FileText, Search, Download, Upload } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronRight, ChevronDown, Folder, FileText, Search, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import {
@@ -39,55 +38,156 @@ import {
 } from "@/components/ui/select";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { useBatchProgress } from "@/hooks/useBatchProgress";
+import { Progress } from "@/components/ui/progress";
+
+type Capability = {
+  id: string;
+  name: string;
+  category: string;
+};
 
 const AdminTaxonomyEditor = () => {
-  const { taxonomies, loading, getLevel1, refetch } = useTaxonomies();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const [editingTaxonomy, setEditingTaxonomy] = useState<Taxonomy | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [editingCapability, setEditingCapability] = useState<Capability | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerationBatchId, setRegenerationBatchId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
-    level: 1,
-    parent_id: null as string | null,
+    category: "",
   });
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  
+  const { batch, progress, isLoading: batchLoading } = useBatchProgress(regenerationBatchId, !!regenerationBatchId);
 
   useEffect(() => {
     const client = createClient();
     setSupabase(client);
   }, []);
 
-  const toggleExpand = (id: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
+  useEffect(() => {
+    if (supabase) {
+      fetchCapabilities();
     }
-    setExpandedItems(newExpanded);
+  }, [supabase]);
+
+  // Refresh capabilities when regeneration completes
+  const batchStatus = batch?.status ?? undefined;
+  useEffect(() => {
+    if (!supabase || batchStatus !== "completed" || !regenerationBatchId) return;
+    
+    console.log("🔄 Batch completed, refreshing capabilities list...");
+    // Small delay to ensure database is updated
+    const timeoutId = setTimeout(() => {
+      console.log("📥 Fetching updated capabilities...");
+      fetchCapabilities();
+      toast.success("Capability list refreshed");
+      // Clear batch ID after refresh to prevent re-triggering
+      setRegenerationBatchId(null);
+    }, 3000); // Increased delay to ensure DB writes are complete
+    
+    return () => clearTimeout(timeoutId);
+  }, [batchStatus, supabase]); // Only batchStatus and supabase - don't include batchId to keep array size constant
+
+  const fetchCapabilities = async () => {
+    if (!supabase) return;
+    
+    setLoading(true);
+    try {
+      // PostgREST defaults to 1000 rows - we need to fetch all capabilities
+      // Use a high limit or pagination. For now, using a high limit (100k should be enough)
+      let allCapabilities: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("company_capabilities_ref")
+          .select("id, name, category")
+          .order("category")
+          .order("name")
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allCapabilities = [...allCapabilities, ...data];
+          page++;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      // Filter out null categories and map to ensure type safety
+      const validCapabilities = (allCapabilities || [])
+        .filter((c): c is { id: string; name: string; category: string } => c.category !== null)
+        .map(c => ({
+          id: c.id,
+          name: c.name,
+          category: c.category,
+        }));
+      
+      // Log the fetched capabilities
+      console.log(`📋 Fetched ${validCapabilities.length} capabilities from database`);
+      const categories = Array.from(new Set(validCapabilities.map(c => c.category)));
+      console.log(`📂 Categories in UI (${categories.length}):`, categories);
+      console.log(`📊 Capabilities by category:`, 
+        Object.entries(
+          validCapabilities.reduce((acc, cap) => {
+            acc[cap.category] = (acc[cap.category] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>)
+        )
+      );
+      
+      setCapabilities(validCapabilities);
+    } catch (error: any) {
+      console.error('Error fetching capabilities:', error);
+      toast.error(`Failed to load capabilities: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get unique categories
+  const categories = Array.from(new Set(capabilities.map(c => c.category))).sort();
+
+  // Get capabilities by category
+  const getCapabilitiesByCategory = (category: string) => {
+    return capabilities.filter(c => c.category === category);
+  };
+
+  const toggleExpand = (category: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
+    }
+    setExpandedCategories(newExpanded);
   };
 
   const handleCreate = () => {
     setFormData({
       name: "",
-      description: "",
-      level: 1,
-      parent_id: null,
+      category: categories[0] || "",
     });
     setIsCreateDialogOpen(true);
   };
 
-  const handleEdit = (taxonomy: Taxonomy) => {
-    setEditingTaxonomy(taxonomy);
+  const handleEdit = (capability: Capability) => {
+    setEditingCapability(capability);
     setFormData({
-      name: taxonomy.name,
-      description: taxonomy.description || "",
-      level: taxonomy.level,
-      parent_id: taxonomy.parent_id,
+      name: capability.name,
+      category: capability.category,
     });
     setIsEditDialogOpen(true);
   };
@@ -97,25 +197,18 @@ const AdminTaxonomyEditor = () => {
     
     setDeletingId(id);
     try {
-      // Check if taxonomy has children
-      const hasChildren = taxonomies.some(t => t.parent_id === id);
-      if (hasChildren) {
-        toast.error("Cannot delete taxonomy with child categories. Please delete children first.");
-        return;
-      }
-
       const { error } = await supabase
-        .from('taxonomies')
+        .from('company_capabilities_ref')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
 
-      toast.success("Taxonomy deleted successfully");
-      await refetch();
+      toast.success("Capability deleted successfully");
+      await fetchCapabilities();
     } catch (error: any) {
-      console.error('Error deleting taxonomy:', error);
-      toast.error(`Failed to delete taxonomy: ${error.message}`);
+      console.error('Error deleting capability:', error);
+      toast.error(`Failed to delete capability: ${error.message}`);
     } finally {
       setDeletingId(null);
     }
@@ -125,210 +218,141 @@ const AdminTaxonomyEditor = () => {
     if (!supabase) return;
     
     try {
-      if (!formData.name.trim()) {
-        toast.error("Name is required");
+      if (!formData.name.trim() || !formData.category.trim()) {
+        toast.error("Name and category are required");
         return;
       }
 
-      if (editingTaxonomy) {
+      if (editingCapability) {
         // Update existing
         const { error } = await supabase
-          .from('taxonomies')
+          .from('company_capabilities_ref')
           .update({
             name: formData.name.trim(),
-            description: formData.description.trim() || null,
-            parent_id: formData.parent_id || null,
+            category: formData.category.trim(),
           })
-          .eq('id', editingTaxonomy.id);
+          .eq('id', editingCapability.id);
 
         if (error) throw error;
-        toast.success("Taxonomy updated successfully");
+        toast.success("Capability updated successfully");
         setIsEditDialogOpen(false);
-        setEditingTaxonomy(null);
+        setEditingCapability(null);
       } else {
         // Create new
         const { error } = await supabase
-          .from('taxonomies')
+          .from('company_capabilities_ref')
           .insert({
             name: formData.name.trim(),
-            description: formData.description.trim() || null,
-            level: formData.level,
-            parent_id: formData.parent_id || null,
+            category: formData.category.trim(),
           });
 
         if (error) throw error;
-        toast.success("Taxonomy created successfully");
+        toast.success("Capability created successfully");
         setIsCreateDialogOpen(false);
       }
 
       // Reset form
       setFormData({
         name: "",
-        description: "",
-        level: 1,
-        parent_id: null,
+        category: categories[0] || "",
       });
-      setEditingTaxonomy(null);
+      setEditingCapability(null);
       
-      // Refresh the taxonomy list
-      await refetch();
+      // Refresh the capability list
+      await fetchCapabilities();
     } catch (error: any) {
-      console.error('Error saving taxonomy:', error);
-      toast.error(`Failed to save taxonomy: ${error.message}`);
+      console.error('Error saving capability:', error);
+      toast.error(`Failed to save capability: ${error.message}`);
     }
   };
 
-  const handleExport = () => {
-    const dataStr = JSON.stringify(taxonomies, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `taxonomies-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("Taxonomies exported successfully");
-  };
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!supabase) return;
-    
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const imported = JSON.parse(text);
-
-      if (!Array.isArray(imported)) {
-        throw new Error("Invalid format: expected array of taxonomies");
-      }
-
-      // Validate structure
-      for (const item of imported) {
-        if (!item.name || typeof item.level !== 'number' || item.level < 1 || item.level > 3) {
-          throw new Error(`Invalid taxonomy item: ${JSON.stringify(item)}`);
-        }
-      }
-
-      // Import taxonomies (you might want to add conflict handling)
-      const { error } = await supabase
-        .from('taxonomies')
-        .upsert(imported.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description || null,
-          level: item.level,
-          parent_id: item.parent_id || null,
-        })), {
-          onConflict: 'id'
-        });
-
-      if (error) throw error;
-
-      toast.success(`Successfully imported ${imported.length} taxonomies`);
-      await refetch();
-    } catch (error: any) {
-      console.error('Error importing taxonomies:', error);
-      toast.error(`Failed to import: ${error.message}`);
-    }
-  };
-
-  const renderTaxonomyTree = (level1Items: Taxonomy[], depth = 0) => {
-    const filtered = level1Items.filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleResetCapabilities = async () => {
+    const confirmReset = window.confirm(
+      "⚠️ WARNING: This will DELETE ALL capabilities and company-capability links!\n\n" +
+      "This action cannot be undone. All companies will have their capabilities cleared.\n\n" +
+      "After reset, you should run 'Regenerate All Company Capabilities' to repopulate.\n\n" +
+      "Are you sure you want to proceed?"
     );
 
-    return filtered.map((item) => {
-      const hasChildren = taxonomies.some(t => t.parent_id === item.id);
-      const isExpanded = expandedItems.has(item.id);
-      const children = taxonomies.filter(t => t.parent_id === item.id);
+    if (!confirmReset) return;
 
-      return (
-        <div key={item.id} className="space-y-1">
-          <div className={`flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 ${depth > 0 ? 'ml-6' : ''}`}>
-            {hasChildren && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => toggleExpand(item.id)}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            {!hasChildren && <div className="w-6" />}
-            
-            <div className="flex-1 flex items-center gap-2">
-              {item.level === 1 ? (
-                <Folder className="h-4 w-4 text-primary" />
-              ) : (
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="font-medium">{item.name}</span>
-              <Badge variant="outline">Level {item.level}</Badge>
-              {item.description && (
-                <span className="text-sm text-muted-foreground">- {item.description}</span>
-              )}
-            </div>
+    try {
+      setIsRegenerating(true);
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEdit(item)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={deletingId === item.id}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Taxonomy</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{item.name}"? This action cannot be undone.
-                      {hasChildren && " This will also delete all child categories."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleDelete(item.id)}
-                      className="bg-destructive text-destructive-foreground"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </div>
+      const response = await fetch('/api/admin/reset-capabilities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-          {isExpanded && hasChildren && (
-            <div className="ml-4">
-              {renderTaxonomyTree(children, depth + 1)}
-            </div>
-          )}
-        </div>
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to reset capabilities");
+      }
+
+      // Refresh the capability list to show base capabilities
+      await fetchCapabilities();
+      
+      toast.success(
+        `✅ Reset complete! Deleted ${data.deletedCapabilities} capabilities and ${data.deletedLinks} links. ` +
+        `Reseeded ${data.reseededCapabilities} base capabilities. You can now run 'Regenerate All Company Capabilities' to assign companies to these capabilities.`
       );
-    });
+    } catch (error) {
+      console.error("Error resetting capabilities:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to reset capabilities"
+      );
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
-  const level1Items = getLevel1();
+  const handleRegenerateCapabilities = async () => {
+    try {
+      setIsRegenerating(true);
+      
+      // Clear previous batch ID so progress tracker resets
+      setRegenerationBatchId(null);
+      
+      // Start regeneration (which will reset capabilities in the API if needed)
+      const response = await fetch('/api/admin/regenerate-company-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taxonomyOnly: true }), // Only regenerate taxonomy (2x faster)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to start regeneration");
+      }
+
+      setRegenerationBatchId(data.batchId);
+      
+      // Refresh UI after a short delay to show reset capabilities
+      setTimeout(() => {
+        fetchCapabilities();
+      }, 2000);
+      
+      toast.success(`Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`);
+    } catch (error) {
+      console.error("Error regenerating company capabilities:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start regeneration"
+      );
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const filteredCategories = categories.filter(category => {
+    const categoryLower = category.toLowerCase();
+    const categoryCapabilities = getCapabilitiesByCategory(category);
+    return (
+      categoryLower.includes(searchTerm.toLowerCase()) ||
+      categoryCapabilities.some(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -336,43 +360,76 @@ const AdminTaxonomyEditor = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Taxonomy Editor</CardTitle>
+              <CardTitle>Capability Taxonomy Editor</CardTitle>
               <CardDescription>
-                Manage competency categories and taxonomy structure. Edit JSON/XML structure in-browser.
+                Manage company capabilities by category and name. These are used to match companies with projects.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" />
-                Export JSON
+              <Button 
+                variant="destructive" 
+                onClick={handleResetCapabilities}
+                disabled={isRegenerating || batch?.status === "processing"}
+                title="Delete ALL capabilities and links. Cannot be undone."
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Reset List
               </Button>
-              <label>
-                <Button variant="outline" asChild>
-                  <span>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import JSON
-                  </span>
-                </Button>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleImport}
-                  className="hidden"
-                />
-              </label>
+              <Button 
+                variant="outline" 
+                onClick={handleRegenerateCapabilities}
+                disabled={isRegenerating || batch?.status === "processing"}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating || batch?.status === "processing" ? "animate-spin" : ""}`} />
+                Regenerate All Company Capabilities
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={fetchCapabilities}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                Refresh List
+              </Button>
               <Button onClick={handleCreate}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Category
+                Add Capability
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          {/* Regeneration Progress */}
+          {regenerationBatchId && batch && (
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium">Regenerating Company Capabilities</span>
+                  <span>{progress}%</span>
+                </div>
+                <Progress value={progress} />
+                <div className="text-sm text-muted-foreground">
+                  {batch.completedJobs} / {batch.totalJobs} companies completed.
+                  {batch.failedJobs > 0 && (
+                    <span className="text-destructive ml-2">
+                      ({batch.failedJobs} failed)
+                    </span>
+                  )}
+                </div>
+                {batch.status === "completed" && (
+                  <div className="text-sm text-green-600 font-medium">
+                    ✅ Regeneration completed!
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search taxonomies..."
+                placeholder="Search capabilities or categories..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -381,21 +438,106 @@ const AdminTaxonomyEditor = () => {
           </div>
 
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading taxonomies...</div>
+            <div className="text-center py-8 text-muted-foreground">Loading capabilities...</div>
           ) : (
             <div className="space-y-2">
-              {level1Items.length === 0 ? (
+              {filteredCategories.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No taxonomies found. Create your first category.
+                  No capabilities found. Create your first capability.
                 </div>
               ) : (
-                renderTaxonomyTree(level1Items)
+                filteredCategories.map((category) => {
+                  const categoryCapabilities = getCapabilitiesByCategory(category).filter(c =>
+                    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+                  );
+                  const isExpanded = expandedCategories.has(category);
+
+                  return (
+                    <div key={category} className="space-y-1">
+                      <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => toggleExpand(category)}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                        
+                        <div className="flex-1 flex items-center gap-2">
+                          <Folder className="h-4 w-4 text-primary" />
+                          <span className="font-semibold">{category}</span>
+                          <Badge variant="outline">{categoryCapabilities.length}</Badge>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="ml-8 space-y-1">
+                          {categoryCapabilities.map((capability) => (
+                            <div
+                              key={capability.id}
+                              className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50"
+                            >
+                              <div className="flex-1 flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <span>{capability.name}</span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(capability)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={deletingId === capability.id}
+                                      className="text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Capability</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete "{capability.name}"? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDelete(capability.id)}
+                                        className="bg-destructive text-destructive-foreground"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
 
           <div className="mt-4 text-sm text-muted-foreground">
-            Total: {taxonomies.length} categories
+            Total: {capabilities.length} capabilities across {categories.length} categories
           </div>
         </CardContent>
       </Card>
@@ -404,53 +546,35 @@ const AdminTaxonomyEditor = () => {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Taxonomy Category</DialogTitle>
+            <DialogTitle>Create New Capability</DialogTitle>
             <DialogDescription>
-              Add a new category to the taxonomy structure.
+              Add a new capability to the taxonomy.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="level">Level</Label>
+              <Label htmlFor="category">Category *</Label>
               <Select
-                value={formData.level.toString()}
-                onValueChange={(value) => {
-                  setFormData({ ...formData, level: parseInt(value), parent_id: null });
-                }}
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select or enter category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Level 1 - Main Category</SelectItem>
-                  <SelectItem value="2">Level 2 - Sub-category</SelectItem>
-                  <SelectItem value="3">Level 3 - Specific Area</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {formData.category && !categories.includes(formData.category) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  This will create a new category: "{formData.category}"
+                </p>
+              )}
             </div>
-
-            {formData.level > 1 && (
-              <div>
-                <Label htmlFor="parent">Parent Category</Label>
-                <Select
-                  value={formData.parent_id || ""}
-                  onValueChange={(value) => setFormData({ ...formData, parent_id: value || null })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select parent category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {taxonomies
-                      .filter(t => t.level === formData.level - 1)
-                      .map(t => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div>
               <Label htmlFor="name">Name *</Label>
@@ -458,18 +582,7 @@ const AdminTaxonomyEditor = () => {
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Category name"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Category description"
-                rows={3}
+                placeholder="Capability name"
               />
             </div>
           </div>
@@ -486,54 +599,30 @@ const AdminTaxonomyEditor = () => {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Taxonomy Category</DialogTitle>
+            <DialogTitle>Edit Capability</DialogTitle>
             <DialogDescription>
-              Update the taxonomy category details.
+              Update the capability details.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-level">Level</Label>
+              <Label htmlFor="edit-category">Category *</Label>
               <Select
-                value={formData.level.toString()}
-                onValueChange={(value) => {
-                  setFormData({ ...formData, level: parseInt(value) });
-                }}
-                disabled
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Level 1 - Main Category</SelectItem>
-                  <SelectItem value="2">Level 2 - Sub-category</SelectItem>
-                  <SelectItem value="3">Level 3 - Specific Area</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-
-            {formData.level > 1 && (
-              <div>
-                <Label htmlFor="edit-parent">Parent Category</Label>
-                <Select
-                  value={formData.parent_id || ""}
-                  onValueChange={(value) => setFormData({ ...formData, parent_id: value || null })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select parent category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {taxonomies
-                      .filter(t => t.level === formData.level - 1 && t.id !== editingTaxonomy?.id)
-                      .map(t => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div>
               <Label htmlFor="edit-name">Name *</Label>
@@ -541,18 +630,7 @@ const AdminTaxonomyEditor = () => {
                 id="edit-name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Category name"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Category description"
-                rows={3}
+                placeholder="Capability name"
               />
             </div>
           </div>
@@ -569,4 +647,3 @@ const AdminTaxonomyEditor = () => {
 };
 
 export default AdminTaxonomyEditor;
-

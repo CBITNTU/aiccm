@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
@@ -38,6 +38,7 @@ import { CompanySelector } from "@/components/CompanySelector";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { BusinessChatbot } from "@/components/BusinessChatbot";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
+import { MatchingTrigger } from "@/components/matching/MatchingTrigger";
 import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -142,29 +143,29 @@ export default function DashboardPage() {
   }, []);
 
   // Load stored analysis when company is selected
-  const loadStoredAnalysis = useCallback(() => {
+  useEffect(() => {
     if (selectedCompany?.ai_analysis) {
       setCompanyAnalysis(selectedCompany.ai_analysis as unknown as CompanyAnalysis);
     } else {
       setCompanyAnalysis(null);
     }
-  }, [selectedCompany]);
-
-  useEffect(() => {
-    if (selectedCompany) {
-      loadStoredAnalysis();
-    }
-  }, [selectedCompany, loadStoredAnalysis]);
+  }, [selectedCompany?.id, selectedCompany?.ai_analysis]); // Only depend on ID and ai_analysis, not the whole object
 
   // Fetch company analysis
   const fetchCompanyAnalysis = async () => {
     if (!selectedCompany?.id || !supabase) return;
     setIsAnalyzing(true);
     try {
+      console.log("🔄 Fetching company analysis for:", selectedCompany.company_name);
       const data = await api.analyzeCompany(selectedCompany.id);
 
       if (data?.success && data?.analysis) {
-        setCompanyAnalysis(data.analysis as CompanyAnalysis);
+        const analysis = data.analysis as CompanyAnalysis;
+        console.log("✅ Analysis received:", {
+          overallScore: analysis?.performanceBenchmark?.overallScore,
+          hasRealData: !analysis?.executiveSummary?.includes("could not be completed"),
+        });
+        setCompanyAnalysis(analysis);
 
         // Refresh company data to get updated ai_analysis field
         const { data: updatedCompany, error: fetchError } = await supabase
@@ -176,10 +177,14 @@ export default function DashboardPage() {
         if (fetchError) {
           console.error("Error fetching updated company data:", fetchError);
         } else if (updatedCompany) {
-          setSelectedCompany(updatedCompany);
+          // Update companies list first
           setUserCompanies((prev) =>
             prev.map((c) => (c.id === updatedCompany.id ? updatedCompany : c))
           );
+          // Only update selectedCompany if it's the same company, to avoid infinite loops
+          if (selectedCompany?.id === updatedCompany.id) {
+            setSelectedCompany(updatedCompany);
+          }
         }
       }
     } catch (error) {
@@ -686,10 +691,13 @@ export default function DashboardPage() {
                     : "Your latest tender matching opportunities"}
                 </CardDescription>
               </div>
-              <Button variant="outline" onClick={() => router.push("/tenders")}>
-                View All
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <MatchingTrigger />
+                <Button variant="outline" onClick={() => router.push("/tenders")}>
+                  View All
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

@@ -28,6 +28,10 @@ export function getAdminNotificationEmailHtml(
   const { userName, userEmail, signupType, companyName, jobTitle } = data;
   const platformName = getPlatformName();
   const adminUrl = getPlatformUrl("/admin");
+  // Link directly to approvals section for new company signups
+  const approvalsUrl = signupType === "new-company" 
+    ? getPlatformUrl("/admin?tab=approvals")
+    : adminUrl;
 
   const signupTypeLabel =
     signupType === "individual"
@@ -108,8 +112,13 @@ export function getAdminNotificationEmailHtml(
     </div>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${adminUrl}" style="display: inline-block; background: #dc2626; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold;">Review in Admin Panel</a>
+      <a href="${approvalsUrl}" style="display: inline-block; background: #dc2626; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold;">Review in Admin Panel</a>
     </div>
+    ${
+      signupType === "new-company"
+        ? `<p style="text-align: center; color: #666; font-size: 14px; margin-top: 10px;">Direct link: <a href="${approvalsUrl}" style="color: #667eea;">${approvalsUrl}</a></p>`
+        : ""
+    }
 
     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
 

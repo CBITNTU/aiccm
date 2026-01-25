@@ -6,6 +6,7 @@ import {
   apiError,
   checkSuperadminRole,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import { Database } from "@/lib/supabase/types";
 
 const FIND_TENDER_API_BASE = "https://www.find-tender.service.gov.uk/api/1.0";
@@ -362,13 +363,51 @@ export async function POST(request: NextRequest) {
             `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`
           );
 
-          // Note: Auto-tagging with AI would require calling the analyze-tender API route
-          // This can be done asynchronously or in a separate background job
+          // Log tender import event
+          await logApiEvent(request, {
+            actionType: "admin_tender_imported",
+            userId: user.id,
+            userEmail: user.email || undefined,
+            details: {
+              source: "find_tender_api",
+              importedCount: newTenders.length,
+              duplicatesSkipped: duplicatesCount,
+              totalFetched: tenders.length,
+            },
+          }).catch(() => {}); // Don't fail if logging fails
+
+          // Queue AI processing jobs for new tenders
           if (insertedTenders && insertedTenders.length > 0) {
             console.log(
               `${insertedTenders.length} tenders ready for AI analysis`
             );
-            // Auto-tagging can be triggered here by calling /api/analyze-tender for each
+            
+            // Queue summary and taxonomy jobs for each new tender
+            const { enqueueBatch } = await import("@/lib/services/queueService");
+            const tenderIds = ((insertedTenders as unknown as { id: string }[]) || []).map((t) => t.id);
+            
+            const jobs = tenderIds.flatMap((tenderId) => [
+              {
+                jobType: "tender_summary" as const,
+                entityType: "tender" as const,
+                entityId: tenderId,
+                priority: 5,
+              },
+              {
+                jobType: "tender_taxonomy" as const,
+                entityType: "tender" as const,
+                entityId: tenderId,
+                priority: 5,
+              },
+            ]);
+
+            try {
+              await enqueueBatch(jobs, "tender_ai_regeneration", user.id);
+              console.log(`Queued ${jobs.length} AI processing jobs for ${tenderIds.length} new tenders`);
+            } catch (queueError) {
+              console.error("Failed to queue AI processing jobs:", queueError);
+              // Don't fail the import if queueing fails
+            }
           }
         }
       } else {

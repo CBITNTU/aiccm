@@ -6,6 +6,7 @@ import {
   apiError,
   getAuthenticatedUser,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
   getCompanyAdminApprovalEmailSubject,
@@ -158,6 +159,21 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Log approval event
+      await logApiEvent(request, {
+        actionType: "company_member_approved",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "company",
+        entityId: joinRequest.company_id,
+        details: {
+          requestId,
+          requesterId: joinRequest.user_id,
+          requesterName,
+          companyName: joinRequest.company_name_requested,
+        },
+      });
+
       return apiResponse<ApproveMemberResponse>({
         success: true,
         message: `${requesterName}'s request has been approved. Awaiting platform admin approval.`,
@@ -193,6 +209,21 @@ export async function POST(request: NextRequest) {
           html: getCompanyAdminApprovalEmailHtml(emailData),
         });
       }
+
+      // Log rejection event
+      await logApiEvent(request, {
+        actionType: "company_member_removed",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "company",
+        entityId: joinRequest.company_id,
+        details: {
+          requestId,
+          requesterId: joinRequest.user_id,
+          requesterName,
+          rejectionReason: rejectionReason || "Rejected by company administrator",
+        },
+      });
 
       return apiResponse<ApproveMemberResponse>({
         success: true,

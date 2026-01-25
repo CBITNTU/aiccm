@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   Building2,
@@ -21,6 +21,8 @@ import { AdminDataImport } from "@/components/admin/AdminDataImport";
 import { AdminCompanyManager } from "@/components/admin/AdminCompanyManager";
 import { AdminCSVImport } from "@/components/admin/AdminCSVImport";
 import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
+import { TenderAIRegeneration } from "@/components/admin/TenderAIRegeneration";
+import { CompanyAIRegeneration } from "@/components/admin/CompanyAIRegeneration";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminTaxonomyEditor from "@/components/admin/AdminTaxonomyEditor";
 import AdminApprovals from "@/components/admin/AdminApprovals";
@@ -124,9 +126,18 @@ const getActivityIcon = (type: string) => {
 };
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "overview");
   const { isAdmin, loading: roleLoading } = useUserRole();
   const router = useRouter();
+
+  // Sync tab with URL parameter
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl, activeTab]);
 
   // Check admin access
   useEffect(() => {
@@ -197,7 +208,10 @@ export default function AdminPage() {
               <Button
                 key={tab.id}
                 variant={activeTab === tab.id ? "default" : "ghost"}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  router.push(`/admin?tab=${tab.id}`);
+                }}
                 className="flex items-center space-x-2"
               >
                 <tab.icon className="w-4 h-4" />
@@ -331,16 +345,28 @@ export default function AdminPage() {
         {/* Companies Tab */}
         {activeTab === "companies" && (
           <div className="space-y-6">
-            <AdminCSVImport />
-            <AdminDataImport />
-            <AdminCompanyManager />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Company Management</h3>
+                <CompanyAIRegeneration />
+              </div>
+              <AdminCSVImport />
+              <AdminDataImport />
+              <AdminCompanyManager />
+            </div>
           </div>
         )}
 
         {/* Tenders Tab */}
         {activeTab === "tenders" && (
           <div className="space-y-6">
-            <AdminTenderImport />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Tender Management</h3>
+                <TenderAIRegeneration />
+              </div>
+              <AdminTenderImport />
+            </div>
           </div>
         )}
 

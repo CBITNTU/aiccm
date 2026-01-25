@@ -143,6 +143,11 @@ export default function TendersPage() {
       return;
     }
 
+    // Prevent multiple simultaneous analyses
+    if (analyzing) {
+      return;
+    }
+
     setAnalyzing(true);
     try {
       const data = await api.matchTenders(selectedCompany.id);
@@ -151,12 +156,13 @@ export default function TendersPage() {
         toast.success("All tenders are up to date - no new analysis needed");
       } else {
         toast.success(
-          `Analysis complete! Found ${data.analyzed_count} new matches.`
+          `Analysis complete! Found ${data.analyzed_count || 0} new matches.`
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error running analysis:", error);
-      toast.error("Failed to run tender analysis. Please try again.");
+      const errorMessage = error?.message || "Failed to run tender analysis. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setAnalyzing(false);
     }
@@ -314,6 +320,8 @@ export default function TendersPage() {
               companyId={selectedCompany?.id}
               filters={matchingFilters}
               readOnly={isRestrictedUser}
+              analyzing={analyzing}
+              onAnalyze={runAnalysis}
               onCreateProject={
                 isRestrictedUser
                   ? undefined

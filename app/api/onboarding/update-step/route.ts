@@ -5,6 +5,7 @@ import {
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
   getAdminNotificationEmailSubject,
@@ -222,6 +223,18 @@ export async function POST(request: NextRequest) {
             return apiError("Company name is required", 400);
           }
 
+          // Require at least website URL
+          if (!createData.websiteUrl || !createData.websiteUrl.trim()) {
+            return apiError("Website URL is required. Please provide at least a website for your company.", 400);
+          }
+
+          // Basic URL validation
+          const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+          const websiteUrl = createData.websiteUrl.trim();
+          if (!urlPattern.test(websiteUrl) && !websiteUrl.startsWith("http://") && !websiteUrl.startsWith("https://")) {
+            return apiError("Please enter a valid website URL (e.g., example.com or https://example.com)", 400);
+          }
+
           const { data: company, error: companyError } = await adminClient
             .from("companies")
             .insert({
@@ -279,6 +292,35 @@ export async function POST(request: NextRequest) {
           if (profileUpdateError) {
             console.error("Profile update error:", profileUpdateError);
           }
+
+          // Queue AI processing jobs for new company (capability taxonomy generation)
+          // This will dynamically create new capabilities based on company data
+          try {
+            const { enqueueJob } = await import("@/lib/services/queueService");
+            await enqueueJob({
+              jobType: "company_taxonomy",
+              entityType: "company",
+              entityId: company.id,
+              priority: 5,
+            });
+            console.log(`Queued company_taxonomy job for new company: ${company.id}`);
+          } catch (queueError) {
+            console.error("Failed to queue company taxonomy job:", queueError);
+            // Don't fail company creation if queueing fails
+          }
+
+          // Log company creation during onboarding
+          await logApiEvent(request, {
+            actionType: "company_created",
+            userId: user.id,
+            userEmail: user.email || undefined,
+            entityType: "company",
+            entityId: company.id,
+            details: {
+              companyName: createData.companyName,
+              onboardingStep: step,
+            },
+          }).catch(() => {});
 
           return apiResponse({
             success: true,
@@ -475,6 +517,18 @@ export async function POST(request: NextRequest) {
             });
           }
         }
+
+        // Log onboarding completion
+        await logApiEvent(request, {
+          actionType: "user_signup", // Onboarding completion is part of signup flow
+          userId: user.id,
+          userEmail: user.email || undefined,
+          details: {
+            onboardingCompleted: true,
+            signupType: profile.signup_type,
+            accountType: profile.account_type,
+          },
+        }).catch(() => {});
 
         return apiResponse({
           success: true,

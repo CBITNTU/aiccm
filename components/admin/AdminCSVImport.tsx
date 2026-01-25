@@ -380,8 +380,45 @@ export function AdminCSVImport() {
                 }
               }
 
+              // Always queue AI regeneration for CSV imports (full regeneration mode)
+              // This ensures capabilities are regenerated from the base list
+              try {
+                const response = await fetch('/api/queue/company-ai', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    companyId: existing.id,
+                    jobTypes: ['company_summary', 'company_taxonomy'],
+                    fullRegeneration: true // Flag for full regeneration mode
+                  })
+                });
+                if (!response.ok) {
+                  console.warn(`Failed to queue AI jobs for ${company.company_name}`);
+                }
+              } catch (queueError) {
+                console.warn(`Failed to queue AI jobs for ${company.company_name}:`, queueError);
+              }
+
               successCount++;
             } else {
+              // Even if skipping, still queue taxonomy generation for full regeneration
+              try {
+                const response = await fetch('/api/queue/company-ai', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    companyId: existing.id,
+                    jobTypes: ['company_taxonomy'],
+                    fullRegeneration: true // Flag for full regeneration mode
+                  })
+                });
+                if (!response.ok) {
+                  console.warn(`Failed to queue taxonomy job for ${company.company_name}`);
+                }
+              } catch (queueError) {
+                console.warn(`Failed to queue taxonomy job for ${company.company_name}:`, queueError);
+              }
+              
               skippedCount++;
             }
             continue;
@@ -461,6 +498,26 @@ export function AdminCSVImport() {
             }
           }
 
+          // Queue AI processing jobs for new company
+          if (insertedCompany?.id) {
+            try {
+              const response = await fetch('/api/queue/company-ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  companyId: insertedCompany.id,
+                  jobTypes: ['company_summary', 'company_taxonomy']
+                })
+              });
+              if (!response.ok) {
+                console.warn(`Failed to queue AI jobs for ${company.company_name}`);
+              }
+            } catch (queueError) {
+              console.warn(`Failed to queue AI jobs for ${company.company_name}:`, queueError);
+              // Don't fail the import if queueing fails
+            }
+          }
+
           successCount++;
         } catch (err) {
           errorList.push(`${company.company_name}: ${err instanceof Error ? err.message : String(err)}`);
@@ -479,8 +536,25 @@ export function AdminCSVImport() {
         }
       }
 
+      // Trigger worker to start processing company taxonomy jobs (fire and forget)
+      // This will dynamically generate capabilities based on imported company data
+      if (successCount > 0) {
+        fetch('/api/queue/worker', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batchSize: 10, continuous: true }),
+        })
+          .then(() => {
+            console.log('✅ Queue worker triggered after CSV import');
+          })
+          .catch((err) => {
+            console.warn('⚠️ Failed to trigger queue worker:', err);
+            // Don't fail the import if worker trigger fails
+          });
+      }
+      
       toast.success(
-        `Import completed! ${successCount} imported, ${skippedCount} skipped, ${errorList.length} errors.`
+        `Import completed! ${successCount} imported, ${skippedCount} skipped, ${errorList.length} errors. ${successCount > 0 ? 'Capability taxonomies are being generated in the background.' : ''}`
       );
     } catch (error) {
       console.error("Import error:", error);

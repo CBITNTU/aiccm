@@ -6,6 +6,7 @@ import {
   getAuthenticatedUser,
   checkSuperadminRole,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
   getApprovalNotificationEmailSubject,
@@ -140,6 +141,22 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // Log admin approval
+      await logApiEvent(request, {
+        actionType: "admin_user_approved",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "company_join_request",
+        entityId: requestId,
+        details: {
+          joinRequestId: requestId,
+          userId: joinRequest.user_id,
+          userName,
+          companyId: joinRequest.company_id,
+          companyName: joinRequest.company_name_requested,
+        },
+      });
+
       return apiResponse<ApproveJoinRequestResponse>({
         success: true,
         message: `${userName} has been approved to join ${joinRequest.company_name_requested}`,
@@ -176,6 +193,23 @@ export async function POST(request: NextRequest) {
           html: getApprovalNotificationEmailHtml(emailData),
         });
       }
+
+      // Log admin rejection
+      await logApiEvent(request, {
+        actionType: "admin_user_rejected",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "company_join_request",
+        entityId: requestId,
+        details: {
+          joinRequestId: requestId,
+          userId: joinRequest.user_id,
+          userName,
+          companyId: joinRequest.company_id,
+          companyName: joinRequest.company_name_requested,
+          rejectionReason: rejectionReason || "No reason provided",
+        },
+      });
 
       return apiResponse<ApproveJoinRequestResponse>({
         success: true,

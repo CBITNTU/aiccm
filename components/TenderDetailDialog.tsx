@@ -73,6 +73,8 @@ export function TenderDetailDialog({
   const [tenderDetails, setTenderDetails] = useState<{
     reference_number: string | null;
     documents: { application_url?: string } | null;
+    ai_summary: string | null;
+    ai_capability_taxonomy: string[] | null;
   } | null>(null);
   const [taxonomies, setTaxonomies] = useState<
     Array<{ id: string; name: string }>
@@ -86,14 +88,12 @@ export function TenderDetailDialog({
       const supabase = createClient();
       const { data, error } = await supabase
         .from("tenders")
-        .select("reference_number, documents")
+        .select("reference_number, documents, ai_summary, ai_capability_taxonomy")
         .eq("id", result.tender_id)
         .maybeSingle();
 
       if (!error && data) {
-        setTenderDetails(
-          data as { reference_number: string | null; documents: { application_url?: string } | null }
-        );
+        setTenderDetails(data as any);
       }
 
       // Fetch taxonomies
@@ -190,6 +190,19 @@ export function TenderDetailDialog({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* AI Summary (if available) */}
+          {tenderDetails?.ai_summary && (
+            <div>
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <span className="text-blue-500">✨</span>
+                AI Summary
+              </h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                {tenderDetails.ai_summary}
+              </p>
+            </div>
+          )}
+
           {/* Taxonomies */}
           {taxonomies.length > 0 && (
             <div>
@@ -286,45 +299,78 @@ export function TenderDetailDialog({
           <div>
             <h4 className="font-medium mb-4">Match Score Breakdown</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Capability</span>
-                  <span className={getScoreColor(result.capability_score)}>
-                    {result.capability_score}%
-                  </span>
-                </div>
-                <Progress value={result.capability_score} className="h-2" />
-              </div>
+              {(() => {
+                const scoreExplanations = (result.ai_analysis?.score_explanations as {
+                  capability?: string;
+                  experience?: string;
+                  location?: string;
+                  certification?: string;
+                }) || {};
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Experience</span>
-                  <span className={getScoreColor(result.experience_score)}>
-                    {result.experience_score}%
-                  </span>
-                </div>
-                <Progress value={result.experience_score} className="h-2" />
-              </div>
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Capability</span>
+                        <span className={getScoreColor(result.capability_score)}>
+                          {result.capability_score}%
+                        </span>
+                      </div>
+                      <Progress value={result.capability_score} className="h-2" />
+                      {scoreExplanations.capability && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreExplanations.capability}
+                        </p>
+                      )}
+                    </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Location</span>
-                  <span className={getScoreColor(result.location_score)}>
-                    {result.location_score}%
-                  </span>
-                </div>
-                <Progress value={result.location_score} className="h-2" />
-              </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Experience</span>
+                        <span className={getScoreColor(result.experience_score)}>
+                          {result.experience_score}%
+                        </span>
+                      </div>
+                      <Progress value={result.experience_score} className="h-2" />
+                      {scoreExplanations.experience && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreExplanations.experience}
+                        </p>
+                      )}
+                    </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Certification</span>
-                  <span className={getScoreColor(result.certification_score)}>
-                    {result.certification_score}%
-                  </span>
-                </div>
-                <Progress value={result.certification_score} className="h-2" />
-              </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Location</span>
+                        <span className={getScoreColor(result.location_score)}>
+                          {result.location_score}%
+                        </span>
+                      </div>
+                      <Progress value={result.location_score} className="h-2" />
+                      {scoreExplanations.location && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreExplanations.location}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Certification</span>
+                        <span className={getScoreColor(result.certification_score)}>
+                          {result.certification_score}%
+                        </span>
+                      </div>
+                      <Progress value={result.certification_score} className="h-2" />
+                      {scoreExplanations.certification && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreExplanations.certification}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

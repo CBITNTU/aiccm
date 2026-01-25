@@ -142,34 +142,77 @@ export function TenderMatchCard({
         </div>
       </div>
 
-      {/* Score breakdown - compact inline */}
-      <div
-        className="flex flex-wrap gap-3 mb-3 cursor-pointer hover:bg-muted/50 p-2 -mx-2 rounded-md transition-colors"
-        onClick={onViewDetails}
-      >
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground">Capability:</span>
-          <span className={`font-medium ${getScoreColor(result.capability_score)}`}>
-            {result.capability_score}%
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground">Experience:</span>
-          <span className={`font-medium ${getScoreColor(result.experience_score)}`}>
-            {result.experience_score}%
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground">Location:</span>
-          <span className={`font-medium ${getScoreColor(result.location_score)}`}>
-            {result.location_score}%
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground">Certification:</span>
-          <span className={`font-medium ${getScoreColor(result.certification_score)}`}>
-            {result.certification_score}%
-          </span>
+      {/* Score breakdown - compact inline with explanations */}
+      <div className="mb-3">
+        <div
+          className="flex flex-wrap gap-3 cursor-pointer hover:bg-muted/50 p-2 -mx-2 rounded-md transition-colors"
+          onClick={onViewDetails}
+        >
+          {(() => {
+            const scoreExplanations = (result.ai_analysis?.score_explanations as {
+              capability?: string;
+              experience?: string;
+              location?: string;
+              certification?: string;
+            }) || {};
+
+            return (
+              <>
+                <div className="flex flex-col gap-0.5 text-xs group">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">Capability:</span>
+                    <span className={`font-medium ${getScoreColor(result.capability_score)}`}>
+                      {result.capability_score}%
+                    </span>
+                  </div>
+                  {scoreExplanations.capability && (
+                    <span className="text-[10px] text-muted-foreground/70 max-w-[200px] line-clamp-1 group-hover:line-clamp-none">
+                      {scoreExplanations.capability}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5 text-xs group">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">Experience:</span>
+                    <span className={`font-medium ${getScoreColor(result.experience_score)}`}>
+                      {result.experience_score}%
+                    </span>
+                  </div>
+                  {scoreExplanations.experience && (
+                    <span className="text-[10px] text-muted-foreground/70 max-w-[200px] line-clamp-1 group-hover:line-clamp-none">
+                      {scoreExplanations.experience}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5 text-xs group">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">Location:</span>
+                    <span className={`font-medium ${getScoreColor(result.location_score)}`}>
+                      {result.location_score}%
+                    </span>
+                  </div>
+                  {scoreExplanations.location && (
+                    <span className="text-[10px] text-muted-foreground/70 max-w-[200px] line-clamp-1 group-hover:line-clamp-none">
+                      {scoreExplanations.location}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5 text-xs group">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">Certification:</span>
+                    <span className={`font-medium ${getScoreColor(result.certification_score)}`}>
+                      {result.certification_score}%
+                    </span>
+                  </div>
+                  {scoreExplanations.certification && (
+                    <span className="text-[10px] text-muted-foreground/70 max-w-[200px] line-clamp-1 group-hover:line-clamp-none">
+                      {scoreExplanations.certification}
+                    </span>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 

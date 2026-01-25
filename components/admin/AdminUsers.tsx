@@ -17,10 +17,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users, Shield, Trash2, Search } from "lucide-react";
+import { Users, Shield, Trash2, Search, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface User {
   id: string;
@@ -38,6 +45,10 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [eventsDialogOpen, setEventsDialogOpen] = useState(false);
+  const [userEvents, setUserEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -143,6 +154,34 @@ export default function AdminUsers() {
       console.error("Error deleting user:", error);
       toast.error("Failed to delete user");
     }
+  };
+
+  const fetchUserEvents = async (userId: string) => {
+    if (!supabase) return;
+    
+    setLoadingEvents(true);
+    try {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setUserEvents(data || []);
+    } catch (error: any) {
+      console.error("Error fetching user events:", error);
+      toast.error(`Failed to fetch events: ${error.message}`);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
+  const handleViewEvents = async (userId: string) => {
+    setSelectedUserId(userId);
+    setEventsDialogOpen(true);
+    await fetchUserEvents(userId);
   };
 
   const toggleUserRole = async (userId: string, currentRole: "superadmin" | "sme-owner") => {
@@ -292,6 +331,14 @@ export default function AdminUsers() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleViewEvents(userData.id)}
+                        >
+                          <Activity className="w-4 h-4 mr-1" />
+                          View Events
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() =>
                             toggleUserRole(userData.id, userData.role || "sme-owner")
                           }
@@ -340,6 +387,92 @@ export default function AdminUsers() {
           </AlertDescription>
         </Alert>
       </div>
+
+      {/* User Events Dialog */}
+      <Dialog open={eventsDialogOpen} onOpenChange={setEventsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Event Actions</DialogTitle>
+            <DialogDescription>
+              Recent activity and events for this user
+            </DialogDescription>
+          </DialogHeader>
+          {loadingEvents ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading events...</p>
+            </div>
+          ) : userEvents.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No events found for this user.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Entity</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Details</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {userEvents.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">
+                          {event.action_type?.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {event.entity_type && event.entity_id ? (
+                          <span className="text-sm">
+                            {event.entity_type}: {event.entity_id.substring(0, 8)}...
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            event.status === "success"
+                              ? "default"
+                              : event.status === "error"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {event.status || "success"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(event.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {event.details && Object.keys(event.details).length > 0 ? (
+                          <details className="text-xs">
+                            <summary className="cursor-pointer text-primary hover:underline">
+                              View details
+                            </summary>
+                            <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
+                              {JSON.stringify(event.details, null, 2)}
+                            </pre>
+                          </details>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

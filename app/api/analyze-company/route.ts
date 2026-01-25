@@ -5,7 +5,9 @@ import {
   parseAIJsonResponse,
   apiResponse,
   apiError,
+  getAuthenticatedUser,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import type { DeepCompanyAnalysis } from "@/lib/api/types";
 
 export async function POST(request: NextRequest) {
@@ -33,189 +35,166 @@ export async function POST(request: NextRequest) {
     const financialData = (company.financial_data as Record<string, { value?: unknown }>) || {};
     const complianceData = (company.compliance_data as Record<string, { value?: unknown }>) || {};
 
-    const analysisPrompt = `
-    Analyze the following construction company and provide comprehensive performance benchmarking, core competencies, business insights, AND fill in all missing company information fields.
+    // Check data completeness (excluding description)
+    const hasCapabilities = !!company.key_capabilities && company.key_capabilities.length > 20;
+    const hasFinancialData = Object.keys(financialData).length > 0;
+    const hasCertifications = !!company.certifications && company.certifications.length > 5;
+    const hasProjects = !!company.past_projects && company.past_projects.length > 20;
+    const hasWebsite = !!company.website_url;
+    const hasLocation = !!company.postcode;
+    
+    const dataCompleteness = {
+      hasCapabilities,
+      hasFinancialData,
+      hasCertifications,
+      hasProjects,
+      hasWebsite,
+      hasLocation,
+    };
+    
+    const completenessScore = Object.values(dataCompleteness).filter(Boolean).length;
+    const isMinimalData = completenessScore < 3; // Less than 3 data points
 
-    COMPANY PROFILE:
-    Company: ${company.company_name}
-    Website: ${company.website_url || "N/A"}
-    Description: ${company.description || "N/A - FILL THIS"}
-    Key Capabilities: ${company.key_capabilities || "N/A - FILL THIS"}
-    Equipment: ${company.equipment || "N/A - FILL THIS"}
-    Certifications: ${company.certifications || "N/A - FILL THIS"}
-    Past Projects: ${company.past_projects || "N/A - FILL THIS"}
-    Contact Person: ${company.contact_person || "N/A - FILL THIS"}
-    Contact Email: ${company.contact_email || "N/A - FILL THIS"}
-    Contact Phone: ${company.contact_phone || "N/A - FILL THIS"}
-    Postcode: ${company.postcode || "N/A - FILL THIS"}
-    Safety Rating: ${company.safety_rating || "N/A"}
-    Digital Maturity: ${company.digital_maturity || "N/A"}
+    const analysisPrompt = `Rate this company across 8 dimensions (0-100). If no data is available, rate it 0. Provide a short explanation for each score.
 
-    FINANCIAL DATA:
-    Employees: ${financialData.employees?.value || "N/A"}
-    Net Assets: £${typeof financialData.netAssets?.value === 'number' ? financialData.netAssets.value.toLocaleString() : "N/A"}
-    Total Assets: £${typeof financialData.totalAssets?.value === 'number' ? financialData.totalAssets.value.toLocaleString() : "N/A"}
-    Total Liabilities: £${typeof financialData.totalLiabilities?.value === 'number' ? financialData.totalLiabilities.value.toLocaleString() : "N/A"}
-    Cash: £${typeof financialData.cash?.value === 'number' ? financialData.cash.value.toLocaleString() : "N/A"}
-    Debt Ratio: ${financialData.debtRatio?.value || "N/A"}
+${company.website_url ? `Visit "${company.website_url}" to extract additional information.` : ''}
 
-    COMPLIANCE DATA:
-    Accounts Filed: ${complianceData.accountsFiled?.value || "N/A"}
-    Accounts Due: ${complianceData.accountsDue?.value || "N/A"}
-    Confirmation Statement: ${complianceData.confirmationStatement?.value || "N/A"}
-    Active Charges: ${complianceData.activeCharges?.value || "N/A"}
+Company: ${company.company_name}
+Website: ${company.website_url || "N/A"}
+Key Capabilities: ${company.key_capabilities || "N/A"}
+Equipment: ${company.equipment || "N/A"}
+Certifications: ${company.certifications || "N/A"}
+Past Projects: ${company.past_projects || "N/A"}
+Employees: ${financialData.employees?.value || "N/A"}
+Net Assets: £${typeof financialData.netAssets?.value === 'number' ? financialData.netAssets.value.toLocaleString() : "N/A"}
+Total Assets: £${typeof financialData.totalAssets?.value === 'number' ? financialData.totalAssets.value.toLocaleString() : "N/A"}
+Cash: £${typeof financialData.cash?.value === 'number' ? financialData.cash.value.toLocaleString() : "N/A"}
 
-    ANALYSIS REQUIREMENTS:
+Rate each dimension (0-100) with explanation:
+- technicalExpertise
+- safetyStandards
+- innovation
+- projectExperience
+- certifications
+- marketReputation
+- financialHealth
+- operationalCapacity
+- overallScore
 
-    0. COMPANY INFORMATION ENRICHMENT:
-       For ANY field marked "N/A - FILL THIS", provide concise, useful information.
-       - description: 2-3 sentences about the company's business and market position
-       - key_capabilities: List specific technical capabilities and services (100-150 words max)
-       - equipment: Return ONLY equipment names separated by semicolons (NO sentences, NO line breaks).
-       - certifications: Return ONLY certification names separated by semicolons (NO sentences, NO line breaks).
-       - past_projects: Brief list of 2-3 notable projects with basic details (50-100 words total)
-       - contact_person: Extract contact name if available from website
-       - contact_email: Extract contact email if available
-       - contact_phone: Extract contact phone if available
-       - postcode: Extract postcode/location if available
-
-    CRITICAL FORMAT REQUIREMENTS:
-    - For equipment and certifications fields: ONLY names separated by semicolons
-    - NO full sentences, NO descriptive phrases, NO connecting words
-    - Example CORRECT format: "ISO 9001; ISO 14001; OHSAS 18001"
-    - Example WRONG format: "The company holds ISO 9001 for quality management and ISO 14001"
-
-    1. PERFORMANCE BENCHMARKING (0-100 scores):
-       - Technical Expertise: Assess capabilities, equipment, and project complexity
-       - Safety Standards: Evaluate certifications, compliance, and safety culture
-       - Innovation & Technology: Rate digital maturity and modern practices
-       - Project Experience: Analyze past projects and company maturity
-       - Certifications & Compliance: Review regulatory compliance and industry standards
-       - Market Reputation: Evaluate overall market position and credibility
-       - Financial Health: Assess financial stability, assets, and debt ratios
-       - Operational Capacity: Evaluate workforce size and resource capacity
-
-    2. CORE COMPETENCIES:
-       Extract 6-9 SHORT, specific competencies (max 3-4 words each).
-       Examples: "High-rise construction", "Steel fabrication", "Project management"
-
-    3. ASSESSMENT RATINGS:
-       Provide these specific assessments:
-       - digitalMaturity: Rate as "High", "Medium", "Low", or "Not assessed yet"
-       - safetyRating: Rate as "Excellent", "Good", "Fair", "Poor", or "Not assessed yet"
-       - marketPosition: Brief summary (1 sentence) or "Not assessed yet"
-
-    4. BUSINESS INSIGHTS:
-       Provide 3-5 SHORT strategic insights (one sentence each, max 15 words per insight).
-       Cover: strengths, opportunities, risks, financial health, or recommendations.
-
-    5. COMPETITIVE POSITIONING:
-       Rate the company's position: "Market Leader", "Strong Competitor", "Emerging Player", or "Developing"
-
-    6. SWOT SUMMARY:
-       Brief bullets for Strengths, Weaknesses, Opportunities, Threats (2-3 SHORT items each, max 5 words per item)
-
-    Return ONLY a JSON object with this exact structure:
-    {
-      "companyInfo": {
-        "description": "2-3 sentence company description",
-        "key_capabilities": "100-150 word capabilities list",
-        "equipment": "Equipment names only",
-        "certifications": "ISO 9001; ISO 14001; OHSAS 18001",
-        "past_projects": "",
-        "contact_person": "Contact name or null",
-        "contact_email": "Contact email or null",
-        "contact_phone": "Contact phone or null",
-        "postcode": "Company postcode or null"
-      },
-      "performanceBenchmark": {
-        "technicalExpertise": 85,
-        "safetyStandards": 92,
-        "innovation": 78,
-        "projectExperience": 88,
-        "certifications": 90,
-        "marketReputation": 82,
-        "financialHealth": 75,
-        "operationalCapacity": 80,
-        "overallScore": 84
-      },
-      "coreCompetencies": [
-        "High-rise construction",
-        "Steel fabrication"
-      ],
-      "digitalMaturity": "Medium",
-      "safetyRating": "Good",
-      "marketPosition": "Established regional contractor with growth potential",
-      "businessInsights": [
-        "Strong asset base supports large project bids",
-        "Equipment diversity enables multiple service lines"
-      ],
-      "competitivePositioning": "Strong Competitor",
-      "swotSummary": {
-        "strengths": ["Strong assets", "Experienced team"],
-        "weaknesses": ["Moderate debt"],
-        "opportunities": ["Green building"],
-        "threats": ["Economic uncertainty"]
-      },
-      "executiveSummary": "1-2 sentence overall assessment"
-    }`;
+Return JSON:
+{
+  "performanceBenchmark": {
+    "technicalExpertise": {"score": 0, "explanation": "short explanation"},
+    "safetyStandards": {"score": 0, "explanation": "short explanation"},
+    "innovation": {"score": 0, "explanation": "short explanation"},
+    "projectExperience": {"score": 0, "explanation": "short explanation"},
+    "certifications": {"score": 0, "explanation": "short explanation"},
+    "marketReputation": {"score": 0, "explanation": "short explanation"},
+    "financialHealth": {"score": 0, "explanation": "short explanation"},
+    "operationalCapacity": {"score": 0, "explanation": "short explanation"},
+    "overallScore": {"score": 0, "explanation": "short explanation"}
+  }
+}`;
 
     console.log("Sending analyze-company request to OpenAI...");
+    console.log("📊 COMPANY DATA IN DATABASE:");
+    console.log({
+      name: company.company_name,
+      website: company.website_url || "N/A",
+      key_capabilities: company.key_capabilities ? `${company.key_capabilities.substring(0, 50)}...` : "N/A",
+      equipment: company.equipment || "N/A",
+      certifications: company.certifications || "N/A",
+      past_projects: company.past_projects ? `${company.past_projects.substring(0, 50)}...` : "N/A",
+      hasFinancialData: Object.keys(financialData).length > 0,
+      hasCapabilities: !!company.key_capabilities,
+      hasCertifications: hasCertifications,
+      hasProjects: hasProjects,
+      hasWebsite: hasWebsite,
+      hasLocation: hasLocation,
+      completenessScore,
+      isMinimalData,
+    });
 
-    const systemPrompt =
-      "You are an expert construction industry analyst. Provide accurate, fair assessments based on available data.";
+    const systemPrompt = `You are a business analyst. Rate companies from 0-100 based strictly on available data. If no data exists for a dimension, rate it 0. Visit websites when provided to extract additional information.`;
+
+    // Log the full prompt for debugging
+    console.log("\n" + "=".repeat(80));
+    console.log("📋 FULL PROMPT BEING SENT TO AI:");
+    console.log("=".repeat(80));
+    console.log("\n🔹 SYSTEM PROMPT:");
+    console.log(systemPrompt);
+    console.log("\n🔹 ANALYSIS PROMPT:");
+    console.log(analysisPrompt);
+    console.log("\n" + "=".repeat(80) + "\n");
 
     const response = await chatCompletion(systemPrompt, analysisPrompt, {
       temperature: 0.3,
       maxTokens: 2000,
     });
 
+    console.log("OpenAI response received, length:", response.length);
+
     let analysis: DeepCompanyAnalysis;
     try {
-      analysis = parseAIJsonResponse<DeepCompanyAnalysis>(response);
+      const rawAnalysis = parseAIJsonResponse<{
+        performanceBenchmark: Record<string, { score: number; explanation: string } | number>;
+      }>(response);
+      console.log("✅ Successfully parsed AI analysis");
+      
+      // Transform the new structure to the expected format
+      const benchmark = rawAnalysis.performanceBenchmark;
+      const transformScore = (value: { score: number; explanation: string } | number | undefined): number => {
+        if (typeof value === 'number') return value;
+        if (value && typeof value === 'object' && 'score' in value) return value.score;
+        return 0;
+      };
 
-      // Validate required fields
-      const requiredFields = [
-        "companyInfo",
-        "performanceBenchmark",
-        "coreCompetencies",
-        "digitalMaturity",
-        "safetyRating",
-        "marketPosition",
-        "businessInsights",
-        "competitivePositioning",
-        "swotSummary",
-        "executiveSummary",
-      ];
-      const missingFields = requiredFields.filter(
-        (field) => (analysis as unknown as Record<string, unknown>)[field] === undefined
-      );
-
-      if (missingFields.length > 0) {
-        throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
-      }
-
-      // Ensure arrays are properly formatted
-      if (!Array.isArray(analysis.coreCompetencies))
-        analysis.coreCompetencies = [];
-      if (!Array.isArray(analysis.businessInsights))
-        analysis.businessInsights = [];
-      if (!analysis.companyInfo) analysis.companyInfo = {};
-    } catch (parseError) {
-      console.error("Failed to parse OpenAI response:", response);
-      // Fallback analysis if parsing fails
       analysis = {
         companyInfo: {},
         performanceBenchmark: {
-          technicalExpertise: 70,
-          safetyStandards: 70,
-          innovation: 65,
-          projectExperience: 70,
-          certifications: 65,
-          marketReputation: 70,
-          financialHealth: 70,
-          operationalCapacity: 70,
-          overallScore: 69,
+          technicalExpertise: transformScore(benchmark.technicalExpertise),
+          safetyStandards: transformScore(benchmark.safetyStandards),
+          innovation: transformScore(benchmark.innovation),
+          projectExperience: transformScore(benchmark.projectExperience),
+          certifications: transformScore(benchmark.certifications),
+          marketReputation: transformScore(benchmark.marketReputation),
+          financialHealth: transformScore(benchmark.financialHealth),
+          operationalCapacity: transformScore(benchmark.operationalCapacity),
+          overallScore: transformScore(benchmark.overallScore),
+        },
+        coreCompetencies: [],
+        digitalMaturity: "Not assessed yet",
+        safetyRating: "Not assessed yet",
+        marketPosition: "Not assessed yet",
+        businessInsights: [],
+        competitivePositioning: "Developing",
+        swotSummary: {
+          strengths: [],
+          weaknesses: [],
+          opportunities: [],
+          threats: [],
+        },
+        executiveSummary: "Analysis completed.",
+      };
+      
+      console.log("Performance benchmark scores:", analysis.performanceBenchmark);
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI response:", parseError);
+      console.error("Raw OpenAI response:", response);
+      // Fallback analysis if parsing fails
+      console.warn("⚠️ Using FALLBACK analysis - AI parsing failed. This is hardcoded data!");
+      analysis = {
+        companyInfo: {},
+        performanceBenchmark: {
+          technicalExpertise: 50,
+          safetyStandards: 50,
+          innovation: 50,
+          projectExperience: 50,
+          certifications: 50,
+          marketReputation: 50,
+          financialHealth: 50,
+          operationalCapacity: 50,
+          overallScore: 50,
         },
         coreCompetencies: ["General construction"],
         digitalMaturity: "Not assessed yet",
@@ -242,12 +221,6 @@ export async function POST(request: NextRequest) {
     // Fill in company fields if they were empty or inadequate
     const companyInfo = analysis.companyInfo || {};
 
-    if (
-      companyInfo.description &&
-      (!company.description || company.description.length < 50)
-    ) {
-      updateData.description = companyInfo.description;
-    }
     if (
       companyInfo.key_capabilities &&
       (!company.key_capabilities || company.key_capabilities.length < 50)
@@ -306,10 +279,48 @@ export async function POST(request: NextRequest) {
       // Continue anyway - we'll still return the analysis even if saving fails
     }
 
+    // Queue capability taxonomy generation if relevant fields were updated
+    // This will dynamically create new capabilities based on updated company data
+    const relevantFieldsUpdated = 
+      updateData.key_capabilities || 
+      updateData.certifications || 
+      updateData.past_projects;
+    
+    if (relevantFieldsUpdated) {
+      try {
+        const { enqueueJob } = await import("@/lib/services/queueService");
+        await enqueueJob({
+          jobType: "company_taxonomy",
+          entityType: "company",
+          entityId: companyId,
+          priority: 5,
+        });
+        console.log(`Queued company_taxonomy job for updated company: ${companyId}`);
+      } catch (queueError) {
+        console.error("Failed to queue company taxonomy job:", queueError);
+        // Don't fail the analysis if queueing fails
+      }
+    }
+
     console.log(
-      "Company analysis completed and saved for:",
+      "✅ Company analysis completed and saved for:",
       company.company_name
     );
+    console.log("Overall score:", analysis.performanceBenchmark?.overallScore);
+
+    // Log analysis event
+    const { user } = await getAuthenticatedUser(request).catch(() => ({ user: null }));
+    await logApiEvent(request, {
+      actionType: "company_updated", // Analysis updates company data
+      userId: user?.id || null,
+      userEmail: user?.email || undefined,
+      entityType: "company",
+      entityId: companyId,
+      details: {
+        analysisType: "comprehensive",
+        companyName: company.company_name,
+      },
+    }).catch(() => {}); // Don't fail if logging fails
 
     return apiResponse({
       success: true,

@@ -395,33 +395,69 @@ export default function CompanyDetailPage() {
     );
   }
 
-  // Parse JSON fields
+  // Parse JSON fields - handle both JSON arrays and plain text (semicolon-separated)
   let certifications: Certification[] = [];
   let equipment: Equipment[] = [];
   let pastProjects: PastProject[] = [];
 
   try {
     if (companyData.certifications) {
-      certifications = JSON.parse(companyData.certifications);
+      // Try parsing as JSON first
+      const parsed = JSON.parse(companyData.certifications);
+      if (Array.isArray(parsed)) {
+        certifications = parsed;
+      } else {
+        // If not an array, treat as plain text and convert
+        certifications = [];
+      }
     }
   } catch {
-    // ignore
+    // If JSON parse fails, treat as plain text (semicolon-separated)
+    if (companyData.certifications && typeof companyData.certifications === 'string') {
+      const items = companyData.certifications.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      certifications = items.map(name => ({ name }));
+    }
   }
 
   try {
     if (companyData.equipment) {
-      equipment = JSON.parse(companyData.equipment);
+      // Try parsing as JSON first
+      const parsed = JSON.parse(companyData.equipment);
+      if (Array.isArray(parsed)) {
+        equipment = parsed;
+      } else {
+        // If not an array, treat as plain text and convert
+        equipment = [];
+      }
     }
   } catch {
-    // ignore
+    // If JSON parse fails, treat as plain text (semicolon-separated)
+    if (companyData.equipment && typeof companyData.equipment === 'string') {
+      const items = companyData.equipment.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      equipment = items.map(name => ({ name }));
+    }
   }
 
   try {
     if (companyData.past_projects) {
-      pastProjects = JSON.parse(companyData.past_projects);
+      // Try parsing as JSON first
+      const parsed = JSON.parse(companyData.past_projects);
+      if (Array.isArray(parsed)) {
+        pastProjects = parsed;
+      } else {
+        // If not an array, treat as plain text
+        pastProjects = [];
+      }
     }
   } catch {
-    // ignore
+    // If JSON parse fails, treat as plain text (semicolon-separated)
+    if (companyData.past_projects && typeof companyData.past_projects === 'string') {
+      const items = companyData.past_projects.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      pastProjects = items.map(description => ({ 
+        name: description.substring(0, 50) + (description.length > 50 ? '...' : ''),
+        description 
+      }));
+    }
   }
 
   const financialData = companyData.financial_data as Record<

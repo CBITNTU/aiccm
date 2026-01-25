@@ -119,16 +119,35 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   console.log("\n" + "=".repeat(80) + "\n");
 
   // Call OpenAI with rate limiting
-  const response = await runLLM(
-    async () => {
-      const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-5-mini",
-        maxTokens: 2000,
-      });
-      return aiResponse;
-    },
-    4000 // Estimated tokens
-  );
+  let response: string;
+  try {
+    response = await runLLM(
+      async () => {
+        console.log("📞 Calling OpenAI API...");
+        const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
+          model: "gpt-5-mini",
+          maxTokens: 8000, // Increased to allow for default reasoning tokens plus output
+          responseFormat: "json_object", // Request JSON output format
+        });
+        console.log(`📥 Received response (${aiResponse.length} chars)`);
+        if (aiResponse.length === 0) {
+          console.error("⚠️ WARNING: OpenAI returned empty response!");
+        }
+        return aiResponse;
+      },
+      4000 // Estimated tokens
+    );
+  } catch (error: any) {
+    console.error("❌ Error calling OpenAI API:", error);
+    console.error("Error details:", {
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      type: error?.type,
+      stack: error?.stack,
+    });
+    throw error;
+  }
 
   // Log the AI response
   console.log("\n" + "=".repeat(80));
@@ -140,6 +159,13 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   // Parse AI response
   let score: MatchingScore;
 
+  // Log the raw response for debugging
+  console.log("\n" + "=".repeat(80));
+  console.log(`📄 RAW AI RESPONSE (${response.length} chars):`);
+  console.log("=".repeat(80));
+  console.log(response);
+  console.log("=".repeat(80) + "\n");
+
   try {
     // Use the parseAIJsonResponse helper which handles markdown code blocks and comments
     let parsed;
@@ -148,11 +174,20 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     } catch (parseError) {
       // Fallback to simple regex if parseAIJsonResponse fails
       console.warn("parseAIJsonResponse failed, trying regex fallback:", parseError);
+      console.warn("Response length:", response.length);
+      console.warn("Response preview (first 1000 chars):", response.substring(0, 1000));
+      
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
+        try {
+          parsed = JSON.parse(jsonMatch[0]);
+        } catch (regexParseError) {
+          console.error("Regex match found but JSON.parse failed. Matched content:", jsonMatch[0].substring(0, 500));
+          throw new Error(`Failed to parse JSON from response. Response length: ${response.length}. Preview: ${response.substring(0, 1000)}`);
+        }
       } else {
-        throw new Error(`No JSON found in response. Response preview: ${response.substring(0, 500)}`);
+        console.error("No JSON pattern found in response. Full response:", response);
+        throw new Error(`No JSON found in response. Response length: ${response.length}. Full response: ${response}`);
       }
     }
     

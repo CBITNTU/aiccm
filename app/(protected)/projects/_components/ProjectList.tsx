@@ -1,0 +1,234 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useProjects, type ProjectStatus, type Project } from "@/hooks/useProjects";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Plus,
+  Briefcase,
+  FolderOpen,
+  Archive,
+  CheckCircle2,
+  Target,
+  Users,
+} from "lucide-react";
+import { ProjectCreationDialog } from "@/components/consulting/ProjectCreationDialog";
+import { ProjectListSkeleton } from "./skeletons/ProjectListSkeleton";
+
+interface ProjectListProps {
+  companyId: string | null;
+  selectedProjectId: string | null;
+  onSelectProject: (id: string | null) => void;
+  filter: ProjectStatus;
+  onFilterChange: (filter: ProjectStatus) => void;
+}
+
+export function ProjectList({
+  companyId,
+  selectedProjectId,
+  onSelectProject,
+  filter,
+  onFilterChange,
+}: ProjectListProps) {
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  const {
+    data: projects,
+    isLoading,
+    isFetching,
+    error,
+  } = useProjects(companyId, filter);
+
+  // Auto-select first project when list loads or changes
+  useEffect(() => {
+    if (projects && projects.length > 0 && !selectedProjectId) {
+      onSelectProject(projects[0].id);
+    }
+  }, [projects, selectedProjectId, onSelectProject]);
+
+  // Clear selection if selected project no longer in list
+  useEffect(() => {
+    if (
+      selectedProjectId &&
+      projects &&
+      !projects.find((p) => p.id === selectedProjectId)
+    ) {
+      onSelectProject(projects.length > 0 ? projects[0].id : null);
+    }
+  }, [projects, selectedProjectId, onSelectProject]);
+
+  const handleProjectCreated = (projectId: string) => {
+    onSelectProject(projectId);
+  };
+
+  if (isLoading) {
+    return <ProjectListSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <p className="text-destructive">Failed to load projects</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {error.message}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card className={isFetching ? "opacity-60 transition-opacity" : ""}>
+        <CardHeader className="pb-3">
+          <Tabs
+            value={filter}
+            onValueChange={(v) => onFilterChange(v as ProjectStatus)}
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="active" className="flex items-center gap-1.5">
+                <Briefcase className="h-3.5 w-3.5" />
+                Active
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Done
+              </TabsTrigger>
+              <TabsTrigger value="archived" className="flex items-center gap-1.5">
+                <Archive className="h-3.5 w-3.5" />
+                Archived
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <AnimatePresence mode="popLayout">
+            {projects && projects.length > 0 ? (
+              projects.map((project, index) => (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <ProjectCard
+                    project={project}
+                    isSelected={project.id === selectedProjectId}
+                    onClick={() => onSelectProject(project.id)}
+                  />
+                </motion.div>
+              ))
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-8 text-center"
+              >
+                <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">
+                  No {filter} projects found
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Create a new project to get started
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <Button
+            onClick={() => setCreateDialogOpen(true)}
+            className="w-full mt-4"
+            disabled={!companyId}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        </CardContent>
+      </Card>
+
+      {companyId && (
+        <ProjectCreationDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onProjectCreated={handleProjectCreated}
+          companyId={companyId}
+        />
+      )}
+    </>
+  );
+}
+
+// Individual project card component
+interface ProjectCardProps {
+  project: Project;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
+  const statusBadge = () => {
+    switch (project.status) {
+      case "draft":
+        return <Badge variant="outline">Draft</Badge>;
+      case "active":
+        return <Badge variant="default">Active</Badge>;
+      case "completed":
+        return <Badge variant="secondary">Completed</Badge>;
+      case "archived":
+        return <Badge variant="outline">Archived</Badge>;
+      default:
+        return <Badge variant="outline">{project.status}</Badge>;
+    }
+  };
+
+  const gapCoverage = project.gap_analysis?.coveragePercentage;
+  const teamCoverage = project.team_analysis?.coveragePercentage;
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      className={`
+        p-4 rounded-lg border cursor-pointer transition-colors
+        ${
+          isSelected
+            ? "border-primary bg-primary/5"
+            : "border-border hover:border-primary/50"
+        }
+      `}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <h3 className="font-medium truncate flex-1 pr-2">{project.name}</h3>
+        {statusBadge()}
+      </div>
+
+      {project.tenders && (
+        <p className="text-sm text-muted-foreground truncate mb-2">
+          <Target className="h-3 w-3 inline mr-1" />
+          {project.tenders.title}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {gapCoverage !== undefined && (
+          <Badge variant="outline" className="text-xs">
+            {gapCoverage}% coverage
+          </Badge>
+        )}
+        {teamCoverage !== undefined && teamCoverage !== gapCoverage && (
+          <Badge variant="outline" className="text-xs bg-green-500/10">
+            <Users className="h-3 w-3 mr-1" />
+            {teamCoverage}% team
+          </Badge>
+        )}
+      </div>
+    </motion.div>
+  );
+}

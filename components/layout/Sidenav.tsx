@@ -26,6 +26,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
+  FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +61,12 @@ const navigationItems: NavigationItem[] = [
     href: "/directory",
     icon: Search,
     hideForPending: false,
+  },
+  {
+    name: "Projects",
+    href: "/projects",
+    icon: FolderKanban,
+    hideForPending: true,
   },
   {
     name: "Consulting Team Builder",

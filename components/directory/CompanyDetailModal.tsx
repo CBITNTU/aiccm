@@ -22,6 +22,8 @@ import {
   Wrench,
   Shield,
   Loader2,
+  BadgeCheck,
+  Sparkles,
 } from "lucide-react";
 import {
   Radar,
@@ -214,9 +216,17 @@ export function CompanyDetailModal({
                   {analysis.performanceBenchmark.overallScore}/100
                 </Badge>
               )}
-              {company.is_system_company && (
-                <Badge variant="secondary">Verified</Badge>
-              )}
+              {company.user_id ? (
+                <Badge className="gap-1 border-0 bg-green-600 text-white dark:bg-green-600 dark:text-white">
+                  <BadgeCheck className="h-3 w-3" />
+                  Verified
+                </Badge>
+              ) : company.is_system_company ? (
+                <Badge className="gap-1 border-0 bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white">
+                  <Sparkles className="h-3 w-3" />
+                  AI Generated
+                </Badge>
+              ) : null}
             </div>
           </div>
           {company.description && (

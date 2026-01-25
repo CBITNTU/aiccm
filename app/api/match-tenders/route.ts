@@ -82,13 +82,13 @@ async function analyzeTenderMatch(
     tender.requirements ? `Requirements: ${JSON.stringify(tender.requirements)}` : '',
   ].filter(Boolean).join('\n');
 
-  const systemPrompt = `You are an expert at evaluating company-tender matches. Rate the match between a company and a tender on 4 dimensions: Capability (must match - gate requirement), Certification (50% weight), Experience (40% weight), Location (10% weight). If capability doesn't match (capabilityScore < 50), set capabilityScore = 0. Always calculate certificationScore, experienceScore, and locationScore normally regardless of capability. If capabilityScore >= 50, overallScore = (certificationScore * 0.5) + (experienceScore * 0.4) + (locationScore * 0.1). If capabilityScore < 50, overallScore = 0. If data is missing (NOT PROVIDED), score that dimension as 0. Do NOT make assumptions. Return JSON with overallScore, capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
+  const systemPrompt = `You are an expert at evaluating company-tender matches. Rate the match between a company and a tender on 4 dimensions from 0-100: Capability, Certification, Experience, Location. If capability doesn't match (industries don't align or capabilities are irrelevant), set capabilityScore = 0. Always calculate certificationScore, experienceScore, and locationScore normally regardless of capability. If data is missing (NOT PROVIDED), score that dimension as 0. Do NOT make assumptions. Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
 
   const prompt = `Company: ${companyProfile}
 
 Tender: ${tenderInfo}
 
-Rate each dimension independently. If capability doesn't match, set capabilityScore = 0. Always score certification, experience, and location normally. Weights: Certification 50%, Experience 40%, Location 10%. If data is NOT PROVIDED, score 0 for that dimension only. Return JSON with scores and explanations.`;
+Rate each dimension from 0-100. If capability doesn't match, set capabilityScore = 0. Always score certification, experience, and location normally. If data is NOT PROVIDED, score 0 for that dimension only. Return JSON with scores and explanations.`;
 
   // Log the full prompt for debugging
   console.log("\n" + "=".repeat(80));
@@ -142,6 +142,7 @@ Rate each dimension independently. If capability doesn't match, set capabilitySc
     if (!hasCertifications) certificationScore = 0;
     if (!hasLocation) locationScore = 0;
 
+    // Calculate overall score locally using weights
     // Capability MUST MATCH - it's a gate, not a weight
     // If capability doesn't match (< 50), overall score is 0
     let weightedTotal = 0;

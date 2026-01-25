@@ -12,6 +12,12 @@ export interface MatchingScore {
   matchReasons: string[];
   improvementSuggestions: string[];
   aiAnalysis: string;
+  scoreExplanations?: {
+    capability: string;
+    experience: string;
+    location: string;
+    certification: string;
+  };
 }
 
 /**
@@ -84,70 +90,33 @@ export async function scoreTenderMatch(
   const dataPoints = [hasCapabilities, hasExperience, hasCertifications, hasLocation, hasDescription].filter(Boolean).length;
   const isMinimalData = dataPoints < 3;
 
-  const systemPrompt = `You are an expert at evaluating how well companies match tender opportunities.
-Analyze the company profile against the tender requirements and provide a comprehensive scoring.
+  const systemPrompt = `You are an expert at evaluating company-tender matches. Rate the match between a company and a tender on 4 dimensions: Capability (must match - gate requirement), Certification (50% weight), Experience (40% weight), Location (10% weight). If capability doesn't match (capabilityScore < 50), set capabilityScore = 0. Always calculate certificationScore, experienceScore, and locationScore normally regardless of capability. If capabilityScore >= 50, overallScore = (certificationScore * 0.5) + (experienceScore * 0.4) + (locationScore * 0.1). If capabilityScore < 50, overallScore = 0. If data is missing (NOT PROVIDED), score that dimension as 0. Do NOT make assumptions. Return JSON with overallScore, capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
 
-CRITICAL SCORING RULES:
-1. CAPABILITIES ARE THE MOST IMPORTANT FACTOR - If the company has no capabilities listed (key_capabilities is empty/N/A and ai_capability_taxonomy is empty), the capabilityScore MUST be 0-30, regardless of description.
-2. DATA COMPLETENESS MATTERS - If the company profile has minimal data (less than 3 data points: capabilities, experience, certifications, location, description), you MUST score conservatively:
-   - overallScore: 30-50 (never above 50 with minimal data)
-   - capabilityScore: 0-40 if no capabilities listed
-   - experienceScore: 0-30 if no past projects listed
-   - certificationScore: 0-30 if no certifications listed
-3. DESCRIPTION IS LEAST IMPORTANT - A description alone without capabilities, experience, or certifications should NOT result in a high score.
-4. WEIGHTING: capabilityScore (40%) > experienceScore (25%) > certificationScore (20%) > locationScore (10%) > description (5%)
-
-Return a JSON object with the following structure:
-{
-  "overallScore": <number 0-100>,
-  "capabilityScore": <number 0-100>,
-  "experienceScore": <number 0-100>,
-  "locationScore": <number 0-100>,
-  "certificationScore": <number 0-100>,
-  "matchReasons": [<array of strings explaining why this is a good match>],
-  "improvementSuggestions": [<array of strings with actionable suggestions>],
-  "aiAnalysis": "<detailed analysis text explaining the match>"
-}
-
-Scoring guidelines:
-- capabilityScore: How well company capabilities match tender requirements. MUST be 0-30 if no capabilities are listed.
-- experienceScore: How relevant company's past projects/experience are. MUST be 0-30 if no past projects listed.
-- locationScore: Geographic fit (if location matters). Can be 50 if location not specified.
-- certificationScore: How well company certifications match requirements. MUST be 0-30 if no certifications listed.
-- overallScore: Weighted average: capabilityScore*0.4 + experienceScore*0.25 + certificationScore*0.2 + locationScore*0.1 + (description relevance)*0.05
-
-If the company has minimal data (less than 3 data points), the overallScore MUST be between 30-50, never higher.
-
-Be honest and conservative in your assessment. Do not inflate scores based on description alone.`;
-
-  const userPrompt = `Company Profile:
-Name: ${companyData.company_name || "N/A"}
+  const userPrompt = `Company: ${companyData.company_name || "N/A"}
 ${hasDescription ? `Description: ${companyData.description}` : "Description: NOT PROVIDED"}
-${companyData.ai_summary ? `AI Summary: ${companyData.ai_summary}` : ""}
-${hasCapabilities ? (companyData.key_capabilities ? `Key Capabilities: ${companyData.key_capabilities}` : "") : "Key Capabilities: NOT PROVIDED"}
-${hasCapabilities && companyData.ai_capability_taxonomy ? `Capability Taxonomy: ${JSON.stringify(companyData.ai_capability_taxonomy)}` : ""}
+${hasCapabilities ? (companyData.key_capabilities ? `Capabilities: ${companyData.key_capabilities}` : "") : "Capabilities: NOT PROVIDED"}
 ${hasCertifications ? `Certifications: ${companyData.certifications}` : "Certifications: NOT PROVIDED"}
 ${hasExperience ? `Past Projects: ${companyData.past_projects}` : "Past Projects: NOT PROVIDED"}
 ${hasLocation ? `Location: ${companyData.postcode}` : "Location: NOT PROVIDED"}
 
-DATA COMPLETENESS: ${dataPoints} out of 5 data points available. ${isMinimalData ? "WARNING: Minimal data - score conservatively (30-50 max)." : "Sufficient data available."}
-
-Tender Opportunity:
-Title: ${tenderData.title || "N/A"}
+Tender: ${tenderData.title || "N/A"}
 Description: ${tenderData.description || "N/A"}
-${tenderData.ai_summary ? `AI Summary: ${tenderData.ai_summary}` : ""}
 Buyer: ${tenderData.buyer || "N/A"}
 Budget: ${budgetRange}
-Deadline: ${tenderData.deadline || "N/A"}
 Location: ${tenderData.location || "N/A"}
 ${tenderData.cpv_codes && tenderData.cpv_codes.length > 0 ? `CPV Codes: ${tenderData.cpv_codes.join(", ")}` : ""}
-${tenderData.requirements ? `Requirements: ${typeof tenderData.requirements === "string" ? tenderData.requirements : JSON.stringify(tenderData.requirements)}` : ""}
-${tenderData.ai_capability_taxonomy ? `Required Capability Taxonomy: ${JSON.stringify(tenderData.ai_capability_taxonomy)}` : ""}
 
-Evaluate how well this company matches this tender opportunity. 
-${!hasCapabilities ? "CRITICAL: Company has NO capabilities listed. capabilityScore MUST be 0-30." : ""}
-${isMinimalData ? "CRITICAL: Company has minimal data. overallScore MUST be 30-50, never higher." : ""}
-Return the JSON scoring object following the scoring rules.`;
+Rate each dimension independently. If capability doesn't match, set capabilityScore = 0. Always score certification, experience, and location normally. Weights: Certification 50%, Experience 40%, Location 10%. If data is NOT PROVIDED, score 0 for that dimension only.`;
+
+  // Log the prompt for debugging
+  console.log("\n" + "=".repeat(80));
+  console.log(`📋 TENDER MATCHING PROMPT: ${companyData.company_name} → ${tenderData.title}`);
+  console.log("=".repeat(80));
+  console.log("\n🔹 SYSTEM PROMPT:");
+  console.log(systemPrompt);
+  console.log("\n🔹 USER PROMPT:");
+  console.log(userPrompt);
+  console.log("\n" + "=".repeat(80) + "\n");
 
   // Call OpenAI with rate limiting
   const response = await runLLM(
@@ -162,6 +131,13 @@ Return the JSON scoring object following the scoring rules.`;
     4000 // Estimated tokens
   );
 
+  // Log the AI response
+  console.log("\n" + "=".repeat(80));
+  console.log(`🤖 AI RESPONSE FOR TENDER MATCHING: ${companyData.company_name} → ${tenderData.title}`);
+  console.log("=".repeat(80));
+  console.log(response);
+  console.log("\n" + "=".repeat(80) + "\n");
+
   // Parse AI response
   let score: MatchingScore;
 
@@ -175,34 +151,48 @@ Return the JSON scoring object following the scoring rules.`;
       let capabilityScore = Math.max(0, Math.min(100, parsed.capabilityScore || 0));
       let experienceScore = Math.max(0, Math.min(100, parsed.experienceScore || 0));
       let certificationScore = Math.max(0, Math.min(100, parsed.certificationScore || 0));
-      let locationScore = Math.max(0, Math.min(100, parsed.locationScore || 50)); // Default to 50 if not specified
+      let locationScore = Math.max(0, Math.min(100, parsed.locationScore || 0));
       
-      // Enforce rules based on data completeness
+      // Enforce rules based on data completeness - mark 0 if data is missing
       if (!hasCapabilities) {
-        capabilityScore = Math.min(capabilityScore, 30);
+        capabilityScore = 0;
       }
       
       if (!hasExperience) {
-        experienceScore = Math.min(experienceScore, 30);
+        experienceScore = 0;
       }
       
       if (!hasCertifications) {
-        certificationScore = Math.min(certificationScore, 30);
+        certificationScore = 0;
       }
       
-      // If minimal data, cap overall score at 50
-      if (isMinimalData) {
-        overallScore = Math.min(overallScore, 50);
-        // Recalculate based on weighted average if AI didn't follow rules
-        const weightedScore = (capabilityScore * 0.4) + (experienceScore * 0.25) + (certificationScore * 0.2) + (locationScore * 0.1) + (hasDescription ? 5 : 0);
-        overallScore = Math.min(overallScore, weightedScore, 50);
+      if (!hasLocation) {
+        locationScore = 0;
       }
       
-      // Warn if AI scored too high with minimal data
-      if (isMinimalData && overallScore > 50) {
-        console.warn(`⚠️ AI scored ${overallScore}% with minimal data (${dataPoints} data points). Capping at 50%.`);
-        overallScore = 50;
+      // Capability MUST MATCH - it's a gate, not a weight
+      // If capability doesn't match (< 50), overall score is 0
+      if (capabilityScore < 50) {
+        overallScore = 0;
+      } else {
+        // If capability matches, calculate based on other factors only
+        // Weights: Certification 50%, Experience 40%, Location 10% = 100%
+        overallScore = Math.round(
+          (certificationScore * 0.5) + 
+          (experienceScore * 0.4) + 
+          (locationScore * 0.1)
+        );
       }
+      
+      const scoreExplanations = parsed.scoreExplanations || {};
+      
+      // Override explanations when we force scores to 0
+      const finalScoreExplanations = {
+        capability: !hasCapabilities ? "No capabilities listed - score set to 0" : (scoreExplanations.capability || `Capability score: ${capabilityScore}%`),
+        experience: !hasExperience ? "No past projects listed - score set to 0" : (scoreExplanations.experience || `Experience score: ${experienceScore}%`),
+        location: !hasLocation ? "Location not provided - score set to 0. Do not assume location." : (scoreExplanations.location || `Location score: ${locationScore}%`),
+        certification: !hasCertifications ? "No certifications listed - score set to 0" : (scoreExplanations.certification || `Certification score: ${certificationScore}%`),
+      };
       
       score = {
         overallScore,
@@ -213,6 +203,7 @@ Return the JSON scoring object following the scoring rules.`;
         matchReasons: Array.isArray(parsed.matchReasons) ? parsed.matchReasons : [],
         improvementSuggestions: Array.isArray(parsed.improvementSuggestions) ? parsed.improvementSuggestions : [],
         aiAnalysis: parsed.aiAnalysis || response,
+        scoreExplanations: finalScoreExplanations,
       };
     } else {
       throw new Error("No JSON found in response");
@@ -220,15 +211,37 @@ Return the JSON scoring object following the scoring rules.`;
   } catch (e) {
     console.error("Failed to parse AI response for matching:", e);
     // Fallback to conservative default scores based on data
+    const fallbackCapability = hasCapabilities ? 50 : 0;
+    const fallbackExperience = hasExperience ? 50 : 0;
+    const fallbackCertification = hasCertifications ? 50 : 0;
+    const fallbackLocation = hasLocation ? 50 : 0;
+    
+    // Capability MUST MATCH - if it doesn't, overall is 0
+    let fallbackOverall = 0;
+    if (fallbackCapability >= 50) {
+      // If capability matches, calculate: Certification 50%, Experience 40%, Location 10%
+      fallbackOverall = Math.round(
+        (fallbackCertification * 0.5) + 
+        (fallbackExperience * 0.4) + 
+        (fallbackLocation * 0.1)
+      );
+    }
+    
     score = {
-      overallScore: isMinimalData ? 40 : 50,
-      capabilityScore: hasCapabilities ? 50 : 20,
-      experienceScore: hasExperience ? 50 : 20,
-      locationScore: hasLocation ? 50 : 50,
-      certificationScore: hasCertifications ? 50 : 20,
+      overallScore: fallbackOverall,
+      capabilityScore: fallbackCapability,
+      experienceScore: fallbackExperience,
+      locationScore: fallbackLocation,
+      certificationScore: fallbackCertification,
       matchReasons: ["AI analysis unavailable"],
       improvementSuggestions: ["Unable to generate suggestions"],
       aiAnalysis: response,
+      scoreExplanations: {
+        capability: "Analysis unavailable",
+        experience: "Analysis unavailable",
+        location: "Analysis unavailable",
+        certification: "Analysis unavailable",
+      },
     };
   }
 
@@ -249,6 +262,12 @@ Return the JSON scoring object following the scoring rules.`;
         ai_analysis: {
           analysis: score.aiAnalysis,
           generated_at: new Date().toISOString(),
+          score_explanations: score.scoreExplanations || {
+            capability: `Capability score: ${score.capabilityScore}%`,
+            experience: `Experience score: ${score.experienceScore}%`,
+            location: `Location score: ${score.locationScore}%`,
+            certification: `Certification score: ${score.certificationScore}%`,
+          },
         },
         updated_at: new Date().toISOString(),
       } as any,

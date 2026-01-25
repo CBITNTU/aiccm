@@ -299,45 +299,78 @@ export function TenderDetailDialog({
           <div>
             <h4 className="font-medium mb-4">Match Score Breakdown</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Capability</span>
-                  <span className={getScoreColor(result.capability_score)}>
-                    {result.capability_score}%
-                  </span>
-                </div>
-                <Progress value={result.capability_score} className="h-2" />
-              </div>
+              {(() => {
+                const scoreExplanations = (result.ai_analysis?.score_explanations as {
+                  capability?: string;
+                  experience?: string;
+                  location?: string;
+                  certification?: string;
+                }) || {};
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Experience</span>
-                  <span className={getScoreColor(result.experience_score)}>
-                    {result.experience_score}%
-                  </span>
-                </div>
-                <Progress value={result.experience_score} className="h-2" />
-              </div>
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Capability</span>
+                        <span className={getScoreColor(result.capability_score)}>
+                          {result.capability_score}%
+                        </span>
+                      </div>
+                      <Progress value={result.capability_score} className="h-2" />
+                      {scoreExplanations.capability && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreExplanations.capability}
+                        </p>
+                      )}
+                    </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Location</span>
-                  <span className={getScoreColor(result.location_score)}>
-                    {result.location_score}%
-                  </span>
-                </div>
-                <Progress value={result.location_score} className="h-2" />
-              </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Experience</span>
+                        <span className={getScoreColor(result.experience_score)}>
+                          {result.experience_score}%
+                        </span>
+                      </div>
+                      <Progress value={result.experience_score} className="h-2" />
+                      {scoreExplanations.experience && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreExplanations.experience}
+                        </p>
+                      )}
+                    </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Certification</span>
-                  <span className={getScoreColor(result.certification_score)}>
-                    {result.certification_score}%
-                  </span>
-                </div>
-                <Progress value={result.certification_score} className="h-2" />
-              </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Location</span>
+                        <span className={getScoreColor(result.location_score)}>
+                          {result.location_score}%
+                        </span>
+                      </div>
+                      <Progress value={result.location_score} className="h-2" />
+                      {scoreExplanations.location && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreExplanations.location}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Certification</span>
+                        <span className={getScoreColor(result.certification_score)}>
+                          {result.certification_score}%
+                        </span>
+                      </div>
+                      <Progress value={result.certification_score} className="h-2" />
+                      {scoreExplanations.certification && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreExplanations.certification}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

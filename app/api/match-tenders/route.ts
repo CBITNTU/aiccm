@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { runLLM } from "@/lib/services/llmLimiter";
+import { enqueueBatch } from "@/lib/services/queueService";
 import type { TenderMatchResult } from "@/lib/api/types";
 
 interface CompanyData {
@@ -46,15 +47,21 @@ async function analyzeTenderMatch(
   company: CompanyData,
   tender: TenderData
 ): Promise<TenderMatchResult> {
+  // Check data completeness
+  const hasCapabilities = !!(company.key_capabilities && company.key_capabilities.trim().length > 10);
+  const hasExperience = !!(company.past_projects && company.past_projects.trim().length > 20);
+  const hasCertifications = !!(company.certifications && company.certifications.trim().length > 5);
+  const hasLocation = !!(company.postcode || company.location);
+
   // Build company profile text (like grant-matching builds researcher profile)
   const companyProfile = [
     `Company: ${company.company_name}`,
     company.description ? `Description: ${company.description}` : '',
-    company.key_capabilities ? `Capabilities: ${company.key_capabilities}` : '',
-    company.past_projects ? `Past Projects: ${company.past_projects}` : '',
-    company.certifications ? `Certifications: ${company.certifications}` : '',
+    hasCapabilities ? `Capabilities: ${company.key_capabilities}` : 'Capabilities: NOT PROVIDED',
+    hasExperience ? `Past Projects: ${company.past_projects}` : 'Past Projects: NOT PROVIDED',
+    hasCertifications ? `Certifications: ${company.certifications}` : 'Certifications: NOT PROVIDED',
     company.equipment ? `Equipment: ${company.equipment}` : '',
-    company.postcode || company.location ? `Location: ${company.postcode || company.location}` : '',
+    hasLocation ? `Location: ${company.postcode || company.location}` : 'Location: NOT PROVIDED',
   ].filter(Boolean).join('\n');
 
   // Build tender information (like grant-matching's grant info)
@@ -75,46 +82,23 @@ async function analyzeTenderMatch(
     tender.requirements ? `Requirements: ${JSON.stringify(tender.requirements)}` : '',
   ].filter(Boolean).join('\n');
 
-  // Use weighted scoring approach like grant-matching
-  const prompt = `
-Objective:
-Evaluate the relevance of a tender opportunity to the company's profile by assessing compatibility across critical dimensions. Use a weighted scoring system to quantify alignment.
+  const systemPrompt = `You are an expert at evaluating company-tender matches. Rate the match between a company and a tender on 4 dimensions: Capability (must match - gate requirement), Certification (50% weight), Experience (40% weight), Location (10% weight). If capability doesn't match (capabilityScore < 50), set capabilityScore = 0. Always calculate certificationScore, experienceScore, and locationScore normally regardless of capability. If capabilityScore >= 50, overallScore = (certificationScore * 0.5) + (experienceScore * 0.4) + (locationScore * 0.1). If capabilityScore < 50, overallScore = 0. If data is missing (NOT PROVIDED), score that dimension as 0. Do NOT make assumptions. Return JSON with overallScore, capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
 
-Company Profile:
-${companyProfile}
+  const prompt = `Company: ${companyProfile}
 
-Tender Information:
-${tenderInfo}
+Tender: ${tenderInfo}
 
-Evaluation Criteria & Weighting:
-Capability Match (40 points) - Does the company have the required skills, equipment, and experience?
-Experience Match (25 points) - Does the company's past projects demonstrate relevant experience?
-Location Match (15 points) - Geographic proximity and location fit
-Certification Match (20 points) - Does the company have required certifications and qualifications?
+Rate each dimension independently. If capability doesn't match, set capabilityScore = 0. Always score certification, experience, and location normally. Weights: Certification 50%, Experience 40%, Location 10%. If data is NOT PROVIDED, score 0 for that dimension only. Return JSON with scores and explanations.`;
 
-Final Scoring & Relevance Classification
-Total Score: [0-100]
-
-Please evaluate the match strictly and exclusively in the following format (ALL integers, no fractions):
-
-Total Score: [0-100]
-Criteria Scores:
-Capability Match: [0-40]
-Experience Match: [0-25]
-Location Match: [0-15]
-Certification Match: [0-20]
-
-Category Rationales:
-Capability Match: <1–2 sentences>
-Experience Match: <1–2 sentences>
-Location Match: <1–2 sentences>
-Certification Match: <1–2 sentences>
-
-Summary Explanation: <~200 words>
-Alignment Rationale: <~100 words>
-`;
-
-  const systemPrompt = "You are an expert in construction and procurement tender matching. Always respond with valid text in the exact format specified above.";
+  // Log the full prompt for debugging
+  console.log("\n" + "=".repeat(80));
+  console.log("📋 TENDER MATCHING PROMPT BEING SENT TO AI:");
+  console.log("=".repeat(80));
+  console.log("\n🔹 SYSTEM PROMPT:");
+  console.log(systemPrompt);
+  console.log("\n🔹 ANALYSIS PROMPT:");
+  console.log(prompt);
+  console.log("\n" + "=".repeat(80) + "\n");
 
   try {
     const estTokens = Math.ceil((prompt.length + companyProfile.length + tenderInfo.length) / 4) + 400;
@@ -127,73 +111,104 @@ Alignment Rationale: <~100 words>
       return response;
     }, estTokens);
 
-    // Parse the response (similar to grant-matching's parseStrictOutput)
-    const getInt = (label: string, max?: number) => {
-      const rx = new RegExp(`${label}:\\s*(\\d+)`);
-      const m = raw.match(rx);
-      const n = m ? parseInt(m[1], 10) : 0;
-      const clamped = max != null ? Math.min(Math.max(0, n), max) : n;
-      return Number.isFinite(clamped) ? clamped : 0;
+    // Log the AI response
+    console.log("\n" + "=".repeat(80));
+    console.log("🤖 AI RESPONSE FOR TENDER MATCHING:");
+    console.log("=".repeat(80));
+    console.log(raw);
+    console.log("\n" + "=".repeat(80) + "\n");
+
+    // Parse JSON response
+    let parsed: any;
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON found in response");
+      }
+    } catch (e) {
+      throw new Error(`Failed to parse JSON: ${e}`);
+    }
+
+    let capabilityScore = Math.max(0, Math.min(100, parsed.capabilityScore || 0));
+    let experienceScore = Math.max(0, Math.min(100, parsed.experienceScore || 0));
+    let locationScore = Math.max(0, Math.min(100, parsed.locationScore || 0));
+    let certificationScore = Math.max(0, Math.min(100, parsed.certificationScore || 0));
+
+    // Enforce: mark 0 if data is missing
+    if (!hasCapabilities) capabilityScore = 0;
+    if (!hasExperience) experienceScore = 0;
+    if (!hasCertifications) certificationScore = 0;
+    if (!hasLocation) locationScore = 0;
+
+    // Capability MUST MATCH - it's a gate, not a weight
+    // If capability doesn't match (< 50), overall score is 0
+    let weightedTotal = 0;
+    if (capabilityScore >= 50) {
+      // If capability matches, calculate based on other factors only
+      // Weights: Certification 50%, Experience 40%, Location 10% = 100%
+      weightedTotal = Math.round(
+        (certificationScore * 0.5) + 
+        (experienceScore * 0.4) + 
+        (locationScore * 0.1)
+      );
+    }
+
+    // Get explanations from parsed JSON
+    const scoreExplanations = parsed.scoreExplanations || {};
+    const matchReasons = Array.isArray(parsed.matchReasons) ? parsed.matchReasons : [];
+    const improvementSuggestions = Array.isArray(parsed.improvementSuggestions) ? parsed.improvementSuggestions : [];
+
+    // Override explanations when we force scores to 0
+    const finalScoreExplanations = {
+      capability: !hasCapabilities ? 'No capabilities listed - score set to 0' : (scoreExplanations.capability || `Capability score: ${capabilityScore}%`),
+      experience: !hasExperience ? 'No past projects listed - score set to 0' : (scoreExplanations.experience || `Experience score: ${experienceScore}%`),
+      location: !hasLocation ? 'Location not provided - score set to 0. Do not assume location.' : (scoreExplanations.location || `Location score: ${locationScore}%`),
+      certification: !hasCertifications ? 'No certifications listed - score set to 0' : (scoreExplanations.certification || `Certification score: ${certificationScore}%`),
     };
-
-    const total = getInt('Total Score', 100);
-    const capabilityScore = getInt('Capability Match', 40);
-    const experienceScore = getInt('Experience Match', 25);
-    const locationScore = getInt('Location Match', 15);
-    const certificationScore = getInt('Certification Match', 20);
-
-    // Parse rationales
-    const sectionMatch = raw.match(/Category Rationales:\s*([\s\S]*?)\n\s*Summary Explanation:/);
-    const section = sectionMatch ? sectionMatch[1] : '';
-    const grab = (label: string) => {
-      const rx = new RegExp(`${label}:\\s*([\\s\\S]*?)(?:\n|$)`);
-      const m = section.match(rx);
-      return m ? m[1].trim() : '';
-    };
-
-    const summaryMatch = raw.match(/Summary Explanation:\s*([\s\S]*?)\nAlignment Rationale:/);
-    const rationaleMatch = raw.match(/Alignment Rationale:\s*([\s\S]*)$/);
-
-    const matchReasons: string[] = [];
-    const capabilityRationale = grab('Capability Match');
-    const experienceRationale = grab('Experience Match');
-    const locationRationale = grab('Location Match');
-    const certificationRationale = grab('Certification Match');
-
-    if (capabilityScore > 20) matchReasons.push(capabilityRationale || 'Strong capability alignment');
-    if (experienceScore > 12) matchReasons.push(experienceRationale || 'Relevant experience demonstrated');
-    if (locationScore > 7) matchReasons.push(locationRationale || 'Good geographic fit');
-    if (certificationScore > 10) matchReasons.push(certificationRationale || 'Certifications match requirements');
-
-    const improvementSuggestions: string[] = [];
-    if (capabilityScore < 20) improvementSuggestions.push('Enhance capability descriptions to better match tender requirements');
-    if (experienceScore < 12) improvementSuggestions.push('Add more relevant past project examples');
-    if (certificationScore < 10) improvementSuggestions.push('Obtain or highlight relevant certifications');
 
     return {
-      overall_score: Math.max(0, Math.min(100, total)),
-      capability_score: Math.max(0, Math.min(100, Math.round((capabilityScore / 40) * 100))),
-      experience_score: Math.max(0, Math.min(100, Math.round((experienceScore / 25) * 100))),
-      location_score: Math.max(0, Math.min(100, Math.round((locationScore / 15) * 100))),
-      certification_score: Math.max(0, Math.min(100, Math.round((certificationScore / 20) * 100))),
+      overall_score: Math.max(0, Math.min(100, weightedTotal)),
+      capability_score: Math.max(0, Math.min(100, capabilityScore)),
+      experience_score: Math.max(0, Math.min(100, experienceScore)),
+      location_score: Math.max(0, Math.min(100, locationScore)),
+      certification_score: Math.max(0, Math.min(100, certificationScore)),
       match_reasons: matchReasons.length > 0 ? matchReasons : ['Limited match - review details'],
       improvement_suggestions: improvementSuggestions.length > 0 ? improvementSuggestions : ['Profile alignment could be improved'],
       ai_analysis: {
-        summary: summaryMatch ? summaryMatch[1].trim() : 'Match analysis completed',
+        summary: parsed.aiAnalysis || 'Match analysis completed',
         strengths: matchReasons,
         weaknesses: improvementSuggestions,
         recommendations: improvementSuggestions.length > 0 ? improvementSuggestions : ['Continue building relevant capabilities'],
+        score_explanations: finalScoreExplanations,
       },
     };
   } catch (error) {
     console.error('Error in AI matching:', error);
-    // Fallback to conservative scores
+    // Fallback to conservative scores - mark 0 if data is missing
+    const fallbackCapability = hasCapabilities ? 50 : 0;
+    const fallbackExperience = hasExperience ? 50 : 0;
+    const fallbackCertification = hasCertifications ? 50 : 0;
+    const fallbackLocation = hasLocation ? 50 : 0;
+    
+    // Capability MUST MATCH - if it doesn't, overall is 0
+    let fallbackOverall = 0;
+    if (fallbackCapability >= 50) {
+      // If capability matches, calculate: Certification 50%, Experience 40%, Location 10%
+      fallbackOverall = Math.round(
+        (fallbackCertification * 0.5) + 
+        (fallbackExperience * 0.4) + 
+        (fallbackLocation * 0.1)
+      );
+    }
+    
     return {
-      overall_score: 30,
-      capability_score: 20,
-      experience_score: 15,
-      location_score: 50,
-      certification_score: 15,
+      overall_score: fallbackOverall,
+      capability_score: fallbackCapability,
+      experience_score: fallbackExperience,
+      location_score: fallbackLocation,
+      certification_score: fallbackCertification,
       match_reasons: ['AI analysis unavailable - manual review recommended'],
       improvement_suggestions: ['Unable to generate suggestions'],
       ai_analysis: {
@@ -201,6 +216,12 @@ Alignment Rationale: <~100 words>
         strengths: [],
         weaknesses: ['Analysis unavailable'],
         recommendations: ['Manual review required'],
+        score_explanations: {
+          capability: 'Analysis unavailable',
+          experience: 'Analysis unavailable',
+          location: 'Analysis unavailable',
+          certification: 'Analysis unavailable',
+        },
       },
     };
   }
@@ -324,72 +345,55 @@ export async function POST(request: NextRequest) {
 
     console.log(`Found ${tenders.length} tenders to analyze`);
 
-    const results: {
-      tender_id: string;
-      tender_title: string;
-      overall_score: number;
-    }[] = [];
+    // Queue matching jobs instead of processing directly
+    const jobs = (tenders as TenderData[]).map((tender) => ({
+      jobType: "tender_matching" as const,
+      entityType: "tender" as const,
+      entityId: tender.id,
+      companyId: companyData.id,
+      tenderId: tender.id,
+      priority: 5,
+    }));
 
-    // Analyze each tender
-    for (const tender of tenders as TenderData[]) {
-      try {
-        console.log(`Analyzing tender: ${tender.title}`);
+    // Create batch and queue all jobs
+    const { batchId, jobIds } = await enqueueBatch(
+      jobs,
+      "tender_matching",
+      user.id,
+      companyData.id
+    );
 
-        const analysis = await analyzeTenderMatch(companyData, tender);
+    console.log(`✅ Queued ${jobs.length} matching jobs in batch ${batchId}`);
 
-        // Save to database using upsert to handle duplicates
-        const { error: insertError } = await supabase
-          .from("matching_results")
-          .upsert(
-            {
-              company_id: companyData.id,
-              tender_id: tender.id,
-              overall_score: analysis.overall_score,
-              capability_score: analysis.capability_score,
-              experience_score: analysis.experience_score,
-              location_score: analysis.location_score,
-              certification_score: analysis.certification_score,
-              match_reasons: analysis.match_reasons,
-              improvement_suggestions: analysis.improvement_suggestions,
-              ai_analysis: analysis.ai_analysis,
-              updated_at: new Date().toISOString(),
-            },
-            {
-              onConflict: "company_id,tender_id",
-            }
-          );
+    // Trigger queue worker to start processing (non-blocking)
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/queue/worker`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ batchSize: 50, continuous: true, concurrency: 15 }),
+    }).catch((err) => {
+      console.error("Failed to trigger queue worker:", err);
+      // Don't fail the request if worker trigger fails
+    });
 
-        if (insertError) {
-          console.error("Failed to save analysis:", insertError);
-        } else {
-          results.push({
-            tender_id: tender.id,
-            tender_title: tender.title,
-            overall_score: analysis.overall_score,
-          });
-        }
-      } catch (error) {
-        console.error(`Failed to analyze tender ${tender.id}:`, error);
-      }
-    }
-
-    // Log matching completion
+    // Log matching start
     await logApiEvent(request, {
-      actionType: "matching_completed",
+      actionType: "matching_started",
       userId: user?.id || null,
       userEmail: user?.email || undefined,
       entityType: "company",
       entityId: companyData.id,
       details: {
-        analyzedCount: results.length,
+        batchId,
+        totalTenders: tenders.length,
         companyName: companyData.company_name,
       },
     }).catch(() => {});
 
     return apiResponse({
-      message: "Tender analysis completed",
-      analyzed_count: results.length,
-      results,
+      message: "Tender matching started",
+      batch_id: batchId,
+      total_tenders: tenders.length,
+      queued_jobs: jobIds.length,
     });
   } catch (error) {
     console.error("Error in match-tenders:", error);

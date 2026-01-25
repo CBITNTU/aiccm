@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Target, Loader2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { AlertCircle, Target, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { TenderMatchCard } from "./TenderMatchCard";
-import { api } from "@/lib/api/client";
 
 export interface MatchingFiltersState {
   keyword?: string;
@@ -79,8 +79,18 @@ export function TenderMatching({
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selectedResult, setSelectedResult] = useState<MatchingResult | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Progress tracking state
+  const [matchingProgress, setMatchingProgress] = useState<{
+    batchId: string;
+    totalJobs: number;
+    completedJobs: number;
+    failedJobs: number;
+    status: "processing" | "completed" | "failed";
+    progressPercent: number;
+  } | null>(null);
 
-  const analyzing = externalAnalyzing ?? internalAnalyzing;
+  const analyzing = externalAnalyzing ?? (internalAnalyzing || (matchingProgress?.status === "processing"));
 
   // Use stable filter reference to prevent infinite re-renders
   const filters = filtersProp ?? DEFAULT_FILTERS;
@@ -96,7 +106,8 @@ export function TenderMatching({
     filters.quickFilter,
   ]);
 
-  const fetchMatchingResults = async () => {
+
+  const fetchMatchingResultsMemo = useCallback(async () => {
     setLoading(true);
     try {
       if (!companyId) {
@@ -131,20 +142,111 @@ export function TenderMatching({
     } finally {
       setLoading(false);
     }
-  };
+  }, [companyId]);
 
+  const cancelMatching = useCallback(async (batchId: string) => {
+    try {
+      const response = await fetch("/api/match-tenders/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to cancel matching");
+      }
+
+      // Clear from localStorage
+      if (companyId) {
+        localStorage.removeItem(`matching_batch_${companyId}`);
+      }
+
+      setMatchingProgress(null);
+      toast.success("Matching cancelled");
+    } catch (error) {
+      console.error("Error cancelling matching:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to cancel matching"
+      );
+    }
+  }, [companyId]);
+
+  const checkMatchingProgress = useCallback(async (batchId: string) => {
+    try {
+      const response = await fetch(`/api/match-tenders/progress?batchId=${batchId}`);
+      if (!response.ok) {
+        // Batch not found or completed - clear from localStorage
+        if (response.status === 404) {
+          if (companyId) {
+            localStorage.removeItem(`matching_batch_${companyId}`);
+          }
+          setMatchingProgress(null);
+        }
+        return;
+      }
+
+      const data = await response.json();
+      setMatchingProgress({
+        batchId: data.batch_id,
+        totalJobs: data.total_jobs,
+        completedJobs: data.completed_jobs,
+        failedJobs: data.failed_jobs,
+        status: data.status,
+        progressPercent: data.progress_percent,
+      });
+
+      // If completed, refresh results and clear localStorage
+      if (data.status === "completed" || data.status === "failed") {
+        if (companyId) {
+          localStorage.removeItem(`matching_batch_${companyId}`);
+        }
+        await fetchMatchingResultsMemo();
+        if (data.status === "completed") {
+          toast.success(`Matching completed: ${data.completed_jobs} tenders analyzed`);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking matching progress:", error);
+    }
+  }, [companyId, fetchMatchingResultsMemo]);
+
+  // Check for in-progress matching batch on mount
   useEffect(() => {
     if (user && companyId) {
-      fetchMatchingResults();
+      fetchMatchingResultsMemo();
+      
+      // Check for in-progress batch from localStorage
+      const storedBatchId = localStorage.getItem(`matching_batch_${companyId}`);
+      if (storedBatchId) {
+        checkMatchingProgress(storedBatchId);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, companyId]);
+  }, [user, companyId, checkMatchingProgress, fetchMatchingResultsMemo]);
 
-  // Memoize filtered results to avoid infinite loops
+  // Poll for progress if matching is in progress
   useEffect(() => {
-    applyFiltersAndSorting();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchingResults, filtersKey]);
+    if (!matchingProgress || matchingProgress.status !== "processing") {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (matchingProgress.batchId) {
+        checkMatchingProgress(matchingProgress.batchId);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [matchingProgress, checkMatchingProgress]);
+
+     // Memoize filtered results to avoid infinite loops
+     useEffect(() => {
+       applyFiltersAndSorting();
+       // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [matchingResults, filtersKey]);
+
+  // Alias for backward compatibility
+  const fetchMatchingResults = fetchMatchingResultsMemo;
 
   const applyFiltersAndSorting = () => {
     let filtered = [...matchingResults];
@@ -257,20 +359,45 @@ export function TenderMatching({
 
     setInternalAnalyzing(true);
     try {
-      const data = await api.matchTenders(companyId);
+      const response = await fetch("/api/match-tenders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      });
 
-      if (data.up_to_date) {
-        toast.success("All tenders are up to date - no new analysis needed");
-      } else {
-        toast.success(`Analysis complete! Found ${data.analyzed_count || 0} new matches.`);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to start matching");
       }
 
-      // Refresh results after analysis
-      await fetchMatchingResults();
+      const data = await response.json();
+      
+      // Store batch ID in localStorage for persistence
+      if (data.batch_id && companyId) {
+        localStorage.setItem(`matching_batch_${companyId}`, data.batch_id);
+      }
+
+      // Set initial progress
+      setMatchingProgress({
+        batchId: data.batch_id,
+        totalJobs: data.total_tenders,
+        completedJobs: 0,
+        failedJobs: 0,
+        status: "processing",
+        progressPercent: 0,
+      });
+
+      toast.success(`Matching started: ${data.total_tenders} tenders queued`);
+      
+      // Start polling for progress
+      if (data.batch_id) {
+        checkMatchingProgress(data.batch_id);
+      }
     } catch (error) {
-      console.error("Error running analysis:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to run tender analysis. Please try again.";
-      toast.error(errorMessage);
+      console.error("Error starting matching:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start matching"
+      );
     } finally {
       setInternalAnalyzing(false);
     }
@@ -366,6 +493,37 @@ export function TenderMatching({
               )}
             </Button>
           )}
+        </div>
+      )}
+
+      {/* Progress Bar */}
+      {matchingProgress && matchingProgress.status === "processing" && (
+        <div className="mb-4 p-4 bg-muted rounded-lg border">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span className="font-medium">Matching in progress...</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {matchingProgress.completedJobs} / {matchingProgress.totalJobs} tenders
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => cancelMatching(matchingProgress.batchId)}
+                className="h-7"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+          <Progress value={matchingProgress.progressPercent} className="h-2" />
+          <p className="text-xs text-muted-foreground mt-2">
+            Analyzing tenders... {matchingProgress.progressPercent}% complete
+            {matchingProgress.failedJobs > 0 && ` (${matchingProgress.failedJobs} failed)`}
+          </p>
         </div>
       )}
 

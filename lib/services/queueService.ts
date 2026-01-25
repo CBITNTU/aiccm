@@ -92,6 +92,7 @@ export interface BatchStatus {
   totalJobs: number;
   completedJobs: number;
   failedJobs: number;
+  companyId: string | null;
   status: "processing" | "completed" | "failed";
   createdAt: Date;
   updatedAt: Date;
@@ -111,15 +112,16 @@ export async function enqueueJob(options: EnqueueJobOptions): Promise<string> {
     tender_id: options.tenderId || null,
     status: "pending",
     priority: options.priority || 0,
-    scheduled_at: options.scheduledAt?.toISOString() || new Date().toISOString(),
+    scheduled_at:
+      options.scheduledAt?.toISOString() || new Date().toISOString(),
     metadata: options.metadata || null,
   };
 
-  const { data, error } = await (supabase
+  const { data, error } = await supabase
     .from("processing_queue" as any)
     .insert(job)
     .select("id")
-    .single());
+    .single();
 
   if (error) {
     throw new Error(`Failed to enqueue job: ${error.message}`);
@@ -139,7 +141,7 @@ export async function enqueueBatch(
   jobs: EnqueueJobOptions[],
   batchType: string,
   userId?: string,
-  companyId?: string
+  companyId?: string,
 ): Promise<{ batchId: string; jobIds: string[] }> {
   // Create batch job record first
   const batchJob: BatchJobInsert = {
@@ -152,11 +154,11 @@ export async function enqueueBatch(
     status: "processing",
   };
 
-  const { data: batchData, error: batchError } = await (supabase
+  const { data: batchData, error: batchError } = await supabase
     .from("batch_jobs" as any)
     .insert(batchJob)
     .select("id")
-    .single());
+    .single();
 
   if (batchError) {
     throw new Error(`Failed to create batch job: ${batchError.message}`);
@@ -181,10 +183,10 @@ export async function enqueueBatch(
     scheduled_at: job.scheduledAt?.toISOString() || new Date().toISOString(),
   }));
 
-  const { data: jobData, error: jobError } = await (supabase
+  const { data: jobData, error: jobError } = await supabase
     .from("processing_queue" as any)
     .insert(jobInserts)
-    .select("id"));
+    .select("id");
 
   if (jobError) {
     throw new Error(`Failed to enqueue jobs: ${jobError.message}`);
@@ -206,7 +208,7 @@ export async function enqueueBatch(
  */
 export async function dequeueJob(): Promise<ProcessingQueue | null> {
   // First, try to get a job with batch_id (prioritize batch jobs)
-  const { data: batchJob, error: batchError } = await (supabase
+  const { data: batchJob, error: batchError } = await supabase
     .from("processing_queue" as any)
     .select("*")
     .eq("status", "pending")
@@ -214,25 +216,25 @@ export async function dequeueJob(): Promise<ProcessingQueue | null> {
     .order("priority", { ascending: false })
     .order("scheduled_at", { ascending: true })
     .limit(1)
-    .maybeSingle());
+    .maybeSingle();
 
   if (batchError && batchError.code !== "PGRST116") {
     throw new Error(`Failed to dequeue batch job: ${batchError.message}`);
   }
 
   if (batchJob) {
-    return (batchJob as unknown as ProcessingQueue);
+    return batchJob as unknown as ProcessingQueue;
   }
 
   // If no batch job found, get any pending job (for backward compatibility)
-  const { data, error } = await (supabase
+  const { data, error } = await supabase
     .from("processing_queue" as any)
     .select("*")
     .eq("status", "pending")
     .order("priority", { ascending: false })
     .order("scheduled_at", { ascending: true })
     .limit(1)
-    .maybeSingle());
+    .maybeSingle();
 
   if (error) {
     if (error.code === "PGRST116") {
@@ -249,14 +251,14 @@ export async function dequeueJob(): Promise<ProcessingQueue | null> {
  * Mark job as processing
  */
 export async function markJobProcessing(jobId: string): Promise<void> {
-  const { error } = await (supabase
+  const { error } = await supabase
     .from("processing_queue" as any)
     .update({
       status: "processing",
       started_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", jobId));
+    .eq("id", jobId);
 
   if (error) {
     throw new Error(`Failed to mark job as processing: ${error.message}`);
@@ -268,10 +270,10 @@ export async function markJobProcessing(jobId: string): Promise<void> {
  */
 export async function markJobCompleted(
   jobId: string,
-  resultData?: unknown
+  resultData?: unknown,
 ): Promise<void> {
   console.log(`✅ Marking job ${jobId} as completed`);
-  
+
   const updateData: Partial<ProcessingQueue> = {
     status: "completed",
     completed_at: new Date().toISOString(),
@@ -282,10 +284,10 @@ export async function markJobCompleted(
     updateData.result_data = resultData as Record<string, unknown>;
   }
 
-  const { error } = await (supabase
+  const { error } = await supabase
     .from("processing_queue" as any)
     .update(updateData)
-    .eq("id", jobId));
+    .eq("id", jobId);
 
   if (error) {
     console.error(`❌ Failed to mark job ${jobId} as completed:`, error);
@@ -307,7 +309,7 @@ export async function markJobCompleted(
 export async function markJobFailed(
   jobId: string,
   errorMessage: string,
-  shouldRetry = true
+  shouldRetry = true,
 ): Promise<void> {
   const job = await getJob(jobId);
   if (!job) {
@@ -322,7 +324,7 @@ export async function markJobFailed(
     const backoffDelay = Math.min(1000 * Math.pow(2, attempts - 1), 60000); // Max 60s
     const scheduledAt = new Date(Date.now() + backoffDelay);
 
-    const { error } = await (supabase
+    const { error } = await supabase
       .from("processing_queue" as any)
       .update({
         status: "pending",
@@ -331,14 +333,14 @@ export async function markJobFailed(
         scheduled_at: scheduledAt.toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", jobId));
+      .eq("id", jobId);
 
     if (error) {
       throw new Error(`Failed to retry job: ${error.message}`);
     }
   } else {
     // Max attempts reached - mark as failed
-    const { error } = await (supabase
+    const { error } = await supabase
       .from("processing_queue" as any)
       .update({
         status: "failed",
@@ -347,7 +349,7 @@ export async function markJobFailed(
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", jobId));
+      .eq("id", jobId);
 
     if (error) {
       throw new Error(`Failed to mark job as failed: ${error.message}`);
@@ -363,11 +365,13 @@ export async function markJobFailed(
  */
 export async function getJob(jobId: string): Promise<ProcessingQueue | null> {
   // Explicitly select batch_id to ensure it's returned
-  const { data, error } = await (supabase
+  const { data, error } = await supabase
     .from("processing_queue" as any)
-    .select("id, job_type, entity_type, entity_id, company_id, tender_id, batch_id, status, priority, attempts, max_attempts, error_message, result_data, scheduled_at, started_at, completed_at, created_at, updated_at")
+    .select(
+      "id, job_type, entity_type, entity_id, company_id, tender_id, batch_id, status, priority, attempts, max_attempts, error_message, result_data, scheduled_at, started_at, completed_at, created_at, updated_at",
+    )
     .eq("id", jobId)
-    .single());
+    .single();
 
   if (error) {
     if (error.code === "PGRST116") {
@@ -383,7 +387,7 @@ export async function getJob(jobId: string): Promise<ProcessingQueue | null> {
 
   // Log raw data to debug
   console.log(`🔍 Raw getJob data for ${jobId}:`, JSON.stringify(data));
-  
+
   return (data as unknown as ProcessingQueue) || null;
 }
 
@@ -392,20 +396,20 @@ export async function getJob(jobId: string): Promise<ProcessingQueue | null> {
  */
 export async function getJobsByEntity(
   entityType: "tender" | "company",
-  entityId: string
+  entityId: string,
 ): Promise<ProcessingQueue[]> {
-  const { data, error } = await (supabase
+  const { data, error } = await supabase
     .from("processing_queue" as any)
     .select("*")
     .eq("entity_type", entityType)
     .eq("entity_id", entityId)
-    .order("created_at", { ascending: false }));
+    .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(`Failed to get jobs: ${error.message}`);
   }
 
-  return ((data || []) as unknown as ProcessingQueue[]);
+  return (data || []) as unknown as ProcessingQueue[];
 }
 
 /**
@@ -417,9 +421,9 @@ export async function getQueueStats(): Promise<{
   completed: number;
   failed: number;
 }> {
-  const { data, error } = await (supabase
+  const { data, error } = await supabase
     .from("processing_queue" as any)
-    .select("status"));
+    .select("status");
 
   if (error) {
     throw new Error(`Failed to get queue stats: ${error.message}`);
@@ -445,12 +449,14 @@ export async function getQueueStats(): Promise<{
 /**
  * Get batch job status
  */
-export async function getBatchStatus(batchId: string): Promise<BatchStatus | null> {
-  const { data, error } = await (supabase
+export async function getBatchStatus(
+  batchId: string,
+): Promise<BatchStatus | null> {
+  const { data, error } = await supabase
     .from("batch_jobs" as any)
     .select("*")
     .eq("id", batchId)
-    .single());
+    .single();
 
   if (error) {
     if (error.code === "PGRST116") {
@@ -470,6 +476,7 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | nul
     totalJobs: batch.total_jobs,
     completedJobs: batch.completed_jobs,
     failedJobs: batch.failed_jobs,
+    companyId: batch.company_id,
     status: batch.status as "processing" | "completed" | "failed",
     createdAt: new Date(batch.created_at),
     updatedAt: new Date(batch.updated_at),
@@ -481,24 +488,35 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | nul
  */
 async function updateBatchProgress(
   jobId: string,
-  outcome: "completed" | "failed"
+  outcome: "completed" | "failed",
 ): Promise<void> {
   try {
-    console.log(`🔄 Updating batch progress for job ${jobId} (outcome: ${outcome})`);
-    
+    console.log(
+      `🔄 Updating batch progress for job ${jobId} (outcome: ${outcome})`,
+    );
+
     // Get the job to find its batch_id - use getJob which should return all fields
     const job = await getJob(jobId);
-    
+
     if (!job) {
       console.warn(`⚠️ Job ${jobId} not found when updating batch progress`);
       return;
     }
-    
+
     // Log the raw job data to debug
-    console.log(`🔍 Job data for ${jobId}:`, JSON.stringify({ id: job.id, batch_id: job.batch_id, status: job.status }));
-    
+    console.log(
+      `🔍 Job data for ${jobId}:`,
+      JSON.stringify({
+        id: job.id,
+        batch_id: job.batch_id,
+        status: job.status,
+      }),
+    );
+
     if (!job.batch_id) {
-      console.log(`ℹ️ Job ${jobId} doesn't belong to a batch (batch_id: ${job.batch_id || 'null'}), skipping batch progress update`);
+      console.log(
+        `ℹ️ Job ${jobId} doesn't belong to a batch (batch_id: ${job.batch_id || "null"}), skipping batch progress update`,
+      );
       return;
     }
 
@@ -512,13 +530,17 @@ async function updateBatchProgress(
       return;
     }
 
-    console.log(`📊 Current batch status: ${batch.completedJobs}/${batch.totalJobs} completed, ${batch.failedJobs} failed`);
+    console.log(
+      `📊 Current batch status: ${batch.completedJobs}/${batch.totalJobs} completed, ${batch.failedJobs} failed`,
+    );
 
     // Update batch counts
-    const newCompleted = outcome === "completed" ? batch.completedJobs + 1 : batch.completedJobs;
-    const newFailed = outcome === "failed" ? batch.failedJobs + 1 : batch.failedJobs;
+    const newCompleted =
+      outcome === "completed" ? batch.completedJobs + 1 : batch.completedJobs;
+    const newFailed =
+      outcome === "failed" ? batch.failedJobs + 1 : batch.failedJobs;
     const totalProcessed = newCompleted + newFailed;
-    
+
     // Determine new status: completed if all jobs are done (and not all failed)
     let newStatus: "processing" | "completed" | "failed";
     if (totalProcessed >= batch.totalJobs) {
@@ -535,7 +557,9 @@ async function updateBatchProgress(
       newStatus = "processing";
     }
 
-    console.log(`📊 New batch status will be: ${newCompleted}/${batch.totalJobs} completed, ${newFailed} failed, total processed: ${totalProcessed}, status: ${newStatus}`);
+    console.log(
+      `📊 New batch status will be: ${newCompleted}/${batch.totalJobs} completed, ${newFailed} failed, total processed: ${totalProcessed}, status: ${newStatus}`,
+    );
 
     // Update batch in database using atomic increment to avoid race conditions
     // First, get the current values again to ensure we have the latest
@@ -544,12 +568,18 @@ async function updateBatchProgress(
       console.warn(`⚠️ Batch ${batchId} not found when updating progress`);
       return;
     }
-    
+
     // Recalculate with current values to handle concurrent updates
-    const actualCompleted = outcome === "completed" ? currentBatch.completedJobs + 1 : currentBatch.completedJobs;
-    const actualFailed = outcome === "failed" ? currentBatch.failedJobs + 1 : currentBatch.failedJobs;
+    const actualCompleted =
+      outcome === "completed"
+        ? currentBatch.completedJobs + 1
+        : currentBatch.completedJobs;
+    const actualFailed =
+      outcome === "failed"
+        ? currentBatch.failedJobs + 1
+        : currentBatch.failedJobs;
     const actualTotalProcessed = actualCompleted + actualFailed;
-    
+
     let actualStatus: "processing" | "completed" | "failed";
     if (actualTotalProcessed >= currentBatch.totalJobs) {
       if (actualFailed === currentBatch.totalJobs) {
@@ -560,11 +590,13 @@ async function updateBatchProgress(
     } else {
       actualStatus = "processing";
     }
-    
-    console.log(`📊 Final batch status: ${actualCompleted}/${currentBatch.totalJobs} completed, ${actualFailed} failed, total: ${actualTotalProcessed}, status: ${actualStatus}`);
-    
+
+    console.log(
+      `📊 Final batch status: ${actualCompleted}/${currentBatch.totalJobs} completed, ${actualFailed} failed, total: ${actualTotalProcessed}, status: ${actualStatus}`,
+    );
+
     // Update batch in database
-    const { error } = await (supabase
+    const { error } = await supabase
       .from("batch_jobs" as any)
       .update({
         completed_jobs: actualCompleted,
@@ -572,28 +604,40 @@ async function updateBatchProgress(
         status: actualStatus,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", batchId));
+      .eq("id", batchId);
 
     if (error) {
-      console.error(`❌ Failed to update batch progress: ${error.message}`, error);
+      console.error(
+        `❌ Failed to update batch progress: ${error.message}`,
+        error,
+      );
       throw error;
     } else {
-      console.log(`✅ Updated batch ${batchId}: ${actualCompleted}/${currentBatch.totalJobs} completed, ${actualFailed} failed, status: ${actualStatus}`);
-      
+      console.log(
+        `✅ Updated batch ${batchId}: ${actualCompleted}/${currentBatch.totalJobs} completed, ${actualFailed} failed, status: ${actualStatus}`,
+      );
+
       // CRITICAL: If batch is completed/failed, cancel all remaining jobs in this batch
       // This prevents jobs from continuing to process after batch completion
       if (actualStatus === "completed" || actualStatus === "failed") {
-        console.log(`🛑 Batch ${batchId} is ${actualStatus} - cancelling all remaining pending/processing jobs in this batch`);
+        console.log(
+          `🛑 Batch ${batchId} is ${actualStatus} - cancelling all remaining pending/processing jobs in this batch`,
+        );
         const { error: cancelError, count: cancelledCount } = await supabase
           .from("processing_queue" as any)
           .delete()
           .eq("batch_id", batchId)
           .in("status", ["pending", "processing"]);
-        
+
         if (cancelError) {
-          console.error(`⚠️ Failed to cancel remaining jobs for batch ${batchId}:`, cancelError);
+          console.error(
+            `⚠️ Failed to cancel remaining jobs for batch ${batchId}:`,
+            cancelError,
+          );
         } else {
-          console.log(`✅ Cancelled ${cancelledCount || 0} remaining jobs for batch ${batchId}`);
+          console.log(
+            `✅ Cancelled ${cancelledCount || 0} remaining jobs for batch ${batchId}`,
+          );
         }
       }
     }
@@ -606,9 +650,7 @@ async function updateBatchProgress(
 /**
  * Get jobs for a company (for matching progress tracking)
  */
-export async function getMatchingJobsForCompany(
-  companyId: string
-): Promise<{
+export async function getMatchingJobsForCompany(companyId: string): Promise<{
   total: number;
   pending: number;
   processing: number;
@@ -616,18 +658,18 @@ export async function getMatchingJobsForCompany(
   failed: number;
   results: ProcessingQueue[];
 }> {
-  const { data, error } = await (supabase
+  const { data, error } = await supabase
     .from("processing_queue" as any)
     .select("*")
     .eq("company_id", companyId)
     .eq("job_type", "tender_matching")
-    .order("created_at", { ascending: false }));
+    .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(`Failed to get matching jobs: ${error.message}`);
   }
 
-  const jobs = ((data || []) as unknown as ProcessingQueue[]);
+  const jobs = (data || []) as unknown as ProcessingQueue[];
   const stats = {
     total: jobs.length,
     pending: 0,

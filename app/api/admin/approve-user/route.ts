@@ -30,7 +30,7 @@ async function triggerAIPrefill(
     companyName: string;
     companyNumber: string | null;
     websiteUrl: string | null;
-  }
+  },
 ) {
   const supabase = createAdminClient();
 
@@ -46,7 +46,7 @@ async function triggerAIPrefill(
           companyNumber: params.companyNumber,
           websiteUrl: params.websiteUrl,
         }),
-      }
+      },
     );
 
     if (!prefillResponse.ok) {
@@ -65,7 +65,10 @@ async function triggerAIPrefill(
       const extractValue = (field: unknown): string | null => {
         if (!field) return null;
         if (typeof field === "string") return field;
-        if (typeof field === "object" && "value" in (field as Record<string, unknown>)) {
+        if (
+          typeof field === "object" &&
+          "value" in (field as Record<string, unknown>)
+        ) {
           return (field as { value: string }).value || null;
         }
         return null;
@@ -93,11 +96,13 @@ async function triggerAIPrefill(
 
       // Certifications - extract just the essential fields for display
       if (normalized.certifications?.length) {
-        const cleanCerts = normalized.certifications.map((cert: Record<string, unknown>) => ({
-          name: cert.name || "",
-          issuer: cert.issuer || "",
-          validUntil: cert.validUntil || "",
-        })).filter((cert: { name: string }) => cert.name);
+        const cleanCerts = normalized.certifications
+          .map((cert: Record<string, unknown>) => ({
+            name: cert.name || "",
+            issuer: cert.issuer || "",
+            validUntil: cert.validUntil || "",
+          }))
+          .filter((cert: { name: string }) => cert.name);
         if (cleanCerts.length) {
           updateData.certifications = JSON.stringify(cleanCerts);
         }
@@ -105,11 +110,13 @@ async function triggerAIPrefill(
 
       // Equipment - extract just the essential fields for display
       if (normalized.equipment?.length) {
-        const cleanEquipment = normalized.equipment.map((eq: Record<string, unknown>) => ({
-          name: eq.name || "",
-          model: eq.model || "",
-          capacity: eq.capacity || "",
-        })).filter((eq: { name: string }) => eq.name);
+        const cleanEquipment = normalized.equipment
+          .map((eq: Record<string, unknown>) => ({
+            name: eq.name || "",
+            model: eq.model || "",
+            capacity: eq.capacity || "",
+          }))
+          .filter((eq: { name: string }) => eq.name);
         if (cleanEquipment.length) {
           updateData.equipment = JSON.stringify(cleanEquipment);
         }
@@ -124,10 +131,17 @@ async function triggerAIPrefill(
       // Store financial data - extract values from structured fields
       if (normalized.financial) {
         const financial = normalized.financial;
-        const financialData: Record<string, { value: number; confidence: number }> = {};
+        const financialData: Record<
+          string,
+          { value: number; confidence: number }
+        > = {};
 
         for (const [key, field] of Object.entries(financial)) {
-          if (field && typeof field === "object" && "value" in (field as Record<string, unknown>)) {
+          if (
+            field &&
+            typeof field === "object" &&
+            "value" in (field as Record<string, unknown>)
+          ) {
             const typedField = field as { value: number; confidence: number };
             if (typedField.value && typedField.value > 0) {
               financialData[key] = {
@@ -207,13 +221,18 @@ export async function POST(request: NextRequest) {
 
     // Check if user is already approved but has a pending company
     // This handles the case where approved users create new companies
-    let pendingCompany: { id: string; company_name: string; companies_house_number: string | null; website_url: string | null } | null = null;
-    
+    let pendingCompany: {
+      id: string;
+      company_name: string;
+      companies_house_number: string | null;
+      website_url: string | null;
+    } | null = null;
+
     console.log("Approval check:", {
       userId,
       approval_status: profile.approval_status,
     });
-    
+
     if (profile.approval_status === "approved") {
       // Check if they have a pending company
       const { data: companyData, error: companyError } = await supabase
@@ -222,25 +241,25 @@ export async function POST(request: NextRequest) {
         .eq("user_id", userId)
         .eq("status", "pending_review")
         .maybeSingle(); // Use maybeSingle() instead of single() to avoid error if no company
-      
+
       console.log("Pending company check:", {
         companyData,
         companyError,
         hasPendingCompany: !!companyData,
       });
-      
+
       if (companyData) {
         pendingCompany = companyData;
         // User is approved but has pending company - we'll handle this in the approval flow
       } else {
         // User is approved and has no pending company - can't approve again
-        return apiError("User is already approved and has no pending company", 400);
+        return apiError(
+          "User is already approved and has no pending company",
+          400,
+        );
       }
     } else if (profile.approval_status !== "pending") {
-      return apiError(
-        `User is already ${profile.approval_status}`,
-        400
-      );
+      return apiError(`User is already ${profile.approval_status}`, 400);
     }
 
     // Get user's role and signup type
@@ -251,7 +270,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Determine signup type based on role and company membership
-    let signupType: "individual" | "new-company" | "join-company" | "invited" = "individual";
+    let signupType: "individual" | "new-company" | "join-company" | "invited" =
+      "individual";
     let companyName: string | undefined;
     let invitedToCompanyId: string | null = null;
 
@@ -269,7 +289,7 @@ export async function POST(request: NextRequest) {
       userId,
       invited_to_company_id: profile.invited_to_company_id,
       signup_type: profile.signup_type,
-      role: userRole?.role
+      role: userRole?.role,
     });
 
     if (profile.invited_to_company_id) {
@@ -311,7 +331,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const userName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "User";
+    const userName =
+      `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "User";
 
     if (approved) {
       // If user is already approved but has a pending company, just approve the company
@@ -321,7 +342,7 @@ export async function POST(request: NextRequest) {
           companyId: pendingCompany.id,
           companyName: pendingCompany.company_name,
         });
-        
+
         // Approve the company membership
         const { error: memberError } = await supabase
           .from("company_members")
@@ -428,7 +449,10 @@ export async function POST(request: NextRequest) {
 
       // If user was invited, approve their company membership
       if (signupType === "invited" && invitedToCompanyId) {
-        console.log("Approving invited user company membership:", { userId, invitedToCompanyId });
+        console.log("Approving invited user company membership:", {
+          userId,
+          invitedToCompanyId,
+        });
 
         const { data: memberUpdate, error: memberError } = await supabase
           .from("company_members")
@@ -442,7 +466,10 @@ export async function POST(request: NextRequest) {
           .eq("status", "pending")
           .select();
 
-        console.log("Company member update result:", { memberUpdate, memberError });
+        console.log("Company member update result:", {
+          memberUpdate,
+          memberError,
+        });
 
         // Clear the invited_to_company_id since they're now approved
         await supabase
@@ -450,7 +477,10 @@ export async function POST(request: NextRequest) {
           .update({ invited_to_company_id: null })
           .eq("user_id", userId);
       } else {
-        console.log("Not an invited user or no invitedToCompanyId:", { signupType, invitedToCompanyId });
+        console.log("Not an invited user or no invitedToCompanyId:", {
+          signupType,
+          invitedToCompanyId,
+        });
       }
 
       // Send approval email
@@ -576,24 +606,33 @@ export async function GET(request: NextRequest) {
     // These are users who created companies after being approved
     const { data: pendingCompanies } = await supabase
       .from("companies")
-      .select("user_id, id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone, created_at")
+      .select(
+        "user_id, id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone, created_at",
+      )
       .eq("status", "pending_review")
       .order("created_at", { ascending: false });
 
     // Get profiles for users with pending companies
-    const pendingCompanyUserIds = (pendingCompanies || []).map(c => c.user_id);
+    const pendingCompanyUserIds = (pendingCompanies || []).map(
+      (c) => c.user_id,
+    );
     let approvedUsersWithPendingCompanies: typeof pendingUsers = [];
-    
-    if (pendingCompanyUserIds.length > 0) {
-      const { data: approvedUsers } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("user_id", pendingCompanyUserIds)
-        .eq("approval_status", "approved");
-      
-      approvedUsersWithPendingCompanies = approvedUsers || [];
-    }
 
+    if (pendingCompanyUserIds.length > 0) {
+      // Filter out null values to satisfy type requirement for `.in()`
+      const nonNullPendingCompanyUserIds = pendingCompanyUserIds.filter(
+        (id): id is string => id !== null,
+      );
+
+      if (nonNullPendingCompanyUserIds.length > 0) {
+        const { data: approvedUsers } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("user_id", nonNullPendingCompanyUserIds)
+          .eq("approval_status", "approved");
+        approvedUsersWithPendingCompanies = approvedUsers || [];
+      }
+    }
     if (error) {
       console.error("Error fetching pending users:", error);
       return apiError("Failed to fetch pending users", 500);
@@ -602,12 +641,12 @@ export async function GET(request: NextRequest) {
     // Combine pending users and approved users with pending companies
     const allUsersToProcess = [
       ...(pendingUsers || []),
-      ...approvedUsersWithPendingCompanies
+      ...approvedUsersWithPendingCompanies,
     ];
 
     // Create a map of company data by user_id for quick lookup
     const companyMap = new Map(
-      (pendingCompanies || []).map(c => [c.user_id, c])
+      (pendingCompanies || []).map((c) => [c.user_id, c]),
     );
 
     // Enrich with role and company info
@@ -637,7 +676,7 @@ export async function GET(request: NextRequest) {
 
         // Check if user has a pending company (from the map or by query)
         const pendingCompany = companyMap.get(profile.user_id);
-        
+
         if (pendingCompany) {
           // User has a pending company - this is a new-company signup
           company = {
@@ -655,7 +694,9 @@ export async function GET(request: NextRequest) {
           // Fallback: query for company if not in pending companies map
           const { data: companyData } = await supabase
             .from("companies")
-            .select("id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone")
+            .select(
+              "id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone",
+            )
             .eq("user_id", profile.user_id)
             .single();
 
@@ -685,7 +726,9 @@ export async function GET(request: NextRequest) {
               .single();
 
             if (memberEntry && memberEntry.companies) {
-              const companyData = memberEntry.companies as { company_name: string };
+              const companyData = memberEntry.companies as {
+                company_name: string;
+              };
               companyName = companyData.company_name;
               signupType = "invited";
             }
@@ -699,7 +742,7 @@ export async function GET(request: NextRequest) {
           signupType,
           company, // Full company details for new-company signups
         };
-      })
+      }),
     );
 
     return apiResponse({ users: enrichedUsers });

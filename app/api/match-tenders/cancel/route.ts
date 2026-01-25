@@ -76,7 +76,9 @@ export async function POST(request: NextRequest) {
     if (cancelError) {
       console.error(`Failed to cancel jobs for batch ${batchId}:`, cancelError);
     } else {
-      console.log(`✅ Cancelled ${cancelledCount || 0} jobs for batch ${batchId}`);
+      console.log(
+        `✅ Cancelled ${cancelledCount || 0} jobs for batch ${batchId}`,
+      );
     }
 
     return apiResponse({

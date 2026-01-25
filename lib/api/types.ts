@@ -127,6 +127,12 @@ export interface TenderMatchResult {
     strengths: string[];
     weaknesses: string[];
     recommendations: string[];
+    score_explanations?: {
+      capability: string;
+      experience: string;
+      location: string;
+      certification: string;
+    };
   };
 }
 

@@ -90,7 +90,7 @@ export async function scoreTenderMatch(
   const dataPoints = [hasCapabilities, hasExperience, hasCertifications, hasLocation, hasDescription].filter(Boolean).length;
   const isMinimalData = dataPoints < 3;
 
-  const systemPrompt = `You are an expert at evaluating company-tender matches. Rate the match between a company and a tender on 4 dimensions from 0-100: Capability, Certification, Experience, Location. If capability doesn't match (industries don't align or capabilities are irrelevant), set capabilityScore = 0. Always calculate certificationScore, experienceScore, and locationScore normally regardless of capability. If data is missing (NOT PROVIDED), score that dimension as 0. Do NOT make assumptions. Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
+  const systemPrompt = `You are an expert at evaluating company-tender matches. Rate the match between a company and a tender on 4 dimensions from 0-100: Capability, Certification, Experience, Location. If capability doesn't match (industries don't align or capabilities are irrelevant), set capabilityScore = 0. Always calculate certificationScore, experienceScore, and locationScore normally regardless of capability. No assumptions. Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
 
   const userPrompt = `Company: ${companyData.company_name || "N/A"}
 ${hasDescription ? `Description: ${companyData.description}` : "Description: NOT PROVIDED"}
@@ -106,7 +106,7 @@ Budget: ${budgetRange}
 Location: ${tenderData.location || "N/A"}
 ${tenderData.cpv_codes && tenderData.cpv_codes.length > 0 ? `CPV Codes: ${tenderData.cpv_codes.join(", ")}` : ""}
 
-Rate each dimension from 0-100. If capability doesn't match, set capabilityScore = 0. Always score certification, experience, and location normally. If data is NOT PROVIDED, score 0 for that dimension only.`;
+Rate each dimension from 0-100. If capability doesn't match, set capabilityScore = 0. Always score certification, experience, and location normally.`;
 
   // Log the prompt for debugging
   console.log("\n" + "=".repeat(80));

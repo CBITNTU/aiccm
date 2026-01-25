@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserCompanies, type ProjectStatus } from "@/hooks/useProjects";
 import type { Database } from "@/lib/supabase/types";
@@ -16,12 +17,19 @@ type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 export default function ProjectsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Read from URL params
   const routeCompanyId = searchParams.get("companyId");
+  const routeProjectId = searchParams.get("projectId");
 
   // Track user's manual selection (null means "use default")
   const [manualCompanyId, setManualCompanyId] = useState<string | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    routeProjectId
+  );
   const [projectFilter, setProjectFilter] = useState<ProjectStatus>("active");
 
   const { data: companies, isLoading: loadingCompanies } = useUserCompanies(
@@ -48,6 +56,30 @@ export default function ProjectsPage() {
     return companies[0];
   }, [companies, manualCompanyId, routeCompanyId]);
 
+  // Update URL when selection changes
+  const updateUrl = useCallback(
+    (companyId: string | null, projectId: string | null) => {
+      const params = new URLSearchParams();
+      if (companyId) params.set("companyId", companyId);
+      if (projectId) params.set("projectId", projectId);
+
+      const queryString = params.toString();
+      const newUrl = queryString ? `/projects?${queryString}` : "/projects";
+
+      // Use replace to avoid adding to browser history on every selection
+      router.replace(newUrl, { scroll: false });
+    },
+    [router]
+  );
+
+  // Sync URL when selections change
+  useEffect(() => {
+    // Only update URL after initial load
+    if (!loadingCompanies && selectedCompany) {
+      updateUrl(selectedCompany.id, selectedProjectId);
+    }
+  }, [selectedCompany, selectedProjectId, loadingCompanies, updateUrl]);
+
   const handleCompanyChange = useCallback(
     (company: Company | null) => {
       if (company?.id !== selectedCompany?.id) {
@@ -56,6 +88,25 @@ export default function ProjectsPage() {
       }
     },
     [selectedCompany?.id]
+  );
+
+  const handleProjectSelect = useCallback((projectId: string | null) => {
+    setSelectedProjectId(projectId);
+  }, []);
+
+  // Callback for when a project is created - invalidates the cache
+  const handleProjectCreated = useCallback(
+    (projectId: string) => {
+      // Switch to active filter (new projects are "draft" which shows under active)
+      setProjectFilter("active");
+      // Invalidate all project queries for this company (matches any filter)
+      queryClient.invalidateQueries({
+        queryKey: ["projects", selectedCompany?.id],
+      });
+      // Select the new project
+      setSelectedProjectId(projectId);
+    },
+    [queryClient, selectedCompany?.id]
   );
 
   // Show loading state while fetching companies
@@ -103,7 +154,8 @@ export default function ProjectsPage() {
         <ProjectList
           companyId={selectedCompany?.id ?? null}
           selectedProjectId={selectedProjectId}
-          onSelectProject={setSelectedProjectId}
+          onSelectProject={handleProjectSelect}
+          onProjectCreated={handleProjectCreated}
           filter={projectFilter}
           onFilterChange={setProjectFilter}
         />

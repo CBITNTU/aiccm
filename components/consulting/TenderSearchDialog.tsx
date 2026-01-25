@@ -1,0 +1,232 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Search,
+  Loader2,
+  Calendar,
+  Building2,
+  MapPin,
+  Banknote,
+  FileText,
+} from "lucide-react";
+
+interface Tender {
+  id: string;
+  title: string;
+  buyer: string;
+  deadline: string | null;
+  status: string | null;
+  location?: string | null;
+  budget_max?: number | null;
+  description?: string | null;
+}
+
+interface TenderSearchDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelectTender: (tender: Tender) => void;
+  excludeTenderId?: string | null;
+}
+
+async function searchTenders(query: string): Promise<Tender[]> {
+  const supabase = createClient();
+
+  let queryBuilder = supabase
+    .from("tenders")
+    .select("id, title, buyer, deadline, status, location, budget_max, description")
+    .in("status", ["open", "closing_soon"])
+    .order("deadline", { ascending: true })
+    .limit(50);
+
+  if (query.trim()) {
+    // Search in title, buyer, and description
+    queryBuilder = queryBuilder.or(
+      `title.ilike.%${query}%,buyer.ilike.%${query}%,description.ilike.%${query}%`
+    );
+  }
+
+  const { data, error } = await queryBuilder;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data || [];
+}
+
+export function TenderSearchDialog({
+  open,
+  onOpenChange,
+  onSelectTender,
+  excludeTenderId,
+}: TenderSearchDialogProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset search when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSearchQuery("");
+      setDebouncedQuery("");
+    }
+  }, [open]);
+
+  const { data: tenders, isLoading } = useQuery({
+    queryKey: ["tenderSearch", debouncedQuery],
+    queryFn: () => searchTenders(debouncedQuery),
+    enabled: open,
+  });
+
+  const filteredTenders = tenders?.filter((t) => t.id !== excludeTenderId) || [];
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "No deadline";
+    return new Date(dateStr).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatCurrency = (value: number | null | undefined) => {
+    if (!value) return null;
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const handleSelect = (tender: Tender) => {
+    onSelectTender(tender);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Search Tenders
+          </DialogTitle>
+          <DialogDescription>
+            Search for a tender to link to your project
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by title, buyer, or description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+            autoFocus
+          />
+        </div>
+
+        {/* Results */}
+        <ScrollArea className="h-[400px] -mx-6 px-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredTenders.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              {debouncedQuery
+                ? "No tenders found matching your search"
+                : "No open tenders available"}
+            </div>
+          ) : (
+            <div className="space-y-2 py-1">
+              {filteredTenders.map((tender) => (
+                <div
+                  key={tender.id}
+                  className="p-4 border rounded-lg hover:border-primary/50 hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => handleSelect(tender)}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium line-clamp-2">{tender.title}</h4>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3.5 w-3.5" />
+                          {tender.buyer}
+                        </span>
+
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {formatDate(tender.deadline)}
+                        </span>
+
+                        {tender.location && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {tender.location}
+                          </span>
+                        )}
+
+                        {tender.budget_max && (
+                          <span className="flex items-center gap-1">
+                            <Banknote className="h-3.5 w-3.5" />
+                            {formatCurrency(tender.budget_max)}
+                          </span>
+                        )}
+                      </div>
+
+                      {tender.description && (
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                          {tender.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <Badge
+                      variant={tender.status === "closing_soon" ? "destructive" : "secondary"}
+                      className="shrink-0"
+                    >
+                      {tender.status === "closing_soon" ? "Closing Soon" : "Open"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* Footer */}
+        <div className="flex justify-end pt-4 border-t">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

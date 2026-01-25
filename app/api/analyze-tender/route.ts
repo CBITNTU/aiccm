@@ -61,7 +61,7 @@ Focus on the most specific and accurate categories that would help companies fin
 
     const response = await chatCompletion(systemPrompt, prompt, {
       temperature: 0.2,
-      maxTokens: 500,
+      maxTokens: 5000,
     });
 
     console.log("AI response:", response);
@@ -83,8 +83,8 @@ Focus on the most specific and accurate categories that would help companies fin
           suggestedTaxonomies.some(
             (suggested) =>
               t.name.toLowerCase().includes(suggested.toLowerCase()) ||
-              suggested.toLowerCase().includes(t.name.toLowerCase())
-          )
+              suggested.toLowerCase().includes(t.name.toLowerCase()),
+          ),
         )
         .map((t) => t.id);
 
@@ -109,7 +109,7 @@ Focus on the most specific and accurate categories that would help companies fin
           console.error("Error inserting tender taxonomies:", taxonomyError);
         } else {
           console.log(
-            `Successfully tagged tender with ${taxonomyIds.length} taxonomies`
+            `Successfully tagged tender with ${taxonomyIds.length} taxonomies`,
           );
         }
       }

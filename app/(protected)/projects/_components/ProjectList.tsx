@@ -23,6 +23,7 @@ interface ProjectListProps {
   companyId: string | null;
   selectedProjectId: string | null;
   onSelectProject: (id: string | null) => void;
+  onProjectCreated: (projectId: string) => void;
   filter: ProjectStatus;
   onFilterChange: (filter: ProjectStatus) => void;
 }
@@ -31,6 +32,7 @@ export function ProjectList({
   companyId,
   selectedProjectId,
   onSelectProject,
+  onProjectCreated,
   filter,
   onFilterChange,
 }: ProjectListProps) {
@@ -45,24 +47,27 @@ export function ProjectList({
 
   // Auto-select first project when list loads or changes
   useEffect(() => {
-    if (projects && projects.length > 0 && !selectedProjectId) {
+    if (projects && projects.length > 0 && !selectedProjectId && !isFetching) {
       onSelectProject(projects[0].id);
     }
-  }, [projects, selectedProjectId, onSelectProject]);
+  }, [projects, selectedProjectId, onSelectProject, isFetching]);
 
   // Clear selection if selected project no longer in list
+  // Skip while fetching - the project might be coming in the new data
   useEffect(() => {
     if (
       selectedProjectId &&
       projects &&
+      !isFetching &&
       !projects.find((p) => p.id === selectedProjectId)
     ) {
       onSelectProject(projects.length > 0 ? projects[0].id : null);
     }
-  }, [projects, selectedProjectId, onSelectProject]);
+  }, [projects, selectedProjectId, onSelectProject, isFetching]);
 
   const handleProjectCreated = (projectId: string) => {
-    onSelectProject(projectId);
+    // Call parent callback to invalidate cache and select project
+    onProjectCreated(projectId);
   };
 
   if (isLoading) {

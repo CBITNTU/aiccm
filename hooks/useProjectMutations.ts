@@ -428,3 +428,39 @@ export function useSendInvitations() {
     },
   });
 }
+
+// Update project tender mutation
+export function useUpdateProjectTender() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      tenderId,
+    }: {
+      projectId: string;
+      tenderId: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("virtual_organizations")
+        .update({
+          target_tender_id: tenderId,
+          // Clear analysis when tender changes since it's no longer valid
+          gap_analysis: null,
+          team_analysis: null,
+          recommended_partners: null,
+        })
+        .eq("id", projectId);
+
+      if (error) throw new Error(error.message);
+      return { projectId, tenderId };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["projectDetails", variables.projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}

@@ -2,9 +2,20 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useUpdateProjectTender } from "@/hooks/useProjectMutations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Calendar,
   MapPin,
@@ -12,10 +23,16 @@ import {
   Banknote,
   ExternalLink,
   FileText,
+  Link2,
+  RefreshCw,
+  Unlink,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { Project } from "@/hooks/useProjects";
 import type { Tender } from "@/hooks/useProjectDetails";
 import { TenderViewDialog } from "@/components/tenders/TenderViewDialog";
+import { TenderSearchDialog } from "@/components/consulting/TenderSearchDialog";
 
 interface SetupPanelProps {
   project: Project;
@@ -24,6 +41,10 @@ interface SetupPanelProps {
 
 export function SetupPanel({ project, tender }: SetupPanelProps) {
   const [tenderDialogOpen, setTenderDialogOpen] = useState(false);
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
+
+  const updateTender = useUpdateProjectTender();
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return "Not specified";
@@ -41,6 +62,34 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
       currency: "GBP",
       maximumFractionDigits: 0,
     }).format(value);
+  };
+
+  const handleSelectTender = async (selectedTender: {
+    id: string;
+    title: string;
+  }) => {
+    try {
+      await updateTender.mutateAsync({
+        projectId: project.id,
+        tenderId: selectedTender.id,
+      });
+      toast.success(`Linked to "${selectedTender.title}"`);
+    } catch {
+      toast.error("Failed to link tender");
+    }
+  };
+
+  const handleUnlinkTender = async () => {
+    try {
+      await updateTender.mutateAsync({
+        projectId: project.id,
+        tenderId: null,
+      });
+      toast.success("Tender unlinked");
+      setUnlinkDialogOpen(false);
+    } catch {
+      toast.error("Failed to unlink tender");
+    }
   };
 
   return (
@@ -66,10 +115,10 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
         </div>
       </motion.div>
 
+      <Separator />
+
       {tender ? (
         <>
-          <Separator />
-
           {/* Tender Summary */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -80,14 +129,34 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
               <h4 className="text-sm font-medium text-muted-foreground">
                 Target Tender
               </h4>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setTenderDialogOpen(true)}
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                View Details
-              </Button>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchDialogOpen(true)}
+                  disabled={updateTender.isPending}
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Change
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUnlinkDialogOpen(true)}
+                  disabled={updateTender.isPending}
+                >
+                  <Unlink className="h-4 w-4 mr-1" />
+                  Unlink
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setTenderDialogOpen(true)}
+                >
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  View
+                </Button>
+              </div>
             </div>
 
             <Card>
@@ -139,8 +208,6 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
         </>
       ) : (
         <>
-          <Separator />
-
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -148,14 +215,28 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
             className="text-center py-6"
           >
             <FileText className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-            <p className="text-muted-foreground">No tender linked to this project</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              You can still use gap analysis and team building features
+            <p className="text-muted-foreground mb-1">
+              No tender linked to this project
             </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Link a tender to enable gap analysis
+            </p>
+            <Button
+              onClick={() => setSearchDialogOpen(true)}
+              disabled={updateTender.isPending}
+            >
+              {updateTender.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Link2 className="h-4 w-4 mr-2" />
+              )}
+              Link a Tender
+            </Button>
           </motion.div>
         </>
       )}
 
+      {/* Tender View Dialog */}
       {tender && (
         <TenderViewDialog
           tender={{
@@ -173,6 +254,36 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
           onOpenChange={setTenderDialogOpen}
         />
       )}
+
+      {/* Tender Search Dialog */}
+      <TenderSearchDialog
+        open={searchDialogOpen}
+        onOpenChange={setSearchDialogOpen}
+        onSelectTender={handleSelectTender}
+        excludeTenderId={tender?.id}
+      />
+
+      {/* Unlink Confirmation Dialog */}
+      <AlertDialog open={unlinkDialogOpen} onOpenChange={setUnlinkDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unlink Tender</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unlink this tender? This will also clear
+              any existing gap analysis and team analysis data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnlinkTender}
+              disabled={updateTender.isPending}
+            >
+              {updateTender.isPending ? "Unlinking..." : "Unlink"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

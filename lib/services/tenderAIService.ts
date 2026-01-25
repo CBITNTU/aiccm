@@ -57,7 +57,7 @@ Generate a concise 200-word summary of this tender opportunity.`;
   const summary = await runLLM(
     async () => {
       const response = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         temperature: 0.3,
         maxTokens: 500,
       });
@@ -167,7 +167,7 @@ Analyze this tender and return ONLY a valid JSON object (no comments, no explana
   const response = await runLLM(
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         temperature: 0.3,
         maxTokens: 2000,
       });

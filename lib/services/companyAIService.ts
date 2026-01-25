@@ -56,7 +56,7 @@ Generate a concise 200-word professional summary of this company.`;
   const summary = await runLLM(
     async () => {
       const response = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         temperature: 0.3,
         maxTokens: 500,
       });
@@ -173,7 +173,7 @@ Analyze this company and return ONLY a valid JSON object (no comments, no explan
   const response = await runLLM(
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         temperature: 0.3,
         maxTokens: 2000,
       });
@@ -348,7 +348,7 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
   const response = await runLLM(
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         temperature: 0.3,
         maxTokens: 2500, // Slightly higher for combined output
       });

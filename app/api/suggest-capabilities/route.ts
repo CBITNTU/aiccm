@@ -162,7 +162,7 @@ Example format:
 
     // Call OpenAI
     const response = await chatCompletion(systemPrompt, userPrompt, {
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       temperature: 0.3,
       maxTokens: 1000,
     });

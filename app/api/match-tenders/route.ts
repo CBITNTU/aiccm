@@ -82,13 +82,13 @@ async function analyzeTenderMatch(
     tender.requirements ? `Requirements: ${JSON.stringify(tender.requirements)}` : '',
   ].filter(Boolean).join('\n');
 
-  const systemPrompt = `You are an expert at evaluating company-tender matches. Rate the match between a company and a tender on 4 dimensions from 0-100: Capability, Certification, Experience, Location. If capability doesn't match (industries don't align or capabilities are irrelevant), set capabilityScore = 0. Always calculate certificationScore, experienceScore, and locationScore normally regardless of capability. No assumptions. Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
+  const systemPrompt = `You are an expert at evaluating company-tender matches. FIRST: Check if company and tender industries/sectors match (e.g., construction, healthcare, IT, telecom). If industries DON'T MATCH, set capabilityScore = 0 immediately. If industries match, rate capability relevance 0-100. Then rate Certification, Experience, Location 0-100 independently. No assumptions. Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
 
   const prompt = `Company: ${companyProfile}
 
 Tender: ${tenderInfo}
 
-Rate each dimension from 0-100. If capability doesn't match, set capabilityScore = 0. Always score certification, experience, and location normally. Return JSON with scores and explanations.`;
+FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate capability 0-100. Then rate certification, experience, location 0-100. Return JSON with scores and explanations.`;
 
   // Log the full prompt for debugging
   console.log("\n" + "=".repeat(80));
@@ -104,7 +104,7 @@ Rate each dimension from 0-100. If capability doesn't match, set capabilityScore
     const estTokens = Math.ceil((prompt.length + companyProfile.length + tenderInfo.length) / 4) + 400;
     const raw = await runLLM(async () => {
       const response = await chatCompletion(systemPrompt, prompt, {
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         temperature: 0.2,
         maxTokens: 2000,
       });

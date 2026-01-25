@@ -116,14 +116,27 @@ export async function chatCompletion(
   } = {}
 ): Promise<string> {
   const openai = getOpenAIClient();
+  const model = options.model || "gpt-5-mini";
+  const isGPT5 = model.startsWith("gpt-5");
+  
   const response = await openai.chat.completions.create({
-    model: options.model || "gpt-4o-mini",
+    model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: options.temperature ?? 0.7,
-    max_tokens: options.maxTokens ?? 500,
+    // GPT-5 models don't support temperature parameter (only default 1 is allowed)
+    // GPT-5 models use max_completion_tokens, older models use max_tokens
+    ...(isGPT5 
+      ? { 
+          max_completion_tokens: options.maxTokens ?? 500,
+          // Don't include temperature for GPT-5 models
+        }
+      : { 
+          max_tokens: options.maxTokens ?? 500,
+          temperature: options.temperature ?? 0.7,
+        }
+    ),
   });
 
   return response.choices[0]?.message?.content || "";

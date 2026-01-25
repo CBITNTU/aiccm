@@ -7,8 +7,8 @@ import pLimit from 'p-limit';
  *  - RPD  (requests per day)
  *  - TPM  (tokens per minute) — approximate, based on your estimate per call
  *
- * Defaults below match a generic "Tier 1" example:
- *   RPM=500, RPD=10000, TPM=200000
+ * Defaults below match GPT-5-mini "Tier 1" limits:
+ *   RPM=500, RPD=10000, TPM=500000
  * You *should* override these via env to reflect your actual model/account limits
  * and add headroom.
  */
@@ -16,9 +16,9 @@ import pLimit from 'p-limit';
 // ---------- Config (override via env) ----------
 const CONCURRENCY = parseInt(process.env.LLM_CONCURRENCY ?? '15', 10); // Increased default concurrency to 15 for faster processing
 
-const RPM_LIMIT = parseInt(process.env.LLM_RPM_LIMIT ?? '500', 10); // requests / minute
-const RPD_LIMIT = parseInt(process.env.LLM_RPD_LIMIT ?? '10000', 10); // requests / day
-const TPM_BUDGET = parseInt(process.env.LLM_TPM_BUDGET ?? '200000', 10); // tokens / minute (estimated)
+const RPM_LIMIT = parseInt(process.env.LLM_RPM_LIMIT ?? '500', 10); // requests / minute (GPT-5-mini Tier 1)
+const RPD_LIMIT = parseInt(process.env.LLM_RPD_LIMIT ?? '10000', 10); // requests / day (custom limit)
+const TPM_BUDGET = parseInt(process.env.LLM_TPM_BUDGET ?? '500000', 10); // tokens / minute (GPT-5-mini Tier 1: 500K)
 
 const SAFETY_CUSHION_MS = 250; // small cushion so we don't wake exactly on window boundary
 

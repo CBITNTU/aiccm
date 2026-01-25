@@ -1,4 +1,4 @@
-import { createAdminClient, chatCompletion } from "@/lib/api";
+import { createAdminClient, chatCompletion, parseAIJsonResponse } from "@/lib/api";
 import { runLLM } from "./llmLimiter";
 
 const supabase = createAdminClient();
@@ -90,7 +90,7 @@ export async function scoreTenderMatch(
   const dataPoints = [hasCapabilities, hasExperience, hasCertifications, hasLocation, hasDescription].filter(Boolean).length;
   const isMinimalData = dataPoints < 3;
 
-  const systemPrompt = `You are an expert at evaluating company-tender matches. Rate the match between a company and a tender on 4 dimensions from 0-100: Capability, Certification, Experience, Location. If capability doesn't match (industries don't align or capabilities are irrelevant), set capabilityScore = 0. Always calculate certificationScore, experienceScore, and locationScore normally regardless of capability. No assumptions. Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
+  const systemPrompt = `You are an expert at evaluating company-tender matches. FIRST: Check if company and tender industries/sectors match (e.g., construction, healthcare, IT, telecom). If industries DON'T MATCH, set capabilityScore = 0 immediately. If industries match, rate capability relevance 0-100. Then rate Certification, Experience, Location 0-100 independently. No assumptions. Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
 
   const userPrompt = `Company: ${companyData.company_name || "N/A"}
 ${hasDescription ? `Description: ${companyData.description}` : "Description: NOT PROVIDED"}
@@ -106,7 +106,7 @@ Budget: ${budgetRange}
 Location: ${tenderData.location || "N/A"}
 ${tenderData.cpv_codes && tenderData.cpv_codes.length > 0 ? `CPV Codes: ${tenderData.cpv_codes.join(", ")}` : ""}
 
-Rate each dimension from 0-100. If capability doesn't match, set capabilityScore = 0. Always score certification, experience, and location normally.`;
+FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate capability 0-100. Then rate certification, experience, location 0-100.`;
 
   // Log the prompt for debugging
   console.log("\n" + "=".repeat(80));
@@ -122,8 +122,7 @@ Rate each dimension from 0-100. If capability doesn't match, set capabilityScore
   const response = await runLLM(
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-4o-mini",
-        temperature: 0.3,
+        model: "gpt-5-mini",
         maxTokens: 2000,
       });
       return aiResponse;
@@ -142,9 +141,22 @@ Rate each dimension from 0-100. If capability doesn't match, set capabilityScore
   let score: MatchingScore;
 
   try {
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+    // Use the parseAIJsonResponse helper which handles markdown code blocks and comments
+    let parsed;
+    try {
+      parsed = parseAIJsonResponse(response);
+    } catch (parseError) {
+      // Fallback to simple regex if parseAIJsonResponse fails
+      console.warn("parseAIJsonResponse failed, trying regex fallback:", parseError);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error(`No JSON found in response. Response preview: ${response.substring(0, 500)}`);
+      }
+    }
+    
+    if (parsed) {
       
       // Get scores from AI (no overallScore from AI - we calculate it)
       let capabilityScore = Math.max(0, Math.min(100, parsed.capabilityScore || 0));

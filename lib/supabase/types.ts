@@ -861,6 +861,57 @@ export type Database = {
           },
         ]
       }
+      events: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string | null
+          user_email: string | null
+          action_type: string
+          entity_type: string | null
+          entity_id: string | null
+          details: Json
+          ip_address: string | null
+          user_agent: string | null
+          request_path: string | null
+          request_method: string | null
+          status: "success" | "error" | "warning"
+          error_message: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id?: string | null
+          user_email?: string | null
+          action_type: string
+          entity_type?: string | null
+          entity_id?: string | null
+          details?: Json
+          ip_address?: string | null
+          user_agent?: string | null
+          request_path?: string | null
+          request_method?: string | null
+          status?: "success" | "error" | "warning"
+          error_message?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          user_id?: string | null
+          user_email?: string | null
+          action_type?: string
+          entity_type?: string | null
+          entity_id?: string | null
+          details?: Json
+          ip_address?: string | null
+          user_agent?: string | null
+          request_path?: string | null
+          request_method?: string | null
+          status?: "success" | "error" | "warning"
+          error_message?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/api";
+import type { Json } from "@/lib/supabase/types";
 
 const supabase = createAdminClient();
 
@@ -26,6 +27,7 @@ export type EventActionType =
   | "tender_imported"
   | "tender_ai_generated"
   // Matching actions
+  | "matching_started"
   | "matching_triggered"
   | "matching_completed"
   | "matching_result_viewed"
@@ -81,27 +83,29 @@ export async function logEvent(data: EventLogData): Promise<void> {
     let userEmail = data.userEmail;
     if (data.userId && !userEmail) {
       try {
-        const { data: userData } = await supabase.auth.admin.getUserById(data.userId);
+        const { data: userData } = await supabase.auth.admin.getUserById(
+          data.userId,
+        );
         userEmail = userData?.user?.email || null;
       } catch {
         // Ignore errors fetching user email
       }
     }
 
-    const { error } = await supabase.from("events" as any).insert({
+    const { error } = await supabase.from("events").insert({
       action_type: data.actionType,
       user_id: data.userId || null,
       user_email: userEmail || null,
       entity_type: data.entityType || null,
       entity_id: data.entityId || null,
-      details: data.details || {},
+      details: (data.details || {}) as Record<string, Json>,
       ip_address: data.ipAddress || null,
       user_agent: data.userAgent || null,
       request_path: data.requestPath || null,
       request_method: data.requestMethod || null,
       status: data.status || "success",
       error_message: data.errorMessage || null,
-    } as any);
+    });
 
     if (error) {
       // Log to console but don't throw - event logging should never break the app
@@ -135,17 +139,23 @@ export function extractRequestInfo(request: {
     const headers = request.headers;
     if (headers) {
       // Check if headers is a Headers object (has .get method) or a plain object
-      const isHeadersObject = headers instanceof Headers || typeof (headers as any).get === "function";
-      
+      const isHeadersObject =
+        headers instanceof Headers ||
+        typeof (headers as any).get === "function";
+
       // Get IP address (check various headers for proxies)
       let forwardedFor: string | string[] | null = null;
       if (isHeadersObject) {
         forwardedFor = (headers as Headers).get("x-forwarded-for");
       } else {
-        forwardedFor = (headers as Record<string, string | string[]>)["x-forwarded-for"] || null;
+        forwardedFor =
+          (headers as Record<string, string | string[]>)["x-forwarded-for"] ||
+          null;
       }
 
-      const forwardedForStr = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+      const forwardedForStr = Array.isArray(forwardedFor)
+        ? forwardedFor[0]
+        : forwardedFor;
       const realIpRaw = isHeadersObject
         ? (headers as Headers).get("x-real-ip")
         : (headers as Record<string, string | string[]>)["x-real-ip"] || null;
@@ -189,7 +199,10 @@ export async function logApiEvent(
     url?: string;
     method?: string;
   },
-  data: Omit<EventLogData, "ipAddress" | "userAgent" | "requestPath" | "requestMethod">
+  data: Omit<
+    EventLogData,
+    "ipAddress" | "userAgent" | "requestPath" | "requestMethod"
+  >,
 ): Promise<void> {
   const requestInfo = extractRequestInfo(request);
   await logEvent({

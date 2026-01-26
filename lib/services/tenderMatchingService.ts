@@ -90,7 +90,24 @@ export async function scoreTenderMatch(
   const dataPoints = [hasCapabilities, hasExperience, hasCertifications, hasLocation, hasDescription].filter(Boolean).length;
   const isMinimalData = dataPoints < 3;
 
-  const systemPrompt = `You are an expert at evaluating company-tender matches. FIRST: Check if company and tender industries/sectors match (e.g., construction, healthcare, IT, telecom). If industries DON'T MATCH, set capabilityScore = 0 immediately. If industries match, rate capability relevance 0-100. Then rate Certification, Experience, Location 0-100 independently. No assumptions. Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons, improvementSuggestions, aiAnalysis, and scoreExplanations.`;
+  const systemPrompt = `You are an expert at evaluating company-tender matches. 
+
+FIRST: Check if company and tender industries/sectors match (e.g., construction, healthcare, IT, telecom). If industries DON'T MATCH, set capabilityScore = 0 immediately. If industries match, rate capability relevance 0-100. Then rate Certification, Experience, Location 0-100 independently. No assumptions.
+
+For matchReasons: Provide 2-4 SHORT, CLEAR bullet points explaining why this is a good match. Each reason should be:
+- 10-15 words maximum
+- Written in plain English
+- Focus on specific capabilities, experience, or qualifications
+- Example: "Company has 5+ years experience in similar healthcare projects"
+- Example: "Strong capability match in construction and project management"
+
+For improvementSuggestions: Provide 2-3 SHORT, ACTIONABLE suggestions for improvement. Each suggestion should be:
+- 10-15 words maximum
+- Specific and actionable
+- Example: "Add ISO 9001 certification to improve competitiveness"
+- Example: "Highlight more healthcare project case studies"
+
+Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons (array of short strings), improvementSuggestions (array of short strings), aiAnalysis (brief summary), and scoreExplanations (object with short explanations for each score).`;
 
   const userPrompt = `Company: ${companyData.company_name || "N/A"}
 ${hasDescription ? `Description: ${companyData.description}` : "Description: NOT PROVIDED"}
@@ -110,13 +127,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
 
   // Log the prompt for debugging
   console.log("\n" + "=".repeat(80));
-  console.log(`📋 TENDER MATCHING PROMPT: ${companyData.company_name} → ${tenderData.title}`);
-  console.log("=".repeat(80));
-  console.log("\n🔹 SYSTEM PROMPT:");
-  console.log(systemPrompt);
-  console.log("\n🔹 USER PROMPT:");
-  console.log(userPrompt);
-  console.log("\n" + "=".repeat(80) + "\n");
+  console.log(`🔄 Matching: ${companyData.company_name} → ${tenderData.title}`);
 
   // Call OpenAI with rate limiting
   let response: string;
@@ -149,22 +160,10 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     throw error;
   }
 
-  // Log the AI response
-  console.log("\n" + "=".repeat(80));
-  console.log(`🤖 AI RESPONSE FOR TENDER MATCHING: ${companyData.company_name} → ${tenderData.title}`);
-  console.log("=".repeat(80));
-  console.log(response);
-  console.log("\n" + "=".repeat(80) + "\n");
-
+  console.log(`✅ Got AI response (${response.length} chars)`);
+  
   // Parse AI response
   let score: MatchingScore;
-
-  // Log the raw response for debugging
-  console.log("\n" + "=".repeat(80));
-  console.log(`📄 RAW AI RESPONSE (${response.length} chars):`);
-  console.log("=".repeat(80));
-  console.log(response);
-  console.log("=".repeat(80) + "\n");
 
   try {
     // Use the parseAIJsonResponse helper which handles markdown code blocks and comments
@@ -326,6 +325,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     throw new Error(`Failed to store matching result: ${upsertError.message}`);
   }
 
+  console.log(`✅ Match complete: ${companyData.company_name} → ${tenderData.title} (Score: ${score.overallScore}%)`);
   return score;
 }
 

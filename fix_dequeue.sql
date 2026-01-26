@@ -1,7 +1,6 @@
--- Fix race condition in job dequeuing by using atomic SELECT FOR UPDATE SKIP LOCKED
--- This ensures only one worker can claim a job at a time
+-- Fix the ambiguous column reference in dequeue_job_atomic
+-- Run this in your Supabase SQL Editor
 
--- Create function to atomically dequeue and claim a job
 CREATE OR REPLACE FUNCTION public.dequeue_job_atomic()
 RETURNS TABLE (
   id UUID,
@@ -30,20 +29,61 @@ DECLARE
   claimed_job RECORD;
 BEGIN
   -- First, try to get a batch job (prioritize batch jobs)
-  SELECT * INTO claimed_job
-  FROM public.processing_queue
-  WHERE processing_queue.status = 'pending'
-    AND processing_queue.batch_id IS NOT NULL
-  ORDER BY processing_queue.priority DESC, processing_queue.scheduled_at ASC
+  -- Use table alias to avoid ambiguity with return columns
+  SELECT 
+    pq.id,
+    pq.job_type,
+    pq.entity_type,
+    pq.entity_id,
+    pq.company_id,
+    pq.tender_id,
+    pq.batch_id,
+    pq.status,
+    pq.priority,
+    pq.attempts,
+    pq.max_attempts,
+    pq.error_message,
+    pq.result_data,
+    pq.scheduled_at,
+    pq.started_at,
+    pq.completed_at,
+    pq.created_at,
+    pq.updated_at,
+    pq.metadata
+  INTO claimed_job
+  FROM public.processing_queue pq
+  WHERE pq.status = 'pending'
+    AND pq.batch_id IS NOT NULL
+  ORDER BY pq.priority DESC, pq.scheduled_at ASC
   LIMIT 1
-  FOR UPDATE SKIP LOCKED; -- Atomic claim: locks row, skips if already locked
+  FOR UPDATE SKIP LOCKED;
   
   -- If no batch job found, get any pending job
   IF NOT FOUND THEN
-    SELECT * INTO claimed_job
-    FROM public.processing_queue
-    WHERE processing_queue.status = 'pending'
-    ORDER BY processing_queue.priority DESC, processing_queue.scheduled_at ASC
+    SELECT 
+      pq.id,
+      pq.job_type,
+      pq.entity_type,
+      pq.entity_id,
+      pq.company_id,
+      pq.tender_id,
+      pq.batch_id,
+      pq.status,
+      pq.priority,
+      pq.attempts,
+      pq.max_attempts,
+      pq.error_message,
+      pq.result_data,
+      pq.scheduled_at,
+      pq.started_at,
+      pq.completed_at,
+      pq.created_at,
+      pq.updated_at,
+      pq.metadata
+    INTO claimed_job
+    FROM public.processing_queue pq
+    WHERE pq.status = 'pending'
+    ORDER BY pq.priority DESC, pq.scheduled_at ASC
     LIMIT 1
     FOR UPDATE SKIP LOCKED;
   END IF;
@@ -57,7 +97,7 @@ BEGIN
       updated_at = now()
     WHERE processing_queue.id = claimed_job.id;
     
-    -- Return the claimed job
+    -- Return the claimed job with updated status
     RETURN QUERY SELECT 
       claimed_job.id,
       claimed_job.job_type,
@@ -66,21 +106,20 @@ BEGIN
       claimed_job.company_id,
       claimed_job.tender_id,
       claimed_job.batch_id,
-      'processing'::TEXT, -- Return updated status
+      'processing'::TEXT,
       claimed_job.priority,
       claimed_job.attempts,
       claimed_job.max_attempts,
       claimed_job.error_message,
       claimed_job.result_data,
       claimed_job.scheduled_at,
-      now(), -- Return updated started_at
+      now(),
       claimed_job.completed_at,
       claimed_job.created_at,
-      now(), -- Return updated updated_at
+      now(),
       claimed_job.metadata;
   END IF;
   
-  -- No job found, return empty result
   RETURN;
 END;
-$$
+$$;

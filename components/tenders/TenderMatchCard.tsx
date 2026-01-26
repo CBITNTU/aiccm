@@ -227,10 +227,15 @@ export function TenderMatchCard({
       {/* Match reasons */}
       {result.match_reasons.length > 0 && (
         <div className="mb-3">
-          <p className="text-xs text-green-700 dark:text-green-400">
-            {result.match_reasons[0]}
-            {result.match_reasons.length > 1 &&
-              ` (+${result.match_reasons.length - 1} more)`}
+          <p className="text-sm font-medium text-green-700 dark:text-green-400 leading-relaxed">
+            ✓ {result.match_reasons[0].length > 120 
+              ? result.match_reasons[0].substring(0, 120) + "..." 
+              : result.match_reasons[0]}
+            {result.match_reasons.length > 1 && (
+              <span className="ml-1 text-xs opacity-75">
+                (+{result.match_reasons.length - 1} more)
+              </span>
+            )}
           </p>
         </div>
       )}

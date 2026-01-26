@@ -145,32 +145,55 @@ export function TenderMatching({
   }, [companyId]);
 
   const cancelMatching = useCallback(async (batchId: string) => {
+    console.log(`🛑 Attempting to cancel batch ${batchId}...`);
+    
     try {
+      // First, try to cancel the tracked batch
       const response = await fetch("/api/match-tenders/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ batchId }),
       });
 
-      if (!response.ok) {
+      if (response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to cancel matching");
+        console.log(`✅ Successfully cancelled batch ${batchId}:`, data);
+      } else if (response.status === 404) {
+        console.log(`⚠️ Batch ${batchId} not found (404) - may already be completed or never existed`);
+      } else {
+        const data = await response.json();
+        console.warn(`⚠️ Cancel API returned ${response.status}:`, data.error);
       }
-
-      // Clear from localStorage
-      if (companyId) {
-        localStorage.removeItem(`matching_batch_${companyId}`);
-      }
-
-      setMatchingProgress(null);
-      toast.success("Matching cancelled");
     } catch (error) {
-      console.error("Error cancelling matching:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to cancel matching"
-      );
+      console.error("Error calling cancel API:", error);
     }
-  }, [companyId]);
+
+    // ALWAYS clear ALL batch-related state from localStorage
+    // (even if the API call failed - important for stuck/stale batches)
+    if (companyId) {
+      localStorage.removeItem(`matching_batch_${companyId}`);
+      localStorage.removeItem(`stale_check_${batchId}`);
+      
+      // Also clear any other stale_check entries
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('stale_check_')) {
+          localStorage.removeItem(key);
+        }
+      }
+    }
+
+    // Clear in-memory state
+    setMatchingProgress(null);
+    
+    console.log(`✅ Cleared all local state for company ${companyId}`);
+    toast.success("Cancelled - any running jobs will finish in background");
+    
+    // Refresh results after a delay to show completed jobs
+    setTimeout(() => {
+      fetchMatchingResultsMemo();
+    }, 2000);
+  }, [companyId, fetchMatchingResultsMemo]);
 
   const checkMatchingProgress = useCallback(async (batchId: string) => {
     try {
@@ -196,6 +219,19 @@ export function TenderMatching({
         console.error("Invalid progress response:", data);
         return;
       }
+      
+      // Check if this batch belongs to the current company
+      // (prevents showing progress for wrong company)
+      if (companyId) {
+        const storedBatchId = localStorage.getItem(`matching_batch_${companyId}`);
+        if (storedBatchId !== batchId) {
+          console.warn(`Batch ${batchId} doesn't match stored batch ${storedBatchId} for company ${companyId}`);
+          // Clear stale batch and stop polling
+          localStorage.removeItem(`matching_batch_${companyId}`);
+          setMatchingProgress(null);
+          return;
+        }
+      }
 
       const progressData = {
         batchId: data.batch_id,
@@ -206,21 +242,50 @@ export function TenderMatching({
         progressPercent: data.progress_percent || 0,
       };
 
-      console.log(`Progress update for batch ${batchId}:`, progressData);
+      console.log(`📊 Progress: ${progressData.completedJobs + progressData.failedJobs}/${progressData.totalJobs} (${progressData.progressPercent}%) - Batch ${batchId.slice(0, 8)}`);
       setMatchingProgress(progressData);
 
-      // If completed, refresh results and clear localStorage
+      // If completed or failed, clear and check for results
       if (data.status === "completed" || data.status === "failed") {
         console.log(`Batch ${batchId} finished with status: ${data.status}`);
         if (companyId) {
           localStorage.removeItem(`matching_batch_${companyId}`);
         }
+        setMatchingProgress(null); // Clear progress state
         await fetchMatchingResultsMemo();
         if (data.status === "completed") {
           toast.success(`Matching completed: ${data.completed_jobs} tenders analyzed`);
         } else {
           toast.error(`Matching failed: ${data.failed_jobs} jobs failed`);
         }
+      }
+      
+      // Auto-clear stale batches: if no progress after 60 seconds, clear it
+      if (data.status === "processing" && 
+          data.completed_jobs === 0 && 
+          data.failed_jobs === 0) {
+        const staleCheckKey = `stale_check_${batchId}`;
+        const firstCheckTime = localStorage.getItem(staleCheckKey);
+        
+        if (!firstCheckTime) {
+          // First time seeing this batch at 0 progress
+          localStorage.setItem(staleCheckKey, Date.now().toString());
+        } else {
+          const elapsed = Date.now() - parseInt(firstCheckTime);
+          if (elapsed > 60000) { // 60 seconds with no progress
+            console.warn(`⚠️ Batch ${batchId} stuck at 0 progress for ${Math.round(elapsed/1000)}s - auto-clearing`);
+            if (companyId) {
+              localStorage.removeItem(`matching_batch_${companyId}`);
+            }
+            localStorage.removeItem(staleCheckKey);
+            setMatchingProgress(null);
+            toast.info("Previous matching was stuck. Click 'Run Analysis' to restart.");
+            return;
+          }
+        }
+      } else if (data.completed_jobs > 0 || data.failed_jobs > 0) {
+        // Clear stale check if we have progress
+        localStorage.removeItem(`stale_check_${batchId}`);
       }
     } catch (error) {
       console.error("Error checking matching progress:", error);
@@ -236,7 +301,10 @@ export function TenderMatching({
       // Check for in-progress batch from localStorage
       const storedBatchId = localStorage.getItem(`matching_batch_${companyId}`);
       if (storedBatchId) {
+        console.log(`🔄 Restoring batch from localStorage: ${storedBatchId}`);
+        // Verify batch still exists and is active
         checkMatchingProgress(storedBatchId);
+        // Note: checkMatchingProgress will auto-clear if batch is 404 or completed
       }
     }
   }, [user, companyId, checkMatchingProgress, fetchMatchingResultsMemo]);
@@ -360,6 +428,13 @@ export function TenderMatching({
 
     // Prevent multiple simultaneous analyses
     if (analyzing) {
+      toast.info("Analysis already in progress");
+      return;
+    }
+
+    // Prevent starting new batch if one is already processing
+    if (matchingProgress && matchingProgress.status === "processing") {
+      toast.info("Matching already in progress. Click 'Clear & Restart' to cancel.");
       return;
     }
 
@@ -375,6 +450,16 @@ export function TenderMatching({
     }
 
     setInternalAnalyzing(true);
+    
+    // Clear any stale batch state before starting new one
+    if (companyId) {
+      const oldBatchId = localStorage.getItem(`matching_batch_${companyId}`);
+      if (oldBatchId) {
+        console.log(`🧹 Clearing old batch ${oldBatchId} before starting new one`);
+        localStorage.removeItem(`stale_check_${oldBatchId}`);
+      }
+    }
+    
     try {
       const response = await fetch("/api/match-tenders", {
         method: "POST",
@@ -430,12 +515,25 @@ export function TenderMatching({
         throw new Error("Invalid response format from server");
       }
       
+      // Handle response - could be new batch or existing batch
+      if (data.status === "already_running") {
+        console.log(`ℹ️ Batch ${data.batch_id} already running for this company`);
+        toast.info("Matching already in progress - resuming...");
+      } else {
+        console.log(`✅ Created new batch: ${data.batch_id} (${data.total_tenders} tenders)`);
+        toast.success(`Matching started: ${data.total_tenders} tenders queued`);
+      }
+      
       // Store batch ID in localStorage for persistence
       if (data.batch_id && companyId) {
+        const existingBatchId = localStorage.getItem(`matching_batch_${companyId}`);
+        if (existingBatchId && existingBatchId !== data.batch_id) {
+          console.log(`🔄 Switching from batch ${existingBatchId} to ${data.batch_id}`);
+        }
         localStorage.setItem(`matching_batch_${companyId}`, data.batch_id);
       }
 
-      // Set initial progress
+      // Set initial progress (will be updated by polling)
       setMatchingProgress({
         batchId: data.batch_id,
         totalJobs: data.total_tenders,
@@ -444,8 +542,6 @@ export function TenderMatching({
         status: "processing",
         progressPercent: 0,
       });
-
-      toast.success(`Matching started: ${data.total_tenders} tenders queued`);
       
       // Start polling for progress
       if (data.batch_id) {
@@ -573,7 +669,9 @@ export function TenderMatching({
                 className="h-7"
               >
                 <X className="h-3 w-3 mr-1" />
-                Cancel
+                {matchingProgress.completedJobs === 0 && matchingProgress.failedJobs === 0 
+                  ? "Clear & Restart" 
+                  : "Cancel"}
               </Button>
             </div>
           </div>

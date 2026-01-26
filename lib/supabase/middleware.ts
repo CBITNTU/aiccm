@@ -26,24 +26,23 @@ export async function updateSession(request: NextRequest) {
   }
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
       },
-    }
-  );
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value),
+        );
+        supabaseResponse = NextResponse.next({
+          request,
+        });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options),
+        );
+      },
+    },
+  });
 
   // IMPORTANT: Avoid writing any logic between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
@@ -62,6 +61,8 @@ export async function updateSession(request: NextRequest) {
     "/companies",
     "/company",
     "/vo",
+    "/projects",
+    "/my-companies",
     "/admin",
     "/pending-approval",
   ];
@@ -76,11 +77,7 @@ export async function updateSession(request: NextRequest) {
   ];
 
   // Paths that onboarding users can access (browse while completing onboarding)
-  const onboardingAllowedPaths = [
-    "/onboarding",
-    "/tenders",
-    "/directory",
-  ];
+  const onboardingAllowedPaths = ["/onboarding", "/tenders", "/directory"];
 
   // Paths that require full approval (redirect pending users)
   const approvalRequiredPaths = [
@@ -89,23 +86,24 @@ export async function updateSession(request: NextRequest) {
     "/companies",
     "/company",
     "/vo",
+    "/projects",
     "/admin",
   ];
 
   const isProtectedPath = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
+    request.nextUrl.pathname.startsWith(path),
   );
 
   const isPendingAllowedPath = pendingAllowedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
+    request.nextUrl.pathname.startsWith(path),
   );
 
   const isOnboardingAllowedPath = onboardingAllowedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
+    request.nextUrl.pathname.startsWith(path),
   );
 
   const isApprovalRequiredPath = approvalRequiredPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
+    request.nextUrl.pathname.startsWith(path),
   );
 
   // Redirect unauthenticated users from protected paths to /auth
@@ -123,8 +121,7 @@ export async function updateSession(request: NextRequest) {
     try {
       // Check user's profile including onboarding status
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profile, error } = await (supabase
-        .from("profiles") as any)
+      const { data: profile, error } = await (supabase.from("profiles") as any)
         .select("approval_status, onboarding_step, onboarding_completed_at")
         .eq("user_id", user.id)
         .single();
@@ -134,8 +131,10 @@ export async function updateSession(request: NextRequest) {
         // If we can't fetch profile, allow access (fail open for existing users)
         // This handles cases where the profile might not exist yet
       } else if (profile) {
-        const isOnboardingPath = request.nextUrl.pathname.startsWith("/onboarding");
-        const isPendingApprovalPath = request.nextUrl.pathname.startsWith("/pending-approval");
+        const isOnboardingPath =
+          request.nextUrl.pathname.startsWith("/onboarding");
+        const isPendingApprovalPath =
+          request.nextUrl.pathname.startsWith("/pending-approval");
 
         // If onboarding not completed, redirect to onboarding
         // (unless on an allowed path like /onboarding, /tenders, /directory)
@@ -166,7 +165,7 @@ export async function updateSession(request: NextRequest) {
           if (profile.approval_status === "approved" && isOnboardingPath) {
             // Check for redirectTo parameter
             const redirectTo = request.nextUrl.searchParams.get("redirectTo");
-            
+
             if (redirectTo && isValidRedirectUrl(redirectTo)) {
               const url = request.nextUrl.clone();
               const [pathname, search] = redirectTo.split("?");
@@ -174,7 +173,7 @@ export async function updateSession(request: NextRequest) {
               url.search = search ? `?${search}` : "";
               return NextResponse.redirect(url);
             }
-            
+
             // Fallback to dashboard
             const url = request.nextUrl.clone();
             url.pathname = "/dashboard";
@@ -193,12 +192,11 @@ export async function updateSession(request: NextRequest) {
   if (user && request.nextUrl.pathname === "/auth" && !isAuthInvitePath) {
     // Get redirectTo parameter if present
     const redirectTo = request.nextUrl.searchParams.get("redirectTo");
-    
+
     // Check their profile status
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profile } = await (supabase
-        .from("profiles") as any)
+      const { data: profile } = await (supabase.from("profiles") as any)
         .select("approval_status, onboarding_completed_at")
         .eq("user_id", user.id)
         .single();
@@ -233,7 +231,10 @@ export async function updateSession(request: NextRequest) {
         return supabaseResponse;
       }
     } catch (error) {
-      console.error("Middleware: Error checking profile for auth redirect:", error);
+      console.error(
+        "Middleware: Error checking profile for auth redirect:",
+        error,
+      );
     }
 
     // Approved users: redirect to redirectTo if valid, otherwise check role
@@ -274,7 +275,7 @@ export async function updateSession(request: NextRequest) {
       if (profile?.approval_status === "approved") {
         // Check for redirectTo parameter
         const redirectTo = request.nextUrl.searchParams.get("redirectTo");
-        
+
         if (redirectTo && isValidRedirectUrl(redirectTo)) {
           const url = request.nextUrl.clone();
           const [pathname, search] = redirectTo.split("?");
@@ -299,7 +300,10 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url);
       }
     } catch (error) {
-      console.error("Middleware: Error checking approval for pending page:", error);
+      console.error(
+        "Middleware: Error checking approval for pending page:",
+        error,
+      );
     }
   }
 

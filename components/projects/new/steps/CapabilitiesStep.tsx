@@ -203,17 +203,29 @@ export function CapabilitiesStep({
         </div>
       </div>
 
-      {/* Selected count badge */}
+      {/* Selected capabilities */}
       {selectedCapabilities.length > 0 && (
-        <div className="sticky top-0 z-10 bg-background py-2">
-          <Badge variant="secondary" className="text-sm">
-            {selectedCapabilities.length} capabilities selected
-          </Badge>
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-sm font-medium">Selected:</span>
+          {selectedCapabilities.map((capId) => {
+            const cap = capabilities.find((c) => c.id === capId);
+            return cap ? (
+              <Badge
+                key={capId}
+                variant="secondary"
+                className="cursor-pointer"
+                onClick={() => handleCapabilityToggle(capId, false)}
+              >
+                {cap.name}
+                <span className="ml-1 text-muted-foreground">&times;</span>
+              </Badge>
+            ) : null;
+          })}
         </div>
       )}
 
       <Card>
-        <CardContent className="p-4 max-h-[500px] overflow-y-auto">
+        <CardContent className="p-4 overflow-y-auto">
           {filteredGroups.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchTerm
@@ -333,26 +345,6 @@ export function CapabilitiesStep({
           )}
         </CardContent>
       </Card>
-
-      {selectedCapabilities.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <span className="text-sm font-medium">Selected:</span>
-          {selectedCapabilities.map((capId) => {
-            const cap = capabilities.find((c) => c.id === capId);
-            return cap ? (
-              <Badge
-                key={capId}
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => handleCapabilityToggle(capId, false)}
-              >
-                {cap.name}
-                <span className="ml-1 text-muted-foreground">&times;</span>
-              </Badge>
-            ) : null;
-          })}
-        </div>
-      )}
     </div>
   );
 }

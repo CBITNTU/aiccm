@@ -69,12 +69,6 @@ const navigationItems: NavigationItem[] = [
     hideForPending: true,
   },
   {
-    name: "Consulting Team Builder",
-    href: "/vo",
-    icon: Users,
-    hideForPending: true,
-  },
-  {
     name: "My Companies",
     href: "/my-companies",
     icon: Building2,
@@ -126,7 +120,7 @@ function SidebarContent({
       <div
         className={cn(
           "flex items-center h-16 px-4 border-b border-border",
-          isCollapsed && !isMobile ? "justify-center" : "justify-between"
+          isCollapsed && !isMobile ? "justify-center" : "justify-between",
         )}
       >
         <Link
@@ -152,7 +146,7 @@ function SidebarContent({
             onClick={toggleCollapsed}
             className={cn(
               "h-8 w-8 flex-shrink-0",
-              isCollapsed && "absolute -right-3 bg-background border shadow-sm"
+              isCollapsed && "absolute -right-3 bg-background border shadow-sm",
             )}
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -176,7 +170,7 @@ function SidebarContent({
                   variant={isActive ? "secondary" : "ghost"}
                   className={cn(
                     "w-full justify-start",
-                    isCollapsed && !isMobile && "justify-center px-2"
+                    isCollapsed && !isMobile && "justify-center px-2",
                   )}
                   asChild
                 >
@@ -184,7 +178,7 @@ function SidebarContent({
                     <item.icon
                       className={cn(
                         "h-4 w-4 flex-shrink-0",
-                        (!isCollapsed || isMobile) && "mr-3"
+                        (!isCollapsed || isMobile) && "mr-3",
                       )}
                     />
                     {(!isCollapsed || isMobile) && (
@@ -216,7 +210,7 @@ function SidebarContent({
         <div
           className={cn(
             "flex items-center",
-            isCollapsed && !isMobile ? "justify-center" : "space-x-3"
+            isCollapsed && !isMobile ? "justify-center" : "space-x-3",
           )}
         >
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -280,7 +274,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   // Load collapsed state from localStorage
   useEffect(() => {
     const stored = localStorage.getItem("sidenav-collapsed");
-    if (stored !== null) { 
+    if (stored !== null) {
       setIsCollapsed(stored === "true");
     }
   }, []);
@@ -316,9 +310,12 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const handleNavClick = () => {
     onMobileOpenChange(false);
   };
-  
+
   // Get user display info
-  const userDisplayName = profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : user?.email?.split("@")[0] || "User";
+  const userDisplayName =
+    profile?.first_name && profile?.last_name
+      ? `${profile.first_name} ${profile.last_name}`
+      : user?.email?.split("@")[0] || "User";
   const userEmail = user?.email || "";
   const userInitials = userDisplayName.slice(0, 2).toUpperCase();
 
@@ -341,7 +338,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
       <aside
         className={cn(
           "hidden md:flex flex-col fixed left-0 top-0 h-screen bg-background border-r border-border transition-all duration-300 z-40",
-          isCollapsed ? "w-16" : "w-64"
+          isCollapsed ? "w-16" : "w-64",
         )}
       >
         <SidebarContent {...sidebarProps} />
@@ -358,7 +355,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
       <div
         className={cn(
           "hidden md:block flex-shrink-0 transition-all duration-300",
-          isCollapsed ? "w-16" : "w-64"
+          isCollapsed ? "w-16" : "w-64",
         )}
       />
     </>

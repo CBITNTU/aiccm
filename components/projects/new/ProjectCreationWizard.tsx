@@ -275,10 +275,10 @@ export function ProjectCreationWizard({
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      <div className="container mx-auto px-4 py-6 flex flex-col flex-1 min-h-0">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 shrink-0">
           <div>
             <h1 className="text-2xl font-bold">Build Your Project Team</h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -292,7 +292,7 @@ export function ProjectCreationWizard({
         </div>
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 flex-1 min-h-0 overflow-hidden">
           {/* Left sidebar - Step progress */}
           <div className="hidden lg:block">
             <div className="sticky top-6">
@@ -309,9 +309,9 @@ export function ProjectCreationWizard({
           </div>
 
           {/* Right content - Current step */}
-          <div className="space-y-6">
+          <div className="flex flex-col min-h-0 h-full gap-6">
             {/* Mobile step indicator */}
-            <div className="flex items-center gap-2 lg:hidden overflow-x-auto pb-2">
+            <div className="flex items-center gap-2 lg:hidden overflow-x-auto pb-2 shrink-0">
               {WIZARD_STEPS.map((step) => (
                 <div
                   key={step.number}
@@ -341,8 +341,8 @@ export function ProjectCreationWizard({
             </div>
 
             {/* Step content */}
-            <Card>
-              <CardContent className="p-6">
+            <Card className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              <CardContent className="p-6 flex-1 overflow-y-auto">
                 {currentStep === 1 && (
                   <TenderStep
                     selectedTenderId={selectedTenderId}
@@ -406,7 +406,7 @@ export function ProjectCreationWizard({
 
             {/* Navigation footer */}
             {currentStep < 4 && (
-              <div className="flex justify-between">
+              <div className="flex justify-between shrink-0 pt-4 border-t bg-background">
                 <Button variant="outline" onClick={handleBack}>
                   <ChevronLeft className="w-4 h-4 mr-2" />
                   {currentStep === 1 ? "Cancel" : "Back"}

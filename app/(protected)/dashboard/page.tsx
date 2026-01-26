@@ -111,7 +111,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [stats, setStats] = useState<DashboardStats>({
     totalTenders: 0,
@@ -128,7 +128,7 @@ export default function DashboardPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchingResult | null>(
-    null
+    null,
   );
 
   // Initialize supabase client
@@ -145,7 +145,9 @@ export default function DashboardPage() {
   // Load stored analysis when company is selected
   useEffect(() => {
     if (selectedCompany?.ai_analysis) {
-      setCompanyAnalysis(selectedCompany.ai_analysis as unknown as CompanyAnalysis);
+      setCompanyAnalysis(
+        selectedCompany.ai_analysis as unknown as CompanyAnalysis,
+      );
     } else {
       setCompanyAnalysis(null);
     }
@@ -156,14 +158,19 @@ export default function DashboardPage() {
     if (!selectedCompany?.id || !supabase) return;
     setIsAnalyzing(true);
     try {
-      console.log("🔄 Fetching company analysis for:", selectedCompany.company_name);
+      console.log(
+        "🔄 Fetching company analysis for:",
+        selectedCompany.company_name,
+      );
       const data = await api.analyzeCompany(selectedCompany.id);
 
       if (data?.success && data?.analysis) {
         const analysis = data.analysis as CompanyAnalysis;
         console.log("✅ Analysis received:", {
           overallScore: analysis?.performanceBenchmark?.overallScore,
-          hasRealData: !analysis?.executiveSummary?.includes("could not be completed"),
+          hasRealData: !analysis?.executiveSummary?.includes(
+            "could not be completed",
+          ),
         });
         setCompanyAnalysis(analysis);
 
@@ -179,7 +186,7 @@ export default function DashboardPage() {
         } else if (updatedCompany) {
           // Update companies list first
           setUserCompanies((prev) =>
-            prev.map((c) => (c.id === updatedCompany.id ? updatedCompany : c))
+            prev.map((c) => (c.id === updatedCompany.id ? updatedCompany : c)),
           );
           // Only update selectedCompany if it's the same company, to avoid infinite loops
           if (selectedCompany?.id === updatedCompany.id) {
@@ -231,7 +238,10 @@ export default function DashboardPage() {
         }
 
         // Combine owned and member companies
-        const userCompaniesData = [...(ownedCompanies || []), ...memberCompanies];
+        const userCompaniesData = [
+          ...(ownedCompanies || []),
+          ...memberCompanies,
+        ];
 
         if (userCompaniesData.length > 0) {
           setUserCompanies(userCompaniesData);
@@ -258,7 +268,7 @@ export default function DashboardPage() {
               tenders(title, buyer, deadline, description, location, budget_min, budget_max),
               companies(company_name)
             `,
-              { count: "exact" }
+              { count: "exact" },
             )
             .in("company_id", companyIds)
             .order("created_at", { ascending: false })
@@ -276,7 +286,7 @@ export default function DashboardPage() {
             .select("id")
             .in(
               "lead_company_id",
-              userCompaniesData.map((c) => c.id)
+              userCompaniesData.map((c) => c.id),
             );
           projectsCount = projects?.length || 0;
         }
@@ -337,7 +347,7 @@ export default function DashboardPage() {
   // Filter matches by selected company
   const filteredMatches = selectedCompany
     ? stats.recentMatches.filter(
-        (match) => match.company_id === selectedCompany.id
+        (match) => match.company_id === selectedCompany.id,
       )
     : stats.recentMatches;
 
@@ -418,7 +428,7 @@ export default function DashboardPage() {
 
         <Card
           className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => router.push("/vo")}
+          onClick={() => router.push("/projects")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -485,8 +495,8 @@ export default function DashboardPage() {
                     {isAnalyzing
                       ? "Analyzing..."
                       : companyAnalysis
-                      ? "Re-analyze"
-                      : "Analyze"}
+                        ? "Re-analyze"
+                        : "Analyze"}
                   </Button>
                 </div>
               </div>
@@ -497,7 +507,10 @@ export default function DashboardPage() {
                   <ResponsiveContainer width="100%" height={250}>
                     <RadarChart data={radarData}>
                       <PolarGrid />
-                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
+                      <PolarAngleAxis
+                        dataKey="subject"
+                        tick={{ fontSize: 12 }}
+                      />
                       <PolarRadiusAxis
                         angle={90}
                         domain={[0, 100]}
@@ -528,7 +541,8 @@ export default function DashboardPage() {
                     <strong className="text-foreground">
                       Executive Summary:
                     </strong>{" "}
-                    {companyAnalysis?.executiveSummary || "No summary available"}
+                    {companyAnalysis?.executiveSummary ||
+                      "No summary available"}
                   </div>
                 </div>
               ) : (
@@ -563,7 +577,9 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                   <span className="text-sm font-medium">Company Name</span>
-                  <span className="text-sm">{selectedCompany.company_name}</span>
+                  <span className="text-sm">
+                    {selectedCompany.company_name}
+                  </span>
                 </div>
 
                 {selectedCompany.safety_rating && (
@@ -590,7 +606,7 @@ export default function DashboardPage() {
                 {/* Financial Data */}
                 {selectedCompany.financial_data &&
                   Object.keys(
-                    selectedCompany.financial_data as Record<string, unknown>
+                    selectedCompany.financial_data as Record<string, unknown>,
                   ).length > 0 && (
                     <>
                       <Separator className="my-2" />
@@ -602,7 +618,7 @@ export default function DashboardPage() {
                           selectedCompany.financial_data as Record<
                             string,
                             { value: number | string }
-                          >
+                          >,
                         ).map(([key, field]) => (
                           <div
                             key={key}
@@ -668,10 +684,7 @@ export default function DashboardPage() {
       {/* Team Members Section */}
       {selectedCompany && (
         <div className="mb-8">
-          <TeamMembersCard
-            companyId={selectedCompany.id}
-            variant="compact"
-          />
+          <TeamMembersCard companyId={selectedCompany.id} variant="compact" />
         </div>
       )}
 
@@ -693,7 +706,10 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <MatchingTrigger />
-                <Button variant="outline" onClick={() => router.push("/tenders")}>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/tenders")}
+                >
                   View All
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -783,7 +799,7 @@ export default function DashboardPage() {
 
         <Card
           className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => router.push("/vo")}
+          onClick={() => router.push("/projects")}
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -816,7 +832,9 @@ export default function DashboardPage() {
             ? {
                 company_name: selectedCompany.company_name || undefined,
                 description: selectedCompany.description || undefined,
-                key_capabilities: Array.isArray(selectedCompany.key_capabilities)
+                key_capabilities: Array.isArray(
+                  selectedCompany.key_capabilities,
+                )
                   ? selectedCompany.key_capabilities.join(", ")
                   : undefined,
                 certifications: Array.isArray(selectedCompany.certifications)

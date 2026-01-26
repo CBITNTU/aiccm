@@ -151,7 +151,7 @@ export function TenderStep({
           onValueChange={(value) => onTenderSelect(value || null)}
           className="space-y-3"
         >
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+          <div className="space-y-3 overflow-y-auto pr-2">
             {filteredTenders.map((tender) => {
               const isSelected = selectedTenderId === tender.id;
               const deadlineSoon = isDeadlineSoon(tender.deadline);

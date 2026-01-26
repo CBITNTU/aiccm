@@ -32,9 +32,9 @@ BEGIN
   -- First, try to get a batch job (prioritize batch jobs)
   SELECT * INTO claimed_job
   FROM public.processing_queue
-  WHERE status = 'pending'
-    AND batch_id IS NOT NULL
-  ORDER BY priority DESC, scheduled_at ASC
+  WHERE processing_queue.status = 'pending'
+    AND processing_queue.batch_id IS NOT NULL
+  ORDER BY processing_queue.priority DESC, processing_queue.scheduled_at ASC
   LIMIT 1
   FOR UPDATE SKIP LOCKED; -- Atomic claim: locks row, skips if already locked
   
@@ -42,8 +42,8 @@ BEGIN
   IF NOT FOUND THEN
     SELECT * INTO claimed_job
     FROM public.processing_queue
-    WHERE status = 'pending'
-    ORDER BY priority DESC, scheduled_at ASC
+    WHERE processing_queue.status = 'pending'
+    ORDER BY processing_queue.priority DESC, processing_queue.scheduled_at ASC
     LIMIT 1
     FOR UPDATE SKIP LOCKED;
   END IF;

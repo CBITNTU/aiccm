@@ -66,7 +66,4 @@ BEGIN
   -- Return the updated values
   RETURN QUERY SELECT v_new_completed, v_new_failed, v_total, v_status;
 END;
-$$;
-
--- Grant execute permission
-GRANT EXECUTE ON FUNCTION public.increment_batch_progress(UUID, TEXT) TO postgres, anon, authenticated, service_role;
+$$

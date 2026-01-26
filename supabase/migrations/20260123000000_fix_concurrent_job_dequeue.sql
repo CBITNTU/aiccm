@@ -83,7 +83,4 @@ BEGIN
   -- No job found, return empty result
   RETURN;
 END;
-$$;
-
--- Grant execute permission to service role (Supabase uses postgres role)
-GRANT EXECUTE ON FUNCTION public.dequeue_job_atomic() TO postgres, anon, authenticated, service_role;
+$$

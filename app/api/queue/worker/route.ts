@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   dequeueJob,
-  markJobProcessing,
   markJobCompleted,
   markJobFailed,
   getQueueStats,
   getBatchStatus,
   type JobType,
 } from "@/lib/services/queueService";
-import { generateTenderSummary, generateTenderCapabilityTaxonomy } from "@/lib/services/tenderAIService";
-import { generateCompanySummary, generateCompanyCapabilityTaxonomy, generateCompanySummaryAndTaxonomy } from "@/lib/services/companyAIService";
+import {
+  generateTenderSummary,
+  generateTenderCapabilityTaxonomy,
+} from "@/lib/services/tenderAIService";
+import {
+  generateCompanySummary,
+  generateCompanyCapabilityTaxonomy,
+  generateCompanySummaryAndTaxonomy,
+} from "@/lib/services/companyAIService";
 import { scoreTenderMatch } from "@/lib/services/tenderMatchingService";
 import { logEvent } from "@/lib/services/eventLogger";
 import { createAdminClient } from "@/lib/api";
@@ -43,15 +49,19 @@ async function processJob(job: {
       const fullRegeneration = job.metadata?.fullRegeneration === true;
       const companyTaxonomy = await generateCompanyCapabilityTaxonomy(
         job.entity_id,
-        fullRegeneration
+        fullRegeneration,
       );
       return { success: true, taxonomy: companyTaxonomy };
 
     case "company_ai_complete": // New combined job type
       const fullRegen = job.metadata?.fullRegeneration === true;
-      const { summary: combinedSummary, taxonomy: combinedTaxonomy } = 
+      const { summary: combinedSummary, taxonomy: combinedTaxonomy } =
         await generateCompanySummaryAndTaxonomy(job.entity_id, fullRegen);
-      return { success: true, summary: combinedSummary, taxonomy: combinedTaxonomy };
+      return {
+        success: true,
+        summary: combinedSummary,
+        taxonomy: combinedTaxonomy,
+      };
 
     case "tender_matching":
       if (!job.company_id || !job.tender_id) {
@@ -66,18 +76,26 @@ async function processJob(job: {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const { batchSize = 50, continuous = false, concurrency = 15 } = await request.json().catch(() => ({}));
+  const startTime = Date.now();
 
-    console.log(`🔄 Queue worker started: batchSize=${batchSize}, continuous=${continuous}, concurrency=${concurrency}`);
+  try {
+    const {
+      batchSize = 10, // Small batch for quick processing
+      maxDurationMs = 50000, // Stop before Vercel's 60s timeout (50s to be safe)
+      selfTrigger = true, // Self-trigger to continue processing
+      concurrency = 5, // Lower concurrency for reliability
+    } = await request.json().catch(() => ({}));
+
+    console.log(
+      `🔄 Queue worker started: batchSize=${batchSize}, maxDurationMs=${maxDurationMs}, selfTrigger=${selfTrigger}, concurrency=${concurrency}`,
+    );
 
     const processed: string[] = [];
     const errors: Array<{ jobId: string; error: string }> = [];
-    let iterations = 0;
-    const maxIterations = continuous ? 500 : batchSize; // Process up to 500 batches if continuous (to handle more jobs)
+    let hasMoreJobs = false;
 
-    // Process jobs continuously until queue is empty or max iterations reached
-    while (iterations < maxIterations) {
+    // Process jobs until we run out of time or jobs
+    while (Date.now() - startTime < maxDurationMs) {
       // First, collect a batch of jobs
       const jobsToProcess: Array<{
         id: string;
@@ -88,43 +106,66 @@ export async function POST(request: NextRequest) {
         batch_id: string | null;
         metadata: Record<string, unknown> | null;
       }> = [];
-      
+
       for (let i = 0; i < batchSize; i++) {
+        // Check time before dequeuing each job
+        if (Date.now() - startTime >= maxDurationMs - 5000) {
+          hasMoreJobs = true;
+          break;
+        }
+
         const job = await dequeueJob();
         if (!job) break;
-        
+
         // CRITICAL: Check if batch is already completed BEFORE adding to queue
         // This prevents dequeuing jobs from completed batches
         if (job.batch_id) {
           const batchStatus = await getBatchStatus(job.batch_id);
           if (batchStatus) {
             // Check if batch is already complete
-            if (batchStatus.status === "completed" || batchStatus.status === "failed") {
-              console.log(`🛑 Skipping job ${job.id} - batch ${job.batch_id} is already ${batchStatus.status} (${batchStatus.completedJobs + batchStatus.failedJobs}/${batchStatus.totalJobs})`);
+            if (
+              batchStatus.status === "completed" ||
+              batchStatus.status === "failed"
+            ) {
+              console.log(
+                `🛑 Skipping job ${job.id} - batch ${job.batch_id} is already ${batchStatus.status} (${batchStatus.completedJobs + batchStatus.failedJobs}/${batchStatus.totalJobs})`,
+              );
               // Mark job as failed/cancelled and delete it
-              await markJobFailed(job.id, `Batch ${job.batch_id} is already ${batchStatus.status}`);
+              await markJobFailed(
+                job.id,
+                `Batch ${job.batch_id} is already ${batchStatus.status}`,
+              );
               continue;
             }
-            
+
             // Also check if batch has already reached its job limit
-            const totalProcessed = batchStatus.completedJobs + batchStatus.failedJobs;
+            const totalProcessed =
+              batchStatus.completedJobs + batchStatus.failedJobs;
             if (totalProcessed >= batchStatus.totalJobs) {
-              console.log(`🛑 Skipping job ${job.id} - batch ${job.batch_id} has reached its limit (${totalProcessed}/${batchStatus.totalJobs})`);
+              console.log(
+                `🛑 Skipping job ${job.id} - batch ${job.batch_id} has reached its limit (${totalProcessed}/${batchStatus.totalJobs})`,
+              );
               // Mark batch as completed if not already
               if (batchStatus.status === "processing") {
                 const adminSupabase = createAdminClient();
                 await adminSupabase
                   .from("batch_jobs" as any)
-                  .update({ status: "completed", updated_at: new Date().toISOString() })
+                  .update({
+                    status: "completed",
+                    updated_at: new Date().toISOString(),
+                  })
                   .eq("id", job.batch_id);
               }
               // Mark job as failed/cancelled
-              await markJobFailed(job.id, `Batch ${job.batch_id} has reached its job limit`);
+              await markJobFailed(
+                job.id,
+                `Batch ${job.batch_id} has reached its job limit`,
+              );
               continue;
             }
           }
         }
-        
+
         jobsToProcess.push({
           id: job.id,
           job_type: job.job_type,
@@ -141,25 +182,38 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      console.log(`📦 Dequeued ${jobsToProcess.length} jobs for parallel processing`);
+      console.log(
+        `📦 Dequeued ${jobsToProcess.length} jobs for parallel processing (elapsed: ${Date.now() - startTime}ms)`,
+      );
 
       // Process jobs in parallel with controlled concurrency
-      const processJobWithErrorHandling = async (job: typeof jobsToProcess[0]) => {
+      const processJobWithErrorHandling = async (
+        job: (typeof jobsToProcess)[0],
+      ) => {
         try {
           // Check if job has a batch_id and if that batch is already completed
           // This prevents processing jobs from old/completed batches
           if (job.batch_id) {
             const batchStatus = await getBatchStatus(job.batch_id);
-            if (batchStatus && (batchStatus.status === "completed" || batchStatus.status === "failed")) {
-              console.log(`⏭️ Skipping job ${job.id} - batch ${job.batch_id} is already ${batchStatus.status}`);
+            if (
+              batchStatus &&
+              (batchStatus.status === "completed" ||
+                batchStatus.status === "failed")
+            ) {
+              console.log(
+                `⏭️ Skipping job ${job.id} - batch ${job.batch_id} is already ${batchStatus.status}`,
+              );
               // Mark job as cancelled
-              await markJobFailed(job.id, `Batch ${job.batch_id} is already ${batchStatus.status}`);
+              await markJobFailed(
+                job.id,
+                `Batch ${job.batch_id} is already ${batchStatus.status}`,
+              );
               return { jobId: job.id, success: false, skipped: true };
             }
           }
-          
+
           console.log(`🔄 Processing job ${job.id} (${job.job_type})`);
-          
+
           // Note: Job is already marked as 'processing' by dequeueJob() atomic function
           // No need to call markJobProcessing() again
 
@@ -180,7 +234,11 @@ export async function POST(request: NextRequest) {
           // Log job completion (fire and forget)
           logEvent({
             actionType: "queue_job_completed",
-            entityType: job.job_type.includes("tender") ? "tender" : job.job_type.includes("company") ? "company" : undefined,
+            entityType: job.job_type.includes("tender")
+              ? "tender"
+              : job.job_type.includes("company")
+                ? "company"
+                : undefined,
             entityId: job.entity_id,
             details: {
               jobId: job.id,
@@ -196,7 +254,10 @@ export async function POST(request: NextRequest) {
           try {
             await markJobFailed(job.id, errorMessage);
           } catch (markError) {
-            console.error(`❌ Failed to mark job ${job.id} as failed:`, markError);
+            console.error(
+              `❌ Failed to mark job ${job.id} as failed:`,
+              markError,
+            );
           }
           errors.push({ jobId: job.id, error: errorMessage });
           return { jobId: job.id, success: false, error: errorMessage };
@@ -210,15 +271,58 @@ export async function POST(request: NextRequest) {
       }
 
       for (const chunk of chunks) {
+        // Check time before processing each chunk
+        if (Date.now() - startTime >= maxDurationMs - 5000) {
+          console.log(
+            `⏱️ Time limit approaching, stopping before chunk (elapsed: ${Date.now() - startTime}ms)`,
+          );
+          hasMoreJobs = true;
+          break;
+        }
         await Promise.all(chunk.map(processJobWithErrorHandling));
       }
 
-      console.log(`✅ Batch ${iterations + 1} complete: ${jobsToProcess.length} jobs processed (${processed.length} succeeded, ${errors.length} failed)`);
-      iterations++;
+      console.log(
+        `✅ Batch complete: ${jobsToProcess.length} jobs processed (${processed.length} succeeded, ${errors.length} failed, elapsed: ${Date.now() - startTime}ms)`,
+      );
+
+      // Check if we're running out of time
+      if (Date.now() - startTime >= maxDurationMs - 10000) {
+        console.log(`⏱️ Approaching time limit, will check for more jobs`);
+        hasMoreJobs = true;
+        break;
+      }
     }
 
     const stats = await getQueueStats();
     console.log(`📊 Queue stats:`, stats);
+
+    // Check if there are more pending jobs
+    if (stats.pending > 0 || stats.processing > 0) {
+      hasMoreJobs = true;
+    }
+
+    // Self-trigger next worker if there are more jobs to process
+    if (selfTrigger && hasMoreJobs) {
+      const workerUrl = `${process.env.PLATFORM_URL || "http://localhost:3000"}/api/queue/worker`;
+      console.log(
+        `🔄 Self-triggering next worker (${stats.pending} pending, ${stats.processing} processing)`,
+      );
+
+      // Fire-and-forget trigger - cron is backup if this fails
+      fetch(workerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          batchSize,
+          maxDurationMs,
+          selfTrigger: true,
+          concurrency,
+        }),
+      }).catch((err) => {
+        console.error("❌ Self-trigger failed (cron will recover):", err);
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -227,6 +331,8 @@ export async function POST(request: NextRequest) {
       processedIds: processed,
       errorDetails: errors,
       queueStats: stats,
+      elapsedMs: Date.now() - startTime,
+      selfTriggered: selfTrigger && hasMoreJobs,
     });
   } catch (error) {
     console.error("Queue worker error:", error);
@@ -234,8 +340,9 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
+        elapsedMs: Date.now() - startTime,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -252,7 +359,7 @@ export async function GET() {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

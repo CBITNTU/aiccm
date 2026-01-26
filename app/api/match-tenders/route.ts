@@ -362,14 +362,17 @@ export async function POST(request: NextRequest) {
         (companyData.key_capabilities || "") + " " + capabilityNames;
     }
 
-    // Get open tenders
+    // Get open tenders with deadline >= today
     // Instead of excluding recently analyzed tenders in the query (which causes URI length issues),
     // we'll fetch all open tenders and let the queue worker check for existing matches before processing
     // This is more efficient and avoids URI length problems
-    let tendersQuery = supabase
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+
+    const tendersQuery = supabase
       .from("tenders")
       .select("*")
-      .in("status", ["open", "closing_soon", "framework"]);
+      .in("status", ["open", "closing_soon", "framework"])
+      .gte("deadline", today); // Only tenders with deadline today or later
 
     const { data: tenders, error: tendersError } = await tendersQuery;
 
@@ -406,20 +409,27 @@ export async function POST(request: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(1);
 
-    if (!batchCheckError && existingBatches && Array.isArray(existingBatches) && existingBatches.length > 0) {
+    if (
+      !batchCheckError &&
+      existingBatches &&
+      Array.isArray(existingBatches) &&
+      existingBatches.length > 0
+    ) {
       const existingBatch = existingBatches[0] as unknown as {
         id: string;
         status: string;
         created_at: string;
         total_jobs: number;
       };
-      
+
       // Get current progress of existing batch
       const { getBatchStatus } = await import("@/lib/services/queueService");
       const batchStatus = await getBatchStatus(existingBatch.id);
-      
-      console.log(`⚠️ Company ${companyData.id} has active batch ${existingBatch.id}: ${batchStatus?.completedJobs || 0}/${existingBatch.total_jobs} completed`);
-      
+
+      console.log(
+        `⚠️ Company ${companyData.id} has active batch ${existingBatch.id}: ${batchStatus?.completedJobs || 0}/${existingBatch.total_jobs} completed`,
+      );
+
       return apiResponse({
         message: "Matching already in progress",
         batch_id: existingBatch.id,
@@ -438,29 +448,50 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Created batch ${batchId}: ${jobs.length} jobs queued`);
 
-    // Trigger queue worker to start processing (non-blocking)
-    const workerUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/queue/worker`;
+    // Trigger queue worker to start processing (with timeout fallback)
+    // Worker processes in chunks to fit within Vercel's 60s timeout
+    const workerUrl = `${process.env.PLATFORM_URL || "http://localhost:3000"}/api/queue/worker`;
     console.log(`🚀 Triggering worker at ${workerUrl}`);
-    
-    fetch(workerUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        batchSize: 50,
-        continuous: true,
-        concurrency: 15,
-      }),
-    })
-      .then((res) => {
+
+    // Await worker trigger with 5-second timeout - if it fails, cron will recover within 1 minute
+    const triggerWorker = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+      try {
+        const res = await fetch(workerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            batchSize: 10, // Small batch for quick processing
+            maxDurationMs: 50000, // Stop before Vercel's 60s timeout
+            selfTrigger: true, // Worker will trigger next chunk
+            concurrency: 5, // Lower concurrency for reliability
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           console.log(`✅ Worker triggered successfully`);
         } else {
-          console.error(`❌ Worker trigger failed: ${res.status} ${res.statusText}`);
+          console.error(
+            `❌ Worker trigger failed: ${res.status} ${res.statusText}`,
+          );
         }
-      })
-      .catch((err) => {
-        console.error("❌ Failed to trigger queue worker:", err);
-      });
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err instanceof Error && err.name === "AbortError") {
+          console.log(`⏱️ Worker trigger timed out (5s) - cron will recover`);
+        } else {
+          console.error("❌ Failed to trigger queue worker:", err);
+        }
+      }
+    };
+
+    // Fire the trigger (don't await the full response, just the initial connection)
+    triggerWorker();
 
     // Log matching start
     await logApiEvent(request, {

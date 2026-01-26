@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, checkSuperadminRole, createAdminClient } from "@/lib/api";
+import {
+  getAuthenticatedUser,
+  checkSuperadminRole,
+  createAdminClient,
+} from "@/lib/api";
 import { enqueueBatch } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 // Helper to get base URL
 function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.PLATFORM_URL) {
+    return process.env.PLATFORM_URL;
   }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
@@ -21,7 +25,7 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -30,17 +34,19 @@ export async function POST(request: NextRequest) {
     if (!isSuperadmin) {
       return NextResponse.json(
         { success: false, error: "Forbidden: Superadmin access required" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    const { companyIds, taxonomyOnly = false } = await request.json().catch(() => ({}));
+    const { companyIds, taxonomyOnly = false } = await request
+      .json()
+      .catch(() => ({}));
 
     const adminSupabase = createAdminClient();
 
     // Cancel/delete previous company AI regeneration jobs
     console.log("🗑️ Cancelling previous company AI regeneration jobs...");
-    
+
     // Find and cancel ALL pending/processing company AI jobs (including already dequeued ones)
     // Delete by batch_type to catch all related jobs
     const { data: oldBatches } = await adminSupabase
@@ -48,28 +54,32 @@ export async function POST(request: NextRequest) {
       .select("id")
       .eq("batch_type", "company_ai_regeneration")
       .in("status", ["pending", "processing"]);
-    
+
     const oldBatchIds = (oldBatches || []).map((b: any) => b.id);
-    
+
     if (oldBatchIds.length > 0) {
       // Delete all jobs from old batches
       const { error: cancelJobsError } = await adminSupabase
         .from("processing_queue" as any)
         .delete()
         .in("batch_id", oldBatchIds);
-      
+
       if (cancelJobsError) {
         console.error("⚠️ Failed to cancel existing jobs:", cancelJobsError);
       } else {
         console.log(`✅ Cancelled jobs from ${oldBatchIds.length} old batches`);
       }
     }
-    
+
     // Also delete any orphaned jobs (jobs without batch_id or with old batch_ids)
     const { error: cancelOrphanedError } = await adminSupabase
       .from("processing_queue" as any)
       .delete()
-      .in("job_type", ["company_summary", "company_taxonomy", "company_ai_complete"])
+      .in("job_type", [
+        "company_summary",
+        "company_taxonomy",
+        "company_ai_complete",
+      ])
       .in("status", ["pending", "processing"]);
 
     if (cancelOrphanedError) {
@@ -77,17 +87,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Also cancel/update related batch jobs with status "processing" or "pending"
-    const { error: cancelBatchesError, count: cancelledBatchesCount } = await adminSupabase
-      .from("batch_jobs" as any)
-      .update({ status: "failed" })
-      .eq("batch_type", "company_ai_regeneration")
-      .in("status", ["pending", "processing"]);
+    const { error: cancelBatchesError, count: cancelledBatchesCount } =
+      await adminSupabase
+        .from("batch_jobs" as any)
+        .update({ status: "failed" })
+        .eq("batch_type", "company_ai_regeneration")
+        .in("status", ["pending", "processing"]);
 
     if (cancelBatchesError) {
-      console.error("⚠️ Failed to cancel existing batches:", cancelBatchesError);
+      console.error(
+        "⚠️ Failed to cancel existing batches:",
+        cancelBatchesError,
+      );
       // Don't fail the request, just log
     } else {
-      console.log(`✅ Cancelled ${cancelledBatchesCount || 0} previous batch jobs`);
+      console.log(
+        `✅ Cancelled ${cancelledBatchesCount || 0} previous batch jobs`,
+      );
     }
 
     // RESET CAPABILITIES LIST: Delete all capabilities NOT in base categories
@@ -106,63 +122,88 @@ export async function POST(request: NextRequest) {
       "Logistics",
       "Energy",
     ];
-    
+
     // Delete all capabilities NOT in base categories
     // First get all capabilities, then delete ones not in base categories
-    console.log("📋 Fetching all capabilities to check what needs to be deleted...");
+    console.log(
+      "📋 Fetching all capabilities to check what needs to be deleted...",
+    );
     const { data: allCaps, error: fetchError } = await adminSupabase
       .from("company_capabilities_ref" as any)
       .select("id, name, category")
       .order("category")
       .order("name");
-    
+
     if (fetchError) {
       console.error("⚠️ Failed to fetch capabilities for reset:", fetchError);
       // Continue anyway
     } else if (allCaps && Array.isArray(allCaps)) {
       console.log(`📊 Found ${allCaps.length} total capabilities in database`);
-      
+
       // Log all categories found
-      const allCategories = Array.from(new Set(allCaps.map((cap: any) => cap.category)));
-      console.log(`📂 Categories found (${allCategories.length}):`, allCategories);
-      
+      const allCategories = Array.from(
+        new Set(allCaps.map((cap: any) => cap.category)),
+      );
+      console.log(
+        `📂 Categories found (${allCategories.length}):`,
+        allCategories,
+      );
+
       const capsToDelete = allCaps
         .filter((cap: any) => !baseCategories.includes(cap.category))
-        .map((cap: any) => ({ id: cap.id, name: cap.name, category: cap.category }));
-      
+        .map((cap: any) => ({
+          id: cap.id,
+          name: cap.name,
+          category: cap.category,
+        }));
+
       console.log(`🗑️ Capabilities to delete: ${capsToDelete.length}`);
       if (capsToDelete.length > 0) {
-        console.log("🗑️ Deleting capabilities:", capsToDelete.map(c => `${c.name} (${c.category})`).slice(0, 10));
+        console.log(
+          "🗑️ Deleting capabilities:",
+          capsToDelete.map((c) => `${c.name} (${c.category})`).slice(0, 10),
+        );
         if (capsToDelete.length > 10) {
           console.log(`   ... and ${capsToDelete.length - 10} more`);
         }
-        
-        const idsToDelete = capsToDelete.map(c => c.id);
+
+        const idsToDelete = capsToDelete.map((c) => c.id);
         const { error: deleteCapsError, count } = await adminSupabase
           .from("company_capabilities_ref" as any)
           .delete()
           .in("id", idsToDelete);
-        
+
         if (deleteCapsError) {
           console.error("⚠️ Failed to reset capabilities:", deleteCapsError);
           // Don't fail - continue with regeneration
         } else {
-          console.log(`✅ Reset capabilities list: deleted ${count || capsToDelete.length} custom capabilities`);
-          
+          console.log(
+            `✅ Reset capabilities list: deleted ${count || capsToDelete.length} custom capabilities`,
+          );
+
           // Verify deletion by fetching again
           const { data: remainingCaps } = await adminSupabase
             .from("company_capabilities_ref" as any)
             .select("id, name, category")
             .order("category");
-          
+
           if (remainingCaps) {
-            const remainingCategories = Array.from(new Set(remainingCaps.map((cap: any) => cap.category)));
-            console.log(`✅ After reset: ${remainingCaps.length} capabilities remaining`);
-            console.log(`✅ Remaining categories (${remainingCategories.length}):`, remainingCategories);
+            const remainingCategories = Array.from(
+              new Set(remainingCaps.map((cap: any) => cap.category)),
+            );
+            console.log(
+              `✅ After reset: ${remainingCaps.length} capabilities remaining`,
+            );
+            console.log(
+              `✅ Remaining categories (${remainingCategories.length}):`,
+              remainingCategories,
+            );
           }
         }
       } else {
-        console.log("✅ No custom capabilities to delete - all are in base categories");
+        console.log(
+          "✅ No custom capabilities to delete - all are in base categories",
+        );
       }
     } else {
       console.log("⚠️ No capabilities found or invalid data structure");
@@ -196,9 +237,11 @@ export async function POST(request: NextRequest) {
         if (!companiesPage || companiesPage.length === 0) {
           hasMore = false;
         } else {
-          const pageIds = ((companiesPage || []) as unknown as { id: string }[]).map((c) => c.id);
+          const pageIds = (
+            (companiesPage || []) as unknown as { id: string }[]
+          ).map((c) => c.id);
           allCompanyIds.push(...pageIds);
-          
+
           // Stop if we got less than a full page (no more companies)
           if (companiesPage.length < pageSize) {
             hasMore = false;
@@ -209,7 +252,9 @@ export async function POST(request: NextRequest) {
       }
 
       companiesToProcess = allCompanyIds;
-      console.log(`📊 Fetched ${companiesToProcess.length} companies total (no limit)`);
+      console.log(
+        `📊 Fetched ${companiesToProcess.length} companies total (no limit)`,
+      );
     }
 
     // Queue jobs for each company
@@ -223,16 +268,20 @@ export async function POST(request: NextRequest) {
       metadata: { fullRegeneration: true }, // Always use full regeneration
     }));
 
-    const { batchId } = await enqueueBatch(jobs, "company_ai_regeneration", user.id);
+    const { batchId } = await enqueueBatch(
+      jobs,
+      "company_ai_regeneration",
+      user.id,
+    );
 
     // Trigger worker to start processing continuously (fire and forget)
     const baseUrl = getBaseUrl();
-    
+
     console.log(`🚀 Triggering queue worker at ${baseUrl}/api/queue/worker`);
     fetch(`${baseUrl}/api/queue/worker`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         batchSize: 50, // Increased batch size for faster processing
         continuous: true,
         concurrency: 15, // Process 15 jobs in parallel (higher concurrency)
@@ -259,7 +308,8 @@ export async function POST(request: NextRequest) {
         batchId,
         companyCount: companiesToProcess.length,
         jobCount: jobs.length,
-        companyIds: companyIds && Array.isArray(companyIds) ? companyIds : "all",
+        companyIds:
+          companyIds && Array.isArray(companyIds) ? companyIds : "all",
       },
     });
 
@@ -276,7 +326,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

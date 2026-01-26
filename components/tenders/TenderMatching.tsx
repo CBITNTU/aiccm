@@ -242,7 +242,7 @@ export function TenderMatching({
         progressPercent: data.progress_percent || 0,
       };
 
-      console.log(`Progress update for batch ${batchId}:`, progressData);
+      console.log(`📊 Progress: ${progressData.completedJobs + progressData.failedJobs}/${progressData.totalJobs} (${progressData.progressPercent}%) - Batch ${batchId.slice(0, 8)}`);
       setMatchingProgress(progressData);
 
       // If completed or failed, clear and check for results

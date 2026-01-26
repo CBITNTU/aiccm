@@ -413,7 +413,13 @@ export async function POST(request: NextRequest) {
         created_at: string;
         total_jobs: number;
       };
-      console.log(`⚠️ Company ${companyData.id} already has active batch ${existingBatch.id}`);
+      
+      // Get current progress of existing batch
+      const { getBatchStatus } = await import("@/lib/services/queueService");
+      const batchStatus = await getBatchStatus(existingBatch.id);
+      
+      console.log(`⚠️ Company ${companyData.id} has active batch ${existingBatch.id}: ${batchStatus?.completedJobs || 0}/${existingBatch.total_jobs} completed`);
+      
       return apiResponse({
         message: "Matching already in progress",
         batch_id: existingBatch.id,
@@ -430,24 +436,31 @@ export async function POST(request: NextRequest) {
       companyData.id,
     );
 
-    console.log(`✅ Queued ${jobs.length} matching jobs in batch ${batchId}`);
+    console.log(`✅ Created batch ${batchId}: ${jobs.length} jobs queued`);
 
     // Trigger queue worker to start processing (non-blocking)
-    fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/queue/worker`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          batchSize: 50,
-          continuous: true,
-          concurrency: 15,
-        }),
-      },
-    ).catch((err) => {
-      console.error("Failed to trigger queue worker:", err);
-      // Don't fail the request if worker trigger fails
-    });
+    const workerUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/queue/worker`;
+    console.log(`🚀 Triggering worker at ${workerUrl}`);
+    
+    fetch(workerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        batchSize: 50,
+        continuous: true,
+        concurrency: 15,
+      }),
+    })
+      .then((res) => {
+        if (res.ok) {
+          console.log(`✅ Worker triggered successfully`);
+        } else {
+          console.error(`❌ Worker trigger failed: ${res.status} ${res.statusText}`);
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Failed to trigger queue worker:", err);
+      });
 
     // Log matching start
     await logApiEvent(request, {

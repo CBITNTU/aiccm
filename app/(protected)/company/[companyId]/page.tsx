@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
+import { CompanyCapabilitySelector } from "@/components/company/CompanyCapabilitySelector";
 import { TenderMatching } from "@/components/tenders/TenderMatching";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 import { PendingInvitationsCard } from "@/components/company/PendingInvitationsCard";
@@ -99,6 +100,7 @@ export default function CompanyDetailPage() {
   const [isEditingCertifications, setIsEditingCertifications] = useState(false);
   const [isEditingProjects, setIsEditingProjects] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [companyCapabilities, setCompanyCapabilities] = useState<Array<{ id: string; name: string; category: string }>>([]);
 
   // Form states
   const [editedDescription, setEditedDescription] = useState("");
@@ -178,6 +180,24 @@ export default function CompanyDetailPage() {
 
         if (data.ai_analysis) {
           setAnalysis(data.ai_analysis as Record<string, unknown>);
+        }
+
+        // Fetch company capabilities from junction table
+        const { data: capabilitiesData, error: capsError } = await supabase
+          .from("company_capabilities")
+          .select("company_capabilities_ref(id, name, category)")
+          .eq("company_id", companyId);
+
+        if (!capsError && capabilitiesData) {
+          const caps = capabilitiesData
+            .map((cc: any) => cc.company_capabilities_ref)
+            .filter(Boolean)
+            .map((ref: any) => ({
+              id: ref.id,
+              name: ref.name,
+              category: ref.category,
+            }));
+          setCompanyCapabilities(caps);
         }
       } catch (error) {
         console.error("Error fetching company data:", error);
@@ -353,7 +373,7 @@ export default function CompanyDetailPage() {
     try {
       const data = await api.analyzeCompany(companyData.id);
 
-      if (data?.success && data?.analysis) {
+        if (data?.success && data?.analysis) {
         setAnalysis(data.analysis as Record<string, unknown>);
 
         const { data: updatedData } = await supabase
@@ -366,7 +386,27 @@ export default function CompanyDetailPage() {
           setCompanyData(updatedData);
         }
 
-        toast.success("Company profile analysis has been refreshed.");
+        // Refresh capabilities after analysis
+        if (supabase) {
+          const { data: capabilitiesData } = await supabase
+            .from("company_capabilities")
+            .select("company_capabilities_ref(id, name, category)")
+            .eq("company_id", companyData.id);
+
+          if (capabilitiesData) {
+            const caps = capabilitiesData
+              .map((cc: any) => cc.company_capabilities_ref)
+              .filter(Boolean)
+              .map((ref: any) => ({
+                id: ref.id,
+                name: ref.name,
+                category: ref.category,
+              }));
+            setCompanyCapabilities(caps);
+          }
+        }
+
+        toast.success("Company profile analysis has been refreshed. Capabilities have been generated from the static list.");
       }
     } catch (error) {
       console.error("Analysis error:", error);
@@ -868,8 +908,36 @@ export default function CompanyDetailPage() {
 
         {/* Capabilities Tab */}
         <TabsContent value="capabilities">
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Certifications */}
+          <div className="space-y-6">
+            {/* Capability Selector */}
+            <CompanyCapabilitySelector 
+              companyId={companyId} 
+              onUpdate={() => {
+                // Refresh capabilities when updated
+                if (supabase) {
+                  supabase
+                    .from("company_capabilities")
+                    .select("company_capabilities_ref(id, name, category)")
+                    .eq("company_id", companyId)
+                    .then(({ data, error }) => {
+                      if (!error && data) {
+                        const caps = data
+                          .map((cc: any) => cc.company_capabilities_ref)
+                          .filter(Boolean)
+                          .map((ref: any) => ({
+                            id: ref.id,
+                            name: ref.name,
+                            category: ref.category,
+                          }));
+                        setCompanyCapabilities(caps);
+                      }
+                    });
+                }
+              }}
+            />
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Certifications */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -1117,6 +1185,7 @@ export default function CompanyDetailPage() {
                 )}
               </CardContent>
             </Card>
+            </div>
           </div>
         </TabsContent>
 

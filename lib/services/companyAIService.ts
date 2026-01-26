@@ -174,8 +174,8 @@ Analyze this company and return ONLY a valid JSON object (no comments, no explan
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
         model: "gpt-5-mini",
-        temperature: 0.3,
-        maxTokens: 2000,
+        maxTokens: 4000, // Increased for default reasoning tokens plus output
+        responseFormat: "json_object", // Request JSON output format
       });
       return aiResponse;
     },

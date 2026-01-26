@@ -366,11 +366,52 @@ export function TenderMatching({
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to start matching");
+        let errorMessage = "Failed to start matching";
+        const status = response.status;
+        const statusText = response.statusText;
+        
+        // Read response as text first (can only read body once)
+        const responseText = await response.text();
+        console.error("Matching API error - Raw response:", {
+          status,
+          statusText,
+          contentType: response.headers.get("content-type"),
+          bodyLength: responseText.length,
+          bodyPreview: responseText.substring(0, 500),
+          fullBody: responseText,
+        });
+        
+        try {
+          const data = JSON.parse(responseText);
+          errorMessage = data.error || data.message || data.details || errorMessage;
+          console.error("Matching API error - Parsed:", {
+            status,
+            statusText,
+            error: data.error,
+            message: data.message,
+            details: data.details,
+            fullData: data,
+          });
+        } catch (parseError) {
+          console.error("Failed to parse error response as JSON:", parseError);
+          errorMessage = responseText || `HTTP ${status}: ${statusText}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      // Read response as text first, then parse
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse success response as JSON:", {
+          parseError,
+          responseText: responseText.substring(0, 500),
+        });
+        throw new Error("Invalid response format from server");
+      }
       
       // Store batch ID in localStorage for persistence
       if (data.batch_id && companyId) {

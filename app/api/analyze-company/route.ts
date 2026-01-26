@@ -8,6 +8,7 @@ import {
   getAuthenticatedUser,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { generateCompanyCapabilityTaxonomy } from "@/lib/services/companyAIService";
 import type { DeepCompanyAnalysis } from "@/lib/api/types";
 
 export async function POST(request: NextRequest) {
@@ -128,8 +129,9 @@ Return JSON:
     console.log("\n" + "=".repeat(80) + "\n");
 
     const response = await chatCompletion(systemPrompt, analysisPrompt, {
-      temperature: 0.3,
-      maxTokens: 2000,
+      model: "gpt-5-mini",
+      maxTokens: 4000, // Increased for default reasoning tokens plus output
+      responseFormat: "json_object", // Request JSON output format
     });
 
     console.log("OpenAI response received, length:", response.length);
@@ -279,27 +281,16 @@ Return JSON:
       // Continue anyway - we'll still return the analysis even if saving fails
     }
 
-    // Queue capability taxonomy generation if relevant fields were updated
-    // This will dynamically create new capabilities based on updated company data
-    const relevantFieldsUpdated = 
-      updateData.key_capabilities || 
-      updateData.certifications || 
-      updateData.past_projects;
-    
-    if (relevantFieldsUpdated) {
-      try {
-        const { enqueueJob } = await import("@/lib/services/queueService");
-        await enqueueJob({
-          jobType: "company_taxonomy",
-          entityType: "company",
-          entityId: companyId,
-          priority: 5,
-        });
-        console.log(`Queued company_taxonomy job for updated company: ${companyId}`);
-      } catch (queueError) {
-        console.error("Failed to queue company taxonomy job:", queueError);
-        // Don't fail the analysis if queueing fails
-      }
+    // Generate capabilities from the static list based on company analysis
+    // This assigns capabilities from company_capabilities_ref to the company
+    try {
+      console.log("Generating company capabilities from static list...");
+      const capabilityIds = await generateCompanyCapabilityTaxonomy(companyId, false);
+      console.log(`✅ Generated ${capabilityIds.length} capabilities for company ${companyId}`);
+    } catch (capabilityError) {
+      console.error("Failed to generate company capabilities:", capabilityError);
+      // Don't fail the analysis if capability generation fails
+      // User can still edit capabilities manually
     }
 
     console.log(

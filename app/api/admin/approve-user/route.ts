@@ -37,7 +37,7 @@ async function triggerAIPrefill(
   try {
     // Fetch prefill data from external sources
     const prefillResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/prefill-company-data`,
+      `${process.env.PLATFORM_URL || "http://localhost:3000"}/api/prefill-company-data`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

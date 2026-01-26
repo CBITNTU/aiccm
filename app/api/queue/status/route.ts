@@ -5,41 +5,45 @@ import { apiResponse, apiError } from "@/lib/api";
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
+
     // Get job counts by status
     const { data: pendingJobs } = await supabase
       .from("processing_queue" as any)
       .select("id", { count: "exact" })
       .eq("status", "pending");
-      
+
     const { data: processingJobs } = await supabase
       .from("processing_queue" as any)
       .select("id", { count: "exact" })
       .eq("status", "processing");
-    
+
     // Get active batches with details
     const { data: activeBatches } = await supabase
       .from("batch_jobs" as any)
-      .select("id, company_id, status, total_jobs, completed_jobs, failed_jobs, created_at, updated_at")
+      .select(
+        "id, company_id, status, total_jobs, completed_jobs, failed_jobs, created_at, updated_at",
+      )
       .eq("status", "processing")
       .order("created_at", { ascending: false })
       .limit(10);
-    
+
     // Get recent jobs (last 50)
     const { data: recentJobs } = await supabase
       .from("processing_queue" as any)
-      .select("id, job_type, status, batch_id, created_at, started_at, completed_at, error_message")
+      .select(
+        "id, job_type, status, batch_id, created_at, started_at, completed_at, error_message",
+      )
       .order("updated_at", { ascending: false })
       .limit(50);
-    
+
     // Get environment info for debugging
     const envInfo = {
-      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "NOT SET",
+      PLATFORM_URL: process.env.PLATFORM_URL || "NOT SET",
       VERCEL_URL: process.env.VERCEL_URL || "NOT SET",
       NODE_ENV: process.env.NODE_ENV,
       hasCronSecret: !!process.env.CRON_SECRET,
     };
-    
+
     return apiResponse({
       timestamp: new Date().toISOString(),
       environment: envInfo,
@@ -52,7 +56,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching queue status:", error);
-    return apiError(error instanceof Error ? error.message : "Unknown error", 500);
+    return apiError(
+      error instanceof Error ? error.message : "Unknown error",
+      500,
+    );
   }
 }
 
@@ -60,15 +67,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
+
     // Check if there are pending jobs
     const { data: pendingJobs, error: countError } = await supabase
       .from("processing_queue" as any)
       .select("id", { count: "exact" })
       .eq("status", "pending");
-    
+
     const pendingCount = pendingJobs?.length || 0;
-    
+
     if (pendingCount === 0) {
       return apiResponse({
         message: "No pending jobs to process",
@@ -76,15 +83,15 @@ export async function POST(request: NextRequest) {
         triggered: false,
       });
     }
-    
+
     // Determine the base URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-                    "http://localhost:3000";
-    
+    const baseUrl = process.env.PLATFORM_URL
+      ? process.env.PLATFORM_URL
+      : "http://localhost:3000";
+
     console.log(`🚀 Manually triggering worker at ${baseUrl}/api/queue/worker`);
     console.log(`📊 Pending jobs: ${pendingCount}`);
-    
+
     // Trigger the worker
     const workerResponse = await fetch(`${baseUrl}/api/queue/worker`, {
       method: "POST",
@@ -95,16 +102,18 @@ export async function POST(request: NextRequest) {
         concurrency: 10, // Lower concurrency for production
       }),
     });
-    
+
     let workerResult = null;
     try {
       workerResult = await workerResponse.json();
     } catch (e) {
       workerResult = { error: "Failed to parse response" };
     }
-    
+
     return apiResponse({
-      message: workerResponse.ok ? "Worker triggered successfully" : "Worker trigger failed",
+      message: workerResponse.ok
+        ? "Worker triggered successfully"
+        : "Worker trigger failed",
       pending: pendingCount,
       triggered: true,
       workerUrl: `${baseUrl}/api/queue/worker`,
@@ -113,6 +122,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error triggering worker:", error);
-    return apiError(error instanceof Error ? error.message : "Unknown error", 500);
+    return apiError(
+      error instanceof Error ? error.message : "Unknown error",
+      500,
+    );
   }
 }

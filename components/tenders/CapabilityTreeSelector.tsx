@@ -37,6 +37,7 @@ export function CapabilityTreeSelector({
       const { data, error } = await supabase
         .from("company_capabilities_ref")
         .select("*")
+        .eq("is_active", true) // Only show active capabilities (same as admin panel)
         .order("category")
         .order("name");
 

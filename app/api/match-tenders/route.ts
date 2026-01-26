@@ -362,32 +362,14 @@ export async function POST(request: NextRequest) {
         (companyData.key_capabilities || "") + " " + capabilityNames;
     }
 
-    // Get open tenders that haven't been analyzed for this company recently (within last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const { data: recentMatches } = await supabase
-      .from("matching_results")
-      .select("tender_id")
-      .eq("company_id", companyData.id)
-      .gte("updated_at", sevenDaysAgo.toISOString());
-
-    const recentlyAnalyzedTenderIds =
-      recentMatches?.map((m) => m.tender_id) || [];
-
+    // Get open tenders
+    // Instead of excluding recently analyzed tenders in the query (which causes URI length issues),
+    // we'll fetch all open tenders and let the queue worker check for existing matches before processing
+    // This is more efficient and avoids URI length problems
     let tendersQuery = supabase
       .from("tenders")
       .select("*")
       .in("status", ["open", "closing_soon", "framework"]);
-
-    // Only skip recently analyzed tenders (within 7 days)
-    if (recentlyAnalyzedTenderIds.length > 0) {
-      tendersQuery = tendersQuery.not(
-        "id",
-        "in",
-        `(${recentlyAnalyzedTenderIds.map((id) => `"${id}"`).join(",")})`,
-      );
-    }
 
     const { data: tenders, error: tendersError } = await tendersQuery;
 
@@ -465,6 +447,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error in match-tenders:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("Error details:", { message, stack });
     return apiError(message, 500);
   }
 }

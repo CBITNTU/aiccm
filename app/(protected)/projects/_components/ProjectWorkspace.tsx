@@ -172,48 +172,52 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               )}
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {project.status !== "completed" && (
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange("completed")}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Completed
-                  </DropdownMenuItem>
-                )}
-                {project.status !== "archived" && (
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange("archived")}
-                  >
-                    <Archive className="h-4 w-4 mr-2" />
-                    Archive Project
-                  </DropdownMenuItem>
-                )}
-                {(project.status === "completed" ||
-                  project.status === "archived") && (
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange("active")}
-                  >
-                    <Target className="h-4 w-4 mr-2" />
-                    Reactivate
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setDeleteDialogOpen(true)}
-                  className="text-destructive focus:text-destructive"
+            <div className="flex items-center gap-2">
+              {project.status !== "completed" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleStatusChange("completed")}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Project
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Complete Project
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {project.status !== "archived" && (
+                    <DropdownMenuItem
+                      onClick={() => handleStatusChange("archived")}
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      Archive Project
+                    </DropdownMenuItem>
+                  )}
+                  {(project.status === "completed" ||
+                    project.status === "archived") && (
+                    <DropdownMenuItem
+                      onClick={() => handleStatusChange("active")}
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      Reactivate
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setDeleteDialogOpen(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Project
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </CardHeader>
 

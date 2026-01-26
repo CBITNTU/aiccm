@@ -178,36 +178,53 @@ export function TenderMatching({
       if (!response.ok) {
         // Batch not found or completed - clear from localStorage
         if (response.status === 404) {
+          console.log(`Batch ${batchId} not found (404) - clearing progress`);
           if (companyId) {
             localStorage.removeItem(`matching_batch_${companyId}`);
           }
           setMatchingProgress(null);
+        } else {
+          console.error(`Failed to fetch progress for batch ${batchId}:`, response.status, response.statusText);
         }
         return;
       }
 
       const data = await response.json();
-      setMatchingProgress({
+      
+      // Validate response data
+      if (!data.batch_id || data.total_jobs === undefined) {
+        console.error("Invalid progress response:", data);
+        return;
+      }
+
+      const progressData = {
         batchId: data.batch_id,
-        totalJobs: data.total_jobs,
-        completedJobs: data.completed_jobs,
-        failedJobs: data.failed_jobs,
-        status: data.status,
-        progressPercent: data.progress_percent,
-      });
+        totalJobs: data.total_jobs || 0,
+        completedJobs: data.completed_jobs || 0,
+        failedJobs: data.failed_jobs || 0,
+        status: data.status || "processing",
+        progressPercent: data.progress_percent || 0,
+      };
+
+      console.log(`Progress update for batch ${batchId}:`, progressData);
+      setMatchingProgress(progressData);
 
       // If completed, refresh results and clear localStorage
       if (data.status === "completed" || data.status === "failed") {
+        console.log(`Batch ${batchId} finished with status: ${data.status}`);
         if (companyId) {
           localStorage.removeItem(`matching_batch_${companyId}`);
         }
         await fetchMatchingResultsMemo();
         if (data.status === "completed") {
           toast.success(`Matching completed: ${data.completed_jobs} tenders analyzed`);
+        } else {
+          toast.error(`Matching failed: ${data.failed_jobs} jobs failed`);
         }
       }
     } catch (error) {
       console.error("Error checking matching progress:", error);
+      // Don't clear progress on network errors - might be temporary
     }
   }, [companyId, fetchMatchingResultsMemo]);
 

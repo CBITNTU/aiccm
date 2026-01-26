@@ -203,10 +203,38 @@ export async function enqueueBatch(
 }
 
 /**
- * Get next pending job from queue
- * Prioritizes jobs with batch_id to ensure batch progress tracking works
+ * Get next pending job from queue (ATOMIC - prevents race conditions)
+ * Uses database function with SELECT FOR UPDATE SKIP LOCKED to ensure
+ * only one worker can claim a job at a time, even with concurrent requests.
+ * Prioritizes jobs with batch_id to ensure batch progress tracking works.
  */
 export async function dequeueJob(): Promise<ProcessingQueue | null> {
+  // Use atomic database function to claim a job
+  // This prevents race conditions when multiple workers try to dequeue simultaneously
+  const { data, error } = await (supabase.rpc as any)("dequeue_job_atomic");
+
+  if (error) {
+    // If function doesn't exist yet, fall back to old method (for backward compatibility)
+    if (error.code === "42883" || error.message?.includes("function") || error.message?.includes("does not exist")) {
+      console.warn("⚠️ dequeue_job_atomic() function not found, using fallback method (may have race conditions)");
+      return dequeueJobFallback();
+    }
+    throw new Error(`Failed to dequeue job atomically: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  return data[0] as unknown as ProcessingQueue;
+}
+
+/**
+ * Fallback method for dequeuing (non-atomic, for backward compatibility)
+ * Uses conditional UPDATE to prevent race conditions where multiple workers claim the same job.
+ * @deprecated Use dequeueJob() which uses atomic database function
+ */
+async function dequeueJobFallback(): Promise<ProcessingQueue | null> {
   // First, try to get a job with batch_id (prioritize batch jobs)
   const { data: batchJob, error: batchError } = await supabase
     .from("processing_queue" as any)
@@ -223,7 +251,26 @@ export async function dequeueJob(): Promise<ProcessingQueue | null> {
   }
 
   if (batchJob) {
-    return batchJob as unknown as ProcessingQueue;
+    // Atomically claim the job - only succeeds if status is still 'pending'
+    const { data: claimed, error: claimError } = await supabase
+      .from("processing_queue" as any)
+      .update({
+        status: "processing",
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", (batchJob as any).id)
+      .eq("status", "pending") // KEY: Only update if still pending
+      .select()
+      .maybeSingle();
+
+    if (claimError || !claimed) {
+      // Another worker claimed it, try again recursively
+      console.log(`⚠️ Job ${(batchJob as any).id} was claimed by another worker, retrying...`);
+      return dequeueJobFallback();
+    }
+
+    return claimed as unknown as ProcessingQueue;
   }
 
   // If no batch job found, get any pending job (for backward compatibility)
@@ -244,7 +291,30 @@ export async function dequeueJob(): Promise<ProcessingQueue | null> {
     throw new Error(`Failed to dequeue job: ${error.message}`);
   }
 
-  return (data as unknown as ProcessingQueue) || null;
+  if (!data) {
+    return null;
+  }
+
+  // Atomically claim the job - only succeeds if status is still 'pending'
+  const { data: claimed, error: claimError } = await supabase
+    .from("processing_queue" as any)
+    .update({
+      status: "processing",
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", (data as any).id)
+    .eq("status", "pending") // KEY: Only update if still pending
+    .select()
+    .maybeSingle();
+
+  if (claimError || !claimed) {
+    // Another worker claimed it, try again recursively
+    console.log(`⚠️ Job ${(data as any).id} was claimed by another worker, retrying...`);
+    return dequeueJobFallback();
+  }
+
+  return claimed as unknown as ProcessingQueue;
 }
 
 /**
@@ -485,6 +555,7 @@ export async function getBatchStatus(
 
 /**
  * Update batch job progress (internal helper)
+ * Uses atomic database function to prevent race conditions when multiple jobs complete simultaneously
  */
 async function updateBatchProgress(
   jobId: string,
@@ -495,7 +566,7 @@ async function updateBatchProgress(
       `🔄 Updating batch progress for job ${jobId} (outcome: ${outcome})`,
     );
 
-    // Get the job to find its batch_id - use getJob which should return all fields
+    // Get the job to find its batch_id
     const job = await getJob(jobId);
 
     if (!job) {
@@ -503,19 +574,9 @@ async function updateBatchProgress(
       return;
     }
 
-    // Log the raw job data to debug
-    console.log(
-      `🔍 Job data for ${jobId}:`,
-      JSON.stringify({
-        id: job.id,
-        batch_id: job.batch_id,
-        status: job.status,
-      }),
-    );
-
     if (!job.batch_id) {
       console.log(
-        `ℹ️ Job ${jobId} doesn't belong to a batch (batch_id: ${job.batch_id || "null"}), skipping batch progress update`,
+        `ℹ️ Job ${jobId} doesn't belong to a batch, skipping batch progress update`,
       );
       return;
     }
@@ -523,126 +584,113 @@ async function updateBatchProgress(
     const batchId = job.batch_id;
     console.log(`🔄 Job ${jobId} belongs to batch ${batchId}`);
 
-    // Get current batch status
-    const batch = await getBatchStatus(batchId);
-    if (!batch) {
-      console.warn(`⚠️ Batch ${batchId} not found for job ${jobId}`);
-      return;
-    }
-
-    console.log(
-      `📊 Current batch status: ${batch.completedJobs}/${batch.totalJobs} completed, ${batch.failedJobs} failed`,
-    );
-
-    // Update batch counts
-    const newCompleted =
-      outcome === "completed" ? batch.completedJobs + 1 : batch.completedJobs;
-    const newFailed =
-      outcome === "failed" ? batch.failedJobs + 1 : batch.failedJobs;
-    const totalProcessed = newCompleted + newFailed;
-
-    // Determine new status: completed if all jobs are done (and not all failed)
-    let newStatus: "processing" | "completed" | "failed";
-    if (totalProcessed >= batch.totalJobs) {
-      // All jobs are done
-      if (newFailed === batch.totalJobs) {
-        // All jobs failed
-        newStatus = "failed";
-      } else {
-        // At least some jobs succeeded
-        newStatus = "completed";
-      }
-    } else {
-      // Still processing
-      newStatus = "processing";
-    }
-
-    console.log(
-      `📊 New batch status will be: ${newCompleted}/${batch.totalJobs} completed, ${newFailed} failed, total processed: ${totalProcessed}, status: ${newStatus}`,
-    );
-
-    // Update batch in database using atomic increment to avoid race conditions
-    // First, get the current values again to ensure we have the latest
-    const currentBatch = await getBatchStatus(batchId);
-    if (!currentBatch) {
-      console.warn(`⚠️ Batch ${batchId} not found when updating progress`);
-      return;
-    }
-
-    // Recalculate with current values to handle concurrent updates
-    const actualCompleted =
-      outcome === "completed"
-        ? currentBatch.completedJobs + 1
-        : currentBatch.completedJobs;
-    const actualFailed =
-      outcome === "failed"
-        ? currentBatch.failedJobs + 1
-        : currentBatch.failedJobs;
-    const actualTotalProcessed = actualCompleted + actualFailed;
-
-    let actualStatus: "processing" | "completed" | "failed";
-    if (actualTotalProcessed >= currentBatch.totalJobs) {
-      if (actualFailed === currentBatch.totalJobs) {
-        actualStatus = "failed";
-      } else {
-        actualStatus = "completed";
-      }
-    } else {
-      actualStatus = "processing";
-    }
-
-    console.log(
-      `📊 Final batch status: ${actualCompleted}/${currentBatch.totalJobs} completed, ${actualFailed} failed, total: ${actualTotalProcessed}, status: ${actualStatus}`,
-    );
-
-    // Update batch in database
-    const { error } = await supabase
-      .from("batch_jobs" as any)
-      .update({
-        completed_jobs: actualCompleted,
-        failed_jobs: actualFailed,
-        status: actualStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", batchId);
+    // Use atomic database function to increment counters (prevents race conditions)
+    const { data, error } = await (supabase.rpc as any)("increment_batch_progress", {
+      p_batch_id: batchId,
+      p_outcome: outcome,
+    });
 
     if (error) {
+      // If function doesn't exist yet, fall back to old method (for backward compatibility)
+      if (error.code === "42883" || error.message?.includes("function") || error.message?.includes("does not exist")) {
+        console.warn("⚠️ increment_batch_progress() function not found, using fallback method (may have race conditions)");
+        return updateBatchProgressFallback(jobId, outcome);
+      }
       console.error(
-        `❌ Failed to update batch progress: ${error.message}`,
+        `❌ Failed to update batch progress atomically: ${error.message}`,
         error,
       );
       throw error;
-    } else {
+    }
+
+    if (!data || data.length === 0) {
+      console.warn(`⚠️ Batch ${batchId} not found or update returned no data`);
+      return;
+    }
+
+    const result = data[0] as {
+      completed_jobs: number;
+      failed_jobs: number;
+      total_jobs: number;
+      status: string;
+    };
+
+    console.log(
+      `✅ Atomically updated batch ${batchId}: ${result.completed_jobs}/${result.total_jobs} completed, ${result.failed_jobs} failed, status: ${result.status}`,
+    );
+
+    // If batch is completed/failed, cancel all remaining jobs in this batch
+    if (result.status === "completed" || result.status === "failed") {
       console.log(
-        `✅ Updated batch ${batchId}: ${actualCompleted}/${currentBatch.totalJobs} completed, ${actualFailed} failed, status: ${actualStatus}`,
+        `🛑 Batch ${batchId} is ${result.status} - cancelling all remaining pending/processing jobs in this batch`,
       );
+      const { error: cancelError, count: cancelledCount } = await supabase
+        .from("processing_queue" as any)
+        .delete()
+        .eq("batch_id", batchId)
+        .in("status", ["pending", "processing"]);
 
-      // CRITICAL: If batch is completed/failed, cancel all remaining jobs in this batch
-      // This prevents jobs from continuing to process after batch completion
-      if (actualStatus === "completed" || actualStatus === "failed") {
-        console.log(
-          `🛑 Batch ${batchId} is ${actualStatus} - cancelling all remaining pending/processing jobs in this batch`,
+      if (cancelError) {
+        console.error(
+          `⚠️ Failed to cancel remaining jobs for batch ${batchId}:`,
+          cancelError,
         );
-        const { error: cancelError, count: cancelledCount } = await supabase
-          .from("processing_queue" as any)
-          .delete()
-          .eq("batch_id", batchId)
-          .in("status", ["pending", "processing"]);
-
-        if (cancelError) {
-          console.error(
-            `⚠️ Failed to cancel remaining jobs for batch ${batchId}:`,
-            cancelError,
-          );
-        } else {
-          console.log(
-            `✅ Cancelled ${cancelledCount || 0} remaining jobs for batch ${batchId}`,
-          );
-        }
+      } else {
+        console.log(
+          `✅ Cancelled ${cancelledCount || 0} remaining jobs for batch ${batchId}`,
+        );
       }
     }
   } catch (error) {
     console.error(`❌ Error in updateBatchProgress for job ${jobId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Fallback method for updating batch progress (non-atomic, for backward compatibility)
+ * @deprecated Use updateBatchProgress() which uses atomic database function
+ */
+async function updateBatchProgressFallback(
+  jobId: string,
+  outcome: "completed" | "failed",
+): Promise<void> {
+  const job = await getJob(jobId);
+  if (!job || !job.batch_id) {
+    return;
+  }
+
+  const batchId = job.batch_id;
+  const batch = await getBatchStatus(batchId);
+  if (!batch) {
+    return;
+  }
+
+  // Calculate new values (non-atomic - may have race conditions)
+  const newCompleted =
+    outcome === "completed" ? batch.completedJobs + 1 : batch.completedJobs;
+  const newFailed =
+    outcome === "failed" ? batch.failedJobs + 1 : batch.failedJobs;
+  const totalProcessed = newCompleted + newFailed;
+
+  let newStatus: "processing" | "completed" | "failed";
+  if (totalProcessed >= batch.totalJobs) {
+    newStatus = newFailed === batch.totalJobs ? "failed" : "completed";
+  } else {
+    newStatus = "processing";
+  }
+
+  const { error } = await supabase
+    .from("batch_jobs" as any)
+    .update({
+      completed_jobs: newCompleted,
+      failed_jobs: newFailed,
+      status: newStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", batchId);
+
+  if (error) {
     throw error;
   }
 }

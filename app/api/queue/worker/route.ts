@@ -160,8 +160,8 @@ export async function POST(request: NextRequest) {
           
           console.log(`🔄 Processing job ${job.id} (${job.job_type})`);
           
-          // Mark as processing
-          await markJobProcessing(job.id);
+          // Note: Job is already marked as 'processing' by dequeueJob() atomic function
+          // No need to call markJobProcessing() again
 
           // Process the job
           const result = await processJob({

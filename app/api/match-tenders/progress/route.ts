@@ -41,13 +41,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Calculate progress percentage (handle edge cases)
+    const totalProcessed = batchStatus.completedJobs + batchStatus.failedJobs;
+    const progressPercent = batchStatus.totalJobs > 0
+      ? Math.round((totalProcessed / batchStatus.totalJobs) * 100)
+      : 0;
+
     return apiResponse({
       batch_id: batchId,
       total_jobs: batchStatus.totalJobs,
       completed_jobs: batchStatus.completedJobs,
       failed_jobs: batchStatus.failedJobs,
       status: batchStatus.status,
-      progress_percent: Math.round((batchStatus.completedJobs / batchStatus.totalJobs) * 100),
+      progress_percent: progressPercent,
       created_at: batchStatus.createdAt,
       updated_at: batchStatus.updatedAt,
     });

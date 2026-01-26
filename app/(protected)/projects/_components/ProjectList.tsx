@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProjects, type ProjectStatus, type Project } from "@/hooks/useProjects";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Plus,
   Briefcase,
   FolderOpen,
   Archive,
@@ -16,14 +14,12 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { ProjectCreationDialog } from "@/components/consulting/ProjectCreationDialog";
 import { ProjectListSkeleton } from "./skeletons/ProjectListSkeleton";
 
 interface ProjectListProps {
   companyId: string | null;
   selectedProjectId: string | null;
   onSelectProject: (id: string | null) => void;
-  onProjectCreated: (projectId: string) => void;
   filter: ProjectStatus;
   onFilterChange: (filter: ProjectStatus) => void;
 }
@@ -32,12 +28,9 @@ export function ProjectList({
   companyId,
   selectedProjectId,
   onSelectProject,
-  onProjectCreated,
   filter,
   onFilterChange,
 }: ProjectListProps) {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-
   const {
     data: projects,
     isLoading,
@@ -64,11 +57,6 @@ export function ProjectList({
       onSelectProject(projects.length > 0 ? projects[0].id : null);
     }
   }, [projects, selectedProjectId, onSelectProject, isFetching]);
-
-  const handleProjectCreated = (projectId: string) => {
-    // Call parent callback to invalidate cache and select project
-    onProjectCreated(projectId);
-  };
 
   if (isLoading) {
     return <ProjectListSkeleton />;
@@ -146,25 +134,8 @@ export function ProjectList({
             )}
           </AnimatePresence>
 
-          <Button
-            onClick={() => setCreateDialogOpen(true)}
-            className="w-full mt-4"
-            disabled={!companyId}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Project
-          </Button>
         </CardContent>
       </Card>
-
-      {companyId && (
-        <ProjectCreationDialog
-          open={createDialogOpen}
-          onOpenChange={setCreateDialogOpen}
-          onProjectCreated={handleProjectCreated}
-          companyId={companyId}
-        />
-      )}
     </>
   );
 }

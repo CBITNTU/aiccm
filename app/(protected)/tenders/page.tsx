@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
@@ -25,7 +25,6 @@ import {
   MatchingFiltersState,
 } from "@/components/tenders/TenderMatching";
 import { SavedTenders } from "@/components/tenders/SavedTenders";
-import { ProjectWizard } from "@/components/tenders/ProjectWizard";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 
@@ -44,6 +43,7 @@ interface TenderFiltersState {
 
 export default function TendersPage() {
   const { user, isPendingApproval, isOnboarding } = useAuth();
+  const router = useRouter();
 
   // Users are restricted if they're pending approval OR still onboarding
   const isRestrictedUser = isPendingApproval || isOnboarding;
@@ -61,8 +61,6 @@ export default function TendersPage() {
   });
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [showProjectWizard, setShowProjectWizard] = useState(false);
-  const [initialTenderId, setInitialTenderId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
   // Get tab from URL query parameter, default to "tenders"
@@ -194,7 +192,11 @@ export default function TendersPage() {
           </div>
           {selectedCompany && !isRestrictedUser && (
             <Button
-              onClick={() => setShowProjectWizard(true)}
+              onClick={() => {
+                const params = new URLSearchParams();
+                params.set("companyId", selectedCompany.id);
+                router.push(`/projects/new?${params.toString()}`);
+              }}
               className="flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -247,8 +249,10 @@ export default function TendersPage() {
                   ? undefined
                   : (tenderId) => {
                       if (selectedCompany) {
-                        setInitialTenderId(tenderId);
-                        setShowProjectWizard(true);
+                        const params = new URLSearchParams();
+                        params.set("companyId", selectedCompany.id);
+                        params.set("tenderId", tenderId);
+                        router.push(`/projects/new?${params.toString()}`);
                       }
                     }
               }
@@ -326,8 +330,12 @@ export default function TendersPage() {
                 isRestrictedUser
                   ? undefined
                   : (tenderId) => {
-                      setInitialTenderId(tenderId);
-                      setShowProjectWizard(true);
+                      const params = new URLSearchParams();
+                      if (selectedCompany) {
+                        params.set("companyId", selectedCompany.id);
+                      }
+                      params.set("tenderId", tenderId);
+                      router.push(`/projects/new?${params.toString()}`);
                     }
               }
             />
@@ -341,22 +349,6 @@ export default function TendersPage() {
             />
           </TabsContent>
         </Tabs>
-
-        {showProjectWizard && selectedCompany && (
-          <ProjectWizard
-            onClose={() => {
-              setShowProjectWizard(false);
-              setInitialTenderId(null);
-            }}
-            onProjectCreated={(projectId) => {
-              setShowProjectWizard(false);
-              setInitialTenderId(null);
-              console.log("Project created:", projectId);
-            }}
-            leadCompanyId={selectedCompany.id}
-            initialTenderId={initialTenderId}
-          />
-        )}
       </div>
     </div>
   );

@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserCompanies, type ProjectStatus } from "@/hooks/useProjects";
 import type { Database } from "@/lib/supabase/types";
@@ -18,7 +17,6 @@ type Company = Database["public"]["Tables"]["companies"]["Row"];
 export default function ProjectsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   // Read from URL params
@@ -94,26 +92,11 @@ export default function ProjectsPage() {
     setSelectedProjectId(projectId);
   }, []);
 
-  // Callback for when a project is created - invalidates the cache
-  const handleProjectCreated = useCallback(
-    (projectId: string) => {
-      // Switch to active filter (new projects are "draft" which shows under active)
-      setProjectFilter("active");
-      // Invalidate all project queries for this company (matches any filter)
-      queryClient.invalidateQueries({
-        queryKey: ["projects", selectedCompany?.id],
-      });
-      // Select the new project
-      setSelectedProjectId(projectId);
-    },
-    [queryClient, selectedCompany?.id]
-  );
-
   // Show loading state while fetching companies
   if (loadingCompanies) {
     return (
       <div className="container mx-auto py-6 space-y-6">
-        <ProjectsHeader />
+        <ProjectsHeader companyId={null} />
         <div className="h-10 w-64 bg-muted rounded-md animate-pulse" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <ProjectListSkeleton />
@@ -129,7 +112,7 @@ export default function ProjectsPage() {
   if (!companies || companies.length === 0) {
     return (
       <div className="container mx-auto py-6 space-y-6">
-        <ProjectsHeader />
+        <ProjectsHeader companyId={null} />
         <CompanySelector
           companies={[]}
           selectedCompany={null}
@@ -141,7 +124,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <ProjectsHeader />
+      <ProjectsHeader companyId={selectedCompany?.id} />
 
       <CompanySelector
         companies={companies}
@@ -155,7 +138,6 @@ export default function ProjectsPage() {
           companyId={selectedCompany?.id ?? null}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleProjectSelect}
-          onProjectCreated={handleProjectCreated}
           filter={projectFilter}
           onFilterChange={setProjectFilter}
         />

@@ -362,14 +362,17 @@ export async function POST(request: NextRequest) {
         (companyData.key_capabilities || "") + " " + capabilityNames;
     }
 
-    // Get open tenders
+    // Get open tenders with deadline >= today
     // Instead of excluding recently analyzed tenders in the query (which causes URI length issues),
     // we'll fetch all open tenders and let the queue worker check for existing matches before processing
     // This is more efficient and avoids URI length problems
-    let tendersQuery = supabase
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+
+    const tendersQuery = supabase
       .from("tenders")
       .select("*")
-      .in("status", ["open", "closing_soon", "framework"]);
+      .in("status", ["open", "closing_soon", "framework"])
+      .gte("deadline", today); // Only tenders with deadline today or later
 
     const { data: tenders, error: tendersError } = await tendersQuery;
 

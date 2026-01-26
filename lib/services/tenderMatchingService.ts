@@ -127,13 +127,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
 
   // Log the prompt for debugging
   console.log("\n" + "=".repeat(80));
-  console.log(`📋 TENDER MATCHING PROMPT: ${companyData.company_name} → ${tenderData.title}`);
-  console.log("=".repeat(80));
-  console.log("\n🔹 SYSTEM PROMPT:");
-  console.log(systemPrompt);
-  console.log("\n🔹 USER PROMPT:");
-  console.log(userPrompt);
-  console.log("\n" + "=".repeat(80) + "\n");
+  console.log(`🔄 Matching: ${companyData.company_name} → ${tenderData.title}`);
 
   // Call OpenAI with rate limiting
   let response: string;
@@ -166,22 +160,10 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     throw error;
   }
 
-  // Log the AI response
-  console.log("\n" + "=".repeat(80));
-  console.log(`🤖 AI RESPONSE FOR TENDER MATCHING: ${companyData.company_name} → ${tenderData.title}`);
-  console.log("=".repeat(80));
-  console.log(response);
-  console.log("\n" + "=".repeat(80) + "\n");
-
+  console.log(`✅ Got AI response (${response.length} chars)`);
+  
   // Parse AI response
   let score: MatchingScore;
-
-  // Log the raw response for debugging
-  console.log("\n" + "=".repeat(80));
-  console.log(`📄 RAW AI RESPONSE (${response.length} chars):`);
-  console.log("=".repeat(80));
-  console.log(response);
-  console.log("=".repeat(80) + "\n");
 
   try {
     // Use the parseAIJsonResponse helper which handles markdown code blocks and comments
@@ -343,6 +325,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     throw new Error(`Failed to store matching result: ${upsertError.message}`);
   }
 
+  console.log(`✅ Match complete: ${companyData.company_name} → ${tenderData.title} (Score: ${score.overallScore}%)`);
   return score;
 }
 

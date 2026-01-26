@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Keep console logs in production for debugging
+  compiler: {
+    removeConsole: false,
+  },
 };
 
 export default nextConfig;

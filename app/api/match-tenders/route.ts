@@ -397,6 +397,31 @@ export async function POST(request: NextRequest) {
       priority: 5,
     }));
 
+    // Check if there's already an active batch for this company
+    const { data: existingBatches, error: batchCheckError } = await supabase
+      .from("batch_jobs" as any)
+      .select("id, status, created_at, total_jobs")
+      .eq("company_id", companyData.id)
+      .eq("status", "processing")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (!batchCheckError && existingBatches && Array.isArray(existingBatches) && existingBatches.length > 0) {
+      const existingBatch = existingBatches[0] as unknown as {
+        id: string;
+        status: string;
+        created_at: string;
+        total_jobs: number;
+      };
+      console.log(`⚠️ Company ${companyData.id} already has active batch ${existingBatch.id}`);
+      return apiResponse({
+        message: "Matching already in progress",
+        batch_id: existingBatch.id,
+        total_tenders: existingBatch.total_jobs,
+        status: "already_running",
+      });
+    }
+
     // Create batch and queue all jobs
     const { batchId, jobIds } = await enqueueBatch(
       jobs,

@@ -7,8 +7,8 @@ import pLimit from 'p-limit';
  *  - RPD  (requests per day)
  *  - TPM  (tokens per minute) — approximate, based on your estimate per call
  *
- * Defaults below match GPT-5-mini "Tier 1" limits:
- *   RPM=500, RPD=10000, TPM=500000
+ * Defaults below match GPT-5-nano "Tier 1" limits:
+ *   RPM=500, TPM=200000
  * You *should* override these via env to reflect your actual model/account limits
  * and add headroom.
  */
@@ -16,9 +16,9 @@ import pLimit from 'p-limit';
 // ---------- Config (override via env) ----------
 const CONCURRENCY = parseInt(process.env.LLM_CONCURRENCY ?? '15', 10); // Increased default concurrency to 15 for faster processing
 
-const RPM_LIMIT = parseInt(process.env.LLM_RPM_LIMIT ?? '500', 10); // requests / minute (GPT-5-mini Tier 1)
-const RPD_LIMIT = parseInt(process.env.LLM_RPD_LIMIT ?? '10000', 10); // requests / day (custom limit)
-const TPM_BUDGET = parseInt(process.env.LLM_TPM_BUDGET ?? '500000', 10); // tokens / minute (GPT-5-mini Tier 1: 500K)
+const RPM_LIMIT = parseInt(process.env.LLM_RPM_LIMIT ?? '500', 10); // requests / minute (GPT-5-nano Tier 1)
+// const RPD_LIMIT = parseInt(process.env.LLM_RPD_LIMIT ?? '10000', 10); // requests / day (custom limit)
+const TPM_BUDGET = parseInt(process.env.LLM_TPM_BUDGET ?? '200000', 10); // tokens / minute (GPT-5-nano Tier 1: 500K)
 
 const SAFETY_CUSHION_MS = 250; // small cushion so we don't wake exactly on window boundary
 
@@ -87,10 +87,10 @@ async function waitForBudgets(estTokens: number) {
     ensureMinuteWindow();
 
     const rpmOK = requestsThisMinute + 1 <= RPM_LIMIT;
-    const rpdOK = requestsToday + 1 <= RPD_LIMIT;
+    // const rpdOK = requestsToday + 1 <= RPD_LIMIT;
     const tpmOK = tokensThisMinute + estTokens <= TPM_BUDGET;
 
-    if (rpmOK && rpdOK && tpmOK) {
+    if (rpmOK && tpmOK /* && rpdOK */) {
       // Reserve budget and go
       requestsThisMinute += 1;
       tokensThisMinute += estTokens;
@@ -103,7 +103,7 @@ async function waitForBudgets(estTokens: number) {
 
     if (!rpmOK) waits.push(msUntilNextMinute());
     if (!tpmOK) waits.push(msUntilNextMinute());
-    if (!rpdOK) waits.push(msUntilNextUtcMidnight());
+    // if (!rpdOK) waits.push(msUntilNextUtcMidnight());
 
     const waitMs = Math.max(250, Math.min(...waits));
     await sleep(waitMs);

@@ -136,7 +136,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       async () => {
         console.log("📞 Calling OpenAI API...");
         const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-          model: "gpt-5-mini",
+          model: "gpt-5-nano",
           maxTokens: 8000, // Increased to allow for default reasoning tokens plus output
           responseFormat: "json_object", // Request JSON output format
         });

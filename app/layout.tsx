@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI-Powered CCM - Collaborative Commerce Marketplace",
+  title: "TNDRX - Collaborative Commerce Marketplace",
   description:
     "Discover your company's strengths, match with tenders, and form winning consortiums with AI. Build consulting teams and grow your business with AI-powered CCM.",
 };

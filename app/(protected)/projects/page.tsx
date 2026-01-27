@@ -95,7 +95,7 @@ export default function ProjectsPage() {
   // Show loading state while fetching companies
   if (loadingCompanies) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <ProjectsHeader companyId={null} />
         <div className="h-10 w-64 bg-muted rounded-md animate-pulse" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -111,7 +111,7 @@ export default function ProjectsPage() {
   // Show empty state if no companies
   if (!companies || companies.length === 0) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <ProjectsHeader companyId={null} />
         <CompanySelector
           companies={[]}
@@ -123,7 +123,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <ProjectsHeader companyId={selectedCompany?.id} />
 
       <CompanySelector

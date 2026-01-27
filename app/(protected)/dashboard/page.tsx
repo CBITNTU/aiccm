@@ -619,7 +619,9 @@ export default function DashboardPage() {
                             string,
                             { value: number | string }
                           >,
-                        ).map(([key, field]) => (
+                        )
+                          .slice(0, 5)
+                          .map(([key, field]) => (
                           <div
                             key={key}
                             className="flex justify-between items-center p-3 bg-muted/30 rounded-lg"

@@ -36,7 +36,8 @@ export default function NewCompanyPage() {
   // Show success state after submission
   if (submitResult) {
     return (
-      <div className="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-2xl">
         <Card className="card-professional">
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full mx-auto mb-4 flex items-center justify-center">
@@ -96,12 +97,14 @@ export default function NewCompanyPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-2xl">
       <div className="mb-6">
         <Button
           variant="ghost"
@@ -117,6 +120,7 @@ export default function NewCompanyPage() {
         userEmail={user?.email || ""}
         onSuccess={handleSuccess}
       />
+      </div>
     </div>
   );
 }

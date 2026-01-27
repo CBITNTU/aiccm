@@ -10,7 +10,10 @@ interface HeaderProps {
   onMobileMenuToggle?: () => void;
 }
 
-export function Header({ variant = "landing", onMobileMenuToggle }: HeaderProps) {
+export function Header({
+  variant = "landing",
+  onMobileMenuToggle,
+}: HeaderProps) {
   const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -30,7 +33,7 @@ export function Header({ variant = "landing", onMobileMenuToggle }: HeaderProps)
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-primary">AI-Powered CCM</h1>
+              <h1 className="text-xl font-bold text-primary">TNDRX</h1>
               <p className="text-xs text-muted-foreground leading-none">
                 Collaborative Commerce Marketplace
               </p>
@@ -46,7 +49,10 @@ export function Header({ variant = "landing", onMobileMenuToggle }: HeaderProps)
                     <Button variant="outline" asChild>
                       <Link href="/dashboard">Dashboard</Link>
                     </Button>
-                    <Button onClick={handleSignOut} className="flex items-center">
+                    <Button
+                      onClick={handleSignOut}
+                      className="flex items-center"
+                    >
                       <LogOut className="w-4 h-4 mr-2" />
                       Sign Out
                     </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FolderKanban, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ProjectsHeaderProps {
@@ -13,14 +13,11 @@ export function ProjectsHeader({ companyId }: ProjectsHeaderProps) {
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <FolderKanban className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">
-            Build teams and bid on tenders together
-          </p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Projects</h1>
+        <p className="text-muted-foreground mt-1">
+          Build teams and bid on tenders together
+        </p>
       </div>
       <Button
         onClick={() => {

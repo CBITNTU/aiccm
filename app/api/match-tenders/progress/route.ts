@@ -1,9 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  getAuthenticatedUser,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
 import { getBatchStatus } from "@/lib/services/queueService";
 
 export async function GET(request: NextRequest) {
@@ -43,9 +39,10 @@ export async function GET(request: NextRequest) {
 
     // Calculate progress percentage (handle edge cases)
     const totalProcessed = batchStatus.completedJobs + batchStatus.failedJobs;
-    const progressPercent = batchStatus.totalJobs > 0
-      ? Math.round((totalProcessed / batchStatus.totalJobs) * 100)
-      : 0;
+    const progressPercent =
+      batchStatus.totalJobs > 0
+        ? Math.round((totalProcessed / batchStatus.totalJobs) * 100)
+        : 0;
 
     return apiResponse({
       batch_id: batchId,

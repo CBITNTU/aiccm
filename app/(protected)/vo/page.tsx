@@ -50,7 +50,6 @@ import { CoverageMap } from "@/components/consulting/CoverageMap";
 import { RecommendedPartners } from "@/components/consulting/RecommendedPartners";
 import { TeamBuilder } from "@/components/consulting/TeamBuilder";
 import { InvitationManager } from "@/components/consulting/InvitationManager";
-import { ProjectCreationDialog } from "@/components/consulting/ProjectCreationDialog";
 import { CompanySelector } from "@/components/consulting/CompanySelector";
 import { TenderViewDialog } from "@/components/tenders/TenderViewDialog";
 import { api } from "@/lib/api/client";
@@ -156,7 +155,6 @@ export default function ConsultingPage() {
     RecommendedPartner[]
   >([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState<
     "active" | "completed" | "archived"
   >("active");
@@ -890,7 +888,11 @@ Return ONLY valid JSON, no markdown.`;
                 </p>
                 <div className="flex gap-3">
                   <Button
-                    onClick={() => setCreateDialogOpen(true)}
+                    onClick={() => {
+                      if (ownerCompany) {
+                        router.push(`/projects/new?companyId=${ownerCompany.id}`);
+                      }
+                    }}
                     size="lg"
                     disabled={!ownerCompany}
                   >
@@ -908,15 +910,6 @@ Return ONLY valid JSON, no markdown.`;
               </CardContent>
             </Card>
           </div>
-
-          {ownerCompany && (
-            <ProjectCreationDialog
-              open={createDialogOpen}
-              onOpenChange={setCreateDialogOpen}
-              onProjectCreated={handleProjectCreated}
-              companyId={ownerCompany.id}
-            />
-          )}
         </div>
       </div>
     );
@@ -935,8 +928,8 @@ Return ONLY valid JSON, no markdown.`;
                 consortiums
               </p>
             </div>
-            {!tenderId && (
-              <Button onClick={() => setCreateDialogOpen(true)}>
+            {!tenderId && ownerCompany && (
+              <Button onClick={() => router.push(`/projects/new?companyId=${ownerCompany.id}`)}>
                 <Plus className="h-5 w-5 mr-2" />
                 New Project
               </Button>
@@ -1276,16 +1269,6 @@ Return ONLY valid JSON, no markdown.`;
             </>
           )}
         </div>
-
-        {/* Project Creation Dialog */}
-        {ownerCompany && (
-          <ProjectCreationDialog
-            open={createDialogOpen}
-            onOpenChange={setCreateDialogOpen}
-            onProjectCreated={handleProjectCreated}
-            companyId={ownerCompany.id}
-          />
-        )}
 
         {/* Tender View Dialog */}
         <TenderViewDialog

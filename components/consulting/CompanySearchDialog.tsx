@@ -13,8 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, MapPin, Award, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -164,7 +162,7 @@ export function CompanySearchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl overflow-hidden">
         <DialogHeader>
           <DialogTitle>Add Company to Team</DialogTitle>
           <DialogDescription>
@@ -172,7 +170,7 @@ export function CompanySearchDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4 min-w-0">
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -183,7 +181,7 @@ export function CompanySearchDialog({
             />
           </div>
 
-          <ScrollArea className="h-[400px] pr-4">
+          <div className="h-[400px] overflow-y-auto overflow-x-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -193,22 +191,23 @@ export function CompanySearchDialog({
                 No companies found
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 pr-2">
                 {companies.map((company) => (
                   <div
                     key={company.id}
                     className="border rounded-lg p-4 hover:border-primary/50 transition-colors"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-semibold">{company.company_name}</h4>
+                    <div className="flex items-start gap-3 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold truncate">{company.company_name}</h4>
                         <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          {company.postcode || "N/A"}
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{company.postcode || "N/A"}</span>
                         </div>
                       </div>
                       <Button
                         size="sm"
+                        className="flex-shrink-0"
                         onClick={() => handleAdd(company.id)}
                         disabled={adding === company.id}
                       >
@@ -241,7 +240,7 @@ export function CompanySearchDialog({
                 ))}
               </div>
             )}
-          </ScrollArea>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

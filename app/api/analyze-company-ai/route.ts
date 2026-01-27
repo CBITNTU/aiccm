@@ -74,7 +74,7 @@ Focus on industry standards, UK compliance requirements, and tender readiness. F
 
     const response = await chatCompletion(systemPrompt, prompt, {
       temperature: 0.3,
-      maxTokens: 2000,
+      maxTokens: 5000,
     });
 
     console.log("OpenAI response received");
@@ -107,7 +107,7 @@ Focus on industry standards, UK compliance requirements, and tender readiness. F
     ) {
       console.log(
         "Auto-tagging company with taxonomies:",
-        parsedResult.suggestedTaxonomies
+        parsedResult.suggestedTaxonomies,
       );
 
       // Find taxonomy IDs by name
@@ -116,8 +116,8 @@ Focus on industry standards, UK compliance requirements, and tender readiness. F
           parsedResult.suggestedTaxonomies?.some(
             (suggested) =>
               t.name.toLowerCase().includes(suggested.toLowerCase()) ||
-              suggested.toLowerCase().includes(t.name.toLowerCase())
-          )
+              suggested.toLowerCase().includes(t.name.toLowerCase()),
+          ),
         )
         .map((t) => t.id);
 
@@ -142,7 +142,7 @@ Focus on industry standards, UK compliance requirements, and tender readiness. F
           console.error("Error inserting taxonomies:", taxonomyError);
         } else {
           console.log(
-            `Successfully tagged company with ${taxonomyIds.length} taxonomies`
+            `Successfully tagged company with ${taxonomyIds.length} taxonomies`,
           );
         }
       }
@@ -155,7 +155,7 @@ Focus on industry standards, UK compliance requirements, and tender readiness. F
     return apiError(
       "Failed to analyze company profile. Please try again.",
       500,
-      message
+      message,
     );
   }
 }

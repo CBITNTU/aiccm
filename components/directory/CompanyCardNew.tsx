@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { MapPin, BadgeCheck, Tag, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, BadgeCheck, Tag, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import type { Database } from "@/lib/supabase/types";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -113,12 +113,17 @@ export function CompanyCardNew({
         <h3 className="font-semibold text-base text-foreground line-clamp-2 group-hover:text-primary transition-colors">
           {company.company_name}
         </h3>
-        {company.is_system_company && (
-          <Badge variant="secondary" className="flex-shrink-0 gap-1">
+        {company.user_id ? (
+          <Badge className="shrink-0 gap-1 border-0 bg-green-600 text-white dark:bg-green-600 dark:text-white">
             <BadgeCheck className="h-3 w-3" />
             Verified
           </Badge>
-        )}
+        ) : company.is_system_company ? (
+          <Badge className="shrink-0 gap-1 border-0 bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white">
+            <Sparkles className="h-3 w-3" />
+            AI Generated
+          </Badge>
+        ) : null}
       </div>
 
       {/* Description - truncated */}

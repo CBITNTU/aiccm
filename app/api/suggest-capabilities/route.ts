@@ -1,5 +1,12 @@
 import { NextRequest } from "next/server";
-import { getAuthenticatedUser, createAdminClient, chatCompletion, apiResponse, apiError, parseAIJsonResponse } from "@/lib/api";
+import {
+  getAuthenticatedUser,
+  createAdminClient,
+  chatCompletion,
+  apiResponse,
+  apiError,
+  parseAIJsonResponse,
+} from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
@@ -25,7 +32,9 @@ export async function POST(request: NextRequest) {
     // Fetch tender details
     const { data: tender, error: tenderError } = await adminSupabase
       .from("tenders")
-      .select("title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes")
+      .select(
+        "title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes",
+      )
       .eq("id", tenderId)
       .single();
 
@@ -60,10 +69,12 @@ export async function POST(request: NextRequest) {
       .limit(10000); // Get a sample to see which capabilities are used
 
     const usedCapabilityIds = new Set(
-      (companyCapabilityLinks || []).map((link: any) => link.capability_id)
+      (companyCapabilityLinks || []).map((link: any) => link.capability_id),
     );
 
-    console.log(`📊 Found ${usedCapabilityIds.size} capabilities that companies actually have`);
+    console.log(
+      `📊 Found ${usedCapabilityIds.size} capabilities that companies actually have`,
+    );
     console.log(`📊 Total capabilities in ref table: ${capabilities.length}`);
 
     // Format capabilities for AI
@@ -83,7 +94,7 @@ export async function POST(request: NextRequest) {
     capabilities.forEach((cap) => {
       const category = cap.category || "Uncategorized";
       const isUsed = usedCapabilityIds.has(cap.id);
-      
+
       if (isUsed) {
         if (!usedCapabilitiesByCategory[category]) {
           usedCapabilitiesByCategory[category] = [];
@@ -99,11 +110,17 @@ export async function POST(request: NextRequest) {
 
     // Format capabilities list - prioritize used capabilities
     const usedCapabilitiesList = Object.entries(usedCapabilitiesByCategory)
-      .map(([category, names]) => `${category} (USED BY COMPANIES):\n  - ${names.join("\n  - ")}`)
+      .map(
+        ([category, names]) =>
+          `${category} (USED BY COMPANIES):\n  - ${names.join("\n  - ")}`,
+      )
       .join("\n\n");
-    
+
     const unusedCapabilitiesList = Object.entries(unusedCapabilitiesByCategory)
-      .map(([category, names]) => `${category} (NOT YET USED):\n  - ${names.join("\n  - ")}`)
+      .map(
+        ([category, names]) =>
+          `${category} (NOT YET USED):\n  - ${names.join("\n  - ")}`,
+      )
       .join("\n\n");
 
     const capabilitiesList = `${usedCapabilitiesList}\n\n${unusedCapabilitiesList}`;
@@ -135,9 +152,10 @@ Example (copy this exact format, no comments):
 Be selective - only include capabilities that are clearly needed. Prioritize capabilities that companies already have.`;
 
     // Format budget range
-    const budgetRange = tender.budget_min || tender.budget_max
-      ? `£${tender.budget_min ? tender.budget_min.toLocaleString() : "?"} - £${tender.budget_max ? tender.budget_max.toLocaleString() : "?"}`
-      : "Not specified";
+    const budgetRange =
+      tender.budget_min || tender.budget_max
+        ? `£${tender.budget_min ? tender.budget_min.toLocaleString() : "?"} - £${tender.budget_max ? tender.budget_max.toLocaleString() : "?"}`
+        : "Not specified";
 
     const userPrompt = `Tender Details:
 Title: ${tender.title || "N/A"}
@@ -164,16 +182,18 @@ Example format:
     const response = await chatCompletion(systemPrompt, userPrompt, {
       model: "gpt-5-mini",
       temperature: 0.3,
-      maxTokens: 1000,
+      maxTokens: 5000,
     });
 
     // Parse AI response - only existing capabilities, no new ones
     let existingCapabilityNames: string[] = [];
-    
+
     try {
       // Use parseAIJsonResponse to handle comments
       const parsed = parseAIJsonResponse<{ existing?: string[] }>(response);
-      existingCapabilityNames = Array.isArray(parsed.existing) ? parsed.existing : [];
+      existingCapabilityNames = Array.isArray(parsed.existing)
+        ? parsed.existing
+        : [];
     } catch (e) {
       console.error("Failed to parse AI response:", e);
       // Fallback: try to extract just existing names as array
@@ -191,7 +211,7 @@ Example format:
     const suggestedCapabilityIds = existingCapabilityNames
       .map((name) => {
         const cap = capabilities.find(
-          (c) => c.name.toLowerCase() === name.toLowerCase()
+          (c) => c.name.toLowerCase() === name.toLowerCase(),
         );
         return cap?.id;
       })
@@ -199,11 +219,13 @@ Example format:
 
     // Sort to prioritize used capabilities first
     const prioritizedIds = [
-      ...suggestedCapabilityIds.filter(id => usedCapabilityIds.has(id)),
-      ...suggestedCapabilityIds.filter(id => !usedCapabilityIds.has(id))
+      ...suggestedCapabilityIds.filter((id) => usedCapabilityIds.has(id)),
+      ...suggestedCapabilityIds.filter((id) => !usedCapabilityIds.has(id)),
     ];
 
-    console.log(`📊 Final suggestion: ${prioritizedIds.filter(id => usedCapabilityIds.has(id)).length} used capabilities, ${prioritizedIds.filter(id => !usedCapabilityIds.has(id)).length} unused capabilities`);
+    console.log(
+      `📊 Final suggestion: ${prioritizedIds.filter((id) => usedCapabilityIds.has(id)).length} used capabilities, ${prioritizedIds.filter((id) => !usedCapabilityIds.has(id)).length} unused capabilities`,
+    );
 
     // Log capability suggestion event
     await logApiEvent(request, {
@@ -222,14 +244,16 @@ Example format:
       suggestedCapabilityIds: prioritizedIds,
       suggestedCapabilityNames: existingCapabilityNames,
       totalCapabilities: capabilities.length,
-      usedCapabilitiesCount: prioritizedIds.filter(id => usedCapabilityIds.has(id)).length,
+      usedCapabilitiesCount: prioritizedIds.filter((id) =>
+        usedCapabilityIds.has(id),
+      ).length,
     });
   } catch (error) {
     console.error("Error suggesting capabilities:", error);
     return apiError(
       "Failed to suggest capabilities",
       500,
-      error instanceof Error ? error.message : String(error)
+      error instanceof Error ? error.message : String(error),
     );
   }
 }

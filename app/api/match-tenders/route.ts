@@ -133,7 +133,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       const response = await chatCompletion(systemPrompt, prompt, {
         model: "gpt-5-mini",
         temperature: 0.2,
-        maxTokens: 2000,
+        maxTokens: 8000,
       });
       return response;
     }, estTokens);

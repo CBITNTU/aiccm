@@ -15,20 +15,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Loader2, Briefcase } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Briefcase, Search, X, FileText, Building2, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { TenderSearchDialog } from "./TenderSearchDialog";
 
 interface Tender {
   id: string;
   title: string;
   buyer: string;
+  buyer_name?: string;
   deadline: string | null;
 }
 
@@ -49,12 +45,11 @@ export function ProjectCreationDialog({
     null
   );
   const [loading, setLoading] = useState(false);
-  const [tenders, setTenders] = useState<Tender[]>([]);
-  const [loadingTenders, setLoadingTenders] = useState(false);
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    target_tender_id: "",
   });
 
   // Initialize supabase client
@@ -63,32 +58,29 @@ export function ProjectCreationDialog({
     setSupabase(client);
   }, []);
 
+  // Reset form when dialog opens
   useEffect(() => {
-    if (open && supabase) {
-      loadTenders();
+    if (open) {
+      setFormData({ name: "", description: "" });
+      setSelectedTender(null);
     }
-  }, [open, supabase]);
+  }, [open]);
 
-  const loadTenders = async () => {
-    if (!supabase) return;
+  const handleSelectTender = (tender: Tender) => {
+    setSelectedTender(tender);
+  };
 
-    try {
-      setLoadingTenders(true);
-      const { data, error } = await supabase
-        .from("tenders")
-        .select("id, title, buyer, deadline")
-        .in("status", ["open", "closing_soon"])
-        .order("deadline", { ascending: true })
-        .limit(50);
+  const handleClearTender = () => {
+    setSelectedTender(null);
+  };
 
-      if (error) throw error;
-      setTenders(data || []);
-    } catch (error: unknown) {
-      console.error("Error loading tenders:", error);
-      toast.error("Failed to load tenders");
-    } finally {
-      setLoadingTenders(false);
-    }
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "No deadline";
+    return new Date(dateStr).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const handleCreate = async () => {
@@ -105,23 +97,14 @@ export function ProjectCreationDialog({
     try {
       setLoading(true);
 
-      console.log("Creating project...", {
-        name: formData.name,
-        companyId,
-        tender: formData.target_tender_id,
-      });
-
       // Create project directly - RLS policies now use security definer functions
       const { data: project, error: projectError } = await supabase
         .from("virtual_organizations")
         .insert({
           name: formData.name,
-          description: formData.description,
+          description: formData.description || null,
           lead_company_id: companyId,
-          target_tender_id:
-            formData.target_tender_id === "none"
-              ? null
-              : formData.target_tender_id || null,
+          target_tender_id: selectedTender?.id || null,
           status: "draft",
         })
         .select()
@@ -132,18 +115,9 @@ export function ProjectCreationDialog({
         throw new Error(projectError.message);
       }
 
-      console.log("Project created successfully:", project.id);
-
-      toast.success("Consulting project created!");
+      toast.success("Project created!");
       onProjectCreated(project.id);
       onOpenChange(false);
-
-      // Reset form
-      setFormData({
-        name: "",
-        description: "",
-        target_tender_id: "",
-      });
     } catch (error: unknown) {
       console.error("Error creating project:", error);
       const message =
@@ -157,93 +131,129 @@ export function ProjectCreationDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5" />
-            Create Consulting Project
-          </DialogTitle>
-          <DialogDescription>
-            Start a new consulting project and build your team to bid on tenders
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Create Project
+            </DialogTitle>
+            <DialogDescription>
+              Start a new project and build your team to bid on tenders
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="project-name">Project Name *</Label>
-            <Input
-              id="project-name"
-              placeholder="e.g., Digital Transformation Project"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="project-description">Description</Label>
-            <Textarea
-              id="project-description"
-              placeholder="Describe the project goals and objectives..."
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              rows={4}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tender-select">Target Tender (Optional)</Label>
-            {loadingTenders ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
-            ) : (
-              <Select
-                value={formData.target_tender_id}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, target_tender_id: value })
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="project-name">Project Name *</Label>
+              <Input
+                id="project-name"
+                placeholder="e.g., Digital Transformation Project"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a tender (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No tender</SelectItem>
-                  {tenders.map((tender) => (
-                    <SelectItem key={tender.id} value={tender.id}>
-                      {tender.title} - {tender.buyer}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+              />
+            </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
+            <div className="space-y-2">
+              <Label htmlFor="project-description">Description</Label>
+              <Textarea
+                id="project-description"
+                placeholder="Describe the project goals and objectives..."
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Target Tender (Optional)</Label>
+              {selectedTender ? (
+                <Card>
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium line-clamp-1">
+                          {selectedTender.title}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3.5 w-3.5" />
+                            {selectedTender.buyer_name || selectedTender.buyer}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {formatDate(selectedTender.deadline)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSearchDialogOpen(true)}
+                        >
+                          Change
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={handleClearTender}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : (
-                "Create Project"
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-muted-foreground"
+                  onClick={() => setSearchDialogOpen(true)}
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Search for a tender...
+                </Button>
               )}
-            </Button>
+              <p className="text-xs text-muted-foreground">
+                You can link a tender later from the project setup
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleCreate} disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Project"
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <TenderSearchDialog
+        open={searchDialogOpen}
+        onOpenChange={setSearchDialogOpen}
+        onSelectTender={handleSelectTender}
+      />
+    </>
   );
 }

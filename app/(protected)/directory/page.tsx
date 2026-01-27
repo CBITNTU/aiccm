@@ -58,11 +58,15 @@ export default function DirectoryPage() {
 
   // Users are restricted if they're pending approval OR still onboarding
   const isRestrictedUser = isPendingApproval || isOnboarding;
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
   const [companies, setCompanies] = useState<PublicCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<DirectoryFilters>(defaultFilters);
-  const [selectedCompany, setSelectedCompany] = useState<PublicCompany | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<PublicCompany | null>(
+    null,
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -138,7 +142,7 @@ export default function DirectoryPage() {
             updated_at,
             user_id
           `,
-            { count: "exact" }
+            { count: "exact" },
           )
           .eq("status", "active");
 
@@ -150,7 +154,7 @@ export default function DirectoryPage() {
         // Apply search filter at database level
         if (filters.searchTerm.trim()) {
           query = query.or(
-            `company_name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`
+            `company_name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`,
           );
         }
 
@@ -205,8 +209,8 @@ export default function DirectoryPage() {
                 .map((c) => c.postcode)
                 .filter(
                   (p): p is string =>
-                    p !== null && p !== undefined && p.trim() !== ""
-                )
+                    p !== null && p !== undefined && p.trim() !== "",
+                ),
             ),
           ];
           const capabilities = [
@@ -215,12 +219,12 @@ export default function DirectoryPage() {
                 .flatMap((c) =>
                   c.key_capabilities
                     ? c.key_capabilities.split(",").map((cap) => cap.trim())
-                    : []
+                    : [],
                 )
                 .filter(
                   (cap): cap is string =>
-                    cap !== null && cap !== undefined && cap.trim() !== ""
-                )
+                    cap !== null && cap !== undefined && cap.trim() !== "",
+                ),
             ),
           ];
           setUniqueLocations(locations);
@@ -368,7 +372,9 @@ export default function DirectoryPage() {
                         return (
                           <Button
                             key={page}
-                            variant={currentPage === page ? "default" : "outline"}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
                             size="sm"
                             onClick={() => goToPage(page)}
                             className="min-w-[2.5rem]"
@@ -381,13 +387,16 @@ export default function DirectoryPage() {
                         page === currentPage + 2
                       ) {
                         return (
-                          <span key={page} className="px-2 text-muted-foreground">
+                          <span
+                            key={page}
+                            className="px-2 text-muted-foreground"
+                          >
                             ...
                           </span>
                         );
                       }
                       return null;
-                    }
+                    },
                   )}
                 </div>
 

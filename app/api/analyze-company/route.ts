@@ -33,17 +33,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Comprehensive analysis prompt with performance benchmarking
-    const financialData = (company.financial_data as Record<string, { value?: unknown }>) || {};
-    const complianceData = (company.compliance_data as Record<string, { value?: unknown }>) || {};
+    const financialData =
+      (company.financial_data as Record<string, { value?: unknown }>) || {};
+    const complianceData =
+      (company.compliance_data as Record<string, { value?: unknown }>) || {};
 
     // Check data completeness (excluding description)
-    const hasCapabilities = !!company.key_capabilities && company.key_capabilities.length > 20;
+    const hasCapabilities =
+      !!company.key_capabilities && company.key_capabilities.length > 20;
     const hasFinancialData = Object.keys(financialData).length > 0;
-    const hasCertifications = !!company.certifications && company.certifications.length > 5;
-    const hasProjects = !!company.past_projects && company.past_projects.length > 20;
+    const hasCertifications =
+      !!company.certifications && company.certifications.length > 5;
+    const hasProjects =
+      !!company.past_projects && company.past_projects.length > 20;
     const hasWebsite = !!company.website_url;
     const hasLocation = !!company.postcode;
-    
+
     const dataCompleteness = {
       hasCapabilities,
       hasFinancialData,
@@ -52,13 +57,14 @@ export async function POST(request: NextRequest) {
       hasWebsite,
       hasLocation,
     };
-    
-    const completenessScore = Object.values(dataCompleteness).filter(Boolean).length;
+
+    const completenessScore =
+      Object.values(dataCompleteness).filter(Boolean).length;
     const isMinimalData = completenessScore < 3; // Less than 3 data points
 
     const analysisPrompt = `Rate this company across 8 dimensions (0-100). If no data is available, rate it 0. Provide a short explanation for each score.
 
-${company.website_url ? `Visit "${company.website_url}" to extract additional information.` : ''}
+${company.website_url ? `Visit "${company.website_url}" to extract additional information.` : ""}
 
 Company: ${company.company_name}
 Website: ${company.website_url || "N/A"}
@@ -67,9 +73,9 @@ Equipment: ${company.equipment || "N/A"}
 Certifications: ${company.certifications || "N/A"}
 Past Projects: ${company.past_projects || "N/A"}
 Employees: ${financialData.employees?.value || "N/A"}
-Net Assets: £${typeof financialData.netAssets?.value === 'number' ? financialData.netAssets.value.toLocaleString() : "N/A"}
-Total Assets: £${typeof financialData.totalAssets?.value === 'number' ? financialData.totalAssets.value.toLocaleString() : "N/A"}
-Cash: £${typeof financialData.cash?.value === 'number' ? financialData.cash.value.toLocaleString() : "N/A"}
+Net Assets: £${typeof financialData.netAssets?.value === "number" ? financialData.netAssets.value.toLocaleString() : "N/A"}
+Total Assets: £${typeof financialData.totalAssets?.value === "number" ? financialData.totalAssets.value.toLocaleString() : "N/A"}
+Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.value.toLocaleString() : "N/A"}
 
 Rate each dimension (0-100) with explanation:
 - technicalExpertise
@@ -102,10 +108,14 @@ Return JSON:
     console.log({
       name: company.company_name,
       website: company.website_url || "N/A",
-      key_capabilities: company.key_capabilities ? `${company.key_capabilities.substring(0, 50)}...` : "N/A",
+      key_capabilities: company.key_capabilities
+        ? `${company.key_capabilities.substring(0, 50)}...`
+        : "N/A",
       equipment: company.equipment || "N/A",
       certifications: company.certifications || "N/A",
-      past_projects: company.past_projects ? `${company.past_projects.substring(0, 50)}...` : "N/A",
+      past_projects: company.past_projects
+        ? `${company.past_projects.substring(0, 50)}...`
+        : "N/A",
       hasFinancialData: Object.keys(financialData).length > 0,
       hasCapabilities: !!company.key_capabilities,
       hasCertifications: hasCertifications,
@@ -130,7 +140,7 @@ Return JSON:
 
     const response = await chatCompletion(systemPrompt, analysisPrompt, {
       model: "gpt-5-mini",
-      maxTokens: 4000, // Increased for default reasoning tokens plus output
+      maxTokens: 5000, // Increased for default reasoning tokens plus output
       responseFormat: "json_object", // Request JSON output format
     });
 
@@ -139,15 +149,21 @@ Return JSON:
     let analysis: DeepCompanyAnalysis;
     try {
       const rawAnalysis = parseAIJsonResponse<{
-        performanceBenchmark: Record<string, { score: number; explanation: string } | number>;
+        performanceBenchmark: Record<
+          string,
+          { score: number; explanation: string } | number
+        >;
       }>(response);
       console.log("✅ Successfully parsed AI analysis");
-      
+
       // Transform the new structure to the expected format
       const benchmark = rawAnalysis.performanceBenchmark;
-      const transformScore = (value: { score: number; explanation: string } | number | undefined): number => {
-        if (typeof value === 'number') return value;
-        if (value && typeof value === 'object' && 'score' in value) return value.score;
+      const transformScore = (
+        value: { score: number; explanation: string } | number | undefined,
+      ): number => {
+        if (typeof value === "number") return value;
+        if (value && typeof value === "object" && "score" in value)
+          return value.score;
         return 0;
       };
 
@@ -178,13 +194,18 @@ Return JSON:
         },
         executiveSummary: "Analysis completed.",
       };
-      
-      console.log("Performance benchmark scores:", analysis.performanceBenchmark);
+
+      console.log(
+        "Performance benchmark scores:",
+        analysis.performanceBenchmark,
+      );
     } catch (parseError) {
       console.error("Failed to parse OpenAI response:", parseError);
       console.error("Raw OpenAI response:", response);
       // Fallback analysis if parsing fails
-      console.warn("⚠️ Using FALLBACK analysis - AI parsing failed. This is hardcoded data!");
+      console.warn(
+        "⚠️ Using FALLBACK analysis - AI parsing failed. This is hardcoded data!",
+      );
       analysis = {
         companyInfo: {},
         performanceBenchmark: {
@@ -285,22 +306,32 @@ Return JSON:
     // This assigns capabilities from company_capabilities_ref to the company
     try {
       console.log("Generating company capabilities from static list...");
-      const capabilityIds = await generateCompanyCapabilityTaxonomy(companyId, false);
-      console.log(`✅ Generated ${capabilityIds.length} capabilities for company ${companyId}`);
+      const capabilityIds = await generateCompanyCapabilityTaxonomy(
+        companyId,
+        false,
+      );
+      console.log(
+        `✅ Generated ${capabilityIds.length} capabilities for company ${companyId}`,
+      );
     } catch (capabilityError) {
-      console.error("Failed to generate company capabilities:", capabilityError);
+      console.error(
+        "Failed to generate company capabilities:",
+        capabilityError,
+      );
       // Don't fail the analysis if capability generation fails
       // User can still edit capabilities manually
     }
 
     console.log(
       "✅ Company analysis completed and saved for:",
-      company.company_name
+      company.company_name,
     );
     console.log("Overall score:", analysis.performanceBenchmark?.overallScore);
 
     // Log analysis event
-    const { user } = await getAuthenticatedUser(request).catch(() => ({ user: null }));
+    const { user } = await getAuthenticatedUser(request).catch(() => ({
+      user: null,
+    }));
     await logApiEvent(request, {
       actionType: "company_updated", // Analysis updates company data
       userId: user?.id || null,
@@ -326,7 +357,7 @@ Return JSON:
         error: message,
         success: false,
       },
-      500
+      500,
     );
   }
 }

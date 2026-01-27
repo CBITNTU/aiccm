@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await chatCompletion(SYSTEM_PROMPT, prompt, {
-      maxTokens: 2000,
+      maxTokens: 5000,
       temperature: 0.7,
     });
 

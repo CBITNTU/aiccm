@@ -6,12 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -28,7 +23,22 @@ import { toast } from "sonner";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
-type MembershipStatus = "owner" | "member" | "pending_join";
+type MembershipStatus = "owner" | "member" | "pending_join" | "pending_review";
+
+const formatCompanyStatus = (status: string | null): string => {
+  if (!status) return "Unknown";
+  const statusMap: Record<string, string> = {
+    active: "Active",
+    pending_review: "Pending Review",
+    inactive: "Inactive",
+    suspended: "Suspended",
+    draft: "Draft",
+  };
+  return (
+    statusMap[status] ||
+    status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+};
 
 interface CompanyWithMembership extends Company {
   membershipStatus: MembershipStatus;
@@ -39,7 +49,7 @@ export default function MyCompaniesPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [companies, setCompanies] = useState<CompanyWithMembership[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +121,11 @@ export default function MyCompaniesPage() {
         if (pendingJoinRequests) {
           for (const request of pendingJoinRequests) {
             const companyData = request.companies as unknown as Company;
-            if (companyData && !ownedIds.has(companyData.id) && !memberIds.has(companyData.id)) {
+            if (
+              companyData &&
+              !ownedIds.has(companyData.id) &&
+              !memberIds.has(companyData.id)
+            ) {
               pendingCompanies.push({
                 ...companyData,
                 membershipStatus: "pending_join",
@@ -123,24 +137,28 @@ export default function MyCompaniesPage() {
 
         // Combine all companies with membership status
         const allCompanies: CompanyWithMembership[] = [
-          ...(ownedCompanies || []).map((c) => ({ ...c, membershipStatus: "owner" as const })),
-          ...memberCompanies.map((c) => ({ ...c, membershipStatus: "member" as const })),
+          ...(ownedCompanies || []).map((c) => ({
+            ...c,
+            membershipStatus: "owner" as const,
+          })),
+          ...memberCompanies.map((c) => ({
+            ...c,
+            membershipStatus: "member" as const,
+          })),
           ...pendingCompanies,
         ];
 
-        console.log(
-          "MyCompanies: Found companies:",
-          allCompanies.length,
-          {
-            owned: ownedCompanies?.length || 0,
-            member: memberCompanies.length,
-            pending: pendingCompanies.length
-          }
-        );
+        console.log("MyCompanies: Found companies:", allCompanies.length, {
+          owned: ownedCompanies?.length || 0,
+          member: memberCompanies.length,
+          pending: pendingCompanies.length,
+        });
 
         if (allCompanies.length === 0) {
           // No companies found, redirect to add new company page
-          console.log("MyCompanies: No companies found, redirecting to new company page");
+          console.log(
+            "MyCompanies: No companies found, redirecting to new company page",
+          );
           router.push("/my-companies/new");
           return;
         }
@@ -163,8 +181,12 @@ export default function MyCompaniesPage() {
   }, [supabase, user, router]);
 
   const handleCompanyClick = (company: CompanyWithMembership) => {
-    // Don't navigate if pending join - user doesn't have access yet
-    if (company.membershipStatus === "pending_join") {
+    // Don't navigate if pending join, pending membership review, or company pending review
+    if (
+      company.membershipStatus === "pending_join" ||
+      company.membershipStatus === "pending_review" ||
+      company.status === "pending_review"
+    ) {
       return;
     }
     router.push(`/company/${company.id}`);
@@ -215,16 +237,23 @@ export default function MyCompaniesPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {companies.map((company) => {
           const isPendingJoin = company.membershipStatus === "pending_join";
+          const isPendingMembershipReview =
+            company.membershipStatus === "pending_review";
+          const isPendingCompanyReview = company.status === "pending_review";
+          const isPending =
+            isPendingJoin ||
+            isPendingMembershipReview ||
+            isPendingCompanyReview;
 
           return (
             <Card
               key={company.id}
               className={`transition-shadow ${
-                isPendingJoin
-                  ? "opacity-80"
-                  : "hover:shadow-lg cursor-pointer"
+                isPending ? "opacity-80" : "hover:shadow-lg cursor-pointer"
               }`}
-              onClick={isPendingJoin ? undefined : () => handleCompanyClick(company)}
+              onClick={
+                isPending ? undefined : () => handleCompanyClick(company)
+              }
             >
               <CardHeader>
                 <div className="flex justify-between items-start">
@@ -234,37 +263,41 @@ export default function MyCompaniesPage() {
                     </CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
                       {isPendingJoin ? (
-                        <Badge
-                          variant="secondary"
-                          className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                        >
+                        <Badge className="bg-blue-600 text-white hover:bg-blue-600">
                           <Clock className="w-3 h-3 mr-1" />
                           {company.joinRequestStatus === "approved_by_admin"
                             ? "Awaiting Platform Approval"
                             : "Awaiting Company Approval"}
                         </Badge>
+                      ) : isPendingMembershipReview ||
+                        isPendingCompanyReview ? (
+                        <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+                          <Clock className="w-3 h-3 mr-1" />
+                          Pending Review
+                        </Badge>
                       ) : (
                         <Badge
-                          variant={
-                            company.status === "active" ? "default" : "secondary"
-                          }
                           className={
                             company.status === "active"
-                              ? "bg-green-600"
-                              : "bg-gray-600"
+                              ? "bg-green-600 text-white hover:bg-green-600"
+                              : "bg-gray-500 text-white hover:bg-gray-500"
                           }
                         >
-                          {company.status}
+                          {formatCompanyStatus(company.status)}
                         </Badge>
                       )}
                       {company.is_system_company && (
                         <Badge variant="outline">Verified</Badge>
                       )}
                       {company.membershipStatus === "owner" && (
-                        <Badge variant="outline" className="text-xs">Owner</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Owner
+                        </Badge>
                       )}
                       {company.membershipStatus === "member" && (
-                        <Badge variant="outline" className="text-xs">Member</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Member
+                        </Badge>
                       )}
                     </div>
                   </div>
@@ -278,12 +311,20 @@ export default function MyCompaniesPage() {
 
               <CardContent>
                 {isPendingJoin ? (
-                  <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                    <p>
+                  <div className="p-3 bg-gray-100 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 rounded-lg text-sm">
+                    <p className="text-gray-700 dark:text-gray-200">
                       Your request to join this company is pending approval.
                       {company.joinRequestStatus === "approved_by_admin"
                         ? " The company admin has approved your request. Awaiting platform admin approval."
                         : " You'll be notified once the company admin reviews your request."}
+                    </p>
+                  </div>
+                ) : isPendingMembershipReview || isPendingCompanyReview ? (
+                  <div className="p-3 bg-gray-100 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 rounded-lg text-sm">
+                    <p className="text-gray-700 dark:text-gray-200">
+                      This company is currently under review by the platform
+                      administrators. You&apos;ll be notified once the review is
+                      complete.
                     </p>
                   </div>
                 ) : (
@@ -304,7 +345,9 @@ export default function MyCompaniesPage() {
                       {company.contact_email && (
                         <div className="flex items-center gap-2 text-sm">
                           <Mail className="w-4 h-4 text-muted-foreground" />
-                          <span className="truncate">{company.contact_email}</span>
+                          <span className="truncate">
+                            {company.contact_email}
+                          </span>
                         </div>
                       )}
                       {company.contact_phone && (

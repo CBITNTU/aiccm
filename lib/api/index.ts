@@ -118,7 +118,7 @@ export async function chatCompletion(
   } = {}
 ): Promise<string> {
   const openai = getOpenAIClient();
-  const model = options.model || "gpt-5-mini";
+  const model = options.model || "gpt-5-nano";
   const isGPT5 = model.startsWith("gpt-5");
   
   const requestParams: any = {

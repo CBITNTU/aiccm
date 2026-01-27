@@ -131,8 +131,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       ) + 400;
     const raw = await runLLM(async () => {
       const response = await chatCompletion(systemPrompt, prompt, {
-        model: "gpt-5-mini",
-        temperature: 0.2,
+        model: "gpt-5-nano",
         maxTokens: 8000,
       });
       return response;

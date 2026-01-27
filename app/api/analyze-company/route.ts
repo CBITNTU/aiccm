@@ -139,7 +139,7 @@ Return JSON:
     console.log("\n" + "=".repeat(80) + "\n");
 
     const response = await chatCompletion(systemPrompt, analysisPrompt, {
-      model: "gpt-5-mini",
+      model: "gpt-5-nano",
       maxTokens: 5000, // Increased for default reasoning tokens plus output
       responseFormat: "json_object", // Request JSON output format
     });

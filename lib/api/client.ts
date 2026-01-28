@@ -18,7 +18,7 @@ export async function apiCall<T>(
   options: {
     method?: "GET" | "POST" | "PUT" | "DELETE";
     body?: Record<string, unknown>;
-  } = {}
+  } = {},
 ): Promise<T> {
   const { method = "POST", body } = options;
 
@@ -37,7 +37,7 @@ export async function apiCall<T>(
     throw new ApiError(
       data.error || "Request failed",
       response.status,
-      data.details
+      data.details,
     );
   }
 
@@ -80,7 +80,7 @@ export const api = {
       equipment?: string;
       pastProjects?: string;
     },
-    companyId?: string
+    companyId?: string,
   ) =>
     apiCall<{ analysis: unknown }>("analyze-company-ai", {
       body: { companyData, companyId },
@@ -95,11 +95,11 @@ export const api = {
       cpv_codes?: string[];
       location?: string;
     },
-    tenderId?: string
+    tenderId?: string,
   ) =>
     apiCall<{ suggestedTaxonomies: string[]; taxonomyCount: number }>(
       "analyze-tender",
-      { body: { tenderData, tenderId } }
+      { body: { tenderData, tenderId } },
     ),
 
   // Match tenders
@@ -107,7 +107,11 @@ export const api = {
     apiCall<{
       message: string;
       analyzed_count: number;
-      results: { tender_id: string; tender_title: string; overall_score: number }[];
+      results: {
+        tender_id: string;
+        tender_title: string;
+        overall_score: number;
+      }[];
       up_to_date?: boolean;
     }>("match-tenders", {
       body: companyId ? { companyId } : {},
@@ -128,26 +132,25 @@ export const api = {
   sendProjectInvitations: (
     projectId: string,
     tenderTitle: string,
-    partnerIds: string[]
+    partnerIds: string[],
   ) =>
     apiCall<{ success: boolean; invitationsSent: number }>(
       "send-project-invitations",
-      { body: { projectId, tenderTitle, partnerIds } }
+      { body: { projectId, tenderTitle, partnerIds } },
     ),
 
   // Analyze project
   analyzeProject: (projectId: string) =>
     apiCall<{ analysis: unknown; recommendedPartners: unknown[] }>(
       "analyze-project",
-      { body: { projectId } }
+      { body: { projectId } },
     ),
 
   // Analyze project simple
   analyzeProjectSimple: (prompt: string) =>
-    apiCall<{ content: string }>(
-      "analyze-project-simple",
-      { body: { prompt } }
-    ),
+    apiCall<{ content: string }>("analyze-project-simple", {
+      body: { prompt },
+    }),
 
   // Fetch UK tenders
   fetchUKTenders: (options?: {
@@ -224,5 +227,50 @@ export const api = {
       totalCapabilities: number;
     }>("suggest-capabilities", {
       body: { tenderId },
+    }),
+
+  // Analyze team for a project (consortium analysis)
+  analyzeTeam: (data: {
+    projectId: string;
+    company: {
+      id: string;
+      company_name: string;
+      key_capabilities?: string | null;
+      certifications?: string | null;
+      past_projects?: string | null;
+      description?: string | null;
+    };
+    tender: {
+      title: string;
+      description?: string;
+      buyer_name?: string;
+      value?: number;
+      region?: string;
+    };
+    teamMembers: {
+      companies?: {
+        company_name: string;
+        key_capabilities?: string | null;
+        certifications?: string | null;
+        past_projects?: string | null;
+        description?: string | null;
+      } | null;
+    }[];
+  }) =>
+    apiCall<{
+      teamAnalysis: {
+        type: "team";
+        requiredCompetencies: string[];
+        companyCompetencies: string[];
+        missingCompetencies: string[];
+        coveragePercentage: number;
+        readinessScore: number;
+        risks: string[];
+        recommendations: string[];
+        teamMembers: { companyName: string; contribution: string[] }[];
+        analyzedAt: string;
+      };
+    }>("analyze-team", {
+      body: data,
     }),
 };

@@ -4,7 +4,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { api } from "@/lib/api/client";
 import type { Database } from "@/lib/supabase/types";
-import type { GapAnalysis, TeamAnalysis, RecommendedPartner } from "./useProjects";
+import type {
+  GapAnalysis,
+  TeamAnalysis,
+  RecommendedPartner,
+} from "./useProjects";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -88,7 +92,7 @@ export function useAddTeamMember() {
           `
           *,
           companies:company_id (*)
-        `
+        `,
         )
         .single();
 
@@ -205,7 +209,7 @@ Return ONLY valid JSON, no markdown.`;
               const compWords = compLower.split(/\s+/);
 
               const hasMatch = compWords.some(
-                (word: string) => word.length > 3 && allText.includes(word)
+                (word: string) => word.length > 3 && allText.includes(word),
               );
 
               if (hasMatch || allText.includes(compLower)) {
@@ -246,14 +250,19 @@ Return ONLY valid JSON, no markdown.`;
       const { error } = await supabase
         .from("virtual_organizations")
         .update({
-          gap_analysis: gapAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
-          recommended_partners: recommendations as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["recommended_partners"],
+          gap_analysis:
+            gapAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
+          recommended_partners:
+            recommendations as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["recommended_partners"],
         })
         .eq("id", projectId);
 
       if (error) throw new Error(error.message);
 
-      return { gapAnalysis: gapAnalysisData, recommendedPartners: recommendations };
+      return {
+        gapAnalysis: gapAnalysisData,
+        recommendedPartners: recommendations,
+      };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -269,7 +278,6 @@ Return ONLY valid JSON, no markdown.`;
 // Run team analysis mutation
 export function useRunTeamAnalysis() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({
@@ -283,65 +291,26 @@ export function useRunTeamAnalysis() {
       tender: Tender;
       teamMembers: TeamMember[];
     }) => {
-      const allCompanies = [company, ...teamMembers.map((m) => m.companies)].filter(
-        Boolean
-      );
+      // Call the server-side API endpoint which handles:
+      // - Prompt construction
+      // - AI call with Vercel AI SDK
+      // - Zod schema validation
+      // - Database persistence
+      const result = await api.analyzeTeam({
+        projectId,
+        company: {
+          id: company.id,
+          company_name: company.company_name,
+          key_capabilities: company.key_capabilities,
+          certifications: company.certifications,
+          past_projects: company.past_projects,
+          description: company.description,
+        },
+        tender,
+        teamMembers,
+      });
 
-      const prompt = `
-You are a tender analysis expert. Analyze this tender against a full consortium team.
-
-Tender: ${tender.title}
-Description: ${tender.description || "Not provided"}
-Buyer: ${tender.buyer_name || "Not specified"}
-Value: £${tender.value?.toLocaleString() || "Not specified"}
-Location: ${tender.region || "UK"}
-
-Team Members:
-${allCompanies
-  .map(
-    (c, idx) => `
-${idx + 1}. ${c?.company_name} ${idx === 0 ? "(Lead)" : "(Partner)"}
-   - Capabilities: ${c?.key_capabilities || "Not specified"}
-   - Certifications: ${c?.certifications || "None"}
-   - Past Projects: ${c?.past_projects || "None"}
-   - Description: ${c?.description || "None"}
-`
-  )
-  .join("\n")}
-
-Provide a detailed JSON analysis with:
-1. requiredCompetencies: Array of key competencies needed
-2. companyCompetencies: Array of combined team capabilities
-3. missingCompetencies: Array of any remaining gaps
-4. coveragePercentage: Number (0-100) of requirement coverage by full team
-5. readinessScore: Number (0-100) team readiness
-6. risks: Array of potential risks
-7. recommendations: Array of strategic recommendations
-8. teamMembers: Array of objects with {companyName: string, contribution: string[]} showing each member's key contributions
-
-Return ONLY valid JSON, no markdown.`;
-
-      const result = await api.analyzeProjectSimple(prompt);
-      const analysis = JSON.parse(result.content);
-
-      const teamAnalysisData: TeamAnalysis = {
-        ...analysis,
-        type: "team",
-        analyzedAt: new Date().toISOString(),
-        teamMembers: analysis.teamMembers || [],
-      };
-
-      // Save team analysis to database
-      const { error } = await supabase
-        .from("virtual_organizations")
-        .update({
-          team_analysis: teamAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
-        })
-        .eq("id", projectId);
-
-      if (error) throw new Error(error.message);
-
-      return { teamAnalysis: teamAnalysisData };
+      return { teamAnalysis: result.teamAnalysis as TeamAnalysis };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -422,7 +391,7 @@ export function useSendInvitations() {
       const result = await api.sendProjectInvitations(
         projectId,
         tenderTitle,
-        partnerIds
+        partnerIds,
       );
       return result;
     },

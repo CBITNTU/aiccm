@@ -61,7 +61,7 @@ Focus on the most specific and accurate categories that would help companies fin
 
     const response = await chatCompletion(systemPrompt, prompt, {
       temperature: 0.2,
-      maxTokens: 5000,
+      maxTokens: 10000,
     });
 
     console.log("AI response:", response);

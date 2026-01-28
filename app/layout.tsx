@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TNDRX - Collaborative Commerce Marketplace",
   description:
-    "Discover your company's strengths, match with tenders, and form winning consortiums with AI. Build consulting teams and grow your business with AI-powered CCM.",
+    "Discover your company's strengths, match with tenders, and form winning consortiums with AI. Build consulting teams and grow your business with TNDRX.",
 };
 
 export default function RootLayout({

@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await chatCompletion(SYSTEM_PROMPT, prompt, {
-      maxTokens: 5000,
-      temperature: 0.7,
+      maxTokens: 10000,
+      temperature: 0.2,
     });
 
     // Clean markdown code blocks from response

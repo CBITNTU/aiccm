@@ -27,7 +27,7 @@ interface PrefillResult {
 // Safe fetch with user agent
 async function safeFetch(
   url: string,
-  opts: RequestInit = {}
+  opts: RequestInit = {},
 ): Promise<Response> {
   return fetch(url, {
     ...opts,
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         }
       } catch (e) {
         result.errors.push(
-          `Companies House fetch error: ${e instanceof Error ? e.message : String(e)}`
+          `Companies House fetch error: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
     }
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (e) {
       result.errors.push(
-        `Endole fetch error: ${e instanceof Error ? e.message : String(e)}`
+        `Endole fetch error: ${e instanceof Error ? e.message : String(e)}`,
       );
     }
 
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
         }
       } catch (e) {
         result.errors.push(
-          `Website fetch error: ${e instanceof Error ? e.message : String(e)}`
+          `Website fetch error: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
     }
@@ -263,7 +263,7 @@ EXTRACTION RULES:
       ],
       response_format: { type: "json_object" },
       temperature: 0.1,
-      max_tokens: 4000,
+      max_tokens: 8000,
     });
 
     const content = completion.choices[0]?.message?.content;
@@ -286,7 +286,7 @@ EXTRACTION RULES:
         normalized: null,
         errors: [message],
       },
-      500
+      500,
     );
   }
 }

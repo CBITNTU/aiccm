@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AICCM is a construction and consulting tender matching platform built with Next.js, React, TypeScript, and Supabase. The application facilitates matching companies with relevant tenders, managing consulting projects (VO - Virtual Organizations), and providing AI-powered business intelligence.
+TNDRX is a construction and consulting tender matching platform built with Next.js, React, TypeScript, and Supabase. The application facilitates matching companies with relevant tenders, managing consulting projects (VO - Virtual Organizations), and providing AI-powered business intelligence.
 
 Key features:
 
@@ -208,7 +208,7 @@ SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
 OPENAI_API_KEY=<your-openai-key>
 RESEND_API_KEY=<your-resend-key>
 PLATFORM_EMAIL_FROM="noreply@example.com"
-PLATFORM_NAME="AICCM Platform"
+PLATFORM_NAME="TNDRX Platform"
 PLATFORM_URL=http://localhost:3000
 ```
 
@@ -221,7 +221,7 @@ SUPABASE_SERVICE_ROLE_KEY=<production-service-role-key>
 OPENAI_API_KEY=<your-openai-key>
 RESEND_API_KEY=<your-resend-key>
 PLATFORM_EMAIL_FROM="noreply@yourdomain.com"
-PLATFORM_NAME="AICCM Platform"
+PLATFORM_NAME="TNDRX Platform"
 PLATFORM_URL=https://yourdomain.com
 ```
 

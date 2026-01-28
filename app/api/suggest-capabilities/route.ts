@@ -181,7 +181,7 @@ Example format:
     // Call OpenAI
     const response = await chatCompletion(systemPrompt, userPrompt, {
       model: "gpt-5-nano",
-      maxTokens: 5000,
+      maxTokens: 8000,
     });
 
     // Parse AI response - only existing capabilities, no new ones

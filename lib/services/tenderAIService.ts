@@ -1,4 +1,8 @@
-import { createAdminClient, chatCompletion, parseAIJsonResponse } from "@/lib/api";
+import {
+  createAdminClient,
+  chatCompletion,
+  parseAIJsonResponse,
+} from "@/lib/api";
 import { runLLM } from "./llmLimiter";
 
 const supabase = createAdminClient();
@@ -10,18 +14,23 @@ export async function generateTenderSummary(tenderId: string): Promise<string> {
   // Fetch tender data
   const { data: tender, error } = await supabase
     .from("tenders")
-    .select("title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements")
+    .select(
+      "title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements",
+    )
     .eq("id", tenderId)
     .single();
 
   if (error || !tender) {
-    throw new Error(`Failed to fetch tender: ${error?.message || "Tender not found"}`);
+    throw new Error(
+      `Failed to fetch tender: ${error?.message || "Tender not found"}`,
+    );
   }
 
   // Format budget range
-  const budgetRange = tender.budget_min || tender.budget_max
-    ? `£${tender.budget_min ? tender.budget_min.toLocaleString() : "?"} - £${tender.budget_max ? tender.budget_max.toLocaleString() : "?"}`
-    : "Not specified";
+  const budgetRange =
+    tender.budget_min || tender.budget_max
+      ? `£${tender.budget_min ? tender.budget_min.toLocaleString() : "?"} - £${tender.budget_max ? tender.budget_max.toLocaleString() : "?"}`
+      : "Not specified";
 
   // Format requirements if available
   const requirementsText = tender.requirements
@@ -58,21 +67,21 @@ Generate a concise 200-word summary of this tender opportunity.`;
     async () => {
       const response = await chatCompletion(systemPrompt, userPrompt, {
         model: "gpt-5-nano",
-        maxTokens: 500,
+        maxTokens: 1000,
       });
       return response;
     },
-    2000 // Estimated tokens
+    2000, // Estimated tokens
   );
 
   // Store summary in database
-  const { error: updateError } = await (supabase
+  const { error: updateError } = await supabase
     .from("tenders" as any)
     .update({
       ai_summary: summary,
       summary_generated_at: new Date().toISOString(),
     } as any)
-    .eq("id", tenderId));
+    .eq("id", tenderId);
 
   if (updateError) {
     throw new Error(`Failed to store summary: ${updateError.message}`);
@@ -86,17 +95,21 @@ Generate a concise 200-word summary of this tender opportunity.`;
  * Returns array of capability IDs and creates new capabilities if needed
  */
 export async function generateTenderCapabilityTaxonomy(
-  tenderId: string
+  tenderId: string,
 ): Promise<string[]> {
   // Fetch tender data
   const { data: tender, error } = await supabase
     .from("tenders")
-    .select("title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements")
+    .select(
+      "title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements",
+    )
     .eq("id", tenderId)
     .single();
 
   if (error || !tender) {
-    throw new Error(`Failed to fetch tender: ${error?.message || "Tender not found"}`);
+    throw new Error(
+      `Failed to fetch tender: ${error?.message || "Tender not found"}`,
+    );
   }
 
   // Fetch existing capabilities
@@ -107,11 +120,16 @@ export async function generateTenderCapabilityTaxonomy(
     .order("name");
 
   if (capsError || !existingCapabilities) {
-    throw new Error(`Failed to fetch capabilities: ${capsError?.message || "Unknown error"}`);
+    throw new Error(
+      `Failed to fetch capabilities: ${capsError?.message || "Unknown error"}`,
+    );
   }
 
   // Format capabilities for AI
-  const capabilitiesByCategory: Record<string, Array<{ id: string; name: string }>> = {};
+  const capabilitiesByCategory: Record<
+    string,
+    Array<{ id: string; name: string }>
+  > = {};
   existingCapabilities.forEach((cap) => {
     const category = cap.category || "Uncategorized";
     if (!capabilitiesByCategory[category]) {
@@ -121,8 +139,9 @@ export async function generateTenderCapabilityTaxonomy(
   });
 
   const capabilitiesList = Object.entries(capabilitiesByCategory)
-    .map(([category, caps]) => 
-      `${category}:\n  ${caps.map(c => `- ${c.name} (ID: ${c.id})`).join("\n  ")}`
+    .map(
+      ([category, caps]) =>
+        `${category}:\n  ${caps.map((c) => `- ${c.name} (ID: ${c.id})`).join("\n  ")}`,
     )
     .join("\n\n");
 
@@ -167,11 +186,11 @@ Analyze this tender and return ONLY a valid JSON object (no comments, no explana
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
         model: "gpt-5-nano",
-        maxTokens: 2000,
+        maxTokens: 3000,
       });
       return aiResponse;
     },
-    3000 // Estimated tokens
+    3000, // Estimated tokens
   );
 
   // Parse AI response using the global parser (handles comments automatically)
@@ -180,7 +199,10 @@ Analyze this tender and return ONLY a valid JSON object (no comments, no explana
 
   try {
     // Use the global parseAIJsonResponse which handles comments
-    const parsed = parseAIJsonResponse<{ existing?: string[]; new?: Array<{ name: string; category: string }> }>(response);
+    const parsed = parseAIJsonResponse<{
+      existing?: string[];
+      new?: Array<{ name: string; category: string }>;
+    }>(response);
     existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
     newCapabilities = Array.isArray(parsed.new) ? parsed.new : [];
   } catch (e) {
@@ -208,7 +230,7 @@ Analyze this tender and return ONLY a valid JSON object (no comments, no explana
 
     // Check if capability already exists (case-insensitive)
     const existing = existingCapabilities.find(
-      (c) => c.name.toLowerCase() === newCap.name.toLowerCase()
+      (c) => c.name.toLowerCase() === newCap.name.toLowerCase(),
     );
 
     if (existing) {
@@ -240,13 +262,13 @@ Analyze this tender and return ONLY a valid JSON object (no comments, no explana
   const uniqueIds = Array.from(new Set(allCapabilityIds));
 
   // Store taxonomy in database
-  const { error: updateError } = await (supabase
+  const { error: updateError } = await supabase
     .from("tenders" as any)
     .update({
       ai_capability_taxonomy: uniqueIds,
       taxonomy_generated_at: new Date().toISOString(),
     } as any)
-    .eq("id", tenderId));
+    .eq("id", tenderId);
 
   if (updateError) {
     throw new Error(`Failed to store taxonomy: ${updateError.message}`);

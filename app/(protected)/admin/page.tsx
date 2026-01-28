@@ -66,7 +66,7 @@ const systemHealth = [
   { service: "Company Data Extraction", status: "Operational", uptime: 99.9 },
   { service: "Tender Matching Engine", status: "Operational", uptime: 99.7 },
   { service: "VO Composer", status: "Operational", uptime: 98.9 },
-  { service: "CCM Tender Feed", status: "Issues", uptime: 95.2 },
+  { service: "TNDRX Tender Feed", status: "Issues", uptime: 95.2 },
   { service: "OpenAI API", status: "Operational", uptime: 99.8 },
 ];
 
@@ -92,7 +92,7 @@ const recentActivity = [
   {
     type: "System",
     action: "AI Model Updated",
-    entity: "GPT-4 Turbo",
+    entity: "GPT-5 Nano",
     time: "6 hours ago",
   },
 ];

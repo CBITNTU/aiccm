@@ -26,7 +26,6 @@ import {
   Phone,
   MapPin,
   Award,
-  Wrench,
   FileText,
   Edit2,
   RefreshCw,
@@ -45,6 +44,8 @@ import {
 import { toast } from "sonner";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import { CompanyCapabilitySelector } from "@/components/company/CompanyCapabilitySelector";
+import { OperationLocationsEditor } from "@/components/company/OperationLocationsEditor";
+import { suggestLocationsFromCompanyLocation } from "@/lib/locationData";
 import { TenderMatching } from "@/components/tenders/TenderMatching";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 import { PendingInvitationsCard } from "@/components/company/PendingInvitationsCard";
@@ -56,12 +57,6 @@ interface Certification {
   name: string;
   issuer?: string;
   validUntil?: string;
-}
-
-interface Equipment {
-  name: string;
-  model?: string;
-  capacity?: string;
 }
 
 interface PastProject {
@@ -96,7 +91,7 @@ export default function CompanyDetailPage() {
   // Edit states
   const [isEditingOverview, setIsEditingOverview] = useState(false);
   const [isEditingBasicInfo, setIsEditingBasicInfo] = useState(false);
-  const [isEditingEquipment, setIsEditingEquipment] = useState(false);
+  const [isEditingOperationLocations, setIsEditingOperationLocations] = useState(false);
   const [isEditingCertifications, setIsEditingCertifications] = useState(false);
   const [isEditingProjects, setIsEditingProjects] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -110,7 +105,7 @@ export default function CompanyDetailPage() {
   const [editedEmail, setEditedEmail] = useState("");
   const [editedWebsite, setEditedWebsite] = useState("");
   const [editedPhone, setEditedPhone] = useState("");
-  const [editedEquipment, setEditedEquipment] = useState<Equipment[]>([]);
+  const [editedOperationLocations, setEditedOperationLocations] = useState<string[]>([]);
   const [editedCertifications, setEditedCertifications] = useState<Certification[]>([]);
   const [editedProjects, setEditedProjects] = useState<PastProject[]>([]);
 
@@ -279,7 +274,7 @@ export default function CompanyDetailPage() {
     }
   };
 
-  const handleSaveEquipment = async () => {
+  const handleSaveOperationLocations = async () => {
     if (!companyData || !supabase) return;
 
     setIsSaving(true);
@@ -287,7 +282,7 @@ export default function CompanyDetailPage() {
       const { error } = await supabase
         .from("companies")
         .update({
-          equipment: JSON.stringify(editedEquipment),
+          operation_locations: editedOperationLocations,
         })
         .eq("id", companyData.id);
 
@@ -295,11 +290,11 @@ export default function CompanyDetailPage() {
 
       setCompanyData({
         ...companyData,
-        equipment: JSON.stringify(editedEquipment),
+        operation_locations: editedOperationLocations,
       });
 
-      toast.success("Equipment updated successfully");
-      setIsEditingEquipment(false);
+      toast.success("Operation locations updated");
+      setIsEditingOperationLocations(false);
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Failed to save changes");
@@ -437,7 +432,7 @@ export default function CompanyDetailPage() {
 
   // Parse JSON fields - handle both JSON arrays and plain text (semicolon-separated)
   let certifications: Certification[] = [];
-  let equipment: Equipment[] = [];
+  let operationLocations: string[] = [];
   let pastProjects: PastProject[] = [];
 
   try {
@@ -460,22 +455,16 @@ export default function CompanyDetailPage() {
   }
 
   try {
-    if (companyData.equipment) {
-      // Try parsing as JSON first
-      const parsed = JSON.parse(companyData.equipment);
-      if (Array.isArray(parsed)) {
-        equipment = parsed;
-      } else {
-        // If not an array, treat as plain text and convert
-        equipment = [];
-      }
+    if (companyData.operation_locations && Array.isArray(companyData.operation_locations)) {
+      operationLocations = companyData.operation_locations as string[];
+    }
+    // Pre-tick from organization details: if no saved locations but company has Location (address/postcode), suggest so they appear pre-ticked
+    if (operationLocations.length === 0) {
+      const suggested = suggestLocationsFromCompanyLocation(companyData.address, companyData.postcode);
+      if (suggested.length > 0) operationLocations = suggested;
     }
   } catch {
-    // If JSON parse fails, treat as plain text (semicolon-separated)
-    if (companyData.equipment && typeof companyData.equipment === 'string') {
-      const items = companyData.equipment.split(';').map(s => s.trim()).filter(s => s.length > 0);
-      equipment = items.map(name => ({ name }));
-    }
+    operationLocations = [];
   }
 
   try {
@@ -733,9 +722,9 @@ export default function CompanyDetailPage() {
             <FileText className="w-4 h-4 mr-2" />
             Overview
           </TabsTrigger>
-          <TabsTrigger value="capabilities">
-            <Wrench className="w-4 h-4 mr-2" />
-            Capabilities
+<TabsTrigger value="capabilities">
+              <Tag className="w-4 h-4 mr-2" />
+              Capabilities
           </TabsTrigger>
           <TabsTrigger value="projects">
             <Briefcase className="w-4 h-4 mr-2" />
@@ -1063,20 +1052,20 @@ export default function CompanyDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Equipment */}
+            {/* Operation locations */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Wrench className="w-5 h-5" />
-                  Equipment
+                  <MapPin className="w-5 h-5" />
+                  Operation locations
                 </CardTitle>
-                {!isEditingEquipment ? (
+                {!isEditingOperationLocations ? (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setIsEditingEquipment(true);
-                      setEditedEquipment([...equipment]);
+                      setIsEditingOperationLocations(true);
+                      setEditedOperationLocations([...operationLocations]);
                     }}
                   >
                     <Edit2 className="w-4 h-4 mr-2" />
@@ -1087,7 +1076,7 @@ export default function CompanyDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsEditingEquipment(false)}
+                      onClick={() => setIsEditingOperationLocations(false)}
                       disabled={isSaving}
                     >
                       <X className="w-4 h-4 mr-1" />
@@ -1095,7 +1084,7 @@ export default function CompanyDetailPage() {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={handleSaveEquipment}
+                      onClick={handleSaveOperationLocations}
                       disabled={isSaving}
                     >
                       <Save className="w-4 h-4 mr-1" />
@@ -1105,83 +1094,25 @@ export default function CompanyDetailPage() {
                 )}
               </CardHeader>
               <CardContent>
-                {isEditingEquipment ? (
-                  <div className="space-y-3">
-                    {editedEquipment.map((eq, idx) => (
-                      <div key={idx} className="p-3 bg-muted rounded-lg space-y-2">
-                        <div className="flex justify-between">
-                          <Input
-                            value={eq.name}
-                            onChange={(e) => {
-                              const updated = [...editedEquipment];
-                              updated[idx].name = e.target.value;
-                              setEditedEquipment(updated);
-                            }}
-                            placeholder="Equipment name"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditedEquipment(
-                                editedEquipment.filter((_, i) => i !== idx)
-                              );
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <Input
-                          value={eq.model || ""}
-                          onChange={(e) => {
-                            const updated = [...editedEquipment];
-                            updated[idx].model = e.target.value;
-                            setEditedEquipment(updated);
-                          }}
-                          placeholder="Model"
-                        />
-                        <Input
-                          value={eq.capacity || ""}
-                          onChange={(e) => {
-                            const updated = [...editedEquipment];
-                            updated[idx].capacity = e.target.value;
-                            setEditedEquipment(updated);
-                          }}
-                          placeholder="Capacity"
-                        />
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() =>
-                        setEditedEquipment([...editedEquipment, { name: "" }])
-                      }
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Equipment
-                    </Button>
-                  </div>
-                ) : equipment.length > 0 ? (
-                  <div className="space-y-3">
-                    {equipment.map((eq, idx) => (
-                      <div key={idx} className="p-3 bg-muted rounded-lg">
-                        <p className="font-medium">{eq.name}</p>
-                        {eq.model && (
-                          <p className="text-sm text-muted-foreground">
-                            Model: {eq.model}
-                          </p>
-                        )}
-                        {eq.capacity && (
-                          <p className="text-sm text-muted-foreground">
-                            Capacity: {eq.capacity}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                {isEditingOperationLocations ? (
+                  <>
+                    <OperationLocationsEditor
+                      value={editedOperationLocations}
+                      onChange={setEditedOperationLocations}
+                      placeholder="e.g. UK borough, postcode area, or custom location"
+                    />
+                    {operationLocations.length > 0 && !(companyData.operation_locations && Array.isArray(companyData.operation_locations) && (companyData.operation_locations as string[]).length > 0) && (
+                      <p className="text-sm text-muted-foreground mt-2">Suggested from your Location (header). Add more or edit, then Save.</p>
+                    )}
+                  </>
+                ) : operationLocations.length > 0 ? (
+                  <OperationLocationsEditor
+                    value={operationLocations}
+                    onChange={() => {}}
+                    disabled
+                  />
                 ) : (
-                  <p className="text-muted-foreground">No equipment recorded</p>
+                  <p className="text-muted-foreground">No operation locations recorded. Set Location in the header (Edit Info) to get a suggestion, or Edit to add locations.</p>
                 )}
               </CardContent>
             </Card>

@@ -140,7 +140,7 @@ Return JSON:
 
     const response = await chatCompletion(systemPrompt, analysisPrompt, {
       model: "gpt-5-nano",
-      maxTokens: 5000, // Increased for default reasoning tokens plus output
+      maxTokens: 10000, // Increased for default reasoning tokens plus output
       responseFormat: "json_object", // Request JSON output format
     });
 

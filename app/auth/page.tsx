@@ -45,7 +45,9 @@ export default function AuthPage() {
   const isVerifyingEmailRef = useRef(false);
 
   // Signup success state - stores email on successful signup
-  const [signupSuccessEmail, setSignupSuccessEmail] = useState<string | null>(null);
+  const [signupSuccessEmail, setSignupSuccessEmail] = useState<string | null>(
+    null,
+  );
 
   // Handle hash fragment tokens (from email verification links)
   useEffect(() => {
@@ -59,25 +61,31 @@ export default function AuthPage() {
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
 
-      if (accessToken && refreshToken && (type === "signup" || type === "magiclink")) {
+      if (
+        accessToken &&
+        refreshToken &&
+        (type === "signup" || type === "magiclink")
+      ) {
         // This is an email verification - show loading state
         setIsVerifyingEmail(true);
         isVerifyingEmailRef.current = true;
         setError(null);
 
         // Manually set the session from the hash tokens
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        }).then(({ error }) => {
-          if (error) {
-            console.error("Failed to set session from hash:", error);
-            setIsVerifyingEmail(false);
-            isVerifyingEmailRef.current = false;
-            setError("Failed to verify email. Please try again.");
-          }
-          // onAuthStateChange will handle the rest
-        });
+        supabase.auth
+          .setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+          .then(({ error }) => {
+            if (error) {
+              console.error("Failed to set session from hash:", error);
+              setIsVerifyingEmail(false);
+              isVerifyingEmailRef.current = false;
+              setError("Failed to verify email. Please try again.");
+            }
+            // onAuthStateChange will handle the rest
+          });
       }
     }
   }, []);
@@ -194,15 +202,15 @@ export default function AuthPage() {
         error instanceof Error ? error.message : "Failed to sign in";
       if (errorMessage === "Email not confirmed") {
         setError(
-          "Please check your email and click the verification link before signing in."
+          "Please check your email and click the verification link before signing in.",
         );
       } else if (errorMessage === "Email logins are disabled") {
         setError(
-          "Email authentication is currently disabled. Please contact support."
+          "Email authentication is currently disabled. Please contact support.",
         );
       } else if (errorMessage === "Invalid login credentials") {
         setError(
-          "Invalid email or password. Please check your credentials and try again."
+          "Invalid email or password. Please check your credentials and try again.",
         );
       } else {
         setError(errorMessage);
@@ -255,11 +263,15 @@ export default function AuthPage() {
                 <p className="text-muted-foreground mb-2">
                   We&apos;ve sent a verification link to:
                 </p>
-                <p className="font-medium text-foreground text-lg">{signupSuccessEmail}</p>
+                <p className="font-medium text-foreground text-lg">
+                  {signupSuccessEmail}
+                </p>
               </div>
 
               <div className="space-y-3">
-                <p className="text-sm font-medium text-foreground">Next steps:</p>
+                <p className="text-sm font-medium text-foreground">
+                  Next steps:
+                </p>
                 <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
                   <li>Check your email inbox (and spam folder)</li>
                   <li>Click the verification link in the email</li>
@@ -298,7 +310,7 @@ export default function AuthPage() {
             <Building2 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            Welcome to AI-Powered CCM
+            Welcome to TNDRX
           </h1>
           <p className="text-muted-foreground">Access your tender dashboard</p>
         </div>
@@ -444,7 +456,8 @@ export default function AuthPage() {
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    After signing up, you&apos;ll verify your email and complete a quick profile setup.
+                    After signing up, you&apos;ll verify your email and complete
+                    a quick profile setup.
                   </p>
 
                   <Button

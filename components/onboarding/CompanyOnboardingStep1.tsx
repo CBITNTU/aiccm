@@ -25,7 +25,11 @@ interface Step1Data {
 interface PrefillData {
   normalized?: {
     description?: { value: string; confidence: number; evidence: string };
-    capabilities?: Array<{ value: string; confidence: number; evidence: string }>;
+    capabilities?: Array<{
+      value: string;
+      confidence: number;
+      evidence: string;
+    }>;
     certifications?: Array<{
       name: string;
       issuer: string;
@@ -122,7 +126,7 @@ export function CompanyOnboardingStep1({
         .from("companies")
         .select("id, company_name, companies_house_number")
         .or(
-          `company_name.ilike.${formData.companyName},companies_house_number.eq.${formData.companiesHouseNumber}`
+          `company_name.ilike.${formData.companyName},companies_house_number.eq.${formData.companiesHouseNumber}`,
         )
         .limit(1);
 
@@ -312,7 +316,7 @@ export function CompanyOnboardingStep1({
               htmlFor="consent"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              I allow AI-Powered CCM to fetch public data to prefill my profile{" "}
+              I allow TNDRX to fetch public data to prefill my profile{" "}
               <span className="text-destructive">*</span>
             </label>
             <p className="text-xs text-muted-foreground">

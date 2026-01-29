@@ -127,7 +127,7 @@ export function HeroSection() {
           {/* Main Heading */}
           <div className="max-w-5xl mx-auto space-y-6">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-              AI-Powered CCM{" "}
+              TNDRX{" "}
               <span className="relative">
                 <span className="gradient-hero bg-clip-text text-transparent">
                   Empowering Collaboration through Competence
@@ -306,8 +306,14 @@ export function HeroSection() {
         {/* Footer with Logo */}
         <div className="mt-16 border-t border-border/20 pt-8">
           <div className="flex flex-col items-end pr-4">
-            <img src="/cbit-logo.png" alt="Centre for Business and Industry Transformation" className="h-12" />
-            <p className="text-sm text-muted-foreground mt-2">Powered by UKCCM</p>
+            <img
+              src="/cbit-logo.png"
+              alt="Centre for Business and Industry Transformation"
+              className="h-12"
+            />
+            <p className="text-sm text-muted-foreground mt-2">
+              Powered by TNDRX
+            </p>
           </div>
         </div>
       </div>

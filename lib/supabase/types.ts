@@ -35,6 +35,7 @@ export type Database = {
           description: string | null
           digital_maturity: string | null
           equipment: string | null
+          operation_locations: Json | null
           financial_data: Json | null
           human_verified: Json | null
           id: string
@@ -70,6 +71,7 @@ export type Database = {
           description?: string | null
           digital_maturity?: string | null
           equipment?: string | null
+          operation_locations?: Json | null
           financial_data?: Json | null
           human_verified?: Json | null
           id?: string
@@ -105,6 +107,7 @@ export type Database = {
           description?: string | null
           digital_maturity?: string | null
           equipment?: string | null
+          operation_locations?: Json | null
           financial_data?: Json | null
           human_verified?: Json | null
           id?: string

@@ -198,10 +198,6 @@ export function ProjectCreationWizard({
       toast.error("Please select at least one capability");
       return;
     }
-    if (currentStep === 3 && selectedCompanies.length === 0) {
-      toast.error("Please select at least one company");
-      return;
-    }
     setCurrentStep(currentStep + 1);
   };
 
@@ -242,7 +238,8 @@ export function ProjectCreationWizard({
   const canProceed = () => {
     if (currentStep === 1) return selectedTenderId !== null;
     if (currentStep === 2) return selectedCapabilities.length > 0;
-    if (currentStep === 3) return selectedCompanies.length > 0;
+    // Step 3 (companies): allow proceeding with just the lead company (no partners required)
+    if (currentStep === 3) return true;
     return true;
   };
 

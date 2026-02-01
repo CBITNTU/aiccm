@@ -106,7 +106,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     );
   }
 
-  const { project, tender, teamMembers, gapAnalysis, teamAnalysis, recommendedPartners } =
+  const { project, tender, teamMembers, gapAnalysis, teamAnalysis, recommendedPartners, tenderMatchResult } =
     details;
 
   const handleStatusChange = async (status: string) => {
@@ -148,7 +148,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   };
 
   // Calculate summary stats for accordion headers
-  const gapScore = gapAnalysis?.coveragePercentage;
+  // Solo: show gap analysis coverage if run, else tender match; with partners: gap analysis coverage
+  const gapScore =
+    teamMembers.length <= 1
+      ? (gapAnalysis?.coveragePercentage ?? tenderMatchResult?.overall_score)
+      : gapAnalysis?.coveragePercentage;
   const teamScore = teamAnalysis?.coveragePercentage;
   const teamCount = teamMembers.length;
   const invitableCount = teamMembers.filter(
@@ -265,10 +269,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 </div>
                 {gapScore !== undefined ? (
                   <Badge
-                    variant={gapScore >= 70 ? "default" : "secondary"}
+                    variant={Math.round(gapScore) >= 70 ? "default" : "secondary"}
                     className="ml-auto mr-2"
                   >
-                    {gapScore}% coverage
+                    {Math.round(gapScore)}% coverage
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="ml-auto mr-2">
@@ -287,8 +291,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                       projectId={project.id}
                       tender={tender}
                       company={leadCompany ?? null}
+                      teamMembers={teamMembers}
                       gapAnalysis={gapAnalysis}
                       recommendedPartners={recommendedPartners}
+                      tenderMatchResult={tenderMatchResult}
                     />
                   </motion.div>
                 </AnimatePresence>
@@ -302,9 +308,16 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <span>Team Builder</span>
                 </div>
-                <Badge variant="outline" className="ml-auto mr-2">
-                  {teamCount} {teamCount === 1 ? "member" : "members"}
-                </Badge>
+                <div className="flex items-center gap-2 ml-auto mr-2">
+                  {tender && (
+                    <Badge variant="secondary" className="font-normal max-w-[180px] truncate" title={tender.title}>
+                      {tender.title.length > 25 ? tender.title.slice(0, 25) + "…" : tender.title}
+                    </Badge>
+                  )}
+                  <Badge variant="outline">
+                    {teamCount} {teamCount === 1 ? "member" : "members"}
+                  </Badge>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <AnimatePresence mode="wait">
@@ -332,10 +345,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 </div>
                 {teamScore !== undefined ? (
                   <Badge
-                    variant={teamScore >= 85 ? "default" : "secondary"}
+                    variant={Math.round(teamScore) >= 85 ? "default" : "secondary"}
                     className="ml-auto mr-2"
                   >
-                    {teamScore}% ready
+                    {Math.round(teamScore)}% ready
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="ml-auto mr-2">

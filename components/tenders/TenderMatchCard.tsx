@@ -137,7 +137,7 @@ export function TenderMatchCard({
             className="text-sm px-2.5 py-1 gap-1"
           >
             <TrendingUp className="h-3.5 w-3.5" />
-            {result.overall_score}%
+            {Math.round(result.overall_score)}%
           </Badge>
         </div>
       </div>
@@ -162,7 +162,7 @@ export function TenderMatchCard({
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Capability:</span>
                     <span className={`font-medium ${getScoreColor(result.capability_score)}`}>
-                      {result.capability_score}%
+                      {Math.round(result.capability_score)}%
                     </span>
                   </div>
                   {scoreExplanations.capability && (
@@ -175,7 +175,7 @@ export function TenderMatchCard({
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Experience:</span>
                     <span className={`font-medium ${getScoreColor(result.experience_score)}`}>
-                      {result.experience_score}%
+                      {Math.round(result.experience_score)}%
                     </span>
                   </div>
                   {scoreExplanations.experience && (
@@ -188,7 +188,7 @@ export function TenderMatchCard({
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Location:</span>
                     <span className={`font-medium ${getScoreColor(result.location_score)}`}>
-                      {result.location_score}%
+                      {Math.round(result.location_score)}%
                     </span>
                   </div>
                   {scoreExplanations.location && (
@@ -201,7 +201,7 @@ export function TenderMatchCard({
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Certification:</span>
                     <span className={`font-medium ${getScoreColor(result.certification_score)}`}>
-                      {result.certification_score}%
+                      {Math.round(result.certification_score)}%
                     </span>
                   </div>
                   {scoreExplanations.certification && (

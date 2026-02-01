@@ -41,6 +41,18 @@ export interface TeamMember {
   } | null;
 }
 
+/** Tender match result for lead company + tender (used when project has no partners). */
+export interface TenderMatchResult {
+  id: string;
+  overall_score: number | null;
+  capability_score: number | null;
+  experience_score: number | null;
+  location_score: number | null;
+  certification_score: number | null;
+  match_reasons: string[] | null;
+  ai_analysis: { score_explanations?: Record<string, string> } | null;
+}
+
 export interface ProjectDetails {
   project: Project;
   tender: Tender | null;
@@ -48,6 +60,8 @@ export interface ProjectDetails {
   gapAnalysis: GapAnalysis | null;
   teamAnalysis: TeamAnalysis | null;
   recommendedPartners: RecommendedPartner[];
+  /** When team is only lead (no partners), gap is derived from this tender match. */
+  tenderMatchResult: TenderMatchResult | null;
 }
 
 async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
@@ -88,6 +102,20 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
   const tender = project.tenders as unknown as Tender | null;
   const teamMembers = (membersData as unknown as TeamMember[]) || [];
 
+  // When project has a tender and lead company, fetch tender match for "single company" gap display
+  let tenderMatchResult: TenderMatchResult | null = null;
+  if (project.lead_company_id && project.target_tender_id) {
+    const { data: matchRow } = await supabase
+      .from("matching_results")
+      .select("id, overall_score, capability_score, experience_score, location_score, certification_score, match_reasons, ai_analysis")
+      .eq("company_id", project.lead_company_id)
+      .eq("tender_id", project.target_tender_id)
+      .maybeSingle();
+    if (matchRow) {
+      tenderMatchResult = matchRow as unknown as TenderMatchResult;
+    }
+  }
+
   return {
     project,
     tender,
@@ -95,6 +123,7 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
     gapAnalysis: project.gap_analysis || null,
     teamAnalysis: project.team_analysis || null,
     recommendedPartners: project.recommended_partners || [],
+    tenderMatchResult,
   };
 }
 

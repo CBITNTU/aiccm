@@ -16,7 +16,7 @@
     "supabase:logs": "supabase logs",
     "supabase:console": "supabase console",
     "supabase:link:prod": "supabase link --project-ref rvtdihlgmyptixeclwae",
-    "supabase:db-push": "supabase db push --local",
+    "supabase:db-push": "supabase db push --local --yes",
     "supabase:db-push:prod": "supabase db push",
     "supabase:db-pull": "supabase db pull",
     "supabase:db-reset": "supabase db reset"

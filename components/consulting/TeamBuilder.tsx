@@ -254,12 +254,16 @@ export function TeamBuilder({
                       variant={
                         teamAnalysis.readinessScore >= 85
                           ? "default"
-                          : "secondary"
+                          : teamAnalysis.readinessScore >= 50
+                            ? "secondary"
+                            : "outline"
                       }
                     >
                       {teamAnalysis.readinessScore >= 85
                         ? "Ready to Bid"
-                        : "Almost Ready"}
+                        : teamAnalysis.readinessScore >= 50
+                          ? "Almost Ready"
+                          : "Needs Work"}
                     </Badge>
                   </div>
                 </CardContent>

@@ -262,12 +262,18 @@ export function TeamAnalysisPanel({
               </span>
               <Badge
                 variant={
-                  Math.round(teamAnalysis.readinessScore) >= 85 ? "default" : "secondary"
+                  Math.round(teamAnalysis.readinessScore) >= 85
+                    ? "default"
+                    : Math.round(teamAnalysis.readinessScore) >= 50
+                      ? "secondary"
+                      : "outline"
                 }
               >
                 {Math.round(teamAnalysis.readinessScore) >= 85
                   ? "Ready to Bid"
-                  : "Almost Ready"}
+                  : Math.round(teamAnalysis.readinessScore) >= 50
+                    ? "Almost Ready"
+                    : "Needs Work"}
               </Badge>
             </div>
           </CardContent>

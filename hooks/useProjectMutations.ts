@@ -240,8 +240,15 @@ Return ONLY valid JSON, no markdown.`;
         }
       }
 
+      const coveragePercentage = Math.round(Number(analysis.coveragePercentage) ?? 0);
+      const readinessScore = Math.round(Number(analysis.readinessScore) ?? 0);
+
       const gapAnalysisData: GapAnalysis = {
         ...analysis,
+        companyCompetencies: analysis.companyCompetencies || [],
+        missingCompetencies: analysis.missingCompetencies || [],
+        coveragePercentage,
+        readinessScore,
         type: "gap",
         analyzedAt: new Date().toISOString(),
       };
@@ -319,6 +326,108 @@ export function useRunTeamAnalysis() {
       queryClient.invalidateQueries({
         queryKey: ["projects"],
       });
+    },
+  });
+}
+
+// Update gap analysis (human overrides: move competencies ↔ missing)
+export function useUpdateGapAnalysis() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      companyCompetencies,
+      missingCompetencies,
+    }: {
+      projectId: string;
+      companyCompetencies: string[];
+      missingCompetencies: string[];
+    }) => {
+      const total = companyCompetencies.length + missingCompetencies.length;
+      const coveragePercentage = total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
+
+      const { data: vo } = await supabase
+        .from("virtual_organizations")
+        .select("gap_analysis")
+        .eq("id", projectId)
+        .single();
+
+      const existing = (vo?.gap_analysis as Record<string, unknown>) || {};
+      const updated: Record<string, unknown> = {
+        ...existing,
+        companyCompetencies,
+        missingCompetencies,
+        coveragePercentage,
+      };
+
+      const { error } = await supabase
+        .from("virtual_organizations")
+        .update({
+          gap_analysis: updated as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
+        })
+        .eq("id", projectId);
+
+      if (error) throw new Error(error.message);
+      return { projectId, gapAnalysis: updated };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["projectDetails", variables.projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+// Update team analysis (human overrides: move competencies ↔ missing)
+export function useUpdateTeamAnalysis() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      companyCompetencies,
+      missingCompetencies,
+    }: {
+      projectId: string;
+      companyCompetencies: string[];
+      missingCompetencies: string[];
+    }) => {
+      const total = companyCompetencies.length + missingCompetencies.length;
+      const coveragePercentage = total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
+
+      const { data: vo } = await supabase
+        .from("virtual_organizations")
+        .select("team_analysis")
+        .eq("id", projectId)
+        .single();
+
+      const existing = (vo?.team_analysis as Record<string, unknown>) || {};
+      const updated: Record<string, unknown> = {
+        ...existing,
+        companyCompetencies,
+        missingCompetencies,
+        coveragePercentage,
+      };
+
+      const { error } = await supabase
+        .from("virtual_organizations")
+        .update({
+          team_analysis: updated as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
+        })
+        .eq("id", projectId);
+
+      if (error) throw new Error(error.message);
+      return { projectId, teamAnalysis: updated };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["projectDetails", variables.projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }

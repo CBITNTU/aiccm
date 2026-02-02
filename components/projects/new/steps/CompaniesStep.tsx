@@ -497,7 +497,7 @@ export function CompaniesStep({
         </div>
       )}
 
-      {selectedCompanies.length > 0 && (
+      {selectedCompanies.length > 0 ? (
         <Card className="bg-primary/5">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -511,6 +511,14 @@ export function CompaniesStep({
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-muted/30">
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              You can proceed with just your company, or add partners above. Click Next to continue.
+            </p>
           </CardContent>
         </Card>
       )}

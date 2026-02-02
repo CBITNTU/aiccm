@@ -195,13 +195,13 @@ function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
       <div className="flex items-center gap-2 flex-wrap">
         {gapCoverage !== undefined && (
           <Badge variant="outline" className="text-xs">
-            {gapCoverage}% coverage
+            {Math.round(gapCoverage)}% coverage
           </Badge>
         )}
         {teamCoverage !== undefined && teamCoverage !== gapCoverage && (
           <Badge variant="outline" className="text-xs bg-green-500/10">
             <Users className="h-3 w-3 mr-1" />
-            {teamCoverage}% team
+            {Math.round(teamCoverage)}% team
           </Badge>
         )}
       </div>

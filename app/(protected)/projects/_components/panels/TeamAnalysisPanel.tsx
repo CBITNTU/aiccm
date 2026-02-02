@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useRunTeamAnalysis } from "@/hooks/useProjectMutations";
+import { useRunTeamAnalysis, useUpdateTeamAnalysis } from "@/hooks/useProjectMutations";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,9 @@ import {
   AlertTriangle,
   AlertCircle,
   Users,
+  Minus,
+  Plus,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { TeamAnalysis } from "@/hooks/useProjects";
@@ -38,6 +42,55 @@ export function TeamAnalysisPanel({
   teamAnalysis,
 }: TeamAnalysisPanelProps) {
   const runAnalysis = useRunTeamAnalysis();
+  const updateTeamAnalysis = useUpdateTeamAnalysis();
+  const [companyCompetencies, setCompanyCompetencies] = useState<string[]>([]);
+  const [missingCompetencies, setMissingCompetencies] = useState<string[]>([]);
+  const [hasEdits, setHasEdits] = useState(false);
+
+  useEffect(() => {
+    if (teamAnalysis) {
+      setCompanyCompetencies(teamAnalysis.companyCompetencies || []);
+      setMissingCompetencies(teamAnalysis.missingCompetencies || []);
+      setHasEdits(false);
+    }
+  }, [teamAnalysis]);
+
+  const moveToMissing = (index: number) => {
+    const item = companyCompetencies[index];
+    setCompanyCompetencies((prev) => prev.filter((_, i) => i !== index));
+    setMissingCompetencies((prev) => [...prev, item]);
+    setHasEdits(true);
+  };
+
+  const moveToCompetencies = (index: number) => {
+    const item = missingCompetencies[index];
+    setMissingCompetencies((prev) => prev.filter((_, i) => i !== index));
+    setCompanyCompetencies((prev) => [...prev, item]);
+    setHasEdits(true);
+  };
+
+  const editedCoverage =
+    companyCompetencies.length + missingCompetencies.length > 0
+      ? Math.round(
+          (companyCompetencies.length /
+            (companyCompetencies.length + missingCompetencies.length)) *
+            100
+        )
+      : teamAnalysis?.coveragePercentage ?? 0;
+
+  const handleSaveEdits = async () => {
+    try {
+      await updateTeamAnalysis.mutateAsync({
+        projectId,
+        companyCompetencies,
+        missingCompetencies,
+      });
+      setHasEdits(false);
+      toast.success("Team analysis updated");
+    } catch {
+      toast.error("Failed to save changes");
+    }
+  };
 
   const handleRunAnalysis = async () => {
     if (!company || !tender) {
@@ -68,7 +121,7 @@ export function TeamAnalysisPanel({
       const gaps = result.teamAnalysis.missingCompetencies?.length || 0;
 
       toast.success(
-        `Team analysis complete! Coverage: ${result.teamAnalysis.coveragePercentage}%` +
+        `Team analysis complete! Coverage: ${Math.round(result.teamAnalysis.coveragePercentage)}%` +
           (gaps > 0 ? `, ${gaps} remaining gaps` : ", no gaps!")
       );
     } catch (err) {
@@ -135,8 +188,24 @@ export function TeamAnalysisPanel({
   // Show analysis results
   return (
     <div className="py-4 space-y-6">
-      {/* Action button */}
-      <div className="flex justify-end">
+      {/* Action buttons */}
+      <div className="flex justify-end gap-2">
+        {hasEdits && (
+          <Button
+            size="sm"
+            onClick={handleSaveEdits}
+            disabled={updateTeamAnalysis.isPending}
+          >
+            {updateTeamAnalysis.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save changes
+              </>
+            )}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -168,16 +237,16 @@ export function TeamAnalysisPanel({
             <Label className="text-sm text-muted-foreground">Team Coverage</Label>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-3xl font-bold text-green-600">
-                {teamAnalysis.coveragePercentage}%
+                {editedCoverage}%
               </span>
               <Badge
                 variant={
-                  teamAnalysis.coveragePercentage >= 90 ? "default" : "secondary"
+                  editedCoverage >= 90 ? "default" : "secondary"
                 }
               >
-                {teamAnalysis.coveragePercentage >= 90
+                {editedCoverage >= 90
                   ? "Excellent"
-                  : teamAnalysis.coveragePercentage >= 70
+                  : editedCoverage >= 70
                     ? "Good"
                     : "Needs Work"}
               </Badge>
@@ -189,16 +258,22 @@ export function TeamAnalysisPanel({
             <Label className="text-sm text-muted-foreground">Team Readiness</Label>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-3xl font-bold text-green-600">
-                {teamAnalysis.readinessScore}%
+                {Math.round(teamAnalysis.readinessScore)}%
               </span>
               <Badge
                 variant={
-                  teamAnalysis.readinessScore >= 85 ? "default" : "secondary"
+                  Math.round(teamAnalysis.readinessScore) >= 85
+                    ? "default"
+                    : Math.round(teamAnalysis.readinessScore) >= 50
+                      ? "secondary"
+                      : "outline"
                 }
               >
-                {teamAnalysis.readinessScore >= 85
+                {Math.round(teamAnalysis.readinessScore) >= 85
                   ? "Ready to Bid"
-                  : "Almost Ready"}
+                  : Math.round(teamAnalysis.readinessScore) >= 50
+                    ? "Almost Ready"
+                    : "Needs Work"}
               </Badge>
             </div>
           </CardContent>
@@ -237,7 +312,7 @@ export function TeamAnalysisPanel({
         </motion.div>
       )}
 
-      {/* Combined Competencies */}
+      {/* Combined Competencies with +/- for human intervention */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -253,34 +328,59 @@ export function TeamAnalysisPanel({
           <CardContent className="space-y-4">
             <div>
               <Label className="font-semibold">Covered Competencies</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Use minus to move to Remaining Gaps
+              </p>
               <div className="flex flex-wrap gap-2 mt-2">
-                {teamAnalysis.companyCompetencies.map((comp, idx) => (
-                  <Badge key={idx} variant="outline" className="bg-green-500/10">
+                {companyCompetencies.map((comp, idx) => (
+                  <Badge
+                    key={`c-${idx}`}
+                    variant="outline"
+                    className="bg-green-500/10 flex items-center gap-1"
+                  >
                     {comp}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 p-0 hover:bg-green-500/20"
+                      onClick={() => moveToMissing(idx)}
+                      title="Move to Remaining Gaps"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </Button>
                   </Badge>
                 ))}
               </div>
             </div>
 
-            {teamAnalysis.missingCompetencies &&
-              teamAnalysis.missingCompetencies.length > 0 && (
-                <div>
-                  <Label className="font-semibold text-orange-500">
-                    Remaining Gaps
-                  </Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {teamAnalysis.missingCompetencies.map((comp, idx) => (
-                      <Badge
-                        key={idx}
-                        variant="outline"
-                        className="bg-orange-500/10 border-orange-500/20"
-                      >
-                        {comp}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div>
+              <Label className="font-semibold text-orange-500">
+                Remaining Gaps
+              </Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Use plus to move to Covered
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {missingCompetencies.map((comp, idx) => (
+                  <Badge
+                    key={`m-${idx}`}
+                    variant="outline"
+                    className="bg-orange-500/10 border-orange-500/20 flex items-center gap-1"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 p-0 hover:bg-orange-500/20"
+                      onClick={() => moveToCompetencies(idx)}
+                      title="Move to Covered"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                    {comp}
+                  </Badge>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>

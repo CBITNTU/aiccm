@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, checkSuperadminRole, createAdminClient } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { EIC_TAXONOMY } from "@/lib/eicTaxonomy";
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,70 +72,14 @@ export async function POST(request: NextRequest) {
       console.log("✅ Cleared capability taxonomies from all companies");
     }
 
-    // Step 4: Reseed base capabilities list (from migration seed data)
-    console.log("📋 Step 4: Reseeding base capabilities list...");
-    
-    // Base capabilities - using the original migration seed data structure
-    const baseCapabilities = [
-      // Construction
-      { name: 'Construction', category: 'Construction' },
-      
-      // Services - basic services only
-      { name: 'Archiving', category: 'Services' },
-      { name: 'Commissioning', category: 'Services' },
-      { name: 'Consultancy', category: 'Services' },
-      { name: 'Distribution Service', category: 'Services' },
-      { name: 'Installation', category: 'Services' },
-      { name: 'Maintenance & Service', category: 'Services' },
-      { name: 'Marketing Consultancy', category: 'Services' },
-      { name: 'Retail', category: 'Services' },
-      { name: 'Training & Education', category: 'Services' },
-      { name: 'Waste Management', category: 'Services' },
-      
-      // ICT Process - basic IT capabilities
-      { name: 'Application Development', category: 'ICT Process' },
-      { name: 'ICT Consultancy', category: 'ICT Process' },
-      { name: 'ICT Maintenance & Support', category: 'ICT Process' },
-      { name: 'Internet Services', category: 'ICT Process' },
-      { name: 'IT Networks', category: 'ICT Process' },
-      { name: 'Software and System Design', category: 'ICT Process' },
-      { name: 'System Integration', category: 'ICT Process' },
-      { name: 'Web Based Applications', category: 'ICT Process' },
-      { name: 'Web Hosting', category: 'ICT Process' },
-      
-      // Design
-      { name: 'CAD / CAM', category: 'Design' },
-      { name: 'Graphic Design', category: 'Design' },
-      { name: 'Mechanical Design', category: 'Design' },
-      { name: 'Programming', category: 'Design' },
-      
-      // Manufacturing - basic manufacturing
-      { name: 'Assembly', category: 'Manufacturing' },
-      { name: 'Fabrication (General)', category: 'Manufacturing' },
-      { name: 'Machining', category: 'Manufacturing' },
-      { name: 'Prototyping', category: 'Manufacturing' },
-      
-      // Engineering
-      { name: 'Engineering', category: 'Engineering' },
-      
-      // Healthcare
-      { name: 'Healthcare', category: 'Healthcare' },
-      
-      // Education
-      { name: 'Education', category: 'Education' },
-      
-      // Logistics
-      { name: 'Logistics & Warehousing', category: 'Logistics' },
-      { name: 'Material Handling & Packaging', category: 'Logistics' },
-      { name: 'Procurement', category: 'Logistics' },
-      
-      // Energy
-      { name: 'Solar Energy', category: 'Energy' },
-      { name: 'Wind Energy', category: 'Energy' },
-      { name: 'Renewable Energy', category: 'Energy' },
-    ];
+    // Step 4: Reseed base capabilities list from EIC taxonomy (standard taxonomy)
+    console.log("📋 Step 4: Reseeding base capabilities list from EIC taxonomy...");
 
-    const { error: insertError, count: insertedCount } = await adminSupabase
+    const baseCapabilities = EIC_TAXONOMY.flatMap((cat) =>
+      cat.subcategories.map((name) => ({ name, category: cat.name }))
+    );
+
+    const { error: insertError } = await adminSupabase
       .from("company_capabilities_ref" as any)
       .insert(baseCapabilities)
       .select();
@@ -158,14 +103,14 @@ export async function POST(request: NextRequest) {
       },
     }).catch(() => {}); // Don't fail if logging fails
 
-    console.log("✅ RESET COMPLETE: All capabilities deleted and base list reseeded");
+    console.log(`✅ RESET COMPLETE: All capabilities deleted and EIC taxonomy reseeded (${baseCapabilities.length} capabilities)`);
 
     return NextResponse.json({
       success: true,
       deletedCapabilities: deletedCapsCount || 0,
       deletedLinks: deletedLinksCount || 0,
       reseededCapabilities: baseCapabilities.length,
-      message: `All capabilities deleted. Reseeded ${baseCapabilities.length} base capabilities.`,
+      message: `All capabilities deleted. Reseeded ${baseCapabilities.length} capabilities from EIC taxonomy.`,
     });
   } catch (error) {
     console.error("❌ Error resetting capabilities:", error);

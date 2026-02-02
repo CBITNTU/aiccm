@@ -4,7 +4,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProjectDetails } from "@/hooks/useProjectDetails";
 import { useCompanyById } from "@/hooks/useProjectDetails";
-import { useUpdateProjectStatus, useDeleteProject } from "@/hooks/useProjectMutations";
+import {
+  useUpdateProjectStatus,
+  useDeleteProject,
+} from "@/hooks/useProjectMutations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +71,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   } = useProjectDetails(projectId);
 
   const { data: leadCompany } = useCompanyById(
-    details?.project.lead_company_id ?? null
+    details?.project.lead_company_id ?? null,
   );
 
   const updateStatus = useUpdateProjectStatus();
@@ -106,8 +109,15 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     );
   }
 
-  const { project, tender, teamMembers, gapAnalysis, teamAnalysis, recommendedPartners, tenderMatchResult } =
-    details;
+  const {
+    project,
+    tender,
+    teamMembers,
+    gapAnalysis,
+    teamAnalysis,
+    recommendedPartners,
+    tenderMatchResult,
+  } = details;
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -156,7 +166,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const teamScore = teamAnalysis?.coveragePercentage;
   const teamCount = teamMembers.length;
   const invitableCount = teamMembers.filter(
-    (m) => m.role === "invited" || m.role === "member"
+    (m) => m.role === "invited" || m.role === "member",
   ).length;
 
   return (
@@ -261,15 +271,20 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
             </AccordionItem>
 
             {/* Gap Analysis Panel */}
-            <AccordionItem value="gap-analysis" className="border rounded-lg px-4">
+            <AccordionItem
+              value="gap-analysis"
+              className="border rounded-lg px-4"
+            >
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   <span>Gap Analysis</span>
                 </div>
-                {gapScore !== undefined ? (
+                {gapScore !== undefined && gapScore !== null ? (
                   <Badge
-                    variant={Math.round(gapScore) >= 70 ? "default" : "secondary"}
+                    variant={
+                      Math.round(gapScore) >= 70 ? "default" : "secondary"
+                    }
                     className="ml-auto mr-2"
                   >
                     {Math.round(gapScore)}% coverage
@@ -302,7 +317,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
             </AccordionItem>
 
             {/* Team Builder Panel */}
-            <AccordionItem value="team-builder" className="border rounded-lg px-4">
+            <AccordionItem
+              value="team-builder"
+              className="border rounded-lg px-4"
+            >
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <Users className="h-4 w-4 text-muted-foreground" />
@@ -310,8 +328,14 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 </div>
                 <div className="flex items-center gap-2 ml-auto mr-2">
                   {tender && (
-                    <Badge variant="secondary" className="font-normal max-w-[180px] truncate" title={tender.title}>
-                      {tender.title.length > 25 ? tender.title.slice(0, 25) + "…" : tender.title}
+                    <Badge
+                      variant="secondary"
+                      className="font-normal max-w-[180px] truncate"
+                      title={tender.title}
+                    >
+                      {tender.title.length > 25
+                        ? tender.title.slice(0, 25) + "…"
+                        : tender.title}
                     </Badge>
                   )}
                   <Badge variant="outline">
@@ -337,7 +361,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
             </AccordionItem>
 
             {/* Team Analysis Panel */}
-            <AccordionItem value="team-analysis" className="border rounded-lg px-4">
+            <AccordionItem
+              value="team-analysis"
+              className="border rounded-lg px-4"
+            >
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <Target className="h-4 w-4 text-muted-foreground" />
@@ -345,7 +372,9 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 </div>
                 {teamScore !== undefined ? (
                   <Badge
-                    variant={Math.round(teamScore) >= 85 ? "default" : "secondary"}
+                    variant={
+                      Math.round(teamScore) >= 85 ? "default" : "secondary"
+                    }
                     className="ml-auto mr-2"
                   >
                     {Math.round(teamScore)}% ready
@@ -376,7 +405,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
             </AccordionItem>
 
             {/* Invitations Panel */}
-            <AccordionItem value="invitations" className="border rounded-lg px-4">
+            <AccordionItem
+              value="invitations"
+              className="border rounded-lg px-4"
+            >
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-muted-foreground" />

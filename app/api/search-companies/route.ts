@@ -1,5 +1,11 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse, apiError } from "@/lib/api";
+import {
+  createAdminClient,
+  createApiClient,
+  apiResponse,
+  apiError,
+} from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export interface CompanySearchResult {
   id: string;
@@ -9,6 +15,17 @@ export interface CompanySearchResult {
 
 export async function GET(request: NextRequest) {
   try {
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q");
 
@@ -50,8 +67,14 @@ export async function GET(request: NextRequest) {
           company_name: company.company_name,
           has_admin: (members?.length || 0) > 0,
         };
-      })
+      }),
     );
+
+    await logApiEvent(request, {
+      actionType: "company_searched",
+      userId: userId || undefined,
+      details: { query, count: companiesWithAdminStatus.length },
+    }).catch(() => {});
 
     return apiResponse({ companies: companiesWithAdminStatus });
   } catch (error) {

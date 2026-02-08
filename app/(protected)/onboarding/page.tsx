@@ -77,7 +77,10 @@ export default function OnboardingPage() {
       let currentStep = data.currentStep || ONBOARDING_STEPS.EMAIL_VERIFICATION;
 
       // If email is verified but step is still EMAIL_VERIFICATION, advance to PROFILE_INFO
-      if (data.emailVerified && currentStep === ONBOARDING_STEPS.EMAIL_VERIFICATION) {
+      if (
+        data.emailVerified &&
+        currentStep === ONBOARDING_STEPS.EMAIL_VERIFICATION
+      ) {
         currentStep = ONBOARDING_STEPS.PROFILE_INFO;
       }
 
@@ -87,7 +90,10 @@ export default function OnboardingPage() {
       // For invited users, get company name from invitedCompanyInfo
       if (data.signupType === "invited" && data.invitedCompanyInfo) {
         companyName = data.invitedCompanyInfo.companyName;
-      } else if (data.signupType === "new-company" || data.signupType === "join-company") {
+      } else if (
+        data.signupType === "new-company" ||
+        data.signupType === "join-company"
+      ) {
         // Fetch company name from backend
         const supabase = createClient();
         const { data: userData } = await supabase.auth.getUser();
@@ -124,7 +130,11 @@ export default function OnboardingPage() {
         email: data.email || "",
         accountType: data.accountType || null,
         signupType: data.signupType || null,
-        profile: data.profile || { firstName: null, lastName: null, jobTitle: null },
+        profile: data.profile || {
+          firstName: null,
+          lastName: null,
+          jobTitle: null,
+        },
         companyName,
         invitedCompanyInfo: data.invitedCompanyInfo || null,
       });
@@ -173,7 +183,9 @@ export default function OnboardingPage() {
     fetchOnboardingState();
   };
 
-  const handleAccountTypeComplete = (accountType: "individual" | "business") => {
+  const handleAccountTypeComplete = (
+    accountType: "individual" | "business",
+  ) => {
     if (accountType === "individual") {
       // Skip to COMPLETE step
       setState((prev) => ({
@@ -214,7 +226,9 @@ export default function OnboardingPage() {
 
     if (state.accountType === "individual") {
       // Individual: skip company step
-      return STEP_LABELS.filter((s) => s.step !== ONBOARDING_STEPS.COMPANY_INFO);
+      return STEP_LABELS.filter(
+        (s) => s.step !== ONBOARDING_STEPS.COMPANY_INFO,
+      );
     }
     return STEP_LABELS;
   };
@@ -245,8 +259,8 @@ export default function OnboardingPage() {
                     step.step < state.currentStep
                       ? "bg-green-500 text-white"
                       : step.step === state.currentStep
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {step.step < state.currentStep ? (

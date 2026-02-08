@@ -1,14 +1,11 @@
 import { NextRequest } from "next/server";
-import {
-  getAuthenticatedUser,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user and supabase client
-    const { user, supabase, error: authError } = await getAuthenticatedUser(request);
+    const { user, supabase } = await getAuthenticatedUser(request);
     if (!user) {
       return apiError("Authorization required", 401);
     }
@@ -69,11 +66,20 @@ Please review the project details and respond to this invitation.
 
       // In a production system, you would send actual emails here
       console.log(
-        `Invitation sent to ${partner.company_name} (${partner.contact_email})`
+        `Invitation sent to ${partner.company_name} (${partner.contact_email})`,
       );
     });
 
     await Promise.all(invitationPromises);
+
+    await logApiEvent(request, {
+      actionType: "project_member_invited",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "vo_project",
+      entityId: projectId,
+      details: { partner_count: partners.length, tender_title: tenderTitle },
+    }).catch(() => {});
 
     return apiResponse({
       success: true,

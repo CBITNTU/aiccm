@@ -1,8 +1,15 @@
 "use client";
 
+/* eslint-disable react/no-unescaped-entities -- CSV row types; copy uses apostrophes */
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
@@ -11,7 +18,12 @@ import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { toast } from "sonner";
-import { Upload, FileText, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface CSVRow {
@@ -31,68 +43,80 @@ interface CSVRow {
 
 // Helper function to extract value from array-like strings like "['value']" or "['val1', 'val2']"
 const extractFromArrayString = (value: string): string => {
-  if (!value) return '';
-  
+  if (!value) return "";
+
   // Remove brackets and quotes
-  const cleaned = value.replace(/^\[|\]$/g, '').replace(/'/g, '');
-  
+  const cleaned = value.replace(/^\[|\]$/g, "").replace(/'/g, "");
+
   // If multiple values, take the first one
-  const values = cleaned.split(',').map(v => v.trim()).filter(v => v);
-  return values[0] || '';
+  const values = cleaned
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v);
+  return values[0] || "";
 };
 
 // Helper function to extract postcode from full address
 const extractPostcode = (address: string): string => {
-  if (!address) return '';
-  
+  if (!address) return "";
+
   // UK postcode pattern: letters, numbers, space, letters/numbers
-  const postcodeMatch = address.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})\b/i);
-  return postcodeMatch ? postcodeMatch[1].trim().toUpperCase() : '';
+  const postcodeMatch = address.match(
+    /\b([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})\b/i,
+  );
+  return postcodeMatch ? postcodeMatch[1].trim().toUpperCase() : "";
 };
 
 // Helper function to parse comma-separated capabilities
 const parseCapabilities = (capabilitiesStr: string): string[] => {
   if (!capabilitiesStr) return [];
-  
+
   // Split by comma and clean up
   return capabilitiesStr
-    .split(',')
-    .map(c => c.trim().toLowerCase())
-    .filter(c => c.length > 0);
+    .split(",")
+    .map((c) => c.trim().toLowerCase())
+    .filter((c) => c.length > 0);
 };
 
 // Helper function to match CSV capability to reference table (case-insensitive, fuzzy)
-const matchCapability = (csvCapability: string, refCapabilities: Array<{ id: string; name: string }>): string | null => {
+const matchCapability = (
+  csvCapability: string,
+  refCapabilities: Array<{ id: string; name: string }>,
+): string | null => {
   if (!csvCapability || !refCapabilities.length) return null;
-  
+
   const csvLower = csvCapability.toLowerCase().trim();
-  
+
   // First try exact match (case-insensitive)
   const exactMatch = refCapabilities.find(
-    ref => ref.name.toLowerCase() === csvLower
+    (ref) => ref.name.toLowerCase() === csvLower,
   );
   if (exactMatch) return exactMatch.id;
-  
+
   // Try partial match (CSV capability is contained in reference name)
   const partialMatch = refCapabilities.find(
-    ref => ref.name.toLowerCase().includes(csvLower) || csvLower.includes(ref.name.toLowerCase())
+    (ref) =>
+      ref.name.toLowerCase().includes(csvLower) ||
+      csvLower.includes(ref.name.toLowerCase()),
   );
   if (partialMatch) return partialMatch.id;
-  
+
   // Try word-by-word matching (e.g., "CNC Machining" matches "CNC Machining", "machining" matches "CNC Machining")
   const csvWords = csvLower.split(/\s+/);
-  const wordMatch = refCapabilities.find(ref => {
+  const wordMatch = refCapabilities.find((ref) => {
     const refLower = ref.name.toLowerCase();
     // Check if all words in CSV capability appear in reference name
-    return csvWords.every(word => refLower.includes(word));
+    return csvWords.every((word) => refLower.includes(word));
   });
   if (wordMatch) return wordMatch.id;
-  
+
   return null;
 };
 
 export function AdminCSVImport() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -112,7 +136,7 @@ export function AdminCSVImport() {
   // Improved CSV parser that handles quoted fields and commas within fields
   const parseCSVLine = (line: string): string[] => {
     const result: string[] = [];
-    let current = '';
+    let current = "";
     let inQuotes = false;
 
     for (let i = 0; i < line.length; i++) {
@@ -128,10 +152,10 @@ export function AdminCSVImport() {
           // Toggle quote state
           inQuotes = !inQuotes;
         }
-      } else if (char === ',' && !inQuotes) {
+      } else if (char === "," && !inQuotes) {
         // End of field
         result.push(current.trim());
-        current = '';
+        current = "";
       } else {
         current += char;
       }
@@ -143,54 +167,84 @@ export function AdminCSVImport() {
   };
 
   const parseCSV = (text: string): CSVRow[] => {
-    const lines = text.split('\n').filter(line => line.trim());
+    const lines = text.split("\n").filter((line) => line.trim());
     if (lines.length === 0) return [];
 
     // Parse header
-    const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/"/g, ''));
-    
+    const headers = parseCSVLine(lines[0]).map((h) =>
+      h.trim().toLowerCase().replace(/\s+/g, "_").replace(/"/g, ""),
+    );
+
     // Parse rows
     const rows: CSVRow[] = [];
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i]);
-      const row: CSVRow = { company_name: '' };
-      
+      const row: CSVRow = { company_name: "" };
+
       headers.forEach((header, index) => {
-        let value = (values[index] || '').replace(/^"|"$/g, '').trim();
+        let value = (values[index] || "").replace(/^"|"$/g, "").trim();
         if (!value) return;
 
         // Handle array-like strings (e.g., "['value']" or "['val1', 'val2']")
-        if (value.startsWith('[') && value.endsWith(']')) {
+        if (value.startsWith("[") && value.endsWith("]")) {
           value = extractFromArrayString(value);
         }
 
         // Map column names to fields
-        if (header === 'companyname' || header === 'company_name' || header === 'name') {
+        if (
+          header === "companyname" ||
+          header === "company_name" ||
+          header === "name"
+        ) {
           row.company_name = value;
-        } else if (header === 'companynumber' || header === 'companies_house_number' || header === 'company_number' || header === 'ch_number') {
+        } else if (
+          header === "companynumber" ||
+          header === "companies_house_number" ||
+          header === "company_number" ||
+          header === "ch_number"
+        ) {
           row.companies_house_number = value;
-        } else if (header === 'email' || header === 'contact_email') {
+        } else if (header === "email" || header === "contact_email") {
           row.contact_email = value;
-        } else if (header === 'phone' || header === 'contact_phone' || header === 'telephone') {
+        } else if (
+          header === "phone" ||
+          header === "contact_phone" ||
+          header === "telephone"
+        ) {
           row.contact_phone = value;
-        } else if (header === 'full_address' || header === 'fulladdress' || header === 'address') {
+        } else if (
+          header === "full_address" ||
+          header === "fulladdress" ||
+          header === "address"
+        ) {
           row.full_address = value;
           // Extract postcode from full address
           const postcode = extractPostcode(value);
           if (postcode && !row.postcode) {
             row.postcode = postcode;
           }
-        } else if (header === 'postcode' || header === 'post_code') {
+        } else if (header === "postcode" || header === "post_code") {
           row.postcode = value;
-        } else if (header === 'description' || header === 'desc') {
+        } else if (header === "description" || header === "desc") {
           row.description = value;
-        } else if (header === 'website' || header === 'website_url' || header === 'url') {
+        } else if (
+          header === "website" ||
+          header === "website_url" ||
+          header === "url"
+        ) {
           row.website_url = value;
-        } else if (header === 'raw_capabilities' || header === 'capabilities' || header === 'key_capabilities') {
+        } else if (
+          header === "raw_capabilities" ||
+          header === "capabilities" ||
+          header === "key_capabilities"
+        ) {
           row.key_capabilities = value;
-        } else if (header === 'certifications' || header === 'certs') {
+        } else if (header === "certifications" || header === "certs") {
           row.certifications = value;
-        } else if (header.startsWith('siccode') || header.startsWith('sic_code')) {
+        } else if (
+          header.startsWith("siccode") ||
+          header.startsWith("sic_code")
+        ) {
           // Collect SIC codes
           if (!row.sic_codes) {
             row.sic_codes = value;
@@ -199,20 +253,22 @@ export function AdminCSVImport() {
           }
         }
       });
-      
+
       if (row.company_name) {
         rows.push(row);
       }
     }
-    
+
     return rows;
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith('.csv')) {
+    if (!selectedFile.name.endsWith(".csv")) {
       toast.error("Please select a CSV file");
       return;
     }
@@ -224,7 +280,7 @@ export function AdminCSVImport() {
     try {
       const text = await selectedFile.text();
       const parsed = parseCSV(text);
-      
+
       if (parsed.length === 0) {
         toast.error("No valid data found in CSV file");
         return;
@@ -258,12 +314,14 @@ export function AdminCSVImport() {
 
       // Fetch all reference capabilities once for matching
       const { data: refCapabilities, error: refError } = await supabase
-        .from('company_capabilities_ref')
-        .select('id, name');
+        .from("company_capabilities_ref")
+        .select("id, name");
 
       if (refError) {
-        console.warn('Failed to fetch reference capabilities:', refError);
-        toast.warning('Capability matching disabled - failed to load reference list');
+        console.warn("Failed to fetch reference capabilities:", refError);
+        toast.warning(
+          "Capability matching disabled - failed to load reference list",
+        );
       }
 
       const capabilitiesRef = refCapabilities || [];
@@ -280,24 +338,24 @@ export function AdminCSVImport() {
         try {
           // Check if company already exists (by name or companies house number)
           let existing = null;
-          
+
           if (company.company_name) {
             const { data: byName } = await supabase
-              .from('companies')
-              .select('id')
-              .eq('company_name', company.company_name)
+              .from("companies")
+              .select("id")
+              .eq("company_name", company.company_name)
               .maybeSingle();
-            
+
             existing = byName;
           }
 
           if (!existing && company.companies_house_number) {
             const { data: byChNumber } = await supabase
-              .from('companies')
-              .select('id')
-              .eq('companies_house_number', company.companies_house_number)
+              .from("companies")
+              .select("id")
+              .eq("companies_house_number", company.companies_house_number)
               .maybeSingle();
-            
+
             existing = byChNumber;
           }
 
@@ -311,7 +369,7 @@ export function AdminCSVImport() {
               }
 
               // Build description with SIC codes if available
-              let description = company.description || '';
+              let description = company.description || "";
               if (company.sic_codes) {
                 if (description) {
                   description += `\n\nSIC Codes: ${company.sic_codes}`;
@@ -321,39 +379,54 @@ export function AdminCSVImport() {
               }
 
               // Update company fields (optional - only update if CSV has new data)
-              const updateData: Partial<Database['public']['Tables']['companies']['Update']> = {};
-              if (company.contact_email) updateData.contact_email = company.contact_email;
-              if (company.contact_phone) updateData.contact_phone = company.contact_phone;
+              const updateData: Partial<
+                Database["public"]["Tables"]["companies"]["Update"]
+              > = {};
+              if (company.contact_email)
+                updateData.contact_email = company.contact_email;
+              if (company.contact_phone)
+                updateData.contact_phone = company.contact_phone;
               if (postcode) updateData.postcode = postcode;
-              if (company.full_address) updateData.address = company.full_address;
+              if (company.full_address)
+                updateData.address = company.full_address;
               if (description) updateData.description = description;
-              if (company.website_url) updateData.website_url = company.website_url;
-              if (company.key_capabilities) updateData.key_capabilities = company.key_capabilities;
+              if (company.website_url)
+                updateData.website_url = company.website_url;
+              if (company.key_capabilities)
+                updateData.key_capabilities = company.key_capabilities;
 
               if (Object.keys(updateData).length > 0) {
                 const { error: updateError } = await supabase
-                  .from('companies')
+                  .from("companies")
                   .update(updateData)
-                  .eq('id', existing.id);
+                  .eq("id", existing.id);
 
                 if (updateError) {
-                  console.warn(`Failed to update company ${company.company_name}:`, updateError);
+                  console.warn(
+                    `Failed to update company ${company.company_name}:`,
+                    updateError,
+                  );
                 }
               }
 
               // Delete existing capability links
               const { error: deleteError } = await supabase
-                .from('company_capabilities')
+                .from("company_capabilities")
                 .delete()
-                .eq('company_id', existing.id);
+                .eq("company_id", existing.id);
 
               if (deleteError) {
-                console.warn(`Failed to delete existing capabilities for ${company.company_name}:`, deleteError);
+                console.warn(
+                  `Failed to delete existing capabilities for ${company.company_name}:`,
+                  deleteError,
+                );
               }
 
               // Smart mapping: Parse and link new capabilities
               if (company.key_capabilities && capabilitiesRef.length > 0) {
-                const csvCapabilities = parseCapabilities(company.key_capabilities);
+                const csvCapabilities = parseCapabilities(
+                  company.key_capabilities,
+                );
                 const matchedCapabilityIds: string[] = [];
 
                 for (const csvCap of csvCapabilities) {
@@ -365,17 +438,20 @@ export function AdminCSVImport() {
 
                 // Insert matched capabilities into junction table
                 if (matchedCapabilityIds.length > 0) {
-                  const capabilityLinks = matchedCapabilityIds.map(capId => ({
+                  const capabilityLinks = matchedCapabilityIds.map((capId) => ({
                     company_id: existing.id,
-                    capability_id: capId
+                    capability_id: capId,
                   }));
 
                   const { error: linkError } = await supabase
-                    .from('company_capabilities')
+                    .from("company_capabilities")
                     .insert(capabilityLinks);
 
                   if (linkError) {
-                    console.warn(`Failed to link capabilities for ${company.company_name}:`, linkError);
+                    console.warn(
+                      `Failed to link capabilities for ${company.company_name}:`,
+                      linkError,
+                    );
                   }
                 }
               }
@@ -383,42 +459,52 @@ export function AdminCSVImport() {
               // Always queue AI regeneration for CSV imports (full regeneration mode)
               // This ensures capabilities are regenerated from the base list
               try {
-                const response = await fetch('/api/queue/company-ai', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                const response = await fetch("/api/queue/company-ai", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     companyId: existing.id,
-                    jobTypes: ['company_summary', 'company_taxonomy'],
-                    fullRegeneration: true // Flag for full regeneration mode
-                  })
+                    jobTypes: ["company_summary", "company_taxonomy"],
+                    fullRegeneration: true, // Flag for full regeneration mode
+                  }),
                 });
                 if (!response.ok) {
-                  console.warn(`Failed to queue AI jobs for ${company.company_name}`);
+                  console.warn(
+                    `Failed to queue AI jobs for ${company.company_name}`,
+                  );
                 }
               } catch (queueError) {
-                console.warn(`Failed to queue AI jobs for ${company.company_name}:`, queueError);
+                console.warn(
+                  `Failed to queue AI jobs for ${company.company_name}:`,
+                  queueError,
+                );
               }
 
               successCount++;
             } else {
               // Even if skipping, still queue taxonomy generation for full regeneration
               try {
-                const response = await fetch('/api/queue/company-ai', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                const response = await fetch("/api/queue/company-ai", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     companyId: existing.id,
-                    jobTypes: ['company_taxonomy'],
-                    fullRegeneration: true // Flag for full regeneration mode
-                  })
+                    jobTypes: ["company_taxonomy"],
+                    fullRegeneration: true, // Flag for full regeneration mode
+                  }),
                 });
                 if (!response.ok) {
-                  console.warn(`Failed to queue taxonomy job for ${company.company_name}`);
+                  console.warn(
+                    `Failed to queue taxonomy job for ${company.company_name}`,
+                  );
                 }
               } catch (queueError) {
-                console.warn(`Failed to queue taxonomy job for ${company.company_name}:`, queueError);
+                console.warn(
+                  `Failed to queue taxonomy job for ${company.company_name}:`,
+                  queueError,
+                );
               }
-              
+
               skippedCount++;
             }
             continue;
@@ -431,7 +517,7 @@ export function AdminCSVImport() {
           }
 
           // Build description with SIC codes if available
-          let description = company.description || '';
+          let description = company.description || "";
           if (company.sic_codes) {
             if (description) {
               description += `\n\nSIC Codes: ${company.sic_codes}`;
@@ -443,7 +529,7 @@ export function AdminCSVImport() {
           // Insert new company as system company
           // user_id is null for system companies (made nullable in migration)
           const { data: insertedCompany, error: insertError } = await supabase
-            .from('companies')
+            .from("companies")
             .insert({
               company_name: company.company_name,
               companies_house_number: company.companies_house_number || null,
@@ -457,13 +543,15 @@ export function AdminCSVImport() {
               certifications: company.certifications || null,
               user_id: null, // NULL for system companies (not empty string)
               is_system_company: true,
-              status: 'active'
-            } as Database['public']['Tables']['companies']['Insert'])
-            .select('id')
+              status: "active",
+            } as Database["public"]["Tables"]["companies"]["Insert"])
+            .select("id")
             .single();
 
           if (insertError || !insertedCompany) {
-            errorList.push(`${company.company_name}: ${insertError?.message || 'Failed to insert company'}`);
+            errorList.push(
+              `${company.company_name}: ${insertError?.message || "Failed to insert company"}`,
+            );
             setErrorCount(errorList.length);
             continue;
           }
@@ -482,17 +570,20 @@ export function AdminCSVImport() {
 
             // Insert matched capabilities into junction table
             if (matchedCapabilityIds.length > 0) {
-              const capabilityLinks = matchedCapabilityIds.map(capId => ({
+              const capabilityLinks = matchedCapabilityIds.map((capId) => ({
                 company_id: insertedCompany.id,
-                capability_id: capId
+                capability_id: capId,
               }));
 
               const { error: linkError } = await supabase
-                .from('company_capabilities')
+                .from("company_capabilities")
                 .insert(capabilityLinks);
 
               if (linkError) {
-                console.warn(`Failed to link capabilities for ${company.company_name}:`, linkError);
+                console.warn(
+                  `Failed to link capabilities for ${company.company_name}:`,
+                  linkError,
+                );
                 // Don't fail the import, just log the warning
               }
             }
@@ -501,26 +592,33 @@ export function AdminCSVImport() {
           // Queue AI processing jobs for new company
           if (insertedCompany?.id) {
             try {
-              const response = await fetch('/api/queue/company-ai', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+              const response = await fetch("/api/queue/company-ai", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   companyId: insertedCompany.id,
-                  jobTypes: ['company_summary', 'company_taxonomy']
-                })
+                  jobTypes: ["company_summary", "company_taxonomy"],
+                }),
               });
               if (!response.ok) {
-                console.warn(`Failed to queue AI jobs for ${company.company_name}`);
+                console.warn(
+                  `Failed to queue AI jobs for ${company.company_name}`,
+                );
               }
             } catch (queueError) {
-              console.warn(`Failed to queue AI jobs for ${company.company_name}:`, queueError);
+              console.warn(
+                `Failed to queue AI jobs for ${company.company_name}:`,
+                queueError,
+              );
               // Don't fail the import if queueing fails
             }
           }
 
           successCount++;
         } catch (err) {
-          errorList.push(`${company.company_name}: ${err instanceof Error ? err.message : String(err)}`);
+          errorList.push(
+            `${company.company_name}: ${err instanceof Error ? err.message : String(err)}`,
+          );
           setErrorCount(errorList.length);
         }
 
@@ -532,33 +630,36 @@ export function AdminCSVImport() {
         // Allow React to update the UI by yielding to the event loop
         // This ensures the progress bar updates in real-time
         if (i % 5 === 0 || i === total - 1) {
-          await new Promise(resolve => setTimeout(resolve, 0));
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
       }
 
       // Trigger worker to start processing company taxonomy jobs (fire and forget)
       // This will dynamically generate capabilities based on imported company data
       if (successCount > 0) {
-        fetch('/api/queue/worker', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        fetch("/api/queue/worker", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ batchSize: 10, continuous: true }),
         })
           .then(() => {
-            console.log('✅ Queue worker triggered after CSV import');
+            console.log("✅ Queue worker triggered after CSV import");
           })
           .catch((err) => {
-            console.warn('⚠️ Failed to trigger queue worker:', err);
+            console.warn("⚠️ Failed to trigger queue worker:", err);
             // Don't fail the import if worker trigger fails
           });
       }
-      
+
       toast.success(
-        `Import completed! ${successCount} imported, ${skippedCount} skipped, ${errorList.length} errors. ${successCount > 0 ? 'Capability taxonomies are being generated in the background.' : ''}`
+        `Import completed! ${successCount} imported, ${skippedCount} skipped, ${errorList.length} errors. ${successCount > 0 ? "Capability taxonomies are being generated in the background." : ""}`,
       );
     } catch (error) {
       console.error("Import error:", error);
-      toast.error("Import failed: " + (error instanceof Error ? error.message : String(error)));
+      toast.error(
+        "Import failed: " +
+          (error instanceof Error ? error.message : String(error)),
+      );
     } finally {
       setIsImporting(false);
     }
@@ -572,7 +673,8 @@ export function AdminCSVImport() {
           Import Companies from CSV
         </CardTitle>
         <CardDescription>
-          Upload a CSV file to import companies into the system. Companies will be marked as system companies.
+          Upload a CSV file to import companies into the system. Companies will
+          be marked as system companies.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -583,13 +685,27 @@ export function AdminCSVImport() {
             <div className="space-y-2">
               <p className="font-medium">Expected CSV Format:</p>
               <p className="text-sm">
-                Required column: <code className="bg-muted px-1 rounded">CompanyName</code> (or <code className="bg-muted px-1 rounded">company_name</code>)
+                Required column:{" "}
+                <code className="bg-muted px-1 rounded">CompanyName</code> (or{" "}
+                <code className="bg-muted px-1 rounded">company_name</code>)
               </p>
               <p className="text-sm">
-                Supported columns: <code className="bg-muted px-1 rounded">CompanyNumber</code>, <code className="bg-muted px-1 rounded">Email</code>, <code className="bg-muted px-1 rounded">Phone</code>, <code className="bg-muted px-1 rounded">Full Address</code>, <code className="bg-muted px-1 rounded">Description</code>, <code className="bg-muted px-1 rounded">Website</code>, <code className="bg-muted px-1 rounded">raw_capabilities</code>, <code className="bg-muted px-1 rounded">SICCode.SicText_1</code> (and 2, 3, 4)
+                Supported columns:{" "}
+                <code className="bg-muted px-1 rounded">CompanyNumber</code>,{" "}
+                <code className="bg-muted px-1 rounded">Email</code>,{" "}
+                <code className="bg-muted px-1 rounded">Phone</code>,{" "}
+                <code className="bg-muted px-1 rounded">Full Address</code>,{" "}
+                <code className="bg-muted px-1 rounded">Description</code>,{" "}
+                <code className="bg-muted px-1 rounded">Website</code>,{" "}
+                <code className="bg-muted px-1 rounded">raw_capabilities</code>,{" "}
+                <code className="bg-muted px-1 rounded">SICCode.SicText_1</code>{" "}
+                (and 2, 3, 4)
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Note: Array values like <code className="bg-muted px-1 rounded">['value']</code> are automatically extracted. Postcode is extracted from Full Address if provided.
+                Note: Array values like{" "}
+                <code className="bg-muted px-1 rounded">['value']</code> are
+                automatically extracted. Postcode is extracted from Full Address
+                if provided.
               </p>
             </div>
           </AlertDescription>
@@ -629,7 +745,8 @@ export function AdminCSVImport() {
             htmlFor="update-existing"
             className="text-sm font-normal cursor-pointer"
           >
-            Update existing companies' capabilities (re-map capabilities from CSV)
+            Update existing companies' capabilities (re-map capabilities from
+            CSV)
           </Label>
         </div>
 
@@ -644,10 +761,13 @@ export function AdminCSVImport() {
                 <div>Location</div>
               </div>
               {preview.map((row, index) => (
-                <div key={index} className="grid grid-cols-3 gap-2 text-xs py-1 border-b">
+                <div
+                  key={index}
+                  className="grid grid-cols-3 gap-2 text-xs py-1 border-b"
+                >
                   <div className="font-medium">{row.company_name}</div>
-                  <div>{row.contact_email || row.contact_phone || '-'}</div>
-                  <div>{row.postcode || '-'}</div>
+                  <div>{row.contact_email || row.contact_phone || "-"}</div>
+                  <div>{row.postcode || "-"}</div>
                 </div>
               ))}
             </div>
@@ -656,7 +776,11 @@ export function AdminCSVImport() {
 
         {/* Import Button */}
         {file && !isImporting && (
-          <Button onClick={handleImport} className="w-full" disabled={!supabase}>
+          <Button
+            onClick={handleImport}
+            className="w-full"
+            disabled={!supabase}
+          >
             <Upload className="w-4 h-4 mr-2" />
             Import Companies
           </Button>
@@ -667,11 +791,10 @@ export function AdminCSVImport() {
           <div className="space-y-2">
             <Progress value={progress} className="w-full" />
             <div className="flex justify-between text-sm">
+              <span>{Math.round(progress)}% complete</span>
               <span>
-                {Math.round(progress)}% complete
-              </span>
-              <span>
-                {importedCount} imported, {skippedCount} skipped, {errorCount} errors
+                {importedCount} imported, {skippedCount} skipped, {errorCount}{" "}
+                errors
               </span>
             </div>
           </div>
@@ -686,10 +809,14 @@ export function AdminCSVImport() {
                 <p className="font-medium">Import Errors ({errors.length}):</p>
                 <div className="max-h-32 overflow-y-auto">
                   {errors.slice(0, 10).map((error, index) => (
-                    <p key={index} className="text-xs">{error}</p>
+                    <p key={index} className="text-xs">
+                      {error}
+                    </p>
                   ))}
                   {errors.length > 10 && (
-                    <p className="text-xs">...and {errors.length - 10} more errors</p>
+                    <p className="text-xs">
+                      ...and {errors.length - 10} more errors
+                    </p>
                   )}
                 </div>
               </div>
@@ -705,8 +832,12 @@ export function AdminCSVImport() {
               <p className="font-medium">Import Summary:</p>
               <ul className="list-disc list-inside text-sm mt-1 space-y-1">
                 <li>{importedCount} companies imported successfully</li>
-                {skippedCount > 0 && <li>{skippedCount} companies skipped (already exist)</li>}
-                {errorCount > 0 && <li>{errorCount} companies failed to import</li>}
+                {skippedCount > 0 && (
+                  <li>{skippedCount} companies skipped (already exist)</li>
+                )}
+                {errorCount > 0 && (
+                  <li>{errorCount} companies failed to import</li>
+                )}
               </ul>
             </AlertDescription>
           </Alert>
@@ -715,4 +846,3 @@ export function AdminCSVImport() {
     </Card>
   );
 }
-

@@ -1,4 +1,5 @@
 import { getPlatformName } from "../index";
+import { escapeHtml } from "../utils";
 
 export interface TeamInvitationEmailData {
   inviteeEmail: string;
@@ -9,15 +10,17 @@ export interface TeamInvitationEmailData {
 }
 
 export function getTeamInvitationEmailSubject(
-  data: TeamInvitationEmailData
+  data: TeamInvitationEmailData,
 ): string {
-  return `You've been invited to join ${data.companyName} on ${getPlatformName()}`;
+  return `You've been invited to join ${escapeHtml(data.companyName)} on ${getPlatformName()}`;
 }
 
 export function getTeamInvitationEmailHtml(
-  data: TeamInvitationEmailData
+  data: TeamInvitationEmailData,
 ): string {
-  const { inviterName, companyName, inviteLink, expiresAt } = data;
+  const { inviteLink, expiresAt } = data;
+  const inviterName = escapeHtml(data.inviterName);
+  const companyName = escapeHtml(data.companyName);
   const platformName = getPlatformName();
 
   // Format expiry date

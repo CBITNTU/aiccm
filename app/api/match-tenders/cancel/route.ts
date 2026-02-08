@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs/processing_queue not in generated Supabase types */
 import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
@@ -7,10 +8,11 @@ import {
   createAdminClient,
 } from "@/lib/api";
 import { getBatchStatus } from "@/lib/services/queueService";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await getAuthenticatedUser(request);
+    const { user } = await getAuthenticatedUser(request);
     if (!user) {
       return apiError("Unauthorized", 401);
     }
@@ -80,6 +82,15 @@ export async function POST(request: NextRequest) {
         `✅ Cancelled ${cancelledCount || 0} jobs for batch ${batchId}`,
       );
     }
+
+    await logApiEvent(request, {
+      actionType: "matching_cancelled",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "batch_job",
+      entityId: batchId,
+      details: { cancelled_jobs: cancelledCount || 0 },
+    }).catch(() => {});
 
     return apiResponse({
       message: "Matching cancelled successfully",

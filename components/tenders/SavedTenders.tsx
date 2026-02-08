@@ -41,12 +41,17 @@ interface SavedTendersProps {
   readOnly?: boolean;
 }
 
-export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps) {
+export function SavedTenders({
+  companyId,
+  readOnly = false,
+}: SavedTendersProps) {
   const { user } = useAuth();
   const [savedResults, setSavedResults] = useState<MatchingResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedResult, setSelectedResult] = useState<MatchingResult | null>(null);
+  const [selectedResult, setSelectedResult] = useState<MatchingResult | null>(
+    null,
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
 
@@ -54,6 +59,7 @@ export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps)
     if (user) {
       fetchSavedResults();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when user/companyId change
   }, [user, companyId]);
 
   // Apply keyword filter whenever savedResults or keyword changes
@@ -67,7 +73,7 @@ export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps)
           result.tenders.title.toLowerCase().includes(lowerKeyword) ||
           result.tenders.description?.toLowerCase().includes(lowerKeyword) ||
           result.tenders.buyer.toLowerCase().includes(lowerKeyword) ||
-          result.tenders.location?.toLowerCase().includes(lowerKeyword)
+          result.tenders.location?.toLowerCase().includes(lowerKeyword),
       );
       setFilteredResults(filtered);
     }
@@ -91,7 +97,7 @@ export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps)
             budget_min,
             budget_max
           )
-        `
+        `,
         )
         .eq("is_bookmarked", true)
         .order("created_at", { ascending: false });
@@ -124,7 +130,9 @@ export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps)
 
       if (error) throw error;
 
-      setSavedResults((prev) => prev.filter((result) => result.id !== resultId));
+      setSavedResults((prev) =>
+        prev.filter((result) => result.id !== resultId),
+      );
       toast.success("Removed from saved tenders");
     } catch (error) {
       console.error("Error removing bookmark:", error);
@@ -139,11 +147,10 @@ export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps)
         <div>
           <h2 className="text-lg font-semibold">Saved Tenders</h2>
           <p className="text-sm text-muted-foreground">
-            {savedResults.length} saved tender{savedResults.length !== 1 ? "s" : ""}
+            {savedResults.length} saved tender
+            {savedResults.length !== 1 ? "s" : ""}
             {keyword && filteredResults.length !== savedResults.length && (
-              <span className="ml-1">
-                ({filteredResults.length} shown)
-              </span>
+              <span className="ml-1">({filteredResults.length} shown)</span>
             )}
           </p>
         </div>
@@ -173,15 +180,17 @@ export function SavedTenders({ companyId, readOnly = false }: SavedTendersProps)
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading saved tenders...</span>
+          <span className="ml-2 text-muted-foreground">
+            Loading saved tenders...
+          </span>
         </div>
       ) : savedResults.length === 0 ? (
         <div className="text-center py-16">
           <Bookmark className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No saved tenders yet</h3>
           <p className="text-muted-foreground">
-            Go to &quot;Your Matches&quot; and click the bookmark icon to save tenders for
-            later review.
+            Go to &quot;Your Matches&quot; and click the bookmark icon to save
+            tenders for later review.
           </p>
         </div>
       ) : filteredResults.length === 0 ? (

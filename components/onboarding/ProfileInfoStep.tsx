@@ -40,7 +40,11 @@ export function ProfileInfoStep({
     setError(null);
 
     // Validation
-    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.jobTitle.trim()) {
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
+      !formData.jobTitle.trim()
+    ) {
       setError("Please fill in all fields");
       setIsLoading(false);
       return;

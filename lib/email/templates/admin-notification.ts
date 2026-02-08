@@ -1,4 +1,5 @@
 import { getPlatformName, getPlatformUrl } from "../index";
+import { escapeHtml } from "../utils";
 
 export interface AdminNotificationEmailData {
   userName: string;
@@ -9,47 +10,52 @@ export interface AdminNotificationEmailData {
 }
 
 export function getAdminNotificationEmailSubject(
-  data: AdminNotificationEmailData
+  data: AdminNotificationEmailData,
 ): string {
   const typeLabel =
     data.signupType === "individual"
       ? "Individual"
       : data.signupType === "new-company"
-      ? "Company"
-      : data.signupType === "invited"
-      ? "Team Invitation"
-      : "Company Join Request";
+        ? "Company"
+        : data.signupType === "invited"
+          ? "Team Invitation"
+          : "Company Join Request";
   return `[Action Required] New ${typeLabel} Signup: ${data.userName}`;
 }
 
 export function getAdminNotificationEmailHtml(
-  data: AdminNotificationEmailData
+  data: AdminNotificationEmailData,
 ): string {
-  const { userName, userEmail, signupType, companyName, jobTitle } = data;
+  const { signupType } = data;
+  const userName = escapeHtml(data.userName);
+  const userEmail = escapeHtml(data.userEmail);
+  const companyName = data.companyName ? escapeHtml(data.companyName) : undefined;
+  const jobTitle = data.jobTitle ? escapeHtml(data.jobTitle) : undefined;
   const platformName = getPlatformName();
   const adminUrl = getPlatformUrl("/admin");
   // Link directly to approvals section for new company signups
-  const approvalsUrl = signupType === "new-company" 
-    ? getPlatformUrl("/admin?tab=approvals")
-    : adminUrl;
+  const approvalsUrl =
+    signupType === "new-company"
+      ? getPlatformUrl("/admin?tab=approvals")
+      : adminUrl;
 
   const signupTypeLabel =
     signupType === "individual"
       ? "Individual User"
       : signupType === "new-company"
-      ? "New Company Registration"
-      : signupType === "invited"
-      ? "Team Invitation"
-      : "Company Join Request";
+        ? "New Company Registration"
+        : signupType === "invited"
+          ? "Team Invitation"
+          : "Company Join Request";
 
   const signupTypeBadgeColor =
     signupType === "individual"
       ? "#3b82f6"
       : signupType === "new-company"
-      ? "#10b981"
-      : signupType === "invited"
-      ? "#f59e0b"
-      : "#8b5cf6";
+        ? "#10b981"
+        : signupType === "invited"
+          ? "#f59e0b"
+          : "#8b5cf6";
 
   return `
 <!DOCTYPE html>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- profiles, company_taxonomies extended columns */
 import { createAdminClient, chatCompletion } from "@/lib/api";
 import { runLLM } from "./llmLimiter";
 
@@ -6,16 +7,22 @@ const supabase = createAdminClient();
 /**
  * Generate AI summary for a company
  */
-export async function generateCompanySummary(companyId: string): Promise<string> {
+export async function generateCompanySummary(
+  companyId: string,
+): Promise<string> {
   // Fetch company data
   const { data: company, error } = await supabase
     .from("companies")
-    .select("company_name, description, key_capabilities, certifications, equipment, past_projects, website_url, postcode")
+    .select(
+      "company_name, description, key_capabilities, certifications, equipment, past_projects, website_url, postcode",
+    )
     .eq("id", companyId)
     .single();
 
   if (error || !company) {
-    throw new Error(`Failed to fetch company: ${error?.message || "Company not found"}`);
+    throw new Error(
+      `Failed to fetch company: ${error?.message || "Company not found"}`,
+    );
   }
 
   // Fetch company capabilities from junction table
@@ -24,20 +31,13 @@ export async function generateCompanySummary(companyId: string): Promise<string>
     .select("company_capabilities_ref(id, name, category)")
     .eq("company_id", companyId);
 
-  const capabilitiesList = companyCapabilities
-    ?.map((cc: any) => cc.company_capabilities_ref?.name)
-    .filter(Boolean)
-    .join(", ") || "";
+  const capabilitiesList =
+    companyCapabilities
+      ?.map((cc: any) => cc.company_capabilities_ref?.name)
+      .filter(Boolean)
+      .join(", ") || "";
 
-  const systemPrompt = `You are an expert at analyzing companies and creating professional summaries.
-Generate a concise, professional 200-word summary of this company, covering:
-- Core competencies and specializations
-- Key achievements and past projects
-- Certifications and qualifications
-- Market position and strengths
-- Unique value propositions
-
-Be specific and highlight what makes this company stand out.`;
+  const systemPrompt = `Generate a 200-word professional summary: competencies, achievements, certifications, market position, differentiators. Be specific.`;
 
   const userPrompt = `Company Details:
 Name: ${company.company_name || "N/A"}
@@ -50,28 +50,27 @@ ${company.past_projects ? `Past Projects: ${company.past_projects}` : ""}
 ${company.website_url ? `Website: ${company.website_url}` : ""}
 ${company.postcode ? `Location: ${company.postcode}` : ""}
 
-Generate a concise 200-word professional summary of this company.`;
+Summarize.`;
 
   // Call OpenAI with rate limiting
   const summary = await runLLM(
     async () => {
       const response = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-5-nano",
         maxTokens: 1000,
       });
       return response;
     },
-    2000 // Estimated tokens
+    2000, // Estimated tokens
   );
 
   // Store summary in database
-  const { error: updateError } = await (supabase
+  const { error: updateError } = await supabase
     .from("companies" as any)
     .update({
       ai_summary: summary,
       summary_generated_at: new Date().toISOString(),
     } as any)
-    .eq("id", companyId));
+    .eq("id", companyId);
 
   if (updateError) {
     throw new Error(`Failed to store summary: ${updateError.message}`);
@@ -88,17 +87,21 @@ Generate a concise 200-word professional summary of this company.`;
  */
 export async function generateCompanyCapabilityTaxonomy(
   companyId: string,
-  fullRegeneration: boolean = false
+  _fullRegeneration: boolean = false,
 ): Promise<string[]> {
   // Fetch company data
   const { data: company, error } = await supabase
     .from("companies")
-    .select("company_name, description, key_capabilities, certifications, equipment, past_projects")
+    .select(
+      "company_name, description, key_capabilities, certifications, equipment, past_projects",
+    )
     .eq("id", companyId)
     .single();
 
   if (error || !company) {
-    throw new Error(`Failed to fetch company: ${error?.message || "Company not found"}`);
+    throw new Error(
+      `Failed to fetch company: ${error?.message || "Company not found"}`,
+    );
   }
 
   // Fetch existing capabilities from static list
@@ -109,11 +112,16 @@ export async function generateCompanyCapabilityTaxonomy(
     .order("name");
 
   if (capsError || !existingCapabilities) {
-    throw new Error(`Failed to fetch capabilities: ${capsError?.message || "Unknown error"}`);
+    throw new Error(
+      `Failed to fetch capabilities: ${capsError?.message || "Unknown error"}`,
+    );
   }
 
   // Format capabilities for AI
-  const capabilitiesByCategory: Record<string, Array<{ id: string; name: string }>> = {};
+  const capabilitiesByCategory: Record<
+    string,
+    Array<{ id: string; name: string }>
+  > = {};
   existingCapabilities.forEach((cap) => {
     const category = cap.category || "Uncategorized";
     if (!capabilitiesByCategory[category]) {
@@ -123,37 +131,13 @@ export async function generateCompanyCapabilityTaxonomy(
   });
 
   const capabilitiesList = Object.entries(capabilitiesByCategory)
-    .map(([category, caps]) => 
-      `${category}:\n  ${caps.map(c => `- ${c.name} (ID: ${c.id})`).join("\n  ")}`
+    .map(
+      ([category, caps]) =>
+        `${category}:\n  ${caps.map((c) => `- ${c.name} (ID: ${c.id})`).join("\n  ")}`,
     )
     .join("\n\n");
 
-  const systemPrompt = `You are an expert at analyzing companies and identifying their capabilities.
-Your task is to analyze a company profile and identify relevant capabilities from the STATIC list provided.
-
-CRITICAL RULES - STATIC CAPABILITIES LIST:
-- ONLY assign capabilities from the provided STATIC list - DO NOT create new capabilities
-- Review the provided capabilities list carefully and match the company to existing items
-- Even if the match isn't perfect, use the closest existing capability from the list
-- The list is static - no new categories or capabilities can be created
-- Select 2-5 capabilities that best match the company
-
-CRITICAL FORMATTING RULES:
-- Return ONLY valid JSON - nothing else
-- NO comments (// or /* */) anywhere in the response
-- NO explanations or text before or after the JSON
-- NO markdown code blocks (no \`\`\`json\`\`\`)
-- Start with { and end with }
-- Use only double quotes for strings
-- Do NOT add comments after values
-
-Return a JSON object with one array:
-- "existing": Array of capability IDs (strings) from the provided STATIC list that accurately represent the company
-
-Example (copy this exact format, no comments):
-{"existing": ["capability-id-1", "capability-id-2"]}
-
-Be accurate and comprehensive - include all capabilities the company clearly has.`;
+  const systemPrompt = `From the STATIC capability list below, pick 2-5 IDs that best match the company. Do not create new capabilities. Output valid JSON only: {"existing":["id1","id2"]}. No comments, no markdown.`;
 
   const userPrompt = `Company Details:
 Name: ${company.company_name || "N/A"}
@@ -163,22 +147,21 @@ ${company.certifications ? `Certifications: ${company.certifications}` : ""}
 ${company.equipment ? `Equipment: ${company.equipment}` : ""}
 ${company.past_projects ? `Past Projects: ${company.past_projects}` : ""}
 
-Available Capabilities (STATIC LIST - DO NOT CREATE NEW ONES):
+Available Capabilities:
 ${capabilitiesList}
 
-Analyze this company and return ONLY a valid JSON object (no comments, no explanations, no markdown) with relevant capability IDs from the STATIC list only.`;
+Return JSON: existing = array of capability IDs from the list.`;
 
   // Call OpenAI with rate limiting
   const response = await runLLM(
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-5-nano",
         maxTokens: 4000, // Increased for default reasoning tokens plus output
         responseFormat: "json_object", // Request JSON output format
       });
       return aiResponse;
     },
-    3000 // Estimated tokens
+    3000, // Estimated tokens
   );
 
   // Parse AI response - only existing capabilities, no new ones
@@ -203,13 +186,13 @@ Analyze this company and return ONLY a valid JSON object (no comments, no explan
   const uniqueIds = Array.from(new Set(existingIds));
 
   // Store taxonomy in database
-  const { error: updateError } = await (supabase
+  const { error: updateError } = await supabase
     .from("companies" as any)
     .update({
       ai_capability_taxonomy: uniqueIds,
       taxonomy_generated_at: new Date().toISOString(),
     } as any)
-    .eq("id", companyId));
+    .eq("id", companyId);
 
   if (updateError) {
     throw new Error(`Failed to store taxonomy: ${updateError.message}`);
@@ -223,7 +206,10 @@ Analyze this company and return ONLY a valid JSON object (no comments, no explan
     .eq("company_id", companyId);
 
   if (deleteError) {
-    console.warn(`Failed to delete existing capabilities for company ${companyId}:`, deleteError);
+    console.warn(
+      `Failed to delete existing capabilities for company ${companyId}:`,
+      deleteError,
+    );
     // Don't throw - we'll try to insert anyway
   }
 
@@ -239,11 +225,16 @@ Analyze this company and return ONLY a valid JSON object (no comments, no explan
       .insert(capabilityLinks);
 
     if (insertError) {
-      console.error(`Failed to insert capability links for company ${companyId}:`, insertError);
+      console.error(
+        `Failed to insert capability links for company ${companyId}:`,
+        insertError,
+      );
       // Don't throw - taxonomy is stored, just junction table failed
       // This is a non-critical error, but we should log it
     } else {
-      console.log(`✅ Populated ${uniqueIds.length} capabilities in junction table for company ${companyId}`);
+      console.log(
+        `✅ Populated ${uniqueIds.length} capabilities in junction table for company ${companyId}`,
+      );
     }
   }
 
@@ -259,17 +250,21 @@ Analyze this company and return ONLY a valid JSON object (no comments, no explan
  */
 export async function generateCompanySummaryAndTaxonomy(
   companyId: string,
-  fullRegeneration: boolean = false
+  _fullRegeneration: boolean = false,
 ): Promise<{ summary: string; taxonomy: string[] }> {
   // Fetch company data
   const { data: company, error } = await supabase
     .from("companies")
-    .select("company_name, description, key_capabilities, certifications, equipment, past_projects, website_url, postcode")
+    .select(
+      "company_name, description, key_capabilities, certifications, equipment, past_projects, website_url, postcode",
+    )
     .eq("id", companyId)
     .single();
 
   if (error || !company) {
-    throw new Error(`Failed to fetch company: ${error?.message || "Company not found"}`);
+    throw new Error(
+      `Failed to fetch company: ${error?.message || "Company not found"}`,
+    );
   }
 
   // Fetch existing capabilities from static list
@@ -280,11 +275,16 @@ export async function generateCompanySummaryAndTaxonomy(
     .order("name");
 
   if (capsError || !existingCapabilities) {
-    throw new Error(`Failed to fetch capabilities: ${capsError?.message || "Unknown error"}`);
+    throw new Error(
+      `Failed to fetch capabilities: ${capsError?.message || "Unknown error"}`,
+    );
   }
 
   // Format capabilities for AI
-  const capabilitiesByCategory: Record<string, Array<{ id: string; name: string }>> = {};
+  const capabilitiesByCategory: Record<
+    string,
+    Array<{ id: string; name: string }>
+  > = {};
   existingCapabilities.forEach((cap) => {
     const category = cap.category || "Uncategorized";
     if (!capabilitiesByCategory[category]) {
@@ -294,8 +294,9 @@ export async function generateCompanySummaryAndTaxonomy(
   });
 
   const capabilitiesList = Object.entries(capabilitiesByCategory)
-    .map(([category, caps]) => 
-      `${category}:\n  ${caps.map(c => `- ${c.name} (ID: ${c.id})`).join("\n  ")}`
+    .map(
+      ([category, caps]) =>
+        `${category}:\n  ${caps.map((c) => `- ${c.name} (ID: ${c.id})`).join("\n  ")}`,
     )
     .join("\n\n");
 
@@ -347,12 +348,11 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
   const response = await runLLM(
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-5-nano",
         maxTokens: 2500, // Slightly higher for combined output
       });
       return aiResponse;
     },
-    3500 // Estimated tokens for combined request
+    3500, // Estimated tokens for combined request
   );
 
   // Parse AI response - only existing capabilities, no new ones
@@ -364,7 +364,10 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
     summary = parsed.summary || "";
     existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
   } catch (e) {
-    console.error("Failed to parse AI response for combined summary/taxonomy:", e);
+    console.error(
+      "Failed to parse AI response for combined summary/taxonomy:",
+      e,
+    );
     // Try to extract just summary if JSON parsing fails
     const summaryMatch = response.match(/"summary"\s*:\s*"([^"]+)"/);
     if (summaryMatch) {
@@ -376,7 +379,7 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
   const uniqueIds = Array.from(new Set(existingIds));
 
   // Store both summary and taxonomy in database
-  const { error: updateError } = await (supabase
+  const { error: updateError } = await supabase
     .from("companies" as any)
     .update({
       ai_summary: summary,
@@ -384,10 +387,12 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
       summary_generated_at: new Date().toISOString(),
       taxonomy_generated_at: new Date().toISOString(),
     } as any)
-    .eq("id", companyId));
+    .eq("id", companyId);
 
   if (updateError) {
-    throw new Error(`Failed to store summary and taxonomy: ${updateError.message}`);
+    throw new Error(
+      `Failed to store summary and taxonomy: ${updateError.message}`,
+    );
   }
 
   // Also populate the company_capabilities junction table
@@ -397,7 +402,10 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
     .eq("company_id", companyId);
 
   if (deleteError) {
-    console.warn(`Failed to delete existing capabilities for company ${companyId}:`, deleteError);
+    console.warn(
+      `Failed to delete existing capabilities for company ${companyId}:`,
+      deleteError,
+    );
   }
 
   // Insert new capability links
@@ -412,7 +420,10 @@ Return ONLY valid JSON (no comments, no explanations, no markdown).`;
       .insert(capabilityLinks);
 
     if (insertError) {
-      console.error(`Failed to insert capability links for company ${companyId}:`, insertError);
+      console.error(
+        `Failed to insert capability links for company ${companyId}:`,
+        insertError,
+      );
     }
   }
 

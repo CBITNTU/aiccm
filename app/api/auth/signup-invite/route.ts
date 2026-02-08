@@ -1,12 +1,18 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse, apiError, getAuthenticatedUser } from "@/lib/api";
+import {
+  createAdminClient,
+  apiResponse,
+  apiError,
+  getAuthenticatedUser,
+} from "@/lib/api";
 import {
   sendEmail,
   getAdminNotificationEmailSubject,
   getAdminNotificationEmailHtml,
   getPlatformUrl,
 } from "@/lib/email";
-import { hashToken, isExpired } from "@/lib/utils/invite-token";
+import { sanitizeHexToken, hashToken, isExpired } from "@/lib/utils/invite-token";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export interface SignupInviteRequest {
   token: string;
@@ -40,20 +46,38 @@ export async function POST(request: NextRequest) {
       return apiError("Missing required fields", 400);
     }
 
-    const tokenHash = hashToken(token);
+    const safeToken = sanitizeHexToken(token);
+    if (!safeToken) {
+      return apiError("Invalid invitation link", 400);
+    }
+
+    // Prevent bcrypt DoS and null-byte attacks
+    if (password.length < 6) {
+      return apiError("Password must be at least 6 characters", 400);
+    }
+    if (password.length > 128) {
+      return apiError("Password must be between 6 and 128 characters", 400);
+    }
+    if (password.includes("\0")) {
+      return apiError("Invalid password", 400);
+    }
+
+    const tokenHash = hashToken(safeToken);
     const supabase = createAdminClient();
 
     // Find and validate invitation
     const { data: invitation, error: inviteError } = await supabase
       .from("team_invitations")
-      .select(`
+      .select(
+        `
         id,
         email,
         company_id,
         invited_by,
         status,
         expires_at
-      `)
+      `,
+      )
       .eq("token_hash", tokenHash)
       .single();
 
@@ -82,7 +106,7 @@ export async function POST(request: NextRequest) {
     if (existingProfiles && existingProfiles.length > 0) {
       return apiError(
         "An account with this email already exists. Please use the 'Accept Invitation' option instead.",
-        400
+        400,
       );
     }
 
@@ -115,7 +139,7 @@ export async function POST(request: NextRequest) {
       if (authError.message.includes("already been registered")) {
         return apiError(
           "An account with this email already exists. Please use the 'Accept Invitation' option instead.",
-          400
+          400,
         );
       }
       return apiError(authError.message, 400);
@@ -130,7 +154,7 @@ export async function POST(request: NextRequest) {
     // Immediately confirm email (since they used invite link)
     const { error: confirmError } = await supabase.auth.admin.updateUserById(
       userId,
-      { email_confirm: true }
+      { email_confirm: true },
     );
 
     if (confirmError) {
@@ -141,12 +165,12 @@ export async function POST(request: NextRequest) {
     // Update profile with invited_to_company_id, signup_type, and onboarding_step
     // The database trigger creates the profile, so we need to update it
     // Wait a moment to ensure trigger has completed
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     console.log("Updating profile for invited user:", {
       userId,
       email: invitation.email,
-      company_id: invitation.company_id
+      company_id: invitation.company_id,
     });
 
     const { data: profileData, error: profileError } = await supabase
@@ -167,9 +191,11 @@ export async function POST(request: NextRequest) {
 
     // Verify the update worked
     if (!profileData || profileData.length === 0) {
-      console.error("Profile update returned no data - profile may not exist yet");
+      console.error(
+        "Profile update returned no data - profile may not exist yet",
+      );
       // Try one more time after a longer delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const { data: retryData, error: retryError } = await supabase
         .from("profiles")
         .update({
@@ -190,7 +216,7 @@ export async function POST(request: NextRequest) {
       },
       {
         onConflict: "user_id,role",
-      }
+      },
     );
 
     // Remove individual role if exists
@@ -253,6 +279,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    await logApiEvent(request, {
+      actionType: "user_signup_invite",
+      userId,
+      userEmail: invitation.email,
+      entityType: "company",
+      entityId: invitation.company_id,
+      details: { company_name: company.company_name },
+    }).catch(() => {});
+
     return apiResponse<SignupInviteResponse>({
       success: true,
       message: `Your account has been created. You will be able to access ${company.company_name} once approved by the platform administrator.`,
@@ -281,20 +316,27 @@ export async function PUT(request: NextRequest) {
       return apiError("Token is required", 400);
     }
 
-    const tokenHash = hashToken(token);
+    const safeToken = sanitizeHexToken(token);
+    if (!safeToken) {
+      return apiError("Invalid invitation link", 400);
+    }
+
+    const tokenHash = hashToken(safeToken);
     const supabase = createAdminClient();
 
     // Find and validate invitation
     const { data: invitation, error: inviteError } = await supabase
       .from("team_invitations")
-      .select(`
+      .select(
+        `
         id,
         email,
         company_id,
         invited_by,
         status,
         expires_at
-      `)
+      `,
+      )
       .eq("token_hash", tokenHash)
       .single();
 
@@ -325,7 +367,7 @@ export async function PUT(request: NextRequest) {
     if (profile?.email?.toLowerCase() !== invitation.email.toLowerCase()) {
       return apiError(
         "This invitation was sent to a different email address. Please use the correct account.",
-        403
+        403,
       );
     }
 
@@ -352,7 +394,10 @@ export async function PUT(request: NextRequest) {
       if (existingMembership.status === "approved") {
         return apiError("You are already a member of this company", 400);
       } else if (existingMembership.status === "pending") {
-        return apiError("You already have a pending membership for this company", 400);
+        return apiError(
+          "You already have a pending membership for this company",
+          400,
+        );
       }
     }
 
@@ -395,7 +440,9 @@ export async function PUT(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    const userName = `${userProfile?.first_name || ""} ${userProfile?.last_name || ""}`.trim() || "User";
+    const userName =
+      `${userProfile?.first_name || ""} ${userProfile?.last_name || ""}`.trim() ||
+      "User";
 
     // Notify superadmins about existing user accepting invitation
     const { data: superadmins } = await supabase
@@ -430,6 +477,15 @@ export async function PUT(request: NextRequest) {
         });
       }
     }
+
+    await logApiEvent(request, {
+      actionType: "user_signup_invite",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "company",
+      entityId: invitation.company_id,
+      details: { company_name: company.company_name, existing_user: true },
+    }).catch(() => {});
 
     return apiResponse<AcceptInviteResponse>({
       success: true,

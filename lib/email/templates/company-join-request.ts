@@ -1,4 +1,5 @@
 import { getPlatformName, getPlatformUrl } from "../index";
+import { escapeHtml } from "../utils";
 
 export interface CompanyJoinRequestEmailData {
   companyAdminName: string;
@@ -11,23 +12,23 @@ export interface CompanyJoinRequestEmailData {
 }
 
 export function getCompanyJoinRequestEmailSubject(
-  data: CompanyJoinRequestEmailData
+  data: CompanyJoinRequestEmailData,
 ): string {
   return `[Action Required] ${data.requesterName} wants to join ${data.companyName}`;
 }
 
 export function getCompanyJoinRequestEmailHtml(
-  data: CompanyJoinRequestEmailData
+  data: CompanyJoinRequestEmailData,
 ): string {
-  const {
-    companyAdminName,
-    companyId,
-    companyName,
-    requesterName,
-    requesterEmail,
-    requesterJobTitle,
-    message,
-  } = data;
+  const { companyId } = data;
+  const companyAdminName = escapeHtml(data.companyAdminName);
+  const companyName = escapeHtml(data.companyName);
+  const requesterName = escapeHtml(data.requesterName);
+  const requesterEmail = escapeHtml(data.requesterEmail);
+  const requesterJobTitle = data.requesterJobTitle
+    ? escapeHtml(data.requesterJobTitle)
+    : undefined;
+  const message = data.message ? escapeHtml(data.message) : undefined;
   const platformName = getPlatformName();
   const membersUrl = getPlatformUrl(`/company/${companyId}?tab=team`);
 

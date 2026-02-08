@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- capabilities tables extended columns */
 import { createAdminClient } from "@/lib/api";
 
 const supabase = createAdminClient();
@@ -25,11 +26,14 @@ export async function updateActiveCapabilities(): Promise<{
 
   // Collect all unique capability IDs from tenders
   const activeCapabilityIds = new Set<string>();
-  
+
   if (tenders && tenders.length > 0) {
     tenders.forEach((tender: unknown) => {
       const tenderData = tender as { ai_capability_taxonomy?: string[] | null };
-      if (tenderData.ai_capability_taxonomy && Array.isArray(tenderData.ai_capability_taxonomy)) {
+      if (
+        tenderData.ai_capability_taxonomy &&
+        Array.isArray(tenderData.ai_capability_taxonomy)
+      ) {
         tenderData.ai_capability_taxonomy.forEach((capId: unknown) => {
           if (capId && typeof capId === "string") {
             activeCapabilityIds.add(capId);
@@ -39,7 +43,9 @@ export async function updateActiveCapabilities(): Promise<{
     });
   }
 
-  console.log(`📊 Found ${activeCapabilityIds.size} active capabilities from ${tenders?.length || 0} tenders`);
+  console.log(
+    `📊 Found ${activeCapabilityIds.size} active capabilities from ${tenders?.length || 0} tenders`,
+  );
 
   // Get all capabilities from reference table
   const { data: allCapabilities, error: capabilitiesError } = await supabase
@@ -48,7 +54,9 @@ export async function updateActiveCapabilities(): Promise<{
 
   if (capabilitiesError) {
     console.error("Error fetching capabilities:", capabilitiesError);
-    throw new Error(`Failed to fetch capabilities: ${capabilitiesError.message}`);
+    throw new Error(
+      `Failed to fetch capabilities: ${capabilitiesError.message}`,
+    );
   }
 
   if (!allCapabilities || allCapabilities.length === 0) {
@@ -57,8 +65,10 @@ export async function updateActiveCapabilities(): Promise<{
   }
 
   // Update capabilities: set is_active = true for capabilities in tenders, false for others
-  const capabilityIds = ((allCapabilities as unknown) as { id: string }[]).map((c) => c.id);
-  
+  const capabilityIds = (allCapabilities as unknown as { id: string }[]).map(
+    (c) => c.id,
+  );
+
   // First, deactivate all capabilities
   const { error: deactivateError } = await supabase
     .from("company_capabilities_ref" as any)
@@ -67,7 +77,9 @@ export async function updateActiveCapabilities(): Promise<{
 
   if (deactivateError) {
     console.error("Error deactivating capabilities:", deactivateError);
-    throw new Error(`Failed to deactivate capabilities: ${deactivateError.message}`);
+    throw new Error(
+      `Failed to deactivate capabilities: ${deactivateError.message}`,
+    );
   }
 
   // Then, activate only those that appear in tenders
@@ -79,14 +91,18 @@ export async function updateActiveCapabilities(): Promise<{
 
     if (activateError) {
       console.error("Error activating capabilities:", activateError);
-      throw new Error(`Failed to activate capabilities: ${activateError.message}`);
+      throw new Error(
+        `Failed to activate capabilities: ${activateError.message}`,
+      );
     }
   }
 
   const deactivated = capabilityIds.length - activeCapabilityIds.size;
   const activated = activeCapabilityIds.size;
 
-  console.log(`✅ Updated capabilities: ${activated} activated, ${deactivated} deactivated`);
+  console.log(
+    `✅ Updated capabilities: ${activated} activated, ${deactivated} deactivated`,
+  );
 
   return { activated, deactivated };
 }

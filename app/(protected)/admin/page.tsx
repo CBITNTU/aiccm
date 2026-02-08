@@ -27,7 +27,16 @@ import AdminUsers from "@/components/admin/AdminUsers";
 import AdminTaxonomyEditor from "@/components/admin/AdminTaxonomyEditor";
 import AdminApprovals from "@/components/admin/AdminApprovals";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
-import { UserCog, Tags, ClipboardCheck, UserPlus } from "lucide-react";
+import { AdminDemoSync } from "@/components/admin/AdminDemoSync";
+import { AdminAISettings } from "@/components/admin/AdminAISettings";
+import {
+  UserCog,
+  Tags,
+  ClipboardCheck,
+  UserPlus,
+  FlaskConical,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 
@@ -135,6 +144,7 @@ export default function AdminPage() {
   // Sync tab with URL parameter
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync tab state from URL
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl, activeTab]);
@@ -204,6 +214,8 @@ export default function AdminPage() {
               { id: "tenders", label: "Tenders", icon: FileText },
               { id: "users", label: "Users", icon: UserCog },
               { id: "taxonomy", label: "Taxonomy", icon: Tags },
+              { id: "settings", label: "Settings", icon: SlidersHorizontal },
+              { id: "demo-sync", label: "Demo sync", icon: FlaskConical },
             ].map((tab) => (
               <Button
                 key={tab.id}
@@ -380,6 +392,16 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Settings Tab */}
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            <AdminAISettings />
+          </div>
+        )}
+
+        {/* Demo sync (test mode) Tab */}
+        {activeTab === "demo-sync" && <AdminDemoSync />}
+
         {/* Other tabs placeholder */}
         {activeTab !== "overview" &&
           activeTab !== "approvals" &&
@@ -387,7 +409,9 @@ export default function AdminPage() {
           activeTab !== "companies" &&
           activeTab !== "tenders" &&
           activeTab !== "users" &&
-          activeTab !== "taxonomy" && (
+          activeTab !== "taxonomy" &&
+          activeTab !== "settings" &&
+          activeTab !== "demo-sync" && (
             <Card>
               <CardContent className="p-12 text-center">
                 <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">

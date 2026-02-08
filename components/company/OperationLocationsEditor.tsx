@@ -18,8 +18,6 @@ import {
   getCitiesOfState,
   formatLocationLabel,
 } from "@/lib/locationData";
-import type { ICountry, IState, ICity } from "@/lib/locationData";
-
 interface OperationLocationsEditorProps {
   value: string[];
   onChange: (locations: string[]) => void;
@@ -42,11 +40,12 @@ export function OperationLocationsEditor({
   const countries = useMemo(() => getAllCountries(), []);
   const states = useMemo(
     () => (countryCode ? getStatesOfCountry(countryCode) : []),
-    [countryCode]
+    [countryCode],
   );
   const cities = useMemo(
-    () => (countryCode && stateCode ? getCitiesOfState(countryCode, stateCode) : []),
-    [countryCode, stateCode]
+    () =>
+      countryCode && stateCode ? getCitiesOfState(countryCode, stateCode) : [],
+    [countryCode, stateCode],
   );
 
   const country = countries.find((c) => c.isoCode === countryCode);
@@ -55,7 +54,11 @@ export function OperationLocationsEditor({
 
   const addFromSelector = () => {
     if (!country) return;
-    const label = formatLocationLabel(country, state ?? undefined, city ?? undefined);
+    const label = formatLocationLabel(
+      country,
+      state ?? undefined,
+      city ?? undefined,
+    );
     const trimmed = label.replace(/ › $/, "").trim();
     if (trimmed && !value.includes(trimmed)) {
       onChange([...value, trimmed]);
@@ -112,7 +115,14 @@ export function OperationLocationsEditor({
         <>
           {/* Hierarchy: Country → State → City */}
           <div className="flex flex-wrap items-end gap-2">
-            <Select value={countryCode} onValueChange={(v) => { setCountryCode(v); setStateCode(""); setCityName(""); }}>
+            <Select
+              value={countryCode}
+              onValueChange={(v) => {
+                setCountryCode(v);
+                setStateCode("");
+                setCityName("");
+              }}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Country" />
               </SelectTrigger>
@@ -124,7 +134,14 @@ export function OperationLocationsEditor({
                 ))}
               </SelectContent>
             </Select>
-            <Select value={stateCode} onValueChange={(v) => { setStateCode(v); setCityName(""); }} disabled={!countryCode}>
+            <Select
+              value={stateCode}
+              onValueChange={(v) => {
+                setStateCode(v);
+                setCityName("");
+              }}
+              disabled={!countryCode}
+            >
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Region / State" />
               </SelectTrigger>
@@ -136,7 +153,11 @@ export function OperationLocationsEditor({
                 ))}
               </SelectContent>
             </Select>
-            <Select value={cityName} onValueChange={setCityName} disabled={!stateCode}>
+            <Select
+              value={cityName}
+              onValueChange={setCityName}
+              disabled={!stateCode}
+            >
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="City" />
               </SelectTrigger>
@@ -153,7 +174,12 @@ export function OperationLocationsEditor({
                 )}
               </SelectContent>
             </Select>
-            <Button type="button" size="sm" onClick={addFromSelector} disabled={!canAddFromSelector}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={addFromSelector}
+              disabled={!canAddFromSelector}
+            >
               <Plus className="w-4 h-4 mr-1" />
               Add
             </Button>
@@ -165,10 +191,18 @@ export function OperationLocationsEditor({
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
               placeholder={placeholder}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustom())}
+              onKeyDown={(e) =>
+                e.key === "Enter" && (e.preventDefault(), addCustom())
+              }
               className="max-w-sm"
             />
-            <Button type="button" size="sm" variant="outline" onClick={addCustom} disabled={!canAddCustom}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={addCustom}
+              disabled={!canAddCustom}
+            >
               Add custom
             </Button>
           </div>

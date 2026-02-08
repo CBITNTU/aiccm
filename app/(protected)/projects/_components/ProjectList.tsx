@@ -2,7 +2,11 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useProjects, type ProjectStatus, type Project } from "@/hooks/useProjects";
+import {
+  useProjects,
+  type ProjectStatus,
+  type Project,
+} from "@/hooks/useProjects";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -67,9 +71,7 @@ export function ProjectList({
       <Card>
         <CardContent className="py-8 text-center">
           <p className="text-destructive">Failed to load projects</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {error.message}
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">{error.message}</p>
         </CardContent>
       </Card>
     );
@@ -88,11 +90,17 @@ export function ProjectList({
                 <Briefcase className="h-3.5 w-3.5" />
                 Active
               </TabsTrigger>
-              <TabsTrigger value="completed" className="flex items-center gap-1.5">
+              <TabsTrigger
+                value="completed"
+                className="flex items-center gap-1.5"
+              >
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Done
               </TabsTrigger>
-              <TabsTrigger value="archived" className="flex items-center gap-1.5">
+              <TabsTrigger
+                value="archived"
+                className="flex items-center gap-1.5"
+              >
                 <Archive className="h-3.5 w-3.5" />
                 Archived
               </TabsTrigger>
@@ -133,7 +141,6 @@ export function ProjectList({
               </motion.div>
             )}
           </AnimatePresence>
-
         </CardContent>
       </Card>
     </>

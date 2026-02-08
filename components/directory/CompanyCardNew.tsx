@@ -1,7 +1,14 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { MapPin, BadgeCheck, Tag, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import {
+  MapPin,
+  BadgeCheck,
+  Tag,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+} from "lucide-react";
 import type { Database } from "@/lib/supabase/types";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -43,15 +50,18 @@ export function CompanyCardNew({
   onClick,
   taxonomies: propTaxonomies,
 }: CompanyCardNewProps) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
-  const [taxonomies, setTaxonomies] = useState<Array<{ id: string; name: string }>>(
-    propTaxonomies || []
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
   );
+  const [taxonomies, setTaxonomies] = useState<
+    Array<{ id: string; name: string }>
+  >(propTaxonomies || []);
   const [showAllCategories, setShowAllCategories] = useState(false);
 
   // Initialize supabase client
   useEffect(() => {
     const client = createClient();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- init client once on mount
     setSupabase(client);
   }, []);
 
@@ -69,10 +79,14 @@ export function CompanyCardNew({
         setTaxonomies(
           data
             .map((ct) => ({
-              id: (ct.taxonomies as { id: string; name: string } | null)?.id || "",
-              name: (ct.taxonomies as { id: string; name: string } | null)?.name || "",
+              id:
+                (ct.taxonomies as { id: string; name: string } | null)?.id ||
+                "",
+              name:
+                (ct.taxonomies as { id: string; name: string } | null)?.name ||
+                "",
             }))
-            .filter((t) => t.name)
+            .filter((t) => t.name),
         );
       }
     };
@@ -85,7 +99,10 @@ export function CompanyCardNew({
       coreCompetencies?: string[];
     } | null;
 
-    if (aiAnalysis?.coreCompetencies && Array.isArray(aiAnalysis.coreCompetencies)) {
+    if (
+      aiAnalysis?.coreCompetencies &&
+      Array.isArray(aiAnalysis.coreCompetencies)
+    ) {
       return aiAnalysis.coreCompetencies;
     }
     if (company.ai_competencies && Array.isArray(company.ai_competencies)) {
@@ -101,7 +118,9 @@ export function CompanyCardNew({
   };
 
   const capabilities = getCapabilities();
-  const displayedCategories = showAllCategories ? taxonomies : taxonomies.slice(0, 3);
+  const displayedCategories = showAllCategories
+    ? taxonomies
+    : taxonomies.slice(0, 3);
 
   return (
     <div

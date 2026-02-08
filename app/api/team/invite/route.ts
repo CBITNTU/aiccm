@@ -76,7 +76,11 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    if (!membership || membership.role !== "admin" || membership.status !== "approved") {
+    if (
+      !membership ||
+      membership.role !== "admin" ||
+      membership.status !== "approved"
+    ) {
       return apiError("You are not an admin of this company", 403);
     }
 
@@ -121,7 +125,10 @@ export async function POST(request: NextRequest) {
 
       if (existingMembership) {
         if (existingMembership.status === "approved") {
-          return apiError("This person is already a member of your company", 400);
+          return apiError(
+            "This person is already a member of your company",
+            400,
+          );
         } else if (existingMembership.status === "pending") {
           return apiError("This person already has a pending membership", 400);
         }
@@ -146,7 +153,10 @@ export async function POST(request: NextRequest) {
           .update({ status: "expired" })
           .eq("id", existingInvitation.id);
       } else {
-        return apiError("An invitation has already been sent to this email", 400);
+        return apiError(
+          "An invitation has already been sent to this email",
+          400,
+        );
       }
     }
 
@@ -178,7 +188,9 @@ export async function POST(request: NextRequest) {
     const inviteLink = getPlatformUrl(`/auth/invite?token=${token}`);
 
     // Get inviter name
-    const inviterName = `${inviterProfile?.first_name || ""} ${inviterProfile?.last_name || ""}`.trim() || "Your colleague";
+    const inviterName =
+      `${inviterProfile?.first_name || ""} ${inviterProfile?.last_name || ""}`.trim() ||
+      "Your colleague";
 
     // Send invitation email
     const emailData = {
@@ -259,21 +271,27 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    if (!membership || membership.role !== "admin" || membership.status !== "approved") {
+    if (
+      !membership ||
+      membership.role !== "admin" ||
+      membership.status !== "approved"
+    ) {
       return apiError("You are not an admin of this company", 403);
     }
 
     // Get invitations
     const { data: invitations, error: invitationsError } = await supabase
       .from("team_invitations")
-      .select(`
+      .select(
+        `
         id,
         email,
         status,
         expires_at,
         created_at,
         invited_by
-      `)
+      `,
+      )
       .eq("company_id", companyId)
       .order("created_at", { ascending: false });
 
@@ -349,7 +367,11 @@ export async function DELETE(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    if (!membership || membership.role !== "admin" || membership.status !== "approved") {
+    if (
+      !membership ||
+      membership.role !== "admin" ||
+      membership.status !== "approved"
+    ) {
       return apiError("You are not an admin of this company", 403);
     }
 

@@ -140,7 +140,7 @@ export default function ConsultingPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
 
   const [loading, setLoading] = useState(true);
@@ -200,6 +200,7 @@ export default function ConsultingPage() {
     };
 
     loadCompanyFromRoute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when route/user/supabase change
   }, [user?.id, routeCompanyId, supabase]);
 
   useEffect(() => {
@@ -210,12 +211,14 @@ export default function ConsultingPage() {
     } else {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when ownerCompany/user/supabase change
   }, [user?.id, projectFilter, ownerCompany?.id, supabase]);
 
   useEffect(() => {
     if (selectedProject && supabase) {
       loadProjectData(selectedProject.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when selectedProject/supabase change
   }, [selectedProject?.id, supabase]);
 
   const loadUserProjects = async (statusFilter: string = "active") => {
@@ -241,7 +244,7 @@ export default function ConsultingPage() {
             buyer,
             deadline
           )
-        `
+        `,
         )
         .eq("lead_company_id", ownerCompany.id)
         .in("status", statusesToQuery)
@@ -264,6 +267,7 @@ export default function ConsultingPage() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for post-creation callback
   const handleProjectCreated = async (projectId: string) => {
     if (!supabase) return;
 
@@ -326,7 +330,7 @@ export default function ConsultingPage() {
         projectDetails.lead_company_id !== ownerCompany.id
       ) {
         toast.error(
-          "Project does not belong to the selected company. Please select the correct company."
+          "Project does not belong to the selected company. Please select the correct company.",
         );
         return;
       }
@@ -355,7 +359,7 @@ export default function ConsultingPage() {
           `
           *,
           companies:company_id (*)
-        `
+        `,
         )
         .eq("vo_id", voId);
 
@@ -387,7 +391,7 @@ export default function ConsultingPage() {
   const runGapAnalysis = async (
     voId: string,
     company: Company,
-    tenderData: Tender
+    tenderData: Tender,
   ) => {
     if (!supabase) return;
 
@@ -452,7 +456,7 @@ Return ONLY valid JSON, no markdown.`;
               const compWords = compLower.split(/\s+/);
 
               const hasMatch = compWords.some(
-                (word: string) => word.length > 3 && allText.includes(word)
+                (word: string) => word.length > 3 && allText.includes(word),
               );
 
               if (hasMatch || allText.includes(compLower)) {
@@ -508,12 +512,12 @@ Return ONLY valid JSON, no markdown.`;
 
       toast.success(
         `Gap analysis complete! Coverage: ${analysis.coveragePercentage}%, ` +
-          `${gaps} gaps identified, ${partnerCount} partners recommended`
+          `${gaps} gaps identified, ${partnerCount} partners recommended`,
       );
     } catch (error) {
       console.error("Error running gap analysis:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to run gap analysis"
+        error instanceof Error ? error.message : "Failed to run gap analysis",
       );
     } finally {
       setAnalyzing(false);
@@ -524,7 +528,7 @@ Return ONLY valid JSON, no markdown.`;
     voId: string,
     company: Company,
     tenderData: Tender,
-    members: TeamMember[]
+    members: TeamMember[],
   ) => {
     if (!supabase) return;
 
@@ -533,7 +537,7 @@ Return ONLY valid JSON, no markdown.`;
       toast.info("Starting team analysis...");
 
       const allCompanies = [company, ...members.map((m) => m.companies)].filter(
-        Boolean
+        Boolean,
       );
 
       const prompt = `
@@ -554,7 +558,7 @@ ${idx + 1}. ${c?.company_name} ${idx === 0 ? "(Lead)" : "(Partner)"}
    - Certifications: ${c?.certifications || "None"}
    - Past Projects: ${c?.past_projects || "None"}
    - Description: ${c?.description || "None"}
-`
+`,
   )
   .join("\n")}
 
@@ -596,12 +600,12 @@ Return ONLY valid JSON, no markdown.`;
 
       toast.success(
         `Team analysis complete! Coverage: ${analysis.coveragePercentage}%, ` +
-          `${gaps} gaps remaining with current team`
+          `${gaps} gaps remaining with current team`,
       );
     } catch (error) {
       console.error("Error running team analysis:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to run team analysis"
+        error instanceof Error ? error.message : "Failed to run team analysis",
       );
     } finally {
       setAnalyzing(false);
@@ -673,7 +677,7 @@ Return ONLY valid JSON, no markdown.`;
 
     if (selectedProject.lead_company_id !== ownerCompany.id) {
       toast.error(
-        "Company mismatch: This project belongs to a different company."
+        "Company mismatch: This project belongs to a different company.",
       );
       return;
     }
@@ -704,7 +708,7 @@ Return ONLY valid JSON, no markdown.`;
 
     if (selectedProject.lead_company_id !== ownerCompany.id) {
       toast.error(
-        "Company mismatch: This project belongs to a different company."
+        "Company mismatch: This project belongs to a different company.",
       );
       return;
     }
@@ -732,7 +736,7 @@ Return ONLY valid JSON, no markdown.`;
       await api.sendProjectInvitations(
         selectedProject.id,
         tender?.title || "",
-        selectedPartnerIds
+        selectedPartnerIds,
       );
 
       toast.success(`Sent ${selectedPartnerIds.length} invitation(s)`);
@@ -743,7 +747,7 @@ Return ONLY valid JSON, no markdown.`;
   };
 
   const handleMoveProject = async (
-    newStatus: "delete" | "archived" | "completed"
+    newStatus: "delete" | "archived" | "completed",
   ) => {
     if (!selectedProject || !supabase) {
       toast.error("No project selected");
@@ -759,7 +763,7 @@ Return ONLY valid JSON, no markdown.`;
     const confirmMove = window.confirm(
       `Are you sure you want to ${statusLabels[newStatus]} "${
         selectedProject.name
-      }"? ${newStatus === "delete" ? "This action cannot be undone." : ""}`
+      }"? ${newStatus === "delete" ? "This action cannot be undone." : ""}`,
     );
 
     if (!confirmMove) return;
@@ -790,24 +794,24 @@ Return ONLY valid JSON, no markdown.`;
           {
             project_id: selectedProject.id,
             new_status: newStatus,
-          }
+          },
         );
 
         if (updateError) {
           throw new Error(
-            "Failed to update project status: " + updateError.message
+            "Failed to update project status: " + updateError.message,
           );
         }
 
         toast.success(
           `Project ${
             newStatus === "completed" ? "marked as completed" : "archived"
-          } successfully`
+          } successfully`,
         );
       }
 
       const updatedProjects = projects.filter(
-        (p) => p.id !== selectedProject.id
+        (p) => p.id !== selectedProject.id,
       );
       setProjects(updatedProjects);
 
@@ -825,7 +829,7 @@ Return ONLY valid JSON, no markdown.`;
     } catch (error) {
       console.error("Error moving project:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to move project"
+        error instanceof Error ? error.message : "Failed to move project",
       );
     }
   };
@@ -890,7 +894,9 @@ Return ONLY valid JSON, no markdown.`;
                   <Button
                     onClick={() => {
                       if (ownerCompany) {
-                        router.push(`/projects/new?companyId=${ownerCompany.id}`);
+                        router.push(
+                          `/projects/new?companyId=${ownerCompany.id}`,
+                        );
                       }
                     }}
                     size="lg"
@@ -929,7 +935,11 @@ Return ONLY valid JSON, no markdown.`;
               </p>
             </div>
             {!tenderId && ownerCompany && (
-              <Button onClick={() => router.push(`/projects/new?companyId=${ownerCompany.id}`)}>
+              <Button
+                onClick={() =>
+                  router.push(`/projects/new?companyId=${ownerCompany.id}`)
+                }
+              >
                 <Plus className="h-5 w-5 mr-2" />
                 New Project
               </Button>
@@ -1249,7 +1259,7 @@ Return ONLY valid JSON, no markdown.`;
                               <p className="text-sm text-muted-foreground">
                                 {member.companies?.key_capabilities?.substring(
                                   0,
-                                  100
+                                  100,
                                 )}
                                 ...
                               </p>

@@ -1,6 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Mail, Award, Tag } from "lucide-react";
 import type { Database } from "@/lib/supabase/types";
@@ -39,7 +45,7 @@ interface CompanyCardProps {
 
 export function CompanyCard({ company, onClick }: CompanyCardProps) {
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [taxonomies, setTaxonomies] = useState<
     Array<{ id: string; name: string }>
@@ -48,6 +54,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
   // Initialize supabase client
   useEffect(() => {
     const client = createClient();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- init client once on mount
     setSupabase(client);
   }, []);
 
@@ -64,10 +71,14 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
         setTaxonomies(
           data
             .map((ct) => ({
-              id: (ct.taxonomies as { id: string; name: string } | null)?.id || "",
-              name: (ct.taxonomies as { id: string; name: string } | null)?.name || "",
+              id:
+                (ct.taxonomies as { id: string; name: string } | null)?.id ||
+                "",
+              name:
+                (ct.taxonomies as { id: string; name: string } | null)?.name ||
+                "",
             }))
-            .filter((t) => t.name)
+            .filter((t) => t.name),
         );
       }
     };
@@ -208,7 +219,11 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
             </h4>
             <div className="flex flex-wrap gap-1">
               {taxonomies.slice(0, 3).map((taxonomy) => (
-                <Badge key={taxonomy.id} variant="secondary" className="text-xs">
+                <Badge
+                  key={taxonomy.id}
+                  variant="secondary"
+                  className="text-xs"
+                >
                   {taxonomy.name}
                 </Badge>
               ))}

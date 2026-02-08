@@ -30,7 +30,8 @@ export function ResultsHeader({
           <span className="font-medium text-foreground">
             {start}-{end}
           </span>{" "}
-          of <span className="font-medium text-foreground">{total}</span> tenders
+          of <span className="font-medium text-foreground">{total}</span>{" "}
+          tenders
         </p>
         {currentPage && totalPages && totalPages > 1 && (
           <p className="text-sm text-muted-foreground">

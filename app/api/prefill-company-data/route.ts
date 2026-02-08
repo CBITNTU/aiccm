@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { getOpenAIClient, apiResponse } from "@/lib/api";
+import { getOpenAIClient, createApiClient, apiResponse } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36";
@@ -59,6 +60,17 @@ function tidyHtml(html: string, max = 15000): string {
 
 export async function POST(request: NextRequest) {
   try {
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
     const { companyName, companyNumber, websiteUrl } = await request.json();
 
     console.log("Starting data prefill for:", {
@@ -272,6 +284,16 @@ EXTRACTION RULES:
     }
 
     console.log("OpenAI analysis completed successfully");
+
+    await logApiEvent(request, {
+      actionType: "company_prefill_requested",
+      userId: userId || undefined,
+      details: {
+        companyName,
+        companyNumber: !!companyNumber,
+        websiteUrl: !!websiteUrl,
+      },
+    }).catch(() => {});
 
     return apiResponse(result);
   } catch (error) {

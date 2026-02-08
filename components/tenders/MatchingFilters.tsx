@@ -44,7 +44,7 @@ export function MatchingFilters({
 }: MatchingFiltersProps) {
   const handleFilterChange = (
     key: keyof MatchingFiltersState,
-    value: string | number | null
+    value: string | number | null,
   ) => {
     const newFilters = { ...filters, [key]: value };
     onFiltersChange(newFilters);
@@ -156,7 +156,9 @@ export function MatchingFilters({
             <Label>Show</Label>
             <Select
               value={filters.showApplied || "all"}
-              onValueChange={(value) => handleFilterChange("showApplied", value)}
+              onValueChange={(value) =>
+                handleFilterChange("showApplied", value)
+              }
             >
               <SelectTrigger>
                 <SelectValue />
@@ -206,7 +208,7 @@ export function MatchingFilters({
               onClick={() =>
                 handleFilterChange(
                   "quickFilter",
-                  filters.quickFilter === "high_score" ? null : "high_score"
+                  filters.quickFilter === "high_score" ? null : "high_score",
                 )
               }
             >
@@ -218,7 +220,7 @@ export function MatchingFilters({
               onClick={() =>
                 handleFilterChange(
                   "quickFilter",
-                  filters.quickFilter === "urgent" ? null : "urgent"
+                  filters.quickFilter === "urgent" ? null : "urgent",
                 )
               }
             >
@@ -232,7 +234,7 @@ export function MatchingFilters({
               onClick={() =>
                 handleFilterChange(
                   "quickFilter",
-                  filters.quickFilter === "high_value" ? null : "high_value"
+                  filters.quickFilter === "high_value" ? null : "high_value",
                 )
               }
             >

@@ -69,7 +69,9 @@ export async function POST(request: NextRequest) {
       .limit(10000); // Get a sample to see which capabilities are used
 
     const usedCapabilityIds = new Set(
-      (companyCapabilityLinks || []).map((link: any) => link.capability_id),
+      (companyCapabilityLinks || []).map(
+        (link: { capability_id: string }) => link.capability_id,
+      ),
     );
 
     console.log(
@@ -125,33 +127,9 @@ export async function POST(request: NextRequest) {
 
     const capabilitiesList = `${usedCapabilitiesList}\n\n${unusedCapabilitiesList}`;
 
-    // Create AI prompt
-    const systemPrompt = `You are an expert at analyzing tenders and identifying required capabilities. 
-Your task is to analyze a tender description and identify relevant capabilities from the STATIC list provided.
+    // Create AI prompt (shortened for token savings)
+    const systemPrompt = `From the list below, pick capability names that match the tender. Prefer capabilities from the USED BY COMPANIES section. Output JSON only: {"existing":["Name1","Name2"]}. No new capabilities.`;
 
-CRITICAL RULES:
-- ONLY select capabilities from the provided list - DO NOT create new capabilities
-- FIRST PRIORITY: Select capabilities from the "USED BY COMPANIES" section - these will find companies in Step 3
-- SECOND PRIORITY: If no suitable match in "USED BY COMPANIES", you can select from "NOT YET USED" section
-- NEVER create new capabilities - the list is static
-
-CRITICAL FORMATTING RULES:
-- Return ONLY valid JSON - nothing else
-- NO comments (// or /* */) anywhere in the response
-- NO explanations or text before or after the JSON
-- NO markdown code blocks (no \`\`\`json\`\`\`)
-- Start with { and end with }
-- Use only double quotes for strings
-
-Return a JSON object with one array:
-- "existing": Array of capability names (strings) from the provided list that are relevant - PREFER "USED BY COMPANIES" items
-
-Example (copy this exact format, no comments):
-{"existing": ["Capability Name 1", "Capability Name 2"]}
-
-Be selective - only include capabilities that are clearly needed. Prioritize capabilities that companies already have.`;
-
-    // Format budget range
     const budgetRange =
       tender.budget_min || tender.budget_max
         ? `£${tender.budget_min ? tender.budget_min.toLocaleString() : "?"} - £${tender.budget_max ? tender.budget_max.toLocaleString() : "?"}`
@@ -166,21 +144,13 @@ Deadline: ${tender.deadline || "N/A"}
 Location: ${tender.location || "N/A"}
 ${tender.cpv_codes && tender.cpv_codes.length > 0 ? `CPV Codes: ${tender.cpv_codes.join(", ")}` : ""}
 
-Available Capabilities (STATIC LIST - DO NOT CREATE NEW ONES):
+Available Capabilities:
 ${capabilitiesList}
 
-CRITICAL: The "USED BY COMPANIES" capabilities will find companies in Step 3. The "NOT YET USED" capabilities will find 0 companies.
-
-Based on the tender details above, return ONLY a valid JSON object (no comments, no explanations, no markdown) with:
-- "existing": Array of capability names from the provided list that match - PREFER "USED BY COMPANIES" items
-- DO NOT create new capabilities - only use what's in the list
-
-Example format:
-{"existing": ["Construction", "Project Management"]}`;
+Prefer USED BY COMPANIES. Return JSON: existing = array of capability names from the list.`;
 
     // Call OpenAI
     const response = await chatCompletion(systemPrompt, userPrompt, {
-      model: "gpt-5-nano",
       maxTokens: 8000,
     });
 

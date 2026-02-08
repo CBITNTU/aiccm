@@ -51,13 +51,14 @@ export function TenderViewDialog({
   open,
   onOpenChange,
   onCreateProject,
-  readOnly = false,
+  readOnly: _readOnly = false,
 }: TenderViewDialogProps) {
   if (!tender) return null;
 
   const formatBudget = (min?: number | null, max?: number | null) => {
     if (!min && !max) return "Budget not disclosed";
-    if (min && max) return `£${min.toLocaleString()} - £${max.toLocaleString()}`;
+    if (min && max)
+      return `£${min.toLocaleString()} - £${max.toLocaleString()}`;
     if (min) return `From £${min.toLocaleString()}`;
     if (max) return `Up to £${max.toLocaleString()}`;
     return "Budget not disclosed";
@@ -75,7 +76,7 @@ export function TenderViewDialog({
     const deadlineDate = new Date(deadline);
     const today = new Date();
     const daysUntilDeadline = Math.ceil(
-      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
     return daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
   };
@@ -89,7 +90,9 @@ export function TenderViewDialog({
               <DialogTitle className="text-xl">{tender.title}</DialogTitle>
               <DialogDescription className="mt-2">
                 {tender.reference_number && (
-                  <span className="text-sm">Ref: {tender.reference_number}</span>
+                  <span className="text-sm">
+                    Ref: {tender.reference_number}
+                  </span>
                 )}
               </DialogDescription>
             </div>

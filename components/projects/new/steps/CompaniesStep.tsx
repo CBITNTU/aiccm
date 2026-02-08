@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- company/query result types */
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
@@ -96,7 +97,7 @@ export function CompaniesStep({
             created_at,
             updated_at
           )
-        `
+        `,
         )
         .in("capability_id", selectedCapabilityIds);
 
@@ -112,7 +113,7 @@ export function CompaniesStep({
         capabilityCheck.length > 0
       ) {
         console.log(
-          "FALLBACK: No companies found by capability IDs, trying text search..."
+          "FALLBACK: No companies found by capability IDs, trying text search...",
         );
 
         const genericWords = new Set([
@@ -143,7 +144,7 @@ export function CompaniesStep({
           const orConditions = searchKeywords
             .map(
               (keyword) =>
-                `description.ilike.%${keyword}%,key_capabilities.ilike.%${keyword}%`
+                `description.ilike.%${keyword}%,key_capabilities.ilike.%${keyword}%`,
             )
             .join(",");
 
@@ -151,20 +152,24 @@ export function CompaniesStep({
             await supabase
               .from("companies")
               .select(
-                "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, created_at, updated_at"
+                "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, created_at, updated_at",
               )
               .eq("status", "active")
               .or(orConditions)
               .limit(50);
 
-          if (!textSearchError && textSearchResults && textSearchResults.length > 0) {
+          if (
+            !textSearchError &&
+            textSearchResults &&
+            textSearchResults.length > 0
+          ) {
             const filteredResults = textSearchResults.filter((company: any) => {
               const desc = (company.description || "").toLowerCase();
               const keyCaps = (company.key_capabilities || "").toLowerCase();
               const combined = `${desc} ${keyCaps}`;
 
               const keywordMatches = searchKeywords.filter((keyword) =>
-                combined.includes(keyword)
+                combined.includes(keyword),
               ).length;
               const fullNameMatches = capabilityCheck.some((cap) => {
                 const fullName = cap.name.toLowerCase();
@@ -200,16 +205,14 @@ export function CompaniesStep({
               });
 
               const companiesArray = Array.from(
-                uniqueFallbackCompanies.values()
+                uniqueFallbackCompanies.values(),
               ).sort((a, b) => a.company_name.localeCompare(b.company_name));
 
               const companiesWithCapabilities = await Promise.all(
                 companiesArray.map(async (company) => {
                   const { data: capabilities } = await supabase
                     .from("company_capabilities")
-                    .select(
-                      "capability_id, company_capabilities_ref(id, name)"
-                    )
+                    .select("capability_id, company_capabilities_ref(id, name)")
                     .eq("company_id", company.id)
                     .in("capability_id", selectedCapabilityIds);
 
@@ -222,7 +225,7 @@ export function CompaniesStep({
                       })) ||
                       capabilityCheck.map((c) => ({ id: c.id, name: c.name })),
                   };
-                })
+                }),
               );
 
               setCompanies(companiesWithCapabilities);
@@ -240,7 +243,8 @@ export function CompaniesStep({
         const company = item.companies;
         if (
           company &&
-          (company.status === "active" || company.status === "pending_review") &&
+          (company.status === "active" ||
+            company.status === "pending_review") &&
           !uniqueCompanies.has(company.id)
         ) {
           uniqueCompanies.set(company.id, {
@@ -251,7 +255,7 @@ export function CompaniesStep({
       });
 
       const companiesArray = Array.from(uniqueCompanies.values()).sort((a, b) =>
-        a.company_name.localeCompare(b.company_name)
+        a.company_name.localeCompare(b.company_name),
       );
 
       // Fetch capabilities for each company
@@ -271,14 +275,14 @@ export function CompaniesStep({
                 name: c.company_capabilities_ref.name,
               })) || [],
           };
-        })
+        }),
       );
 
       setCompanies(companiesWithCapabilities);
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast.error(
-        "Failed to load companies. Make sure companies have been processed and have capabilities assigned."
+        "Failed to load companies. Make sure companies have been processed and have capabilities assigned.",
       );
     } finally {
       setLoading(false);
@@ -287,7 +291,7 @@ export function CompaniesStep({
 
   const handleCompanyToggle = (
     company: CompanyWithCapabilities,
-    checked: boolean
+    checked: boolean,
   ) => {
     if (checked) {
       onSelectionChange([...selectedCompanies, company]);
@@ -454,10 +458,7 @@ export function CompaniesStep({
                             )}
                             {company.capabilities &&
                               company.capabilities.length > 3 && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs"
-                                >
+                                <Badge variant="outline" className="text-xs">
                                   +{company.capabilities.length - 3} more
                                 </Badge>
                               )}
@@ -517,7 +518,8 @@ export function CompaniesStep({
         <Card className="bg-muted/30">
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">
-              You can proceed with just your company, or add partners above. Click Next to continue.
+              You can proceed with just your company, or add partners above.
+              Click Next to continue.
             </p>
           </CardContent>
         </Card>
@@ -606,7 +608,9 @@ export function CompaniesStep({
               {selectedCompanyDetail.capabilities &&
                 selectedCompanyDetail.capabilities.length > 0 && (
                   <div>
-                    <h4 className="font-semibold mb-2">Matching Capabilities</h4>
+                    <h4 className="font-semibold mb-2">
+                      Matching Capabilities
+                    </h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedCompanyDetail.capabilities.map((cap) => (
                         <Badge key={cap.id} variant="secondary">
@@ -621,7 +625,7 @@ export function CompaniesStep({
                 <Button
                   onClick={() => {
                     const isSelected = isCompanySelected(
-                      selectedCompanyDetail.id
+                      selectedCompanyDetail.id,
                     );
                     handleCompanyToggle(selectedCompanyDetail, !isSelected);
                     setDetailDialogOpen(false);

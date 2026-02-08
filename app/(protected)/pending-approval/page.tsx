@@ -87,6 +87,7 @@ export default function PendingApprovalPage() {
 
   useEffect(() => {
     fetchPendingInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount
   }, []);
 
   const handleCheckStatus = async () => {
@@ -226,8 +227,8 @@ export default function PendingApprovalPage() {
                         step.completed
                           ? "bg-primary text-primary-foreground"
                           : step.current
-                          ? "bg-primary/20 text-primary border-2 border-primary"
-                          : "bg-muted text-muted-foreground"
+                            ? "bg-primary/20 text-primary border-2 border-primary"
+                            : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {step.completed ? (
@@ -301,7 +302,7 @@ export default function PendingApprovalPage() {
                   className="text-primary hover:underline"
                 >
                   support@tndrx.com
-                </a> 
+                </a>
               </p>
             </div>
           </CardContent>

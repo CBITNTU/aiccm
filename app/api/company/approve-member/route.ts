@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import {
   createAdminClient,
-  createApiClient,
   apiResponse,
   apiError,
   getAuthenticatedUser,
@@ -11,7 +10,6 @@ import {
   sendEmail,
   getCompanyAdminApprovalEmailSubject,
   getCompanyAdminApprovalEmailHtml,
-  getAdminNotificationEmailSubject,
   getAdminNotificationEmailHtml,
 } from "@/lib/email";
 
@@ -46,13 +44,15 @@ export async function POST(request: NextRequest) {
     // Get join request
     const { data: joinRequest, error: requestError } = await supabase
       .from("company_join_requests")
-      .select(`
+      .select(
+        `
         id,
         user_id,
         company_id,
         company_name_requested,
         status
-      `)
+      `,
+      )
       .eq("id", requestId)
       .single();
 
@@ -68,8 +68,15 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    if (!membership || membership.role !== "admin" || membership.status !== "approved") {
-      return apiError("You are not authorized to approve members for this company", 403);
+    if (
+      !membership ||
+      membership.role !== "admin" ||
+      membership.status !== "approved"
+    ) {
+      return apiError(
+        "You are not authorized to approve members for this company",
+        403,
+      );
     }
 
     // Check if request is in a valid state
@@ -91,8 +98,12 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    const requesterName = `${requesterProfile?.first_name || ""} ${requesterProfile?.last_name || ""}`.trim() || "User";
-    const adminName = `${adminProfile?.first_name || ""} ${adminProfile?.last_name || ""}`.trim() || "Company Admin";
+    const requesterName =
+      `${requesterProfile?.first_name || ""} ${requesterProfile?.last_name || ""}`.trim() ||
+      "User";
+    const adminName =
+      `${adminProfile?.first_name || ""} ${adminProfile?.last_name || ""}`.trim() ||
+      "Company Admin";
 
     if (approved) {
       // Company admin approves - update status to approved_by_admin
@@ -184,7 +195,8 @@ export async function POST(request: NextRequest) {
         .from("company_join_requests")
         .update({
           status: "rejected",
-          rejection_reason: rejectionReason || "Rejected by company administrator",
+          rejection_reason:
+            rejectionReason || "Rejected by company administrator",
           rejected_by: user.id,
         })
         .eq("id", requestId);
@@ -221,7 +233,8 @@ export async function POST(request: NextRequest) {
           requestId,
           requesterId: joinRequest.user_id,
           requesterName,
-          rejectionReason: rejectionReason || "Rejected by company administrator",
+          rejectionReason:
+            rejectionReason || "Rejected by company administrator",
         },
       });
 
@@ -278,7 +291,8 @@ export async function GET(request: NextRequest) {
     if (adminCompanyIds.length > 0) {
       const { data: requestsData, error: requestsError } = await supabase
         .from("company_join_requests")
-        .select(`
+        .select(
+          `
           id,
           user_id,
           company_id,
@@ -286,7 +300,8 @@ export async function GET(request: NextRequest) {
           message,
           status,
           created_at
-        `)
+        `,
+        )
         .in("company_id", adminCompanyIds)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
@@ -302,14 +317,16 @@ export async function GET(request: NextRequest) {
     // Get current members for all companies the user belongs to
     const { data: members, error: membersError } = await supabase
       .from("company_members")
-      .select(`
+      .select(
+        `
         id,
         company_id,
         user_id,
         role,
         status,
         created_at
-      `)
+      `,
+      )
       .in("company_id", companyIds)
       .eq("status", "approved")
       .order("created_at", { ascending: false });
@@ -321,19 +338,22 @@ export async function GET(request: NextRequest) {
 
     // Get users who have been approved by company admin but are awaiting platform admin approval
     // These are in company_join_requests with status "approved_by_admin"
-    const { data: pendingPlatformApproval, error: pendingError } = await supabase
-      .from("company_join_requests")
-      .select(`
+    const { data: pendingPlatformApproval, error: pendingError } =
+      await supabase
+        .from("company_join_requests")
+        .select(
+          `
         id,
         user_id,
         company_id,
         company_name_requested,
         status,
         created_at
-      `)
-      .in("company_id", companyIds)
-      .eq("status", "approved_by_admin")
-      .order("created_at", { ascending: false });
+      `,
+        )
+        .in("company_id", companyIds)
+        .eq("status", "approved_by_admin")
+        .order("created_at", { ascending: false });
 
     if (pendingError) {
       console.error("Error fetching pending platform approvals:", pendingError);
@@ -360,7 +380,7 @@ export async function GET(request: NextRequest) {
               }
             : null,
         };
-      })
+      }),
     );
 
     const enrichedMembers = await Promise.all(
@@ -382,7 +402,7 @@ export async function GET(request: NextRequest) {
               }
             : null,
         };
-      })
+      }),
     );
 
     // Enrich pending platform approval users and add them to members with special status
@@ -410,7 +430,7 @@ export async function GET(request: NextRequest) {
               }
             : null,
         };
-      })
+      }),
     );
 
     // Combine approved members with pending platform approval members

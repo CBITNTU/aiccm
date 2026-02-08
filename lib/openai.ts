@@ -1,4 +1,4 @@
-import { api } from '@/lib/api/client';
+import { api } from "@/lib/api/client";
 
 export interface CompanyAnalysis {
   competencies: string[];
@@ -11,17 +11,15 @@ export interface CompanyAnalysis {
   marketPosition: string;
 }
 
-export const analyzeCompanyProfile = async (
-  companyData: {
-    companyName: string;
-    websiteUrl: string;
-    description: string;
-    keyCapabilities: string;
-    certifications: string;
-    equipment: string;
-    pastProjects: string;
-  }
-): Promise<CompanyAnalysis> => {
+export const analyzeCompanyProfile = async (companyData: {
+  companyName: string;
+  websiteUrl: string;
+  description: string;
+  keyCapabilities: string;
+  certifications: string;
+  equipment: string;
+  pastProjects: string;
+}): Promise<CompanyAnalysis> => {
   try {
     const result = await api.analyzeCompanyAI({
       companyName: companyData.companyName,
@@ -35,12 +33,12 @@ export const analyzeCompanyProfile = async (
 
     return result.analysis as CompanyAnalysis;
   } catch (error) {
-    console.error('Analysis Error:', error);
-    throw new Error('Failed to analyze company profile. Please try again.');
+    console.error("Analysis Error:", error);
+    throw new Error("Failed to analyze company profile. Please try again.");
   }
 };
 
-export const setOpenAIKey = (apiKey: string): void => {
+export const setOpenAIKey = (_apiKey: string): void => {
   // No longer needed - using platform key
 };
 

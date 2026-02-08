@@ -17,7 +17,10 @@ export function getStatesOfCountry(countryCode: string): IState[] {
   return State.getStatesOfCountry(countryCode) ?? [];
 }
 
-export function getCitiesOfState(countryCode: string, stateCode: string): ICity[] {
+export function getCitiesOfState(
+  countryCode: string,
+  stateCode: string,
+): ICity[] {
   return City.getCitiesOfState(countryCode, stateCode) ?? [];
 }
 
@@ -29,7 +32,7 @@ export function getCitiesOfCountry(countryCode: string): ICity[] {
 export function formatLocationLabel(
   country: ICountry,
   state?: IState | null,
-  city?: ICity | null
+  city?: ICity | null,
 ): string {
   if (city?.name) {
     const parts = [country.name, state?.name, city.name].filter(Boolean);
@@ -97,7 +100,9 @@ const UK_POSTCODE_AREA_TO_LOCATION: Record<string, string> = {
  * Used to pre-tick when operation_locations is empty but organization has a location.
  * UK: maps postcode area to "United Kingdom › Region › City". Other formats: returns ["United Kingdom"] if looks UK, else [].
  */
-export function suggestLocationsFromPostcode(postcode: string | null | undefined): string[] {
+export function suggestLocationsFromPostcode(
+  postcode: string | null | undefined,
+): string[] {
   if (!postcode || typeof postcode !== "string") return [];
   const trimmed = postcode.trim().toUpperCase();
   if (!trimmed.length) return [];
@@ -123,7 +128,7 @@ export function suggestLocationsFromPostcode(postcode: string | null | undefined
  */
 export function suggestLocationsFromCompanyLocation(
   address: string | null | undefined,
-  postcode: string | null | undefined
+  postcode: string | null | undefined,
 ): string[] {
   // Prefer postcode for structured UK suggestion
   const fromPostcode = suggestLocationsFromPostcode(postcode);

@@ -49,6 +49,7 @@ export function CompanyTaxonomySelector({
 
   useEffect(() => {
     fetchCompanyTaxonomies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when companyId changes
   }, [companyId]);
 
   const fetchCompanyTaxonomies = async () => {
@@ -115,7 +116,7 @@ export function CompanyTaxonomySelector({
       if (error) throw error;
 
       setSelectedTaxonomies(
-        selectedTaxonomies.filter((id) => id !== taxonomyId)
+        selectedTaxonomies.filter((id) => id !== taxonomyId),
       );
 
       toast.success("Category removed");

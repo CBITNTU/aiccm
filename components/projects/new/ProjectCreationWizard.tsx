@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- step/result types */
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -57,10 +58,10 @@ export function ProjectCreationWizard({
   // Determine starting step based on whether we have a tender ID
   const [currentStep, setCurrentStep] = useState(initialTenderId ? 2 : 1);
   const [selectedTenderId, setSelectedTenderId] = useState<string | null>(
-    initialTenderId || null
+    initialTenderId || null,
   );
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>(
-    []
+    [],
   );
   const [selectedCompanies, setSelectedCompanies] = useState<Company[]>([]);
   const [projectName, setProjectName] = useState("");
@@ -68,7 +69,7 @@ export function ProjectCreationWizard({
 
   // Lead company state
   const [leadCompanyId, setLeadCompanyId] = useState<string | null>(
-    initialCompanyId || null
+    initialCompanyId || null,
   );
   const [userCompanies, setUserCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
@@ -144,22 +145,22 @@ export function ProjectCreationWizard({
           setSelectedCapabilities(result.suggestedCapabilityIds);
           setAiSuggestedCapabilities(result.suggestedCapabilityIds);
           toast.success(
-            `AI suggested ${result.suggestedCapabilityIds.length} capabilities. You can edit the selection.`
+            `AI suggested ${result.suggestedCapabilityIds.length} capabilities. You can edit the selection.`,
           );
         } else {
           toast.info(
-            "No specific capabilities were suggested. Please select manually."
+            "No specific capabilities were suggested. Please select manually.",
           );
         }
       } catch (error: any) {
         console.error("Error fetching suggested capabilities:", error);
         if (error?.status === 401) {
           toast.error(
-            "Please log in to use AI suggestions. You can still select capabilities manually."
+            "Please log in to use AI suggestions. You can still select capabilities manually.",
           );
         } else {
           toast.error(
-            "Failed to get AI suggestions. Please select capabilities manually."
+            "Failed to get AI suggestions. Please select capabilities manually.",
           );
         }
       } finally {
@@ -316,8 +317,8 @@ export function ProjectCreationWizard({
                     currentStep === step.number
                       ? "text-primary"
                       : currentStep > step.number
-                      ? "text-primary/60"
-                      : "text-muted-foreground"
+                        ? "text-primary/60"
+                        : "text-muted-foreground"
                   }`}
                 >
                   <div

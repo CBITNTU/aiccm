@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server";
 import {
   createAdminClient,
+  createApiClient,
   chatCompletion,
   parseAIJsonResponse,
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 interface TenderData {
   title: string;
@@ -17,6 +19,17 @@ interface TenderData {
 
 export async function POST(request: NextRequest) {
   try {
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
     const { tenderData, tenderId } = (await request.json()) as {
       tenderData: TenderData;
       tenderId?: string;
@@ -37,9 +50,7 @@ export async function POST(request: NextRequest) {
     const taxonomyList =
       taxonomies?.map((t) => `${t.name} (Level ${t.level})`).join(", ") || "";
 
-    const prompt = `Analyze this tender and identify the most relevant industry categories from the available taxonomy list:
-
-Tender Title: ${tenderData.title}
+    const prompt = `Tender Title: ${tenderData.title}
 Description: ${tenderData.description || "Not provided"}
 Buyer: ${tenderData.buyer}
 ${tenderData.cpv_codes ? `CPV Codes: ${tenderData.cpv_codes.join(", ")}` : ""}
@@ -47,12 +58,7 @@ ${tenderData.location ? `Location: ${tenderData.location}` : ""}
 
 Available taxonomy categories: ${taxonomyList}
 
-Please analyze the tender and return ONLY a JSON array of the most relevant taxonomy names from the available list. Select 2-5 categories that best match this tender's scope and requirements.
-
-Return format (must be valid JSON array):
-["Category Name 1", "Category Name 2", "Category Name 3"]
-
-Focus on the most specific and accurate categories that would help companies find this tender.`;
+Pick 2-5 categories that best match this tender. Output a JSON array of taxonomy names. Focus on the most specific categories.`;
 
     console.log("Analyzing tender:", tenderData.title);
 
@@ -114,6 +120,17 @@ Focus on the most specific and accurate categories that would help companies fin
         }
       }
     }
+
+    await logApiEvent(request, {
+      actionType: "tender_analyzed",
+      userId: userId || undefined,
+      entityType: "tender",
+      entityId: tenderId || undefined,
+      details: {
+        title: tenderData.title,
+        taxonomyCount: suggestedTaxonomies.length,
+      },
+    }).catch(() => {});
 
     return apiResponse({
       suggestedTaxonomies,

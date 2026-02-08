@@ -28,14 +28,14 @@ export function InvitationsPanel({
 
   // Filter to only show invitable members (not lead, and either invited or member role)
   const invitableMembers = teamMembers.filter(
-    (m) => m.role === "invited" || m.role === "member"
+    (m) => m.role === "invited" || m.role === "member",
   );
 
   const togglePartner = (partnerId: string) => {
     setSelectedPartners((prev) =>
       prev.includes(partnerId)
         ? prev.filter((id) => id !== partnerId)
-        : [...prev, partnerId]
+        : [...prev, partnerId],
     );
   };
 
@@ -56,7 +56,7 @@ export function InvitationsPanel({
       setSelectedPartners([]);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to send invitations"
+        err instanceof Error ? err.message : "Failed to send invitations",
       );
     }
   };
@@ -105,7 +105,8 @@ export function InvitationsPanel({
           ) : (
             <>
               <Send className="h-4 w-4 mr-2" />
-              Send {selectedPartners.length > 0 && `(${selectedPartners.length})`}
+              Send{" "}
+              {selectedPartners.length > 0 && `(${selectedPartners.length})`}
             </>
           )}
         </Button>
@@ -144,7 +145,9 @@ export function InvitationsPanel({
                 </div>
               </div>
             </div>
-            <Badge variant={member.role === "invited" ? "secondary" : "default"}>
+            <Badge
+              variant={member.role === "invited" ? "secondary" : "default"}
+            >
               {member.role === "invited" ? "Pending" : "Accepted"}
             </Badge>
           </motion.div>

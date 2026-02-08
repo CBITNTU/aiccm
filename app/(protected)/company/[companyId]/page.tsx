@@ -1,12 +1,19 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- profiles, companies extended columns */
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -77,25 +84,34 @@ export default function CompanyDetailPage() {
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", value);
-    router.replace(`/company/${companyId}?${params.toString()}`, { scroll: false });
+    router.replace(`/company/${companyId}?${params.toString()}`, {
+      scroll: false,
+    });
   };
 
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
   const [companyData, setCompanyData] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null);
+  const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(
+    null,
+  );
   const [isOwner, setIsOwner] = useState(false);
   const [inviteRefreshTrigger, setInviteRefreshTrigger] = useState(0);
 
   // Edit states
   const [isEditingOverview, setIsEditingOverview] = useState(false);
   const [isEditingBasicInfo, setIsEditingBasicInfo] = useState(false);
-  const [isEditingOperationLocations, setIsEditingOperationLocations] = useState(false);
+  const [isEditingOperationLocations, setIsEditingOperationLocations] =
+    useState(false);
   const [isEditingCertifications, setIsEditingCertifications] = useState(false);
   const [isEditingProjects, setIsEditingProjects] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [companyCapabilities, setCompanyCapabilities] = useState<Array<{ id: string; name: string; category: string }>>([]);
+  const [, setCompanyCapabilities] = useState<
+    Array<{ id: string; name: string; category: string }>
+  >([]);
 
   // Form states
   const [editedDescription, setEditedDescription] = useState("");
@@ -105,8 +121,12 @@ export default function CompanyDetailPage() {
   const [editedEmail, setEditedEmail] = useState("");
   const [editedWebsite, setEditedWebsite] = useState("");
   const [editedPhone, setEditedPhone] = useState("");
-  const [editedOperationLocations, setEditedOperationLocations] = useState<string[]>([]);
-  const [editedCertifications, setEditedCertifications] = useState<Certification[]>([]);
+  const [editedOperationLocations, setEditedOperationLocations] = useState<
+    string[]
+  >([]);
+  const [editedCertifications, setEditedCertifications] = useState<
+    Certification[]
+  >([]);
   const [editedProjects, setEditedProjects] = useState<PastProject[]>([]);
 
   // Initialize supabase client
@@ -142,7 +162,10 @@ export default function CompanyDetailPage() {
           .eq("status", "approved")
           .single();
 
-        const [ownerResult, memberResult] = await Promise.all([ownerQuery, memberQuery]);
+        const [ownerResult, memberResult] = await Promise.all([
+          ownerQuery,
+          memberQuery,
+        ]);
 
         const userIsOwner = !ownerResult.error;
         const hasAccess = userIsOwner || !memberResult.error;
@@ -368,7 +391,7 @@ export default function CompanyDetailPage() {
     try {
       const data = await api.analyzeCompany(companyData.id);
 
-        if (data?.success && data?.analysis) {
+      if (data?.success && data?.analysis) {
         setAnalysis(data.analysis as Record<string, unknown>);
 
         const { data: updatedData } = await supabase
@@ -401,12 +424,14 @@ export default function CompanyDetailPage() {
           }
         }
 
-        toast.success("Company profile analysis has been refreshed. Capabilities have been generated from the static list.");
+        toast.success(
+          "Company profile analysis has been refreshed. Capabilities have been generated from the static list.",
+        );
       }
     } catch (error) {
       console.error("Analysis error:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to analyze profile"
+        error instanceof Error ? error.message : "Failed to analyze profile",
       );
     } finally {
       setIsAnalyzing(false);
@@ -425,7 +450,9 @@ export default function CompanyDetailPage() {
   if (!companyData) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-        <p className="text-muted-foreground">Company not found. Redirecting...</p>
+        <p className="text-muted-foreground">
+          Company not found. Redirecting...
+        </p>
       </div>
     );
   }
@@ -448,19 +475,31 @@ export default function CompanyDetailPage() {
     }
   } catch {
     // If JSON parse fails, treat as plain text (semicolon-separated)
-    if (companyData.certifications && typeof companyData.certifications === 'string') {
-      const items = companyData.certifications.split(';').map(s => s.trim()).filter(s => s.length > 0);
-      certifications = items.map(name => ({ name }));
+    if (
+      companyData.certifications &&
+      typeof companyData.certifications === "string"
+    ) {
+      const items = companyData.certifications
+        .split(";")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      certifications = items.map((name) => ({ name }));
     }
   }
 
   try {
-    if (companyData.operation_locations && Array.isArray(companyData.operation_locations)) {
+    if (
+      companyData.operation_locations &&
+      Array.isArray(companyData.operation_locations)
+    ) {
       operationLocations = companyData.operation_locations as string[];
     }
     // Pre-tick from organization details: if no saved locations but company has Location (address/postcode), suggest so they appear pre-ticked
     if (operationLocations.length === 0) {
-      const suggested = suggestLocationsFromCompanyLocation(companyData.address, companyData.postcode);
+      const suggested = suggestLocationsFromCompanyLocation(
+        companyData.address,
+        companyData.postcode,
+      );
       if (suggested.length > 0) operationLocations = suggested;
     }
   } catch {
@@ -480,11 +519,18 @@ export default function CompanyDetailPage() {
     }
   } catch {
     // If JSON parse fails, treat as plain text (semicolon-separated)
-    if (companyData.past_projects && typeof companyData.past_projects === 'string') {
-      const items = companyData.past_projects.split(';').map(s => s.trim()).filter(s => s.length > 0);
-      pastProjects = items.map(description => ({ 
-        name: description.substring(0, 50) + (description.length > 50 ? '...' : ''),
-        description 
+    if (
+      companyData.past_projects &&
+      typeof companyData.past_projects === "string"
+    ) {
+      const items = companyData.past_projects
+        .split(";")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      pastProjects = items.map((description) => ({
+        name:
+          description.substring(0, 50) + (description.length > 50 ? "..." : ""),
+        description,
       }));
     }
   }
@@ -495,7 +541,6 @@ export default function CompanyDetailPage() {
   > | null;
 
   const aiCompetencies = companyData.ai_competencies as string[] | null;
-  const aiCapabilities = companyData.ai_capabilities as string[] | null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -595,8 +640,8 @@ export default function CompanyDetailPage() {
                     {isAnalyzing
                       ? "Analyzing..."
                       : analysis
-                      ? "Re-analyze"
-                      : "Analyze Company"}
+                        ? "Re-analyze"
+                        : "Analyze Company"}
                   </Button>
                 </>
               ) : (
@@ -645,7 +690,9 @@ export default function CompanyDetailPage() {
                   {companyData.website_url}
                 </a>
               ) : (
-                <span className="text-muted-foreground italic">No website added</span>
+                <span className="text-muted-foreground italic">
+                  No website added
+                </span>
               )}
             </div>
 
@@ -695,7 +742,7 @@ export default function CompanyDetailPage() {
                   {companyData.address || companyData.postcode ? (
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        companyData.address || companyData.postcode || ""
+                        companyData.address || companyData.postcode || "",
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -716,15 +763,19 @@ export default function CompanyDetailPage() {
       </Card>
 
       {/* Tabs */}
-      <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
+      <Tabs
+        value={currentTab}
+        onValueChange={handleTabChange}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">
             <FileText className="w-4 h-4 mr-2" />
             Overview
           </TabsTrigger>
-<TabsTrigger value="capabilities">
-              <Tag className="w-4 h-4 mr-2" />
-              Capabilities
+          <TabsTrigger value="capabilities">
+            <Tag className="w-4 h-4 mr-2" />
+            Capabilities
           </TabsTrigger>
           <TabsTrigger value="projects">
             <Briefcase className="w-4 h-4 mr-2" />
@@ -824,7 +875,9 @@ export default function CompanyDetailPage() {
                             {cap.trim()}
                           </Badge>
                         )) || (
-                        <p className="text-muted-foreground">No capabilities listed</p>
+                        <p className="text-muted-foreground">
+                          No capabilities listed
+                        </p>
                       )}
                     </div>
                   )}
@@ -871,8 +924,12 @@ export default function CompanyDetailPage() {
                 <CardContent className="space-y-3">
                   {companyData.market_position && (
                     <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                      <span className="text-sm font-medium">Market Position</span>
-                      <Badge variant="secondary">{companyData.market_position}</Badge>
+                      <span className="text-sm font-medium">
+                        Market Position
+                      </span>
+                      <Badge variant="secondary">
+                        {companyData.market_position}
+                      </Badge>
                     </div>
                   )}
                   {companyData.safety_rating && (
@@ -885,8 +942,12 @@ export default function CompanyDetailPage() {
                   )}
                   {companyData.digital_maturity && (
                     <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                      <span className="text-sm font-medium">Digital Maturity</span>
-                      <Badge variant="secondary">{companyData.digital_maturity}</Badge>
+                      <span className="text-sm font-medium">
+                        Digital Maturity
+                      </span>
+                      <Badge variant="secondary">
+                        {companyData.digital_maturity}
+                      </Badge>
                     </div>
                   )}
                 </CardContent>
@@ -899,8 +960,8 @@ export default function CompanyDetailPage() {
         <TabsContent value="capabilities">
           <div className="space-y-6">
             {/* Capability Selector */}
-            <CompanyCapabilitySelector 
-              companyId={companyId} 
+            <CompanyCapabilitySelector
+              companyId={companyId}
               onUpdate={() => {
                 // Refresh capabilities when updated
                 if (supabase) {
@@ -927,195 +988,215 @@ export default function CompanyDetailPage() {
 
             <div className="grid md:grid-cols-2 gap-6">
               {/* Certifications */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="w-5 h-5" />
-                  Certifications
-                </CardTitle>
-                {!isEditingCertifications ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setIsEditingCertifications(true);
-                      setEditedCertifications([...certifications]);
-                    }}
-                  >
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="w-5 h-5" />
+                    Certifications
+                  </CardTitle>
+                  {!isEditingCertifications ? (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsEditingCertifications(false)}
-                      disabled={isSaving}
+                      onClick={() => {
+                        setIsEditingCertifications(true);
+                        setEditedCertifications([...certifications]);
+                      }}
                     >
-                      <X className="w-4 h-4 mr-1" />
-                      Cancel
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSaveCertifications}
-                      disabled={isSaving}
-                    >
-                      <Save className="w-4 h-4 mr-1" />
-                      {isSaving ? "Saving..." : "Save"}
-                    </Button>
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent>
-                {isEditingCertifications ? (
-                  <div className="space-y-3">
-                    {editedCertifications.map((cert, idx) => (
-                      <div key={idx} className="p-3 bg-muted rounded-lg space-y-2">
-                        <div className="flex justify-between">
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditingCertifications(false)}
+                        disabled={isSaving}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveCertifications}
+                        disabled={isSaving}
+                      >
+                        <Save className="w-4 h-4 mr-1" />
+                        {isSaving ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {isEditingCertifications ? (
+                    <div className="space-y-3">
+                      {editedCertifications.map((cert, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 bg-muted rounded-lg space-y-2"
+                        >
+                          <div className="flex justify-between">
+                            <Input
+                              value={cert.name}
+                              onChange={(e) => {
+                                const updated = [...editedCertifications];
+                                updated[idx].name = e.target.value;
+                                setEditedCertifications(updated);
+                              }}
+                              placeholder="Certification name"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditedCertifications(
+                                  editedCertifications.filter(
+                                    (_, i) => i !== idx,
+                                  ),
+                                );
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                           <Input
-                            value={cert.name}
+                            value={cert.issuer || ""}
                             onChange={(e) => {
                               const updated = [...editedCertifications];
-                              updated[idx].name = e.target.value;
+                              updated[idx].issuer = e.target.value;
                               setEditedCertifications(updated);
                             }}
-                            placeholder="Certification name"
+                            placeholder="Issuer"
                           />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditedCertifications(
-                                editedCertifications.filter((_, i) => i !== idx)
-                              );
+                          <Input
+                            value={cert.validUntil || ""}
+                            onChange={(e) => {
+                              const updated = [...editedCertifications];
+                              updated[idx].validUntil = e.target.value;
+                              setEditedCertifications(updated);
                             }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                            placeholder="Valid until"
+                          />
                         </div>
-                        <Input
-                          value={cert.issuer || ""}
-                          onChange={(e) => {
-                            const updated = [...editedCertifications];
-                            updated[idx].issuer = e.target.value;
-                            setEditedCertifications(updated);
-                          }}
-                          placeholder="Issuer"
-                        />
-                        <Input
-                          value={cert.validUntil || ""}
-                          onChange={(e) => {
-                            const updated = [...editedCertifications];
-                            updated[idx].validUntil = e.target.value;
-                            setEditedCertifications(updated);
-                          }}
-                          placeholder="Valid until"
-                        />
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() =>
-                        setEditedCertifications([
-                          ...editedCertifications,
-                          { name: "" },
-                        ])
-                      }
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Certification
-                    </Button>
-                  </div>
-                ) : certifications.length > 0 ? (
-                  <div className="space-y-3">
-                    {certifications.map((cert, idx) => (
-                      <div key={idx} className="p-3 bg-muted rounded-lg">
-                        <p className="font-medium">{cert.name}</p>
-                        {cert.issuer && (
-                          <p className="text-sm text-muted-foreground">
-                            Issuer: {cert.issuer}
-                          </p>
-                        )}
-                        {cert.validUntil && (
-                          <p className="text-sm text-muted-foreground">
-                            Valid until: {cert.validUntil}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No certifications recorded</p>
-                )}
-              </CardContent>
-            </Card>
+                      ))}
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() =>
+                          setEditedCertifications([
+                            ...editedCertifications,
+                            { name: "" },
+                          ])
+                        }
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Certification
+                      </Button>
+                    </div>
+                  ) : certifications.length > 0 ? (
+                    <div className="space-y-3">
+                      {certifications.map((cert, idx) => (
+                        <div key={idx} className="p-3 bg-muted rounded-lg">
+                          <p className="font-medium">{cert.name}</p>
+                          {cert.issuer && (
+                            <p className="text-sm text-muted-foreground">
+                              Issuer: {cert.issuer}
+                            </p>
+                          )}
+                          {cert.validUntil && (
+                            <p className="text-sm text-muted-foreground">
+                              Valid until: {cert.validUntil}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No certifications recorded
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
-            {/* Operation locations */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Operation locations
-                </CardTitle>
-                {!isEditingOperationLocations ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setIsEditingOperationLocations(true);
-                      setEditedOperationLocations([...operationLocations]);
-                    }}
-                  >
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
+              {/* Operation locations */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Operation locations
+                  </CardTitle>
+                  {!isEditingOperationLocations ? (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsEditingOperationLocations(false)}
-                      disabled={isSaving}
+                      onClick={() => {
+                        setIsEditingOperationLocations(true);
+                        setEditedOperationLocations([...operationLocations]);
+                      }}
                     >
-                      <X className="w-4 h-4 mr-1" />
-                      Cancel
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSaveOperationLocations}
-                      disabled={isSaving}
-                    >
-                      <Save className="w-4 h-4 mr-1" />
-                      {isSaving ? "Saving..." : "Save"}
-                    </Button>
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent>
-                {isEditingOperationLocations ? (
-                  <>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditingOperationLocations(false)}
+                        disabled={isSaving}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveOperationLocations}
+                        disabled={isSaving}
+                      >
+                        <Save className="w-4 h-4 mr-1" />
+                        {isSaving ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {isEditingOperationLocations ? (
+                    <>
+                      <OperationLocationsEditor
+                        value={editedOperationLocations}
+                        onChange={setEditedOperationLocations}
+                        placeholder="e.g. UK borough, postcode area, or custom location"
+                      />
+                      {operationLocations.length > 0 &&
+                        !(
+                          companyData.operation_locations &&
+                          Array.isArray(companyData.operation_locations) &&
+                          (companyData.operation_locations as string[]).length >
+                            0
+                        ) && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Suggested from your Location (header). Add more or
+                            edit, then Save.
+                          </p>
+                        )}
+                    </>
+                  ) : operationLocations.length > 0 ? (
                     <OperationLocationsEditor
-                      value={editedOperationLocations}
-                      onChange={setEditedOperationLocations}
-                      placeholder="e.g. UK borough, postcode area, or custom location"
+                      value={operationLocations}
+                      onChange={() => {}}
+                      disabled
                     />
-                    {operationLocations.length > 0 && !(companyData.operation_locations && Array.isArray(companyData.operation_locations) && (companyData.operation_locations as string[]).length > 0) && (
-                      <p className="text-sm text-muted-foreground mt-2">Suggested from your Location (header). Add more or edit, then Save.</p>
-                    )}
-                  </>
-                ) : operationLocations.length > 0 ? (
-                  <OperationLocationsEditor
-                    value={operationLocations}
-                    onChange={() => {}}
-                    disabled
-                  />
-                ) : (
-                  <p className="text-muted-foreground">No operation locations recorded. Set Location in the header (Edit Info) to get a suggestion, or Edit to add locations.</p>
-                )}
-              </CardContent>
-            </Card>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No operation locations recorded. Set Location in the
+                      header (Edit Info) to get a suggestion, or Edit to add
+                      locations.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
         </TabsContent>
@@ -1166,7 +1247,10 @@ export default function CompanyDetailPage() {
               {isEditingProjects ? (
                 <div className="space-y-4">
                   {editedProjects.map((project, idx) => (
-                    <div key={idx} className="p-4 bg-muted rounded-lg space-y-3">
+                    <div
+                      key={idx}
+                      className="p-4 bg-muted rounded-lg space-y-3"
+                    >
                       <div className="flex justify-between items-start">
                         <div className="flex-1 space-y-2">
                           <Input
@@ -1214,7 +1298,7 @@ export default function CompanyDetailPage() {
                           size="sm"
                           onClick={() => {
                             setEditedProjects(
-                              editedProjects.filter((_, i) => i !== idx)
+                              editedProjects.filter((_, i) => i !== idx),
                             );
                           }}
                         >
@@ -1258,7 +1342,9 @@ export default function CompanyDetailPage() {
                   ))}
                 </Accordion>
               ) : (
-                <p className="text-muted-foreground">No past projects recorded</p>
+                <p className="text-muted-foreground">
+                  No past projects recorded
+                </p>
               )}
             </CardContent>
           </Card>
@@ -1313,7 +1399,9 @@ export default function CompanyDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">No financial data available</p>
+                <p className="text-muted-foreground">
+                  No financial data available
+                </p>
               )}
             </CardContent>
           </Card>

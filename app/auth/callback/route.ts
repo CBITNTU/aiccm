@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isValidRedirectUrl } from "@/lib/utils/redirectUrl";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -6,12 +7,15 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const type = searchParams.get("type");
   const nextParam = searchParams.get("next");
+  const safeNext = isValidRedirectUrl(nextParam) ? nextParam!.trim() : null;
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (user) {
         // Check user's onboarding and approval status
@@ -21,7 +25,7 @@ export async function GET(request: Request) {
           .eq("user_id", user.id)
           .single();
 
-        let next = nextParam ?? "/dashboard";
+        let next = safeNext ?? "/dashboard";
 
         // Determine redirect based on user status
         if (!profile?.onboarding_completed_at) {
@@ -44,7 +48,7 @@ export async function GET(request: Request) {
           if (roleData?.role === "superadmin") {
             next = "/admin";
           } else {
-            next = nextParam ?? "/dashboard";
+            next = safeNext ?? "/dashboard";
           }
         }
 
@@ -60,7 +64,9 @@ export async function GET(request: Request) {
         if (isLocalEnv) {
           return NextResponse.redirect(`${origin}${redirectPath}`);
         } else if (forwardedHost) {
-          return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`);
+          return NextResponse.redirect(
+            `https://${forwardedHost}${redirectPath}`,
+          );
         } else {
           return NextResponse.redirect(`${origin}${redirectPath}`);
         }
@@ -69,5 +75,7 @@ export async function GET(request: Request) {
   }
 
   // Return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth?error=Could+not+authenticate+user`);
+  return NextResponse.redirect(
+    `${origin}/auth?error=Could+not+authenticate+user`,
+  );
 }

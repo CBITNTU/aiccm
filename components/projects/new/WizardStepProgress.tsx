@@ -35,7 +35,7 @@ export function WizardStepProgress({
                 <div
                   className={cn(
                     "absolute left-4 top-10 -ml-px h-full w-0.5",
-                    isCompleted ? "bg-primary" : "bg-muted"
+                    isCompleted ? "bg-primary" : "bg-muted",
                   )}
                   aria-hidden="true"
                 />
@@ -48,7 +48,7 @@ export function WizardStepProgress({
                 className={cn(
                   "group flex w-full items-start gap-4 text-left",
                   isClickable && "cursor-pointer hover:opacity-80",
-                  !isClickable && "cursor-default"
+                  !isClickable && "cursor-default",
                 )}
               >
                 {/* Step indicator */}
@@ -58,7 +58,9 @@ export function WizardStepProgress({
                     isCompleted && "bg-primary text-primary-foreground",
                     isCurrent &&
                       "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background",
-                    !isCompleted && !isCurrent && "bg-muted text-muted-foreground"
+                    !isCompleted &&
+                      !isCurrent &&
+                      "bg-muted text-muted-foreground",
                   )}
                 >
                   {isCompleted ? (
@@ -75,7 +77,7 @@ export function WizardStepProgress({
                       "text-sm font-medium",
                       isCurrent || isCompleted
                         ? "text-foreground"
-                        : "text-muted-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     {step.title}

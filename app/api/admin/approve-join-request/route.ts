@@ -50,14 +50,16 @@ export async function POST(request: NextRequest) {
     // Get join request with user and company info
     const { data: joinRequest, error: requestError } = await supabase
       .from("company_join_requests")
-      .select(`
+      .select(
+        `
         id,
         user_id,
         company_id,
         company_name_requested,
         status,
         admin_approved_at
-      `)
+      `,
+      )
       .eq("id", requestId)
       .single();
 
@@ -81,7 +83,9 @@ export async function POST(request: NextRequest) {
       .eq("user_id", joinRequest.user_id)
       .single();
 
-    const userName = `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() || "User";
+    const userName =
+      `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() ||
+      "User";
 
     if (approved) {
       // Final approval - update join request status
@@ -111,7 +115,7 @@ export async function POST(request: NextRequest) {
         },
         {
           onConflict: "company_id,user_id",
-        }
+        },
       );
 
       // Approve the user's profile if still pending
@@ -243,7 +247,8 @@ export async function GET(request: NextRequest) {
     // Get pending join requests (including those awaiting company admin approval)
     const { data: joinRequests, error } = await supabase
       .from("company_join_requests")
-      .select(`
+      .select(
+        `
         id,
         user_id,
         company_id,
@@ -253,7 +258,8 @@ export async function GET(request: NextRequest) {
         admin_approved_at,
         admin_approved_by,
         created_at
-      `)
+      `,
+      )
       .in("status", ["pending", "approved_by_admin"])
       .order("created_at", { ascending: false });
 
@@ -282,7 +288,7 @@ export async function GET(request: NextRequest) {
               }
             : null,
         };
-      })
+      }),
     );
 
     return apiResponse({ requests: enrichedRequests });

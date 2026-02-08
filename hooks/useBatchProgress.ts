@@ -27,7 +27,9 @@ export function useBatchProgress(batchId: string | null, enabled = true) {
     const fetchStatus = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/queue/job-status?batchId=${batchId}`);
+        const response = await fetch(
+          `/api/queue/job-status?batchId=${batchId}`,
+        );
         if (!response.ok) {
           throw new Error("Failed to fetch batch status");
         }
@@ -38,7 +40,10 @@ export function useBatchProgress(batchId: string | null, enabled = true) {
           setError(null);
 
           // Stop polling if batch is complete or failed
-          if (data.batch.status === "completed" || data.batch.status === "failed") {
+          if (
+            data.batch.status === "completed" ||
+            data.batch.status === "failed"
+          ) {
             if (intervalId) {
               clearInterval(intervalId);
               intervalId = null;

@@ -1,5 +1,10 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse, apiError } from "@/lib/api";
+import {
+  createAdminClient,
+  createApiClient,
+  apiResponse,
+} from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36";
@@ -72,28 +77,32 @@ async function fetchCompaniesHouseData(companyNumber: string): Promise<{
     }
 
     if (!response.ok) {
-      return { found: false, error: `Companies House returned ${response.status}` };
+      return {
+        found: false,
+        error: `Companies House returned ${response.status}`,
+      };
     }
 
     const html = await response.text();
 
     // Extract company name from <h1> or title
-    const nameMatch = html.match(/<h1[^>]*class="[^"]*heading-xlarge[^"]*"[^>]*>([^<]+)<\/h1>/i)
-      || html.match(/<title>([^-<]+)/i);
+    const nameMatch =
+      html.match(
+        /<h1[^>]*class="[^"]*heading-xlarge[^"]*"[^>]*>([^<]+)<\/h1>/i,
+      ) || html.match(/<title>([^-<]+)/i);
     const companyName = nameMatch
       ? nameMatch[1].trim().replace(/\s+/g, " ")
       : undefined;
 
     // Extract company status
-    const statusMatch = html.match(/<dd[^>]*id="company-status"[^>]*>([^<]+)<\/dd>/i)
-      || html.match(/Company status[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
-    const companyStatus = statusMatch
-      ? statusMatch[1].trim()
-      : undefined;
+    const statusMatch =
+      html.match(/<dd[^>]*id="company-status"[^>]*>([^<]+)<\/dd>/i) ||
+      html.match(/Company status[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
+    const companyStatus = statusMatch ? statusMatch[1].trim() : undefined;
 
     // Extract registered address
     const addressMatch = html.match(
-      /Registered office address[\s\S]*?<dd[^>]*class="[^"]*text[^"]*"[^>]*>([\s\S]*?)<\/dd>/i
+      /Registered office address[\s\S]*?<dd[^>]*class="[^"]*text[^"]*"[^>]*>([\s\S]*?)<\/dd>/i,
     );
     let registeredAddress: string | undefined;
     if (addressMatch) {
@@ -105,11 +114,16 @@ async function fetchCompaniesHouseData(companyNumber: string): Promise<{
     }
 
     // Extract company type
-    const typeMatch = html.match(/Company type[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
+    const typeMatch = html.match(
+      /Company type[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i,
+    );
     const companyType = typeMatch ? typeMatch[1].trim() : undefined;
 
     if (!companyName) {
-      return { found: false, error: "Could not parse company data from Companies House" };
+      return {
+        found: false,
+        error: "Could not parse company data from Companies House",
+      };
     }
 
     return {
@@ -130,6 +144,17 @@ async function fetchCompaniesHouseData(companyNumber: string): Promise<{
 
 export async function POST(request: NextRequest) {
   try {
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Unauthenticated lookup is allowed
+    }
+
     const body: LookupCompanyRequest = await request.json();
     const { companyNumber } = body;
 
@@ -146,7 +171,8 @@ export async function POST(request: NextRequest) {
     if (!normalizedNumber) {
       return apiResponse<LookupCompanyResponse>({
         success: false,
-        error: "Invalid company number format. Must be 8 digits or 2 letters followed by 6 digits (e.g., SC123456).",
+        error:
+          "Invalid company number format. Must be 8 digits or 2 letters followed by 6 digits (e.g., SC123456).",
         errorCode: "INVALID_FORMAT",
       });
     }
@@ -192,6 +218,12 @@ export async function POST(request: NextRequest) {
         errorCode: "NOT_FOUND",
       });
     }
+
+    await logApiEvent(request, {
+      actionType: "company_searched",
+      userId: userId || undefined,
+      details: { companyNumber: normalizedNumber, found: true },
+    }).catch(() => {});
 
     // Return success with company data
     return apiResponse<LookupCompanyResponse>({

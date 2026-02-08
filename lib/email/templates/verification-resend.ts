@@ -10,7 +10,7 @@ export function getVerificationResendEmailSubject(): string {
 }
 
 export function getVerificationResendEmailHtml(
-  data: VerificationResendEmailData
+  data: VerificationResendEmailData,
 ): string {
   const { userName, verificationLink } = data;
   const platformName = getPlatformName();

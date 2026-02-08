@@ -156,6 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Fetch profile data when user changes - with abort controller
   useEffect(() => {
     if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear profile when user logs out
       setProfile(null);
       return;
     }
@@ -166,7 +167,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase.from("profiles") as any)
-          .select("approval_status, onboarding_completed_at, first_name, last_name")
+          .select(
+            "approval_status, onboarding_completed_at, first_name, last_name",
+          )
           .eq("user_id", user.id)
           .single()
           .abortSignal(abortController.signal);
@@ -199,11 +202,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, profile]);
 
   const isPendingApproval = useMemo(() => {
-    return !!user && !!profile?.onboarding_completed_at && profile?.approval_status === "pending";
+    return (
+      !!user &&
+      !!profile?.onboarding_completed_at &&
+      profile?.approval_status === "pending"
+    );
   }, [user, profile]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, profile, isOnboarding, isPendingApproval, signOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        profile,
+        isOnboarding,
+        isPendingApproval,
+        signOut,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

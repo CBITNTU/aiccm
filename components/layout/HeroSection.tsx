@@ -306,6 +306,7 @@ export function HeroSection() {
         {/* Footer with Logo */}
         <div className="mt-16 border-t border-border/20 pt-8">
           <div className="flex flex-col items-end pr-4">
+            {/* eslint-disable-next-line @next/next/no-img-element -- static logo, no optimization needed */}
             <img
               src="/cbit-logo.png"
               alt="Centre for Business and Industry Transformation"

@@ -27,7 +27,9 @@ export function ModeRedirect() {
     const checkAuthAndRedirect = async () => {
       try {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
         if (user) {
           // User is authenticated, redirect to new company page

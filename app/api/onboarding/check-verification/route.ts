@@ -1,5 +1,12 @@
-import { createApiClient, createAdminClient, apiResponse, apiError } from "@/lib/api";
+import { NextRequest } from "next/server";
+import {
+  createApiClient,
+  createAdminClient,
+  apiResponse,
+  apiError,
+} from "@/lib/api";
 import { ONBOARDING_STEPS } from "@/lib/onboarding";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 /**
  * GET /api/onboarding/check-verification
@@ -12,7 +19,7 @@ import { ONBOARDING_STEPS } from "@/lib/onboarding";
  * - email: string - the user's email address (for display)
  * - nextStep: number - the next onboarding step
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createApiClient();
     const {
@@ -38,10 +45,19 @@ export async function GET() {
         .eq("onboarding_step", ONBOARDING_STEPS.EMAIL_VERIFICATION);
     }
 
+    await logApiEvent(request, {
+      actionType: "onboarding_verification_checked",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      details: { verified: isVerified },
+    }).catch(() => {});
+
     return apiResponse({
       verified: isVerified,
       email: user.email,
-      nextStep: isVerified ? ONBOARDING_STEPS.PROFILE_INFO : ONBOARDING_STEPS.EMAIL_VERIFICATION,
+      nextStep: isVerified
+        ? ONBOARDING_STEPS.PROFILE_INFO
+        : ONBOARDING_STEPS.EMAIL_VERIFICATION,
     });
   } catch (error) {
     console.error("Check verification error:", error);

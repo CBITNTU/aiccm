@@ -240,7 +240,9 @@ Return ONLY valid JSON, no markdown.`;
         }
       }
 
-      const coveragePercentage = Math.round(Number(analysis.coveragePercentage) ?? 0);
+      const coveragePercentage = Math.round(
+        Number(analysis.coveragePercentage) ?? 0,
+      );
       const readinessScore = Math.round(Number(analysis.readinessScore) ?? 0);
 
       const gapAnalysisData: GapAnalysis = {
@@ -346,7 +348,8 @@ export function useUpdateGapAnalysis() {
       missingCompetencies: string[];
     }) => {
       const total = companyCompetencies.length + missingCompetencies.length;
-      const coveragePercentage = total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
+      const coveragePercentage =
+        total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
 
       const { data: vo } = await supabase
         .from("virtual_organizations")
@@ -365,7 +368,8 @@ export function useUpdateGapAnalysis() {
       const { error } = await supabase
         .from("virtual_organizations")
         .update({
-          gap_analysis: updated as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
+          gap_analysis:
+            updated as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
         })
         .eq("id", projectId);
 
@@ -397,7 +401,8 @@ export function useUpdateTeamAnalysis() {
       missingCompetencies: string[];
     }) => {
       const total = companyCompetencies.length + missingCompetencies.length;
-      const coveragePercentage = total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
+      const coveragePercentage =
+        total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
 
       const { data: vo } = await supabase
         .from("virtual_organizations")
@@ -416,7 +421,8 @@ export function useUpdateTeamAnalysis() {
       const { error } = await supabase
         .from("virtual_organizations")
         .update({
-          team_analysis: updated as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
+          team_analysis:
+            updated as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
         })
         .eq("id", projectId);
 

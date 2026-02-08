@@ -9,11 +9,7 @@ import { Sidenav } from "@/components/layout/Sidenav";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { EmailVerifiedToast } from "@/components/EmailVerifiedToast";
 
-function ProtectedLayoutContent({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -23,7 +19,9 @@ function ProtectedLayoutContent({
   useEffect(() => {
     if (!loading && !user) {
       // Build the full current URL to preserve as redirectTo
-      const currentUrl = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "");
+      const currentUrl =
+        pathname +
+        (searchParams.toString() ? `?${searchParams.toString()}` : "");
       const encodedRedirectTo = encodeURIComponent(currentUrl);
       router.push(`/auth?redirectTo=${encodedRedirectTo}`);
     }

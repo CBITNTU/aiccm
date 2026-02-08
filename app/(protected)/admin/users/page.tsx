@@ -34,7 +34,9 @@ interface User {
 }
 
 export default function AdminUsersPage() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,12 +52,14 @@ export default function AdminUsersPage() {
     if (supabase && user) {
       checkAdminStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase/user change
   }, [supabase, user]);
 
   useEffect(() => {
     if (isAdmin && supabase) {
       fetchUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when isAdmin/supabase change
   }, [isAdmin, supabase]);
 
   const checkAdminStatus = async () => {
@@ -109,7 +113,9 @@ export default function AdminUsersPage() {
           last_name: profile.last_name || undefined,
           created_at: profile.created_at,
           last_sign_in_at: profile.created_at,
-          role: (roleMap.get(profile.user_id) as "superadmin" | "sme-owner") || "sme-owner",
+          role:
+            (roleMap.get(profile.user_id) as "superadmin" | "sme-owner") ||
+            "sme-owner",
         })) || [];
 
       setUsers(formattedUsers);
@@ -126,7 +132,7 @@ export default function AdminUsersPage() {
 
     if (
       !confirm(
-        "Are you sure you want to delete this user? This action cannot be undone."
+        "Are you sure you want to delete this user? This action cannot be undone.",
       )
     ) {
       return;
@@ -151,7 +157,10 @@ export default function AdminUsersPage() {
     }
   };
 
-  const toggleUserRole = async (userId: string, currentRole: "superadmin" | "sme-owner") => {
+  const toggleUserRole = async (
+    userId: string,
+    currentRole: "superadmin" | "sme-owner",
+  ) => {
     if (!supabase) return;
 
     const newRole = currentRole === "superadmin" ? "sme-owner" : "superadmin";
@@ -190,7 +199,7 @@ export default function AdminUsersPage() {
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${u.first_name} ${u.last_name}`
         .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+        .includes(searchTerm.toLowerCase()),
   );
 
   if (!isAdmin && !loading) {
@@ -201,8 +210,8 @@ export default function AdminUsersPage() {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              You don&apos;t have permission to access this page. Superadmin access
-              required.
+              You don&apos;t have permission to access this page. Superadmin
+              access required.
             </AlertDescription>
           </Alert>
         </div>
@@ -291,11 +300,15 @@ export default function AdminUsersPage() {
                       <TableCell>
                         <Badge
                           variant={
-                            userData.role === "superadmin" ? "default" : "secondary"
+                            userData.role === "superadmin"
+                              ? "default"
+                              : "secondary"
                           }
                           className="capitalize"
                         >
-                          {userData.role === "superadmin" ? "Superadmin" : "SME Owner"}
+                          {userData.role === "superadmin"
+                            ? "Superadmin"
+                            : "SME Owner"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -307,7 +320,10 @@ export default function AdminUsersPage() {
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              toggleUserRole(userData.id, userData.role || "sme-owner")
+                              toggleUserRole(
+                                userData.id,
+                                userData.role || "sme-owner",
+                              )
                             }
                           >
                             <Shield className="w-4 h-4 mr-1" />
@@ -345,14 +361,15 @@ export default function AdminUsersPage() {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Superadmin Instructions:</strong> To create a superadmin account,
-              you need to:
+              <strong>Superadmin Instructions:</strong> To create a superadmin
+              account, you need to:
               <br />
               1. Create a regular account through signup
               <br />
               2. Update the migration SQL to insert your email as superadmin
               <br />
-              3. Or use the &quot;Make Superadmin&quot; button on an existing user
+              3. Or use the &quot;Make Superadmin&quot; button on an existing
+              user
             </AlertDescription>
           </Alert>
         </div>

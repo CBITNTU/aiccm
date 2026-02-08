@@ -1,16 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-
-// Validate redirectTo URL to prevent open redirect attacks
-function isValidRedirectUrl(url: string): boolean {
-  // Only allow relative paths starting with /
-  if (!url.startsWith("/")) return false;
-  // Prevent protocol-relative URLs
-  if (url.startsWith("//")) return false;
-  // Don't redirect back to auth
-  if (url.startsWith("/auth")) return false;
-  return true;
-}
+import { isValidRedirectUrl } from "@/lib/utils/redirectUrl";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -94,9 +84,10 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path),
   );
 
-  const isPendingAllowedPath = pendingAllowedPaths.some((path) =>
+  const _isPendingAllowedPath = pendingAllowedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path),
   );
+  void _isPendingAllowedPath;
 
   const isOnboardingAllowedPath = onboardingAllowedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path),
@@ -133,8 +124,9 @@ export async function updateSession(request: NextRequest) {
       } else if (profile) {
         const isOnboardingPath =
           request.nextUrl.pathname.startsWith("/onboarding");
-        const isPendingApprovalPath =
+        const _isPendingApprovalPath =
           request.nextUrl.pathname.startsWith("/pending-approval");
+        void _isPendingApprovalPath;
 
         // If onboarding not completed, redirect to onboarding
         // (unless on an allowed path like /onboarding, /tenders, /directory)
@@ -166,7 +158,7 @@ export async function updateSession(request: NextRequest) {
             // Check for redirectTo parameter
             const redirectTo = request.nextUrl.searchParams.get("redirectTo");
 
-            if (redirectTo && isValidRedirectUrl(redirectTo)) {
+            if (redirectTo && isValidRedirectUrl(redirectTo.trim())) {
               const url = request.nextUrl.clone();
               const [pathname, search] = redirectTo.split("?");
               url.pathname = pathname;
@@ -206,7 +198,7 @@ export async function updateSession(request: NextRequest) {
         const url = request.nextUrl.clone();
         url.pathname = "/onboarding";
         // Preserve redirectTo for after onboarding completes
-        if (redirectTo && isValidRedirectUrl(redirectTo)) {
+        if (redirectTo && isValidRedirectUrl(redirectTo.trim())) {
           url.searchParams.set("redirectTo", redirectTo);
         } else {
           url.searchParams.delete("redirectTo");
@@ -218,7 +210,7 @@ export async function updateSession(request: NextRequest) {
         const url = request.nextUrl.clone();
         url.pathname = "/pending-approval";
         // Preserve redirectTo for after approval
-        if (redirectTo && isValidRedirectUrl(redirectTo)) {
+        if (redirectTo && isValidRedirectUrl(redirectTo.trim())) {
           url.searchParams.set("redirectTo", redirectTo);
         } else {
           url.searchParams.delete("redirectTo");
@@ -276,7 +268,7 @@ export async function updateSession(request: NextRequest) {
         // Check for redirectTo parameter
         const redirectTo = request.nextUrl.searchParams.get("redirectTo");
 
-        if (redirectTo && isValidRedirectUrl(redirectTo)) {
+        if (redirectTo && isValidRedirectUrl(redirectTo.trim())) {
           const url = request.nextUrl.clone();
           const [pathname, search] = redirectTo.split("?");
           url.pathname = pathname;

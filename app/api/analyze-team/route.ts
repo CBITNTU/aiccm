@@ -7,6 +7,7 @@ import {
   getAuthenticatedUser,
   createAdminClient,
 } from "@/lib/api";
+import { getPlatformAISettings } from "@/lib/platformSettings";
 import {
   analyzeTeamRequestSchema,
   teamAnalysisResponseSchema,
@@ -15,6 +16,7 @@ import {
   type TeamMemberInput,
 } from "@/lib/schemas/teamAnalysis";
 import type { Database } from "@/lib/supabase/types";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 // Build the prompt for team analysis
 function buildTeamAnalysisPrompt(
@@ -84,9 +86,10 @@ export async function POST(request: NextRequest) {
     // Build the prompt
     const prompt = buildTeamAnalysisPrompt(company, tender, teamMembers);
 
-    // Use Vercel AI SDK with structured output
+    // Use Vercel AI SDK with structured output (model from platform default)
+    const { default_ai_model } = await getPlatformAISettings();
     const result = await generateObject({
-      model: openai("gpt-5-nano"),
+      model: openai(default_ai_model),
       schema: teamAnalysisResponseSchema,
       prompt,
     });
@@ -112,6 +115,14 @@ export async function POST(request: NextRequest) {
       console.error("Database error saving team analysis:", dbError);
       return apiError("Failed to save team analysis", 500, dbError.message);
     }
+
+    await logApiEvent(request, {
+      actionType: "team_analyzed",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "vo_project",
+      entityId: projectId,
+    }).catch(() => {});
 
     return apiResponse({ teamAnalysis: teamAnalysisData });
   } catch (error) {

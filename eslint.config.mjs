@@ -13,13 +13,24 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Allow unused vars/args that start with _
+  {
+    files: ["**/*.{ts,tsx,js,jsx}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
   // Custom rules for event logging enforcement
   {
     files: ["app/api/**/route.ts"],
-    rules: {
-      // This is a placeholder - we'll add a custom rule
-      // For now, we rely on code review and documentation
-    },
+    rules: {},
   },
 ]);
 

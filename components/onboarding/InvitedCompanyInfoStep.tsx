@@ -61,7 +61,9 @@ export function InvitedCompanyInfoStep({
           <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full mx-auto mb-4 flex items-center justify-center">
             <Building2 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <CardTitle className="text-2xl">You&apos;re Joining {companyName}</CardTitle>
+          <CardTitle className="text-2xl">
+            You&apos;re Joining {companyName}
+          </CardTitle>
           <p className="text-muted-foreground mt-2">
             <UserPlus className="w-4 h-4 inline-block mr-1" />
             {inviterName} invited you to join their team

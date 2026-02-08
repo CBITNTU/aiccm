@@ -13,10 +13,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -26,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (!firstName?.trim() || !lastName?.trim() || !jobTitle?.trim()) {
       return NextResponse.json(
         { error: "First name, last name, and job title are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -53,7 +50,7 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(
         { error: "Failed to update profile" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -75,7 +72,7 @@ export async function POST(request: NextRequest) {
     console.error("Profile update error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -91,10 +88,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Fetch the profile
@@ -108,7 +102,7 @@ export async function GET() {
       console.error("Profile fetch error:", profileError);
       return NextResponse.json(
         { error: "Failed to fetch profile" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -126,7 +120,7 @@ export async function GET() {
     console.error("Profile fetch error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

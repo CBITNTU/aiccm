@@ -28,12 +28,13 @@ export function TaxonomyFilter({
   onTaxonomiesChange,
 }: TaxonomyFilterProps) {
   const [open, setOpen] = useState(false);
-  const [tempSelected, setTempSelected] = useState<string[]>(selectedTaxonomies);
+  const [tempSelected, setTempSelected] =
+    useState<string[]>(selectedTaxonomies);
   const [expandedLevel1, setExpandedLevel1] = useState<Record<string, boolean>>(
-    {}
+    {},
   );
   const [expandedLevel2, setExpandedLevel2] = useState<Record<string, boolean>>(
-    {}
+    {},
   );
 
   const { getLevel1, getLevel2, getLevel3, loading } = useTaxonomies();
@@ -185,7 +186,7 @@ export function TaxonomyFilter({
                                   onCheckedChange={(checked) =>
                                     handleTaxonomyToggle(
                                       level2Tax.id,
-                                      checked as boolean
+                                      checked as boolean,
                                     )
                                   }
                                 />
@@ -221,12 +222,12 @@ export function TaxonomyFilter({
                                       <Checkbox
                                         id={level3Tax.id}
                                         checked={tempSelected.includes(
-                                          level3Tax.id
+                                          level3Tax.id,
                                         )}
                                         onCheckedChange={(checked) =>
                                           handleTaxonomyToggle(
                                             level3Tax.id,
-                                            checked as boolean
+                                            checked as boolean,
                                           )
                                         }
                                       />

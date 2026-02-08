@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- profiles has extended columns */
 import { NextRequest } from "next/server";
 import {
   createApiClient,
@@ -12,6 +13,7 @@ import {
   getCompanyJoinRequestEmailSubject,
   getCompanyJoinRequestEmailHtml,
 } from "@/lib/email";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 interface NewCompanyData {
   action: "create";
@@ -58,9 +60,12 @@ export async function POST(request: NextRequest) {
     const adminClient = createAdminClient();
 
     // Get current profile and verify user is approved
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = await (adminClient.from("profiles") as any)
-      .select("*, approval_status, account_type, first_name, last_name, job_title")
+    const { data: profile, error: profileError } = await (
+      adminClient.from("profiles") as any
+    )
+      .select(
+        "*, approval_status, account_type, first_name, last_name, job_title",
+      )
       .eq("user_id", user.id)
       .single();
 
@@ -70,7 +75,10 @@ export async function POST(request: NextRequest) {
 
     // Verify user is approved
     if (profile.approval_status !== "approved") {
-      return apiError("Your account must be approved before creating or joining companies", 403);
+      return apiError(
+        "Your account must be approved before creating or joining companies",
+        403,
+      );
     }
 
     const body: RequestData = await request.json();
@@ -88,17 +96,26 @@ export async function POST(request: NextRequest) {
 
       // Validate website URL is required
       if (!createData.websiteUrl?.trim()) {
-        return apiError("Website URL is required. Please provide at least a website for your company.", 400);
+        return apiError(
+          "Website URL is required. Please provide at least a website for your company.",
+          400,
+        );
       }
 
       // Validate website URL format
       try {
         const url = new URL(createData.websiteUrl.trim());
-        if (!url.protocol.startsWith('http')) {
-          return apiError("Website URL must start with http:// or https://", 400);
+        if (!url.protocol.startsWith("http")) {
+          return apiError(
+            "Website URL must start with http:// or https://",
+            400,
+          );
         }
       } catch {
-        return apiError("Please provide a valid website URL (e.g., https://example.com)", 400);
+        return apiError(
+          "Please provide a valid website URL (e.g., https://example.com)",
+          400,
+        );
       }
 
       const { data: company, error: companyError } = await adminClient
@@ -136,16 +153,18 @@ export async function POST(request: NextRequest) {
       // Handle individual user converting to business
       if (profile.account_type === "individual") {
         // Update account_type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         await (adminClient.from("profiles") as any)
           .update({ account_type: "business" })
           .eq("user_id", user.id);
 
         // Update role to sme-owner
-        await adminClient.from("user_roles").upsert(
-          { user_id: user.id, role: "sme-owner" },
-          { onConflict: "user_id,role" }
-        );
+        await adminClient
+          .from("user_roles")
+          .upsert(
+            { user_id: user.id, role: "sme-owner" },
+            { onConflict: "user_id,role" },
+          );
 
         // Remove individual role
         await adminClient
@@ -155,10 +174,12 @@ export async function POST(request: NextRequest) {
           .eq("role", "individual");
       } else {
         // Ensure user has sme-owner role for existing business users
-        await adminClient.from("user_roles").upsert(
-          { user_id: user.id, role: "sme-owner" },
-          { onConflict: "user_id,role" }
-        );
+        await adminClient
+          .from("user_roles")
+          .upsert(
+            { user_id: user.id, role: "sme-owner" },
+            { onConflict: "user_id,role" },
+          );
       }
 
       // Notify superadmins about new company
@@ -196,12 +217,20 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      await logApiEvent(request, {
+        actionType: "company_created",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "company",
+        entityId: company.id,
+        details: { company_name: createData.companyName },
+      }).catch(() => {});
+
       return apiResponse({
         success: true,
         companyId: company.id,
         message: `Company "${createData.companyName}" created successfully. Pending admin approval.`,
       });
-
     } else if (body.action === "join") {
       // Join existing company
       const joinData = body as JoinCompanyData;
@@ -231,7 +260,7 @@ export async function POST(request: NextRequest) {
       if (existingRequest) {
         return apiError(
           `You already have a ${existingRequest.status} request to join this company`,
-          409
+          409,
         );
       }
 
@@ -246,7 +275,7 @@ export async function POST(request: NextRequest) {
       if (existingMembership) {
         return apiError(
           `You are already a member of this company (status: ${existingMembership.status})`,
-          409
+          409,
         );
       }
 
@@ -269,16 +298,17 @@ export async function POST(request: NextRequest) {
       // Handle individual user converting to business
       if (profile.account_type === "individual") {
         // Update account_type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (adminClient.from("profiles") as any)
           .update({ account_type: "business" })
           .eq("user_id", user.id);
 
         // Update role to sme-member
-        await adminClient.from("user_roles").upsert(
-          { user_id: user.id, role: "sme-member" },
-          { onConflict: "user_id,role" }
-        );
+        await adminClient
+          .from("user_roles")
+          .upsert(
+            { user_id: user.id, role: "sme-member" },
+            { onConflict: "user_id,role" },
+          );
 
         // Remove individual role
         await adminClient
@@ -288,10 +318,12 @@ export async function POST(request: NextRequest) {
           .eq("role", "individual");
       } else {
         // Ensure user has sme-member role
-        await adminClient.from("user_roles").upsert(
-          { user_id: user.id, role: "sme-member" },
-          { onConflict: "user_id,role" }
-        );
+        await adminClient
+          .from("user_roles")
+          .upsert(
+            { user_id: user.id, role: "sme-member" },
+            { onConflict: "user_id,role" },
+          );
       }
 
       // Notify company admins
@@ -314,7 +346,9 @@ export async function POST(request: NextRequest) {
         for (const admin of adminProfiles || []) {
           if (admin.email) {
             const emailData = {
-              companyAdminName: `${admin.first_name || ""} ${admin.last_name || ""}`.trim() || "Admin",
+              companyAdminName:
+                `${admin.first_name || ""} ${admin.last_name || ""}`.trim() ||
+                "Admin",
               companyId: company.id,
               companyName: company.company_name,
               requesterName: userName,
@@ -331,6 +365,15 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+
+      await logApiEvent(request, {
+        actionType: "company_updated",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "company",
+        entityId: joinData.companyId,
+        details: { company_name: company.company_name, action: "join_request" },
+      }).catch(() => {});
 
       return apiResponse({
         success: true,

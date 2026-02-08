@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- capability row types */
 import { useEffect, useState, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -15,7 +16,8 @@ import { Tag, Loader2 } from "lucide-react";
 import { CapabilityTreeSelector } from "@/components/tenders/CapabilityTreeSelector";
 import type { Database } from "@/lib/supabase/types";
 
-type Capability = Database["public"]["Tables"]["company_capabilities_ref"]["Row"];
+type Capability =
+  Database["public"]["Tables"]["company_capabilities_ref"]["Row"];
 
 interface CompanyCapabilitySelectorProps {
   companyId: string;
@@ -26,7 +28,9 @@ export function CompanyCapabilitySelector({
   companyId,
   onUpdate,
 }: CompanyCapabilitySelectorProps) {
-  const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>([]);
+  const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>(
+    [],
+  );
   const [allCapabilities, setAllCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,6 +38,7 @@ export function CompanyCapabilitySelector({
   useEffect(() => {
     fetchCompanyCapabilities();
     fetchAllCapabilities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run on companyId change
   }, [companyId]);
 
   const fetchCompanyCapabilities = async () => {
@@ -46,11 +51,11 @@ export function CompanyCapabilitySelector({
         .eq("company_id", companyId);
 
       if (error) throw error;
-      
+
       const caps = (data || [])
         .map((cc: any) => cc.company_capabilities_ref)
         .filter(Boolean) as Capability[];
-      
+
       setSelectedCapabilityIds(caps.map((c) => c.id));
       setAllCapabilities(caps);
     } catch (error) {
@@ -64,7 +69,7 @@ export function CompanyCapabilitySelector({
   const fetchAllCapabilities = async () => {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
+      const { data: _data, error } = await supabase
         .from("company_capabilities_ref")
         .select("id, name, category")
         .eq("is_active", true)
@@ -83,14 +88,16 @@ export function CompanyCapabilitySelector({
     try {
       setSaving(true);
       const supabase = createClient();
-      
+
       // Get current capabilities
       const { data: currentData } = await supabase
         .from("company_capabilities")
         .select("capability_id")
         .eq("company_id", companyId);
 
-      const currentIds = new Set((currentData || []).map((c: any) => c.capability_id));
+      const currentIds = new Set(
+        (currentData || []).map((c: any) => c.capability_id),
+      );
       const newIds = new Set(capabilityIds);
 
       // Find capabilities to add and remove
@@ -124,7 +131,7 @@ export function CompanyCapabilitySelector({
 
       // Update local state
       setSelectedCapabilityIds(capabilityIds);
-      
+
       // Fetch updated capabilities for display
       const { data: updatedData } = await supabase
         .from("company_capabilities")
@@ -155,12 +162,12 @@ export function CompanyCapabilitySelector({
   const handleSelectionChange = (capabilityIds: string[]) => {
     // Update immediately for UI responsiveness
     setSelectedCapabilityIds(capabilityIds);
-    
+
     // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     // Save with debounce (500ms after last change)
     saveTimeoutRef.current = setTimeout(() => {
       saveCapabilities(capabilityIds);
@@ -214,7 +221,8 @@ export function CompanyCapabilitySelector({
           Company Capabilities
         </CardTitle>
         <CardDescription>
-          Select capabilities that your company has. Changes are saved automatically.
+          Select capabilities that your company has. Changes are saved
+          automatically.
           {saving && <span className="ml-2 text-primary">Saving...</span>}
         </CardDescription>
       </CardHeader>

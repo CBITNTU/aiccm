@@ -1,11 +1,17 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities -- capabilities/taxonomy row types; copy uses quotes */
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -26,7 +32,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Edit, Trash2, ChevronRight, ChevronDown, Folder, FileText, Search, RefreshCw } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FileText,
+  Search,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import {
@@ -48,23 +64,35 @@ type Capability = {
 };
 
 const AdminTaxonomyEditor = () => {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [editingCapability, setEditingCapability] = useState<Capability | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [editingCapability, setEditingCapability] = useState<Capability | null>(
+    null,
+  );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [regenerationBatchId, setRegenerationBatchId] = useState<string | null>(null);
+  const [regenerationBatchId, setRegenerationBatchId] = useState<string | null>(
+    null,
+  );
   const [formData, setFormData] = useState({
     name: "",
     category: "",
   });
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  
-  const { batch, progress, isLoading: batchLoading } = useBatchProgress(regenerationBatchId, !!regenerationBatchId);
+
+  const {
+    batch,
+    progress,
+    isLoading: _batchLoading,
+  } = useBatchProgress(regenerationBatchId, !!regenerationBatchId);
 
   useEffect(() => {
     const client = createClient();
@@ -75,13 +103,15 @@ const AdminTaxonomyEditor = () => {
     if (supabase) {
       fetchCapabilities();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase ready
   }, [supabase]);
 
   // Refresh capabilities when regeneration completes
   const batchStatus = batch?.status ?? undefined;
   useEffect(() => {
-    if (!supabase || batchStatus !== "completed" || !regenerationBatchId) return;
-    
+    if (!supabase || batchStatus !== "completed" || !regenerationBatchId)
+      return;
+
     console.log("🔄 Batch completed, refreshing capabilities list...");
     // Small delay to ensure database is updated
     const timeoutId = setTimeout(() => {
@@ -91,13 +121,14 @@ const AdminTaxonomyEditor = () => {
       // Clear batch ID after refresh to prevent re-triggering
       setRegenerationBatchId(null);
     }, 3000); // Increased delay to ensure DB writes are complete
-    
+
     return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when batch completes
   }, [batchStatus, supabase]); // Only batchStatus and supabase - don't include batchId to keep array size constant
 
   const fetchCapabilities = async () => {
     if (!supabase) return;
-    
+
     setLoading(true);
     try {
       // PostgREST defaults to 1000 rows - we need to fetch all capabilities
@@ -128,29 +159,40 @@ const AdminTaxonomyEditor = () => {
 
       // Filter out null categories and map to ensure type safety
       const validCapabilities = (allCapabilities || [])
-        .filter((c): c is { id: string; name: string; category: string } => c.category !== null)
-        .map(c => ({
+        .filter(
+          (c): c is { id: string; name: string; category: string } =>
+            c.category !== null,
+        )
+        .map((c) => ({
           id: c.id,
           name: c.name,
           category: c.category,
         }));
-      
+
       // Log the fetched capabilities
-      console.log(`📋 Fetched ${validCapabilities.length} capabilities from database`);
-      const categories = Array.from(new Set(validCapabilities.map(c => c.category)));
-      console.log(`📂 Categories in UI (${categories.length}):`, categories);
-      console.log(`📊 Capabilities by category:`, 
-        Object.entries(
-          validCapabilities.reduce((acc, cap) => {
-            acc[cap.category] = (acc[cap.category] || 0) + 1;
-            return acc;
-          }, {} as Record<string, number>)
-        )
+      console.log(
+        `📋 Fetched ${validCapabilities.length} capabilities from database`,
       );
-      
+      const categories = Array.from(
+        new Set(validCapabilities.map((c) => c.category)),
+      );
+      console.log(`📂 Categories in UI (${categories.length}):`, categories);
+      console.log(
+        `📊 Capabilities by category:`,
+        Object.entries(
+          validCapabilities.reduce(
+            (acc, cap) => {
+              acc[cap.category] = (acc[cap.category] || 0) + 1;
+              return acc;
+            },
+            {} as Record<string, number>,
+          ),
+        ),
+      );
+
       setCapabilities(validCapabilities);
     } catch (error: any) {
-      console.error('Error fetching capabilities:', error);
+      console.error("Error fetching capabilities:", error);
       toast.error(`Failed to load capabilities: ${error.message}`);
     } finally {
       setLoading(false);
@@ -158,11 +200,13 @@ const AdminTaxonomyEditor = () => {
   };
 
   // Get unique categories
-  const categories = Array.from(new Set(capabilities.map(c => c.category))).sort();
+  const categories = Array.from(
+    new Set(capabilities.map((c) => c.category)),
+  ).sort();
 
   // Get capabilities by category
   const getCapabilitiesByCategory = (category: string) => {
-    return capabilities.filter(c => c.category === category);
+    return capabilities.filter((c) => c.category === category);
   };
 
   const toggleExpand = (category: string) => {
@@ -194,20 +238,20 @@ const AdminTaxonomyEditor = () => {
 
   const handleDelete = async (id: string) => {
     if (!supabase) return;
-    
+
     setDeletingId(id);
     try {
       const { error } = await supabase
-        .from('company_capabilities_ref')
+        .from("company_capabilities_ref")
         .delete()
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
       toast.success("Capability deleted successfully");
       await fetchCapabilities();
     } catch (error: any) {
-      console.error('Error deleting capability:', error);
+      console.error("Error deleting capability:", error);
       toast.error(`Failed to delete capability: ${error.message}`);
     } finally {
       setDeletingId(null);
@@ -216,7 +260,7 @@ const AdminTaxonomyEditor = () => {
 
   const handleSave = async () => {
     if (!supabase) return;
-    
+
     try {
       if (!formData.name.trim() || !formData.category.trim()) {
         toast.error("Name and category are required");
@@ -226,12 +270,12 @@ const AdminTaxonomyEditor = () => {
       if (editingCapability) {
         // Update existing
         const { error } = await supabase
-          .from('company_capabilities_ref')
+          .from("company_capabilities_ref")
           .update({
             name: formData.name.trim(),
             category: formData.category.trim(),
           })
-          .eq('id', editingCapability.id);
+          .eq("id", editingCapability.id);
 
         if (error) throw error;
         toast.success("Capability updated successfully");
@@ -240,7 +284,7 @@ const AdminTaxonomyEditor = () => {
       } else {
         // Create new
         const { error } = await supabase
-          .from('company_capabilities_ref')
+          .from("company_capabilities_ref")
           .insert({
             name: formData.name.trim(),
             category: formData.category.trim(),
@@ -257,11 +301,11 @@ const AdminTaxonomyEditor = () => {
         category: categories[0] || "",
       });
       setEditingCapability(null);
-      
+
       // Refresh the capability list
       await fetchCapabilities();
     } catch (error: any) {
-      console.error('Error saving capability:', error);
+      console.error("Error saving capability:", error);
       toast.error(`Failed to save capability: ${error.message}`);
     }
   };
@@ -269,9 +313,9 @@ const AdminTaxonomyEditor = () => {
   const handleResetCapabilities = async () => {
     const confirmReset = window.confirm(
       "⚠️ WARNING: This will DELETE ALL capabilities and company-capability links!\n\n" +
-      "This action cannot be undone. All companies will have their capabilities cleared.\n\n" +
-      "After reset, you should run 'Regenerate All Company Capabilities' to repopulate.\n\n" +
-      "Are you sure you want to proceed?"
+        "This action cannot be undone. All companies will have their capabilities cleared.\n\n" +
+        "After reset, you should run 'Regenerate All Company Capabilities' to repopulate.\n\n" +
+        "Are you sure you want to proceed?",
     );
 
     if (!confirmReset) return;
@@ -279,9 +323,9 @@ const AdminTaxonomyEditor = () => {
     try {
       setIsRegenerating(true);
 
-      const response = await fetch('/api/admin/reset-capabilities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/reset-capabilities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
 
       const data = await response.json();
@@ -292,15 +336,15 @@ const AdminTaxonomyEditor = () => {
 
       // Refresh the capability list to show base capabilities
       await fetchCapabilities();
-      
+
       toast.success(
         `✅ Reset complete! Deleted ${data.deletedCapabilities} capabilities and ${data.deletedLinks} links. ` +
-        `Reseeded ${data.reseededCapabilities} base capabilities. You can now run 'Regenerate All Company Capabilities' to assign companies to these capabilities.`
+          `Reseeded ${data.reseededCapabilities} base capabilities. You can now run 'Regenerate All Company Capabilities' to assign companies to these capabilities.`,
       );
     } catch (error) {
       console.error("Error resetting capabilities:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reset capabilities"
+        error instanceof Error ? error.message : "Failed to reset capabilities",
       );
     } finally {
       setIsRegenerating(false);
@@ -310,14 +354,14 @@ const AdminTaxonomyEditor = () => {
   const handleRegenerateCapabilities = async () => {
     try {
       setIsRegenerating(true);
-      
+
       // Clear previous batch ID so progress tracker resets
       setRegenerationBatchId(null);
-      
+
       // Start regeneration (which will reset capabilities in the API if needed)
-      const response = await fetch('/api/admin/regenerate-company-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/regenerate-company-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taxonomyOnly: true }), // Only regenerate taxonomy (2x faster)
       });
 
@@ -328,29 +372,33 @@ const AdminTaxonomyEditor = () => {
       }
 
       setRegenerationBatchId(data.batchId);
-      
+
       // Refresh UI after a short delay to show reset capabilities
       setTimeout(() => {
         fetchCapabilities();
       }, 2000);
-      
-      toast.success(`Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`);
+
+      toast.success(
+        `Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`,
+      );
     } catch (error) {
       console.error("Error regenerating company capabilities:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to start regeneration"
+        error instanceof Error ? error.message : "Failed to start regeneration",
       );
     } finally {
       setIsRegenerating(false);
     }
   };
 
-  const filteredCategories = categories.filter(category => {
+  const filteredCategories = categories.filter((category) => {
     const categoryLower = category.toLowerCase();
     const categoryCapabilities = getCapabilitiesByCategory(category);
     return (
       categoryLower.includes(searchTerm.toLowerCase()) ||
-      categoryCapabilities.some(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      categoryCapabilities.some((c) =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
     );
   });
 
@@ -362,12 +410,13 @@ const AdminTaxonomyEditor = () => {
             <div>
               <CardTitle>Capability Taxonomy Editor</CardTitle>
               <CardDescription>
-                Manage company capabilities by category and name. These are used to match companies with projects.
+                Manage company capabilities by category and name. These are used
+                to match companies with projects.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 onClick={handleResetCapabilities}
                 disabled={isRegenerating || batch?.status === "processing"}
                 title="Delete ALL capabilities and links. Cannot be undone."
@@ -375,20 +424,24 @@ const AdminTaxonomyEditor = () => {
                 <Trash2 className="h-4 w-4 mr-2" />
                 Reset List
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleRegenerateCapabilities}
                 disabled={isRegenerating || batch?.status === "processing"}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating || batch?.status === "processing" ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${isRegenerating || batch?.status === "processing" ? "animate-spin" : ""}`}
+                />
                 Regenerate All Company Capabilities
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={fetchCapabilities}
                 disabled={loading}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                />
                 Refresh List
               </Button>
               <Button onClick={handleCreate}>
@@ -404,7 +457,9 @@ const AdminTaxonomyEditor = () => {
             <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="font-medium">Regenerating Company Capabilities</span>
+                  <span className="font-medium">
+                    Regenerating Company Capabilities
+                  </span>
                   <span>{progress}%</span>
                 </div>
                 <Progress value={progress} />
@@ -438,7 +493,9 @@ const AdminTaxonomyEditor = () => {
           </div>
 
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading capabilities...</div>
+            <div className="text-center py-8 text-muted-foreground">
+              Loading capabilities...
+            </div>
           ) : (
             <div className="space-y-2">
               {filteredCategories.length === 0 ? (
@@ -447,8 +504,10 @@ const AdminTaxonomyEditor = () => {
                 </div>
               ) : (
                 filteredCategories.map((category) => {
-                  const categoryCapabilities = getCapabilitiesByCategory(category).filter(c =>
-                    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+                  const categoryCapabilities = getCapabilitiesByCategory(
+                    category,
+                  ).filter((c) =>
+                    c.name.toLowerCase().includes(searchTerm.toLowerCase()),
                   );
                   const isExpanded = expandedCategories.has(category);
 
@@ -467,11 +526,13 @@ const AdminTaxonomyEditor = () => {
                             <ChevronRight className="h-4 w-4" />
                           )}
                         </Button>
-                        
+
                         <div className="flex-1 flex items-center gap-2">
                           <Folder className="h-4 w-4 text-primary" />
                           <span className="font-semibold">{category}</span>
-                          <Badge variant="outline">{categoryCapabilities.length}</Badge>
+                          <Badge variant="outline">
+                            {categoryCapabilities.length}
+                          </Badge>
                         </div>
                       </div>
 
@@ -508,15 +569,23 @@ const AdminTaxonomyEditor = () => {
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Capability</AlertDialogTitle>
+                                      <AlertDialogTitle>
+                                        Delete Capability
+                                      </AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Are you sure you want to delete "{capability.name}"? This action cannot be undone.
+                                        Are you sure you want to delete "
+                                        {capability.name}"? This action cannot
+                                        be undone.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogCancel>
+                                        Cancel
+                                      </AlertDialogCancel>
                                       <AlertDialogAction
-                                        onClick={() => handleDelete(capability.id)}
+                                        onClick={() =>
+                                          handleDelete(capability.id)
+                                        }
                                         className="bg-destructive text-destructive-foreground"
                                       >
                                         Delete
@@ -537,7 +606,8 @@ const AdminTaxonomyEditor = () => {
           )}
 
           <div className="mt-4 text-sm text-muted-foreground">
-            Total: {capabilities.length} capabilities across {categories.length} categories
+            Total: {capabilities.length} capabilities across {categories.length}{" "}
+            categories
           </div>
         </CardContent>
       </Card>
@@ -556,13 +626,15 @@ const AdminTaxonomyEditor = () => {
               <Label htmlFor="category">Category *</Label>
               <Select
                 value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, category: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select or enter category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map(cat => (
+                  {categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
                     </SelectItem>
@@ -581,13 +653,18 @@ const AdminTaxonomyEditor = () => {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Capability name"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleSave}>Create</Button>
@@ -609,13 +686,15 @@ const AdminTaxonomyEditor = () => {
               <Label htmlFor="edit-category">Category *</Label>
               <Select
                 value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, category: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map(cat => (
+                  {categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
                     </SelectItem>
@@ -629,13 +708,18 @@ const AdminTaxonomyEditor = () => {
               <Input
                 id="edit-name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Capability name"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleSave}>Save Changes</Button>

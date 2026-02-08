@@ -16,7 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Briefcase, Search, X, FileText, Building2, Calendar } from "lucide-react";
+import {
+  Loader2,
+  Briefcase,
+  Search,
+  X,
+  Building2,
+  Calendar,
+} from "lucide-react";
 import { toast } from "sonner";
 import { TenderSearchDialog } from "./TenderSearchDialog";
 
@@ -42,7 +49,7 @@ export function ProjectCreationDialog({
   companyId,
 }: ProjectCreationDialogProps) {
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(false);
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);

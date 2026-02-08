@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/lib/api";
-import { createAdminClient } from "@/lib/api";
+import { getAuthenticatedUser, createAdminClient } from "@/lib/api";
 import { getMatchingJobsForCompany } from "@/lib/services/queueService";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     if (companyError || !companies || companies.length === 0) {
       return NextResponse.json(
         { success: false, error: "Company not found for user" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -36,6 +36,15 @@ export async function GET(request: NextRequest) {
 
     // Calculate estimated time remaining (rough estimate: 5 seconds per job)
     const estimatedSeconds = jobs.processing * 5 + jobs.pending * 5;
+
+    await logApiEvent(request, {
+      actionType: "matching_result_viewed",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "company",
+      entityId: companyId,
+      details: { total: jobs.total, completed: jobs.completed },
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
@@ -60,7 +69,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

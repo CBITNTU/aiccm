@@ -129,10 +129,14 @@ export function TeamMembersCard({
         const data = await response.json();
         // Filter by companyId if provided
         const filteredRequests = companyId
-          ? (data.requests || []).filter((r: JoinRequest) => r.company_id === companyId)
+          ? (data.requests || []).filter(
+              (r: JoinRequest) => r.company_id === companyId,
+            )
           : data.requests || [];
         const filteredMembers = companyId
-          ? (data.members || []).filter((m: Member) => m.company_id === companyId)
+          ? (data.members || []).filter(
+              (m: Member) => m.company_id === companyId,
+            )
           : data.members || [];
 
         setRequests(filteredRequests);
@@ -151,6 +155,7 @@ export function TeamMembersCard({
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run on companyId change
   }, [companyId]);
 
   const handleApprove = async (requestId: string, userName: string) => {
@@ -172,7 +177,7 @@ export function TeamMembersCard({
     } catch (error) {
       console.error("Error approving request:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to approve request"
+        error instanceof Error ? error.message : "Failed to approve request",
       );
     } finally {
       setActionLoading(null);
@@ -206,7 +211,7 @@ export function TeamMembersCard({
     } catch (error) {
       console.error("Error rejecting request:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reject request"
+        error instanceof Error ? error.message : "Failed to reject request",
       );
     } finally {
       setActionLoading(null);
@@ -238,7 +243,7 @@ export function TeamMembersCard({
     } catch (error) {
       console.error("Error removing member:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to remove member"
+        error instanceof Error ? error.message : "Failed to remove member",
       );
     } finally {
       setActionLoading(null);
@@ -304,17 +309,21 @@ export function TeamMembersCard({
           <div className="space-y-2">
             {members.slice(0, 3).map((member) => {
               const userName = member.user
-                ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() || "Unknown"
+                ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() ||
+                  "Unknown"
                 : "Unknown";
               const isAdmin = member.role === "admin";
-              const isPendingPlatformApproval = member.status === "pending_platform_approval";
+              const isPendingPlatformApproval =
+                member.status === "pending_platform_approval";
 
               return (
                 <div
                   key={member.id}
                   className="flex items-center gap-2 text-sm"
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isPendingPlatformApproval ? "bg-yellow-100" : "bg-primary/10"}`}>
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center ${isPendingPlatformApproval ? "bg-yellow-100" : "bg-primary/10"}`}
+                  >
                     {isPendingPlatformApproval ? (
                       <Clock className="w-3 h-3 text-yellow-600" />
                     ) : isAdmin ? (
@@ -325,13 +334,18 @@ export function TeamMembersCard({
                   </div>
                   <span className="truncate">{userName}</span>
                   {isPendingPlatformApproval ? (
-                    <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200"
+                    >
                       Pending
                     </Badge>
-                  ) : isAdmin && (
-                    <Badge variant="secondary" className="text-xs">
-                      Admin
-                    </Badge>
+                  ) : (
+                    isAdmin && (
+                      <Badge variant="secondary" className="text-xs">
+                        Admin
+                      </Badge>
+                    )
                   )}
                 </div>
               );
@@ -385,7 +399,8 @@ export function TeamMembersCard({
               <div className="space-y-3">
                 {requests.map((request) => {
                   const userName = request.user
-                    ? `${request.user.firstName || ""} ${request.user.lastName || ""}`.trim() || "Unknown"
+                    ? `${request.user.firstName || ""} ${request.user.lastName || ""}`.trim() ||
+                      "Unknown"
                     : "Unknown";
 
                   return (
@@ -476,13 +491,21 @@ export function TeamMembersCard({
               <div className="space-y-2">
                 {members.map((member) => {
                   const userName = member.user
-                    ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() || "Unknown"
+                    ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() ||
+                      "Unknown"
                     : "Unknown";
                   const isAdmin = member.role === "admin";
                   const isSelf = currentUserId === member.user_id;
-                  const isPendingPlatformApproval = member.status === "pending_platform_approval";
-                  const adminCount = members.filter((m) => m.role === "admin").length;
-                  const canRemove = isSmeOwner && !isSelf && !isPendingPlatformApproval && !(isAdmin && adminCount === 1);
+                  const isPendingPlatformApproval =
+                    member.status === "pending_platform_approval";
+                  const adminCount = members.filter(
+                    (m) => m.role === "admin",
+                  ).length;
+                  const canRemove =
+                    isSmeOwner &&
+                    !isSelf &&
+                    !isPendingPlatformApproval &&
+                    !(isAdmin && adminCount === 1);
 
                   return (
                     <div
@@ -490,7 +513,9 @@ export function TeamMembersCard({
                       className={`flex items-center justify-between p-3 border rounded-lg ${isPendingPlatformApproval ? "bg-muted/30" : ""}`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPendingPlatformApproval ? "bg-yellow-100" : "bg-primary/10"}`}>
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${isPendingPlatformApproval ? "bg-yellow-100" : "bg-primary/10"}`}
+                        >
                           {isPendingPlatformApproval ? (
                             <Clock className="w-4 h-4 text-yellow-600" />
                           ) : isAdmin ? (
@@ -503,7 +528,10 @@ export function TeamMembersCard({
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">{userName}</span>
                             {isPendingPlatformApproval && (
-                              <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200"
+                              >
                                 Pending Platform Approval
                               </Badge>
                             )}
@@ -519,13 +547,16 @@ export function TeamMembersCard({
                             )}
                           </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            {member.user?.email && <span>{member.user.email}</span>}
+                            {member.user?.email && (
+                              <span>{member.user.email}</span>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">
-                          {isPendingPlatformApproval ? "Requested" : "Joined"} {formatDate(member.created_at)}
+                          {isPendingPlatformApproval ? "Requested" : "Joined"}{" "}
+                          {formatDate(member.created_at)}
                         </span>
                         {canRemove && (
                           <Button
@@ -571,7 +602,9 @@ export function TeamMembersCard({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject {rejectDialog?.name}&apos;s Request</DialogTitle>
+            <DialogTitle>
+              Reject {rejectDialog?.name}&apos;s Request
+            </DialogTitle>
             <DialogDescription>
               This will reject their request to join your company.
             </DialogDescription>
@@ -627,15 +660,12 @@ export function TeamMembersCard({
           <DialogHeader>
             <DialogTitle>Remove {removeDialog?.name}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove {removeDialog?.name} from the team?
-              They will lose access to the company.
+              Are you sure you want to remove {removeDialog?.name} from the
+              team? They will lose access to the company.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRemoveDialog(null)}
-            >
+            <Button variant="outline" onClick={() => setRemoveDialog(null)}>
               Cancel
             </Button>
             <Button

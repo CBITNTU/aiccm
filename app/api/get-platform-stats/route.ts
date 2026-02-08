@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse, apiError } from "@/lib/api";
+import {
+  createAdminClient,
+  createApiClient,
+  apiResponse,
+  apiError,
+} from "@/lib/api";
 import type { PlatformStats } from "@/lib/api/types";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,6 +37,23 @@ export async function GET(request: NextRequest) {
       matches: matchesRes.count || 0,
       projects: projectsRes.count || 0,
     };
+
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
+    await logApiEvent(request, {
+      actionType: "platform_stats_viewed",
+      userId: userId || undefined,
+      details: { ...stats } as Record<string, unknown>,
+    }).catch(() => {});
 
     return apiResponse(stats);
   } catch (error) {

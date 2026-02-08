@@ -19,10 +19,12 @@
     "supabase:db-push": "supabase db push --local --yes",
     "supabase:db-push:prod": "supabase db push",
     "supabase:db-pull": "supabase db pull",
-    "supabase:db-reset": "supabase db reset"
+    "supabase:db-reset": "supabase db reset",
+    "prepare": "husky"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.21",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -85,7 +87,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
+    "husky": "^9.1.7",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   }
 }

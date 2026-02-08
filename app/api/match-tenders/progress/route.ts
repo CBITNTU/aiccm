@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
 import { getBatchStatus } from "@/lib/services/queueService";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function GET(request: NextRequest) {
   try {
-    const { user, error: authError } = await getAuthenticatedUser(request);
+    const { user } = await getAuthenticatedUser(request);
     if (!user) {
       return apiError("Unauthorized", 401);
     }
@@ -43,6 +44,18 @@ export async function GET(request: NextRequest) {
       batchStatus.totalJobs > 0
         ? Math.round((totalProcessed / batchStatus.totalJobs) * 100)
         : 0;
+
+    await logApiEvent(request, {
+      actionType: "matching_result_viewed",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "batch_job",
+      entityId: batchId,
+      details: {
+        progress_percent: progressPercent,
+        total_jobs: batchStatus.totalJobs,
+      },
+    }).catch(() => {});
 
     return apiResponse({
       batch_id: batchId,

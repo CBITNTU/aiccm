@@ -259,14 +259,22 @@ export interface PrefillCompanyDataResponse {
       employees?: { value: number; confidence: number; evidence: string };
       netAssets?: { value: number; confidence: number; evidence: string };
       totalAssets?: { value: number; confidence: number; evidence: string };
-      totalLiabilities?: { value: number; confidence: number; evidence: string };
+      totalLiabilities?: {
+        value: number;
+        confidence: number;
+        evidence: string;
+      };
       cash?: { value: number; confidence: number; evidence: string };
       debtRatio?: { value: number; confidence: number; evidence: string };
     };
     compliance?: {
       accountsFiled?: { value: string; confidence: number; evidence: string };
       accountsDue?: { value: string; confidence: number; evidence: string };
-      confirmationStatement?: { value: string; confidence: number; evidence: string };
+      confirmationStatement?: {
+        value: string;
+        confidence: number;
+        evidence: string;
+      };
       activeCharges?: { value: number; confidence: number; evidence: string };
     };
   };

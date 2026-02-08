@@ -13,6 +13,7 @@
 Run these SQL migrations in your **production Supabase** SQL Editor:
 
 ### 1. Fix Atomic Job Dequeuing
+
 ```sql
 -- File: fix_dequeue.sql
 CREATE OR REPLACE FUNCTION public.dequeue_job_atomic()
@@ -39,7 +40,7 @@ BEGIN
   WHERE pq.status = 'pending' AND pq.batch_id IS NOT NULL
   ORDER BY pq.priority DESC, pq.scheduled_at ASC
   LIMIT 1 FOR UPDATE SKIP LOCKED;
-  
+
   IF NOT FOUND THEN
     -- Try non-batch jobs
     SELECT
@@ -52,20 +53,20 @@ BEGIN
     ORDER BY pq.priority DESC, pq.scheduled_at ASC
     LIMIT 1 FOR UPDATE SKIP LOCKED;
   END IF;
-  
+
   IF FOUND THEN
-    UPDATE public.processing_queue 
-    SET status = 'processing', started_at = now(), updated_at = now() 
+    UPDATE public.processing_queue
+    SET status = 'processing', started_at = now(), updated_at = now()
     WHERE processing_queue.id = claimed_job.id;
-    
-    RETURN QUERY SELECT 
+
+    RETURN QUERY SELECT
       claimed_job.id, claimed_job.job_type, claimed_job.entity_type, claimed_job.entity_id,
       claimed_job.company_id, claimed_job.tender_id, claimed_job.batch_id, 'processing'::TEXT,
       claimed_job.priority, claimed_job.attempts, claimed_job.max_attempts,
       claimed_job.error_message, claimed_job.result_data, claimed_job.scheduled_at,
       now(), claimed_job.completed_at, claimed_job.created_at, now(), claimed_job.metadata;
   END IF;
-  
+
   RETURN;
 END;
 $$;
@@ -74,6 +75,7 @@ GRANT EXECUTE ON FUNCTION public.dequeue_job_atomic() TO postgres, anon, authent
 ```
 
 ### 2. Fix Atomic Batch Progress Updates
+
 ```sql
 -- File: fix_increment_batch.sql
 CREATE OR REPLACE FUNCTION public.increment_batch_progress(p_batch_id UUID, p_outcome TEXT)
@@ -94,11 +96,11 @@ BEGIN
   WHERE batch_jobs.id = p_batch_id
   RETURNING batch_jobs.completed_jobs, batch_jobs.failed_jobs, batch_jobs.total_jobs
   INTO v_new_completed, v_new_failed, v_total;
-  
+
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Batch % not found', p_batch_id;
   END IF;
-  
+
   IF (v_new_completed + v_new_failed) >= v_total THEN
     IF v_new_failed > 0 THEN
       v_status := 'failed';
@@ -108,11 +110,11 @@ BEGIN
   ELSE
     v_status := 'processing';
   END IF;
-  
+
   IF v_status != 'processing' THEN
     UPDATE public.batch_jobs SET status = v_status WHERE batch_jobs.id = p_batch_id;
   END IF;
-  
+
   RETURN QUERY SELECT v_new_completed, v_new_failed, v_total, v_status;
 END;
 $$;
@@ -121,11 +123,12 @@ GRANT EXECUTE ON FUNCTION public.increment_batch_progress(UUID, TEXT) TO postgre
 ```
 
 ### 3. Add 'matching_started' Event Type
+
 ```sql
 -- Add matching_started to valid event types
 ALTER TABLE events DROP CONSTRAINT IF EXISTS valid_action_type;
 
-ALTER TABLE events ADD CONSTRAINT valid_action_type 
+ALTER TABLE events ADD CONSTRAINT valid_action_type
 CHECK (action_type IN (
   'login',
   'logout',
@@ -146,6 +149,7 @@ CHECK (action_type IN (
 ## Environment Variables
 
 ### Vercel (Production)
+
 In your Vercel dashboard, add:
 
 ```env
@@ -154,11 +158,13 @@ NEXT_PUBLIC_APP_URL=https://yourdomain.com
 ```
 
 Generate secret:
+
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 ### Local (.env.local)
+
 ```env
 CRON_SECRET=local-dev-secret
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -167,6 +173,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ## Vercel Cron Configuration
 
 Already configured in `vercel.json`:
+
 ```json
 {
   "crons": [
@@ -179,6 +186,7 @@ Already configured in `vercel.json`:
 ```
 
 This runs every 5 minutes to:
+
 - Reset stuck jobs (processing > 10 minutes)
 - Trigger worker if pending jobs exist
 - Clean up old completed/failed jobs (> 7 days)
@@ -196,6 +204,7 @@ This runs every 5 minutes to:
    - Redeploy to apply
 
 3. **Deploy Code**
+
    ```bash
    git add .
    git commit -m "fix: concurrent queue processing and UI sync issues"
@@ -224,31 +233,38 @@ This runs every 5 minutes to:
 ## Monitoring
 
 ### Console Logs Enabled in Production
+
 All console logs are kept in production for debugging (configured in `next.config.ts`).
 
 ### Key Logs to Watch
+
 **Job Lifecycle:**
+
 - `🔄 Matching: CompanyName → TenderTitle` - Job started
 - `📞 Calling OpenAI API...` - AI request sent
 - `✅ Got AI response (X chars)` - AI response received
 - `✅ Match complete: Company → Tender (Score: X%)` - Job completed
 
 **Queue Progress:**
+
 - `✅ Atomically updated batch X: Y/Z completed` - Progress updates working
 - `✅ Dequeued job` - Jobs being claimed correctly
 
 **Batch Management:**
+
 - `⚠️ Company X already has active batch Y` - Duplicate prevention working
 - `🛑 Attempting to cancel batch` - Cancellation triggered
 - `⚠️ Batch stuck at 0 progress` - Stale batch detection
 
 **Worker Status:**
+
 - `🔄 Queue worker started: batchSize=50, continuous=true, concurrency=15`
 - `✅ Cleared batch X from all state` - Cleanup working
 
 Check these endpoints:
+
 - `/api/queue/worker` - Background job processing
-- `/api/queue/cron` - Maintenance tasks  
+- `/api/queue/cron` - Maintenance tasks
 - `/api/match-tenders/progress?batchId=XXX` - Progress tracking
 
 ## Rollback Plan
@@ -259,6 +275,7 @@ If issues occur:
    - Vercel Dashboard → Settings → Cron Jobs → Disable
 
 2. **Revert Database Functions**
+
    ```sql
    -- Fallback to simple non-atomic functions
    DROP FUNCTION IF EXISTS public.dequeue_job_atomic();
@@ -274,13 +291,14 @@ If issues occur:
 ## Support
 
 If issues persist:
+
 - Check Supabase logs for database errors
 - Check Vercel logs for application errors
 - Check browser console for UI errors
 - Run SQL query to check queue state:
   ```sql
-  SELECT batch_id, status, COUNT(*) 
-  FROM processing_queue 
-  GROUP BY batch_id, status 
+  SELECT batch_id, status, COUNT(*)
+  FROM processing_queue
+  GROUP BY batch_id, status
   ORDER BY batch_id;
   ```

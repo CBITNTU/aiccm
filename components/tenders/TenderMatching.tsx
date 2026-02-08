@@ -344,7 +344,7 @@ export function TenderMatching({
     }
   }, [user, companyId, checkMatchingProgress, fetchMatchingResultsMemo]);
 
-  // Poll for progress if matching is in progress
+  // Poll for progress and refetch results while matching is in progress (progressive results)
   useEffect(() => {
     if (!matchingProgress || matchingProgress.status !== "processing") {
       return;
@@ -353,11 +353,13 @@ export function TenderMatching({
     const interval = setInterval(() => {
       if (matchingProgress.batchId) {
         checkMatchingProgress(matchingProgress.batchId);
+        // Refetch results so new matches appear as they complete (progressive result delivery)
+        fetchMatchingResultsMemo();
       }
-    }, 5000); // Poll every 5 seconds for responsive progress updates
+    }, 5000); // Poll every 5 seconds for progress and incremental results
 
     return () => clearInterval(interval);
-  }, [matchingProgress, checkMatchingProgress]);
+  }, [matchingProgress, checkMatchingProgress, fetchMatchingResultsMemo]);
 
   // Memoize filtered results to avoid infinite loops
   useEffect(() => {

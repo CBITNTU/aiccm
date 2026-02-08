@@ -622,20 +622,20 @@ export default function DashboardPage() {
                         )
                           .slice(0, 5)
                           .map(([key, field]) => (
-                          <div
-                            key={key}
-                            className="flex justify-between items-center p-3 bg-muted/30 rounded-lg"
-                          >
-                            <span className="text-sm font-medium capitalize">
-                              {key.replace(/([A-Z])/g, " $1").trim()}
-                            </span>
-                            <span className="text-sm font-semibold">
-                              {typeof field.value === "number"
-                                ? `£${field.value.toLocaleString()}`
-                                : field.value || "N/A"}
-                            </span>
-                          </div>
-                        ))}
+                            <div
+                              key={key}
+                              className="flex justify-between items-center p-3 bg-muted/30 rounded-lg"
+                            >
+                              <span className="text-sm font-medium capitalize">
+                                {key.replace(/([A-Z])/g, " $1").trim()}
+                              </span>
+                              <span className="text-sm font-semibold">
+                                {typeof field.value === "number"
+                                  ? `£${field.value.toLocaleString()}`
+                                  : field.value || "N/A"}
+                              </span>
+                            </div>
+                          ))}
                       </div>
                     </>
                   )}

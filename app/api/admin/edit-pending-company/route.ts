@@ -6,6 +6,7 @@ import {
   getAuthenticatedUser,
   checkSuperadminRole,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export interface EditPendingCompanyRequest {
   companyId: string;
@@ -67,7 +68,7 @@ export async function PUT(request: NextRequest) {
     if (company.status !== "pending_review") {
       return apiError(
         "Only pending companies can be edited through this endpoint",
-        400
+        400,
       );
     }
 
@@ -76,8 +77,7 @@ export async function PUT(request: NextRequest) {
     if (companyName !== undefined) updateData.company_name = companyName;
     if (companiesHouseNumber !== undefined)
       updateData.companies_house_number = companiesHouseNumber || null;
-    if (websiteUrl !== undefined)
-      updateData.website_url = websiteUrl || null;
+    if (websiteUrl !== undefined) updateData.website_url = websiteUrl || null;
     if (contactPerson !== undefined)
       updateData.contact_person = contactPerson || null;
     if (contactEmail !== undefined)
@@ -100,6 +100,18 @@ export async function PUT(request: NextRequest) {
       console.error("Error updating company:", updateError);
       return apiError("Failed to update company", 500);
     }
+
+    await logApiEvent(request, {
+      actionType: "admin_edit_pending_company",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "company",
+      entityId: companyId,
+      details: {
+        company_name: company.company_name,
+        fields_updated: Object.keys(updateData),
+      },
+    }).catch(() => {});
 
     return apiResponse<EditPendingCompanyResponse>({
       success: true,

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Unexpected error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
-    
+
     // Log error
     await logApiEvent(request, {
       actionType: "project_created",
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       status: "error",
       errorMessage: message,
     }).catch(() => {}); // Don't fail if logging fails
-    
+
     return apiError(message, 500);
   }
 }

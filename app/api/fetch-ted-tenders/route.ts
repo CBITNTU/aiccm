@@ -36,72 +36,96 @@ interface TenderData {
 // TED uses eForms structure with field names like "BT-01-notice", "notice-title", etc.
 function transformTEDToTender(notice: Record<string, unknown>): TenderData {
   // Extract notice identifier
-  const noticeIdentifier = notice["notice-identifier"] as string || 
-                          notice["BT-01-notice"] as string || 
-                          "";
-  
+  const noticeIdentifier =
+    (notice["notice-identifier"] as string) ||
+    (notice["BT-01-notice"] as string) ||
+    "";
+
   // Extract title - can be in multiple fields
   const titleObj = notice["notice-title"] as { lang?: string } | undefined;
-  const title = (typeof titleObj === "object" && titleObj !== null && "lang" in titleObj) 
-    ? (titleObj.lang as string || "")
-    : (notice["BT-01-notice"] as string || "Untitled Tender");
-  
+  const title =
+    typeof titleObj === "object" && titleObj !== null && "lang" in titleObj
+      ? (titleObj.lang as string) || ""
+      : (notice["BT-01-notice"] as string) || "Untitled Tender";
+
   // Extract description
-  const descriptionObj = notice["description-glo"] as { lang?: string[] } | undefined;
-  const description = (typeof descriptionObj === "object" && descriptionObj !== null && "lang" in descriptionObj)
-    ? ((descriptionObj.lang as string[])?.join(" ") || "")
-    : "";
-  
+  const descriptionObj = notice["description-glo"] as
+    | { lang?: string[] }
+    | undefined;
+  const description =
+    typeof descriptionObj === "object" &&
+    descriptionObj !== null &&
+    "lang" in descriptionObj
+      ? (descriptionObj.lang as string[])?.join(" ") || ""
+      : "";
+
   // Extract buyer information
   const buyerNameObj = notice["buyer-name"] as { lang?: string[] } | undefined;
-  const buyer = (typeof buyerNameObj === "object" && buyerNameObj !== null && "lang" in buyerNameObj)
-    ? ((buyerNameObj.lang as string[])?.join(", ") || "Unknown Buyer")
-    : "Unknown Buyer";
-  
+  const buyer =
+    typeof buyerNameObj === "object" &&
+    buyerNameObj !== null &&
+    "lang" in buyerNameObj
+      ? (buyerNameObj.lang as string[])?.join(", ") || "Unknown Buyer"
+      : "Unknown Buyer";
+
   // Extract location - try multiple fields
-  const placeOfPerformance = notice["place-of-performance-country-lot"] as string[] | undefined;
-  const location = placeOfPerformance?.join(", ") || 
-                   (notice["buyer-country"] as string[])?.join(", ") || 
-                   "EU";
-  
+  const placeOfPerformance = notice["place-of-performance-country-lot"] as
+    | string[]
+    | undefined;
+  const location =
+    placeOfPerformance?.join(", ") ||
+    (notice["buyer-country"] as string[])?.join(", ") ||
+    "EU";
+
   // Extract CPV codes
   const cpvCodes: string[] = [];
   const mainCpv = notice["main-classification-lot"] as string[] | undefined;
   if (mainCpv) cpvCodes.push(...mainCpv);
-  
-  const additionalCpv = notice["additional-classification-lot"] as string[] | undefined;
+
+  const additionalCpv = notice["additional-classification-lot"] as
+    | string[]
+    | undefined;
   if (additionalCpv) {
     cpvCodes.push(...additionalCpv);
   }
-  
+
   // Extract budget - TED uses estimated-value-lot
   const estimatedValue = notice["estimated-value-lot"] as number[] | undefined;
-  const budgetMin = estimatedValue?.[0] ? Math.floor(estimatedValue[0] * 100) : null; // Convert to cents
-  const budgetMax = estimatedValue?.[1] ? Math.floor(estimatedValue[1] * 100) : null;
-  
+  const budgetMin = estimatedValue?.[0]
+    ? Math.floor(estimatedValue[0] * 100)
+    : null; // Convert to cents
+  const budgetMax = estimatedValue?.[1]
+    ? Math.floor(estimatedValue[1] * 100)
+    : null;
+
   // Extract dates
-  const publicationDate = (notice["publication-date"] as string[])?.join("") || new Date().toISOString();
-  const deadlineDate = (notice["deadline-date-lot"] as string[])?.join("") || undefined;
-  
+  const publicationDate =
+    (notice["publication-date"] as string[])?.join("") ||
+    new Date().toISOString();
+  const deadlineDate =
+    (notice["deadline-date-lot"] as string[])?.join("") || undefined;
+
   // Extract status - TED uses scope (ACTIVE, ARCHIVED)
   const status = "active"; // All results from ACTIVE scope
-  
+
   // Extract contact info
-  const buyerEmail = (notice["buyer-email"] as string[])?.join(", ") || undefined;
-  const buyerContact = (notice["buyer-contact-point"] as string[])?.join(", ") || undefined;
-  
+  const buyerEmail =
+    (notice["buyer-email"] as string[])?.join(", ") || undefined;
+  const buyerContact =
+    (notice["buyer-contact-point"] as string[])?.join(", ") || undefined;
+
   const contactInfo = {
     email: buyerEmail,
     phone: undefined,
     organization: buyer,
     contactPoint: buyerContact,
   };
-  
+
   // Build notice URL
-  const noticeUrl = noticeIdentifier 
+  const noticeUrl = noticeIdentifier
     ? `https://ted.europa.eu/udl?uri=TED:NOTICE:${noticeIdentifier}`
     : "https://ted.europa.eu";
-  
+
   return {
     reference_number: noticeIdentifier,
     title: title || "Untitled Tender",
@@ -135,11 +159,16 @@ async function fetchFromTEDAPI(
   page: number = 1,
   limit: number = 100,
   iterationNextToken?: string,
-  isAdmin = false
-): Promise<{ notices: TenderData[]; total: number; hasMore: boolean; nextToken?: string }> {
+  isAdmin = false,
+): Promise<{
+  notices: TenderData[];
+  total: number;
+  hasMore: boolean;
+  nextToken?: string;
+}> {
   // Note: Search API does NOT require authentication according to documentation
   // But we'll keep the API key check for other potential uses
-  
+
   const url = `${TED_API_BASE}/notices/search`;
 
   // Build query string for date filtering
@@ -147,20 +176,20 @@ async function fetchFromTEDAPI(
   // Pattern: [0-9]{8} or today([+-]?[0-9]*)
   // Field names use hyphens: publication-date
   // Try using "*" first to get all active notices, then we can filter by date if needed
-  
+
   // Helper function to convert date to YYYYMMDD format
   const formatDateForTED = (dateStr: string): string => {
     const date = new Date(dateStr);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}${month}${day}`;
   };
-  
+
   // Start with "*" to get all active notices (scope: ACTIVE will filter them)
   // If user provides dates, we can try to add date filters, but "*" should work
   let query = "*";
-  
+
   // Try date filtering if provided, but if it doesn't work, fall back to "*"
   // Note: Date filtering might need different field names or syntax
   if (dateFrom || dateTo) {
@@ -183,12 +212,12 @@ async function fetchFromTEDAPI(
       query = "*";
     }
   }
-  
+
   // For now, let's use "*" to get all active notices
   // The scope: "ACTIVE" parameter should handle filtering
   // We can add date filtering later once we confirm the API works
   query = "*";
-  
+
   console.log("TED Query (using '*' to get all active notices):", query);
 
   // Build request body according to Swagger documentation
@@ -226,8 +255,12 @@ async function fetchFromTEDAPI(
     requestBody.iterationNextToken = iterationNextToken;
     requestBody.paginationMode = "ITERATION";
   }
-  
-  console.log("Fetching from TED API:", url, `(Admin: ${isAdmin}, Page: ${page})`);
+
+  console.log(
+    "Fetching from TED API:",
+    url,
+    `(Admin: ${isAdmin}, Page: ${page})`,
+  );
   console.log("TED API Request Body:", JSON.stringify(requestBody, null, 2));
 
   const response = await fetch(url, {
@@ -243,7 +276,7 @@ async function fetchFromTEDAPI(
   if (!response.ok) {
     if (response.status === 429) {
       const error: Error & { status?: number } = new Error(
-        `Rate limited (429): ${response.statusText}. Please wait before retrying.`
+        `Rate limited (429): ${response.statusText}. Please wait before retrying.`,
       );
       error.status = 429;
       throw error;
@@ -254,7 +287,7 @@ async function fetchFromTEDAPI(
       const errorJson = JSON.parse(errorText);
       if (errorJson.type === "QUERY_SYNTAX_ERROR") {
         const location = errorJson.location || {};
-        errorMessage = `Query syntax error at line ${location.beginLine || '?'}, column ${location.beginColumn || '?'}. Query: "${query}". Full error: ${JSON.stringify(errorJson)}`;
+        errorMessage = `Query syntax error at line ${location.beginLine || "?"}, column ${location.beginColumn || "?"}. Query: "${query}". Full error: ${JSON.stringify(errorJson)}`;
         console.error("TED Query Syntax Error:", errorJson);
         console.error("Query used:", query);
       } else if (errorJson.message) {
@@ -275,21 +308,25 @@ async function fetchFromTEDAPI(
     throw new Error(errorMessage);
   }
 
-  const data = await response.json() as {
+  const data = (await response.json()) as {
     notices?: Array<Record<string, unknown>>;
     totalNoticeCount?: number;
     iterationNextToken?: string;
   };
-  
+
   // Extract notices from response
   const notices = (data.notices || []) as Array<Record<string, unknown>>;
   const total = data.totalNoticeCount || notices.length;
   const nextToken = data.iterationNextToken;
   const hasMore = !!nextToken || notices.length >= limit;
 
-  console.log(`Received ${notices.length} notices from TED API (Admin: ${isAdmin}, Total: ${total}, HasMore: ${hasMore})`);
+  console.log(
+    `Received ${notices.length} notices from TED API (Admin: ${isAdmin}, Total: ${total}, HasMore: ${hasMore})`,
+  );
 
-  const transformedTenders = notices.map((notice) => transformTEDToTender(notice));
+  const transformedTenders = notices.map((notice) =>
+    transformTEDToTender(notice),
+  );
 
   return {
     notices: transformedTenders,
@@ -326,13 +363,13 @@ export async function POST(request: NextRequest) {
     } = await request.json();
 
     // Fetch from TED API
-    const { notices, total, hasMore, nextToken } = await fetchFromTEDAPI(
+    const { notices, hasMore, nextToken } = await fetchFromTEDAPI(
       dateFrom,
       dateTo,
       page,
       limit,
       iterationNextToken,
-      isAdmin
+      isAdmin,
     );
 
     // If admin is importing, also save to database with duplicate prevention
@@ -362,14 +399,14 @@ export async function POST(request: NextRequest) {
         .select("reference_number, id")
         .in(
           "reference_number",
-          tendersToInsert.map((t) => t.reference_number)
+          tendersToInsert.map((t) => t.reference_number),
         );
 
       const existingRefs = new Map(
-        existingTenders?.map((t) => [t.reference_number, t.id]) || []
+        existingTenders?.map((t) => [t.reference_number, t.id]) || [],
       );
       const newTenders = tendersToInsert.filter(
-        (t) => !existingRefs.has(t.reference_number)
+        (t) => !existingRefs.has(t.reference_number),
       );
       const duplicatesCount = tendersToInsert.length - newTenders.length;
 
@@ -378,17 +415,17 @@ export async function POST(request: NextRequest) {
           .from("tenders")
           .upsert(
             newTenders as unknown as Database["public"]["Tables"]["tenders"]["Insert"][],
-            { onConflict: "reference_number" }
+            { onConflict: "reference_number" },
           )
           .select(
-            "id, reference_number, title, description, buyer, cpv_codes, location"
+            "id, reference_number, title, description, buyer, cpv_codes, location",
           );
 
         if (insertError) {
           console.error("Error importing tenders:", insertError);
         } else {
           console.log(
-            `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`
+            `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`,
           );
 
           // Log tender import event
@@ -406,30 +443,24 @@ export async function POST(request: NextRequest) {
 
           // Queue AI processing jobs for new tenders
           if (insertedTenders && insertedTenders.length > 0) {
-            const { enqueueBatch } = await import("@/lib/services/queueService");
-            const tenderIds = ((insertedTenders as unknown as { id: string }[]) || []).map((t) => t.id);
-            
-            const jobs = tenderIds.flatMap((tenderId) => [
-              {
-                jobType: "tender_summary" as const,
-                entityType: "tender" as const,
-                entityId: tenderId,
-                priority: 5,
-              },
-              {
-                jobType: "tender_taxonomy" as const,
-                entityType: "tender" as const,
-                entityId: tenderId,
-                priority: 5,
-              },
-            ]);
+            const { enqueueBatch } =
+              await import("@/lib/services/queueService");
+            const tenderIds = (
+              (insertedTenders as unknown as { id: string }[]) || []
+            ).map((t) => t.id);
+
+            const jobs = tenderIds.map((tenderId) => ({
+              jobType: "tender_ai_complete" as const,
+              entityType: "tender" as const,
+              entityId: tenderId,
+              priority: 5,
+            }));
 
             try {
               await enqueueBatch(jobs, "tender_ai_regeneration", user.id);
-              console.log(`Queued ${jobs.length} AI processing jobs for ${tenderIds.length} new tenders`);
-              
-              // Note: Capability activation will be triggered after AI taxonomy jobs complete
-              // This is handled by the queue worker after tender_taxonomy jobs finish
+              console.log(
+                `Queued ${jobs.length} AI processing jobs for ${tenderIds.length} new tenders`,
+              );
             } catch (queueError) {
               console.error("Failed to queue AI processing jobs:", queueError);
               // Don't fail the import if queueing fails
@@ -437,7 +468,9 @@ export async function POST(request: NextRequest) {
           }
         }
       } else {
-        console.log(`No new tenders to import - all ${tendersToInsert.length} were duplicates`);
+        console.log(
+          `No new tenders to import - all ${tendersToInsert.length} were duplicates`,
+        );
       }
 
       // Return actual imported count
@@ -483,8 +516,7 @@ export async function POST(request: NextRequest) {
         isAdmin: false,
         source: "ted_api",
       },
-      500
+      500,
     );
   }
 }
-

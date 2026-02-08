@@ -9,7 +9,7 @@ export function getSignupVerificationEmailSubject(): string {
 }
 
 export function getSignupVerificationEmailHtml(
-  data: SignupVerificationEmailData
+  data: SignupVerificationEmailData,
 ): string {
   const { verificationLink } = data;
   const platformName = getPlatformName();

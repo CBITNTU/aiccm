@@ -8,6 +8,19 @@ export function generateInviteToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+/** Invite tokens are 64 hex characters (32 bytes). */
+const INVITE_TOKEN_REGEX = /^[a-fA-F0-9]{64}$/;
+
+/**
+ * Sanitize and validate an invite token. Returns the token only if it is
+ * exactly 64 hexadecimal characters (safe for hashing and parameterized queries).
+ */
+export function sanitizeHexToken(token: unknown): string | null {
+  if (typeof token !== "string") return null;
+  const trimmed = token.trim();
+  return INVITE_TOKEN_REGEX.test(trimmed) ? trimmed : null;
+}
+
 /**
  * Hash a token for secure storage in the database
  * Uses SHA-256 to create a one-way hash
@@ -30,6 +43,7 @@ export function getInviteExpiryDate(days: number = 7): Date {
  * Check if a date has expired
  */
 export function isExpired(expiresAt: Date | string): boolean {
-  const expiry = typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
+  const expiry =
+    typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
   return expiry < new Date();
 }

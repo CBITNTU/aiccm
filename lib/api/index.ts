@@ -1,9 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- JSON parsing, Supabase extended types */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Database } from "@/lib/supabase/types";
+
+/** Model ids supported for matching (demo and production). */
+export const MATCHING_MODEL_IDS = {
+  "gpt-5-nano": "gpt-5-nano",
+  "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
+} as const;
+export type MatchingModelId = keyof typeof MATCHING_MODEL_IDS;
 
 // Standard API response helper
 export function apiResponse<T>(data: T, status: number = 200): NextResponse {
@@ -14,11 +23,11 @@ export function apiResponse<T>(data: T, status: number = 200): NextResponse {
 export function apiError(
   message: string,
   status: number = 500,
-  details?: string
+  details?: string,
 ): NextResponse {
   return NextResponse.json(
     { error: message, ...(details && { details }) },
-    { status }
+    { status },
   );
 }
 
@@ -37,14 +46,14 @@ export async function createApiClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options),
             );
           } catch {
             // Ignore in API routes - cookies can't be set after response starts
           }
         },
       },
-    }
+    },
   );
 }
 
@@ -58,12 +67,12 @@ export function createAdminClient() {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
+    },
   );
 }
 
 // Get authenticated user from request
-export async function getAuthenticatedUser(request: NextRequest) {
+export async function getAuthenticatedUser(_request: NextRequest) {
   const supabase = await createApiClient();
   const {
     data: { user },
@@ -105,7 +114,51 @@ export function getOpenAIClient(): OpenAI {
   return openaiClient;
 }
 
-// OpenAI chat completion helper
+// Gemini client singleton (optional; used for matching when model is gemini-2.5-flash-lite)
+let geminiClient: GoogleGenerativeAI | null = null;
+
+export function getGeminiClient(): GoogleGenerativeAI {
+  if (!geminiClient) {
+    const apiKey =
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "GOOGLE_GENERATIVE_AI_API_KEY or GOOGLE_AI_API_KEY not configured",
+      );
+    }
+    geminiClient = new GoogleGenerativeAI(apiKey);
+  }
+  return geminiClient;
+}
+
+/**
+ * Gemini chat completion (JSON output). Used for matching when model is gemini-2.5-flash-lite.
+ */
+export async function geminiCompletion(
+  systemPrompt: string,
+  userPrompt: string,
+  options: { model?: string; maxTokens?: number } = {},
+): Promise<string> {
+  const genAI = getGeminiClient();
+  const modelId = options.model ?? "gemini-2.5-flash-lite";
+  const model = genAI.getGenerativeModel({
+    model: modelId,
+    generationConfig: {
+      maxOutputTokens: options.maxTokens ?? 2048,
+      temperature: 0.7,
+      responseMimeType: "application/json",
+    },
+  });
+  const combined = `${systemPrompt}\n\n${userPrompt}`;
+  const result = await model.generateContent(combined);
+  const response = result.response;
+  if (!response || !response.text) {
+    throw new Error("Gemini returned empty response");
+  }
+  return response.text();
+}
+
+// OpenAI chat completion helper. Uses platform default model/reasoning effort when not provided.
 export async function chatCompletion(
   systemPrompt: string,
   userPrompt: string,
@@ -115,32 +168,52 @@ export async function chatCompletion(
     maxTokens?: number;
     responseFormat?: "json_object" | { type: "json_schema"; json_schema: any };
     reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
-  } = {}
+  } = {},
 ): Promise<string> {
   const openai = getOpenAIClient();
-  const model = options.model || "gpt-5-nano";
+  // Apply platform defaults when not explicitly provided
+  const platform = await import("@/lib/platformSettings").then((m) =>
+    m.getPlatformAISettings(),
+  );
+  const model = options.model ?? platform.default_ai_model;
+  const effectiveReasoningEffort =
+    options.reasoningEffort ??
+    (platform.default_reasoning_effort === "default"
+      ? undefined
+      : (platform.default_reasoning_effort as
+          | "none"
+          | "minimal"
+          | "low"
+          | "medium"
+          | "high"
+          | "xhigh"));
   const isGPT5 = model.startsWith("gpt-5");
-  
+  // gpt-5-nano only supports: minimal, low, medium, high (not "none" or "xhigh")
+  const reasoningEffort =
+    effectiveReasoningEffort && isGPT5
+      ? model === "gpt-5-nano" && effectiveReasoningEffort === "none"
+        ? "minimal"
+        : model === "gpt-5-nano" && effectiveReasoningEffort === "xhigh"
+          ? "high"
+          : effectiveReasoningEffort
+      : undefined;
+
   const requestParams: any = {
     model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    // GPT-5 models don't support temperature parameter (only default 1 is allowed)
-    // GPT-5 models use max_completion_tokens, older models use max_tokens
-    ...(isGPT5 
-      ? { 
+    // GPT-5: max_completion_tokens; Chat Completions uses top-level reasoning_effort
+    ...(isGPT5
+      ? {
           max_completion_tokens: options.maxTokens ?? 500,
-          // Don't include temperature for GPT-5 models
-          // Add reasoning effort if specified (reduces reasoning tokens for faster/cheaper responses)
-          ...(options.reasoningEffort ? { reasoning: { effort: options.reasoningEffort } } : {}),
+          ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
         }
-      : { 
+      : {
           max_tokens: options.maxTokens ?? 500,
           temperature: options.temperature ?? 0.7,
-        }
-    ),
+        }),
   };
 
   // Add response format if specified
@@ -157,11 +230,12 @@ export async function chatCompletion(
       model: requestParams.model,
       messageCount: requestParams.messages.length,
       hasResponseFormat: !!requestParams.response_format,
-      maxTokens: requestParams.max_completion_tokens || requestParams.max_tokens,
+      maxTokens:
+        requestParams.max_completion_tokens || requestParams.max_tokens,
     });
-    
+
     const response = await openai.chat.completions.create(requestParams);
-    
+
     console.log("📥 OpenAI API response received:", {
       id: response.id,
       model: response.model,
@@ -170,9 +244,9 @@ export async function chatCompletion(
       hasContent: !!response.choices?.[0]?.message?.content,
       contentLength: response.choices?.[0]?.message?.content?.length || 0,
     });
-    
+
     const content = response.choices[0]?.message?.content || "";
-    
+
     if (!content) {
       console.error("⚠️ OpenAI API returned empty response");
       console.error("Full response object:", JSON.stringify(response, null, 2));
@@ -180,7 +254,7 @@ export async function chatCompletion(
       console.error("Finish reason:", response.choices[0]?.finish_reason);
       console.error("Usage:", JSON.stringify(response.usage, null, 2));
     }
-    
+
     return content;
   } catch (error: any) {
     console.error("❌ OpenAI API error:", error);
@@ -213,111 +287,126 @@ export function parseAIJsonResponse<T>(content: string): T {
 
   // Strip comments (// and /* */) from JSON before parsing
   // Use a state machine to properly handle strings and comments
-  
+
   // First, remove multi-line comments (/* ... */) - these are easier to handle
-  cleanContent = cleanContent.replace(/\/\*[\s\S]*?\*\//g, '');
-  
+  cleanContent = cleanContent.replace(/\/\*[\s\S]*?\*\//g, "");
+
   // Then remove single-line comments (// ...) but be careful not to remove // inside strings
   let inString = false;
   let escapeNext = false;
-  let result = '';
+  let result = "";
   let i = 0;
-  
+
   while (i < cleanContent.length) {
     const char = cleanContent[i];
     const nextChar = i + 1 < cleanContent.length ? cleanContent[i + 1] : null;
-    
+
     if (escapeNext) {
       result += char;
       escapeNext = false;
       i++;
       continue;
     }
-    
-    if (char === '\\') {
+
+    if (char === "\\") {
       escapeNext = true;
       result += char;
       i++;
       continue;
     }
-    
+
     if (char === '"') {
       inString = !inString;
       result += char;
       i++;
       continue;
     }
-    
+
     // If we see // and we're not in a string, skip to end of line
-    if (!inString && char === '/' && nextChar === '/') {
+    if (!inString && char === "/" && nextChar === "/") {
       // Skip to end of line (don't include the // or the rest of the line)
-      while (i < cleanContent.length && cleanContent[i] !== '\n' && cleanContent[i] !== '\r') {
+      while (
+        i < cleanContent.length &&
+        cleanContent[i] !== "\n" &&
+        cleanContent[i] !== "\r"
+      ) {
         i++;
       }
       // Don't add the newline either - just skip it
-      if (i < cleanContent.length && (cleanContent[i] === '\n' || cleanContent[i] === '\r')) {
+      if (
+        i < cleanContent.length &&
+        (cleanContent[i] === "\n" || cleanContent[i] === "\r")
+      ) {
         i++;
-        if (i < cleanContent.length && cleanContent[i] === '\n' && cleanContent[i - 1] === '\r') {
+        if (
+          i < cleanContent.length &&
+          cleanContent[i] === "\n" &&
+          cleanContent[i - 1] === "\r"
+        ) {
           i++;
         }
       }
       continue;
     }
-    
+
     result += char;
     i++;
   }
-  
+
   cleanContent = result.trim();
-  
+
   // Clean up any trailing commas before closing braces/brackets
-  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
-  
+  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, "$1");
+
   // Aggressive fallback: Remove any remaining // comments that might have slipped through
   // This handles cases where comments appear after commas, colons, or values
   // We do this by finding // that's not inside quotes (simplified check)
-  let finalResult = '';
+  let finalResult = "";
   let inString2 = false;
   let escapeNext2 = false;
-  
+
   for (let j = 0; j < cleanContent.length; j++) {
     const char = cleanContent[j];
     const nextChar = j + 1 < cleanContent.length ? cleanContent[j + 1] : null;
-    
+
     if (escapeNext2) {
       finalResult += char;
       escapeNext2 = false;
       continue;
     }
-    
-    if (char === '\\') {
+
+    if (char === "\\") {
       escapeNext2 = true;
       finalResult += char;
       continue;
     }
-    
+
     if (char === '"') {
       inString2 = !inString2;
       finalResult += char;
       continue;
     }
-    
+
     // Skip // comments that aren't in strings
-    if (!inString2 && char === '/' && nextChar === '/') {
+    if (!inString2 && char === "/" && nextChar === "/") {
       // Skip to end of line
-      while (j < cleanContent.length && cleanContent[j] !== '\n' && cleanContent[j] !== '\r') {
+      while (
+        j < cleanContent.length &&
+        cleanContent[j] !== "\n" &&
+        cleanContent[j] !== "\r"
+      ) {
         j++;
       }
       continue;
     }
-    
+
     finalResult += char;
   }
-  
+
   cleanContent = finalResult.trim();
-  
+
   // Final cleanup: remove trailing commas
-  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
+  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, "$1");
 
   try {
     return JSON.parse(cleanContent);
@@ -326,15 +415,18 @@ export function parseAIJsonResponse<T>(content: string): T {
     if (error instanceof SyntaxError) {
       console.error("JSON parsing failed after comment stripping:");
       console.error("Error:", error.message);
-      console.error("Content (first 500 chars):", cleanContent.substring(0, 500));
+      console.error(
+        "Content (first 500 chars):",
+        cleanContent.substring(0, 500),
+      );
       // Try one more time with aggressive comment removal
       const aggressiveClean = cleanContent
-        .replace(/\/\/[^\n\r]*/g, '') // Remove any remaining // comments
-        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove any remaining /* */ comments
-        .replace(/,(\s*[}\]])/g, '$1'); // Clean trailing commas
+        .replace(/\/\/[^\n\r]*/g, "") // Remove any remaining // comments
+        .replace(/\/\*[\s\S]*?\*\//g, "") // Remove any remaining /* */ comments
+        .replace(/,(\s*[}\]])/g, "$1"); // Clean trailing commas
       try {
         return JSON.parse(aggressiveClean);
-      } catch (e2) {
+      } catch {
         console.error("Aggressive cleaning also failed");
         throw error; // Throw original error
       }

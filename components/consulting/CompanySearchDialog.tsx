@@ -40,7 +40,7 @@ export function CompanySearchDialog({
   selectedCapabilityIds = [],
 }: CompanySearchDialogProps) {
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -78,7 +78,7 @@ export function CompanySearchDialog({
 
         // Get unique company IDs
         const companyIds = Array.from(
-          new Set((capabilityLinks || []).map((link) => link.company_id))
+          new Set((capabilityLinks || []).map((link) => link.company_id)),
         );
 
         if (companyIds.length === 0) {
@@ -91,13 +91,15 @@ export function CompanySearchDialog({
         // Now query companies with those IDs
         let query = supabase
           .from("companies")
-          .select("id, company_name, key_capabilities, certifications, postcode")
+          .select(
+            "id, company_name, key_capabilities, certifications, postcode",
+          )
           .eq("status", "active")
           .in("id", companyIds);
 
         if (excludeCompanyIds.length > 0) {
           const filteredIds = companyIds.filter(
-            (id) => !excludeCompanyIds.includes(id)
+            (id) => !excludeCompanyIds.includes(id),
           );
           if (filteredIds.length === 0) {
             setCompanies([]);
@@ -109,7 +111,7 @@ export function CompanySearchDialog({
 
         if (searchQuery) {
           query = query.or(
-            `company_name.ilike.%${searchQuery}%,key_capabilities.ilike.%${searchQuery}%,postcode.ilike.%${searchQuery}%`
+            `company_name.ilike.%${searchQuery}%,key_capabilities.ilike.%${searchQuery}%,postcode.ilike.%${searchQuery}%`,
           );
         }
 
@@ -121,7 +123,9 @@ export function CompanySearchDialog({
         // Original behavior: no capability filtering
         let query = supabase
           .from("companies")
-          .select("id, company_name, key_capabilities, certifications, postcode")
+          .select(
+            "id, company_name, key_capabilities, certifications, postcode",
+          )
           .eq("status", "active")
           .limit(20);
 
@@ -131,7 +135,7 @@ export function CompanySearchDialog({
 
         if (searchQuery) {
           query = query.or(
-            `company_name.ilike.%${searchQuery}%,key_capabilities.ilike.%${searchQuery}%,postcode.ilike.%${searchQuery}%`
+            `company_name.ilike.%${searchQuery}%,key_capabilities.ilike.%${searchQuery}%,postcode.ilike.%${searchQuery}%`,
           );
         }
 
@@ -199,10 +203,14 @@ export function CompanySearchDialog({
                   >
                     <div className="flex items-start gap-3 mb-2">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold truncate">{company.company_name}</h4>
+                        <h4 className="font-semibold truncate">
+                          {company.company_name}
+                        </h4>
                         <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                           <MapPin className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{company.postcode || "N/A"}</span>
+                          <span className="truncate">
+                            {company.postcode || "N/A"}
+                          </span>
                         </div>
                       </div>
                       <Button

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- tenders, profiles extended columns */
 import {
   createAdminClient,
   chatCompletion,
@@ -5,18 +6,18 @@ import {
 } from "@/lib/api";
 import { runLLM } from "./llmLimiter";
 
+const TENDER_SELECT =
+  "title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements";
+
 const supabase = createAdminClient();
 
 /**
  * Generate AI summary for a tender
  */
 export async function generateTenderSummary(tenderId: string): Promise<string> {
-  // Fetch tender data
   const { data: tender, error } = await supabase
     .from("tenders")
-    .select(
-      "title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements",
-    )
+    .select(TENDER_SELECT)
     .eq("id", tenderId)
     .single();
 
@@ -26,7 +27,6 @@ export async function generateTenderSummary(tenderId: string): Promise<string> {
     );
   }
 
-  // Format budget range
   const budgetRange =
     tender.budget_min || tender.budget_max
       ? `£${tender.budget_min ? tender.budget_min.toLocaleString() : "?"} - £${tender.budget_max ? tender.budget_max.toLocaleString() : "?"}`
@@ -39,16 +39,7 @@ export async function generateTenderSummary(tenderId: string): Promise<string> {
       : JSON.stringify(tender.requirements)
     : "";
 
-  const systemPrompt = `You are an expert at analyzing tender opportunities. 
-Generate a concise, professional 200-word summary of this tender opportunity.
-Highlight:
-- Key requirements and scope
-- Budget range and timeline
-- Ideal candidate profile
-- Important deadlines and contact information
-- Any special requirements or qualifications needed
-
-Be specific and actionable.`;
+  const systemPrompt = `Generate a 200-word summary covering: requirements/scope, budget/timeline, ideal candidate, deadlines/contact, special requirements. Be specific and actionable.`;
 
   const userPrompt = `Tender Details:
 Title: ${tender.title || "N/A"}
@@ -60,13 +51,12 @@ Location: ${tender.location || "N/A"}
 ${tender.cpv_codes && tender.cpv_codes.length > 0 ? `CPV Codes: ${tender.cpv_codes.join(", ")}` : ""}
 ${requirementsText ? `Requirements: ${requirementsText}` : ""}
 
-Generate a concise 200-word summary of this tender opportunity.`;
+Summarize.`;
 
   // Call OpenAI with rate limiting
   const summary = await runLLM(
     async () => {
       const response = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-5-nano",
         maxTokens: 1000,
       });
       return response;
@@ -97,12 +87,9 @@ Generate a concise 200-word summary of this tender opportunity.`;
 export async function generateTenderCapabilityTaxonomy(
   tenderId: string,
 ): Promise<string[]> {
-  // Fetch tender data
   const { data: tender, error } = await supabase
     .from("tenders")
-    .select(
-      "title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements",
-    )
+    .select(TENDER_SELECT)
     .eq("id", tenderId)
     .single();
 
@@ -112,7 +99,6 @@ export async function generateTenderCapabilityTaxonomy(
     );
   }
 
-  // Fetch existing capabilities
   const { data: existingCapabilities, error: capsError } = await supabase
     .from("company_capabilities_ref")
     .select("id, name, category")
@@ -145,26 +131,7 @@ export async function generateTenderCapabilityTaxonomy(
     )
     .join("\n\n");
 
-  const systemPrompt = `You are an expert at analyzing tenders and identifying required capabilities.
-Your task is to analyze a tender and identify relevant capabilities.
-
-CRITICAL FORMATTING RULES:
-- Return ONLY valid JSON - nothing else
-- NO comments (// or /* */) anywhere in the response
-- NO explanations or text before or after the JSON
-- NO markdown code blocks (no \`\`\`json\`\`\`)
-- Start with { and end with }
-- Use only double quotes for strings
-- Do NOT add comments after values like "id", // comment
-
-Return a JSON object with two arrays:
-1. "existing": Array of capability IDs (strings) from the provided list that are relevant
-2. "new": Array of objects with "name" and "category" for new capabilities not in the list
-
-Example (copy this exact format, no comments):
-{"existing": ["capability-id-1", "capability-id-2"], "new": [{"name": "New Capability", "category": "Category Name"}]}
-
-Be selective - only include capabilities that are clearly needed or highly relevant.`;
+  const systemPrompt = `Output valid JSON only: no comments, no markdown. Example: {"existing":["id1","id2"],"new":[{"name":"...","category":"..."}]}. Be selective - only capabilities clearly needed or highly relevant.`;
 
   const userPrompt = `Tender Details:
 Title: ${tender.title || "N/A"}
@@ -179,13 +146,12 @@ ${tender.requirements ? `Requirements: ${typeof tender.requirements === "string"
 Available Capabilities:
 ${capabilitiesList}
 
-Analyze this tender and return ONLY a valid JSON object (no comments, no explanations, no markdown) with relevant capability IDs and any new capabilities needed.`;
+Return JSON: existing (IDs from list), new (name, category).`;
 
   // Call OpenAI with rate limiting
   const response = await runLLM(
     async () => {
       const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        model: "gpt-5-nano",
         maxTokens: 3000,
       });
       return aiResponse;
@@ -275,4 +241,151 @@ Analyze this tender and return ONLY a valid JSON object (no comments, no explana
   }
 
   return uniqueIds;
+}
+
+/**
+ * Generate tender summary and capability taxonomy in a single AI call (fewer API calls).
+ */
+export async function generateTenderSummaryAndTaxonomy(
+  tenderId: string,
+): Promise<{ summary: string; taxonomy: string[] }> {
+  const { data: tender, error } = await supabase
+    .from("tenders")
+    .select(TENDER_SELECT)
+    .eq("id", tenderId)
+    .single();
+
+  if (error || !tender) {
+    throw new Error(
+      `Failed to fetch tender: ${error?.message || "Tender not found"}`,
+    );
+  }
+
+  const { data: existingCapabilities, error: capsError } = await supabase
+    .from("company_capabilities_ref")
+    .select("id, name, category")
+    .order("category")
+    .order("name");
+
+  if (capsError || !existingCapabilities) {
+    throw new Error(
+      `Failed to fetch capabilities: ${capsError?.message || "Unknown error"}`,
+    );
+  }
+
+  const capabilitiesByCategory: Record<
+    string,
+    Array<{ id: string; name: string }>
+  > = {};
+  existingCapabilities.forEach(
+    (cap: { id: string; name: string; category: string | null }) => {
+      const category = cap.category || "Uncategorized";
+      if (!capabilitiesByCategory[category])
+        capabilitiesByCategory[category] = [];
+      capabilitiesByCategory[category].push({ id: cap.id, name: cap.name });
+    },
+  );
+  const capabilitiesList = Object.entries(capabilitiesByCategory)
+    .map(
+      ([cat, caps]) =>
+        `${cat}:\n  ${caps.map((c) => `- ${c.name} (ID: ${c.id})`).join("\n  ")}`,
+    )
+    .join("\n\n");
+
+  const budgetRange =
+    tender.budget_min || tender.budget_max
+      ? `£${tender.budget_min ? tender.budget_min.toLocaleString() : "?"} - £${tender.budget_max ? tender.budget_max.toLocaleString() : "?"}`
+      : "Not specified";
+  const requirementsText = tender.requirements
+    ? typeof tender.requirements === "string"
+      ? tender.requirements
+      : JSON.stringify(tender.requirements)
+    : "";
+
+  const systemPrompt = `You are an expert at analyzing tenders. Return ONLY valid JSON with no comments or markdown.
+
+1. "summary": A concise 200-word professional summary (key requirements, scope, budget, timeline, ideal candidate).
+2. "existing": Array of capability IDs (strings) from the provided list that are relevant.
+3. "new": Array of objects with "name" and "category" for new capabilities not in the list.
+
+Format: {"summary":"...","existing":["id1","id2"],"new":[{"name":"...","category":"..."}]}`;
+
+  const userPrompt = `Tender:
+Title: ${tender.title || "N/A"}
+Description: ${tender.description || "N/A"}
+Buyer: ${tender.buyer || "N/A"}
+Budget: ${budgetRange}
+Deadline: ${tender.deadline || "N/A"}
+Location: ${tender.location || "N/A"}
+${tender.cpv_codes?.length ? `CPV: ${tender.cpv_codes.join(", ")}` : ""}
+${requirementsText ? `Requirements: ${requirementsText}` : ""}
+
+Available capabilities:
+${capabilitiesList}
+
+Return one JSON object with summary, existing (IDs), and new (name/category).`;
+
+  const response = await runLLM(
+    async () =>
+      chatCompletion(systemPrompt, userPrompt, {
+        maxTokens: 2500,
+        responseFormat: "json_object",
+      }),
+    3500,
+  );
+
+  let summary = "";
+  let existingIds: string[] = [];
+  let newCapabilities: Array<{ name: string; category: string }> = [];
+
+  try {
+    const parsed = parseAIJsonResponse<{
+      summary?: string;
+      existing?: string[];
+      new?: Array<{ name: string; category: string }>;
+    }>(response);
+    summary = typeof parsed.summary === "string" ? parsed.summary : "";
+    existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
+    newCapabilities = Array.isArray(parsed.new) ? parsed.new : [];
+  } catch {
+    summary = response;
+  }
+
+  const createdIds: string[] = [];
+  for (const newCap of newCapabilities) {
+    if (!newCap.name || !newCap.category) continue;
+    const existing = existingCapabilities.find(
+      (c: { name: string }) =>
+        c.name.toLowerCase() === newCap.name.toLowerCase(),
+    );
+    if (existing) {
+      if (!existingIds.includes((existing as { id: string }).id)) {
+        existingIds.push((existing as { id: string }).id);
+      }
+    } else {
+      const { data: created } = await supabase
+        .from("company_capabilities_ref")
+        .insert({ name: newCap.name, category: newCap.category })
+        .select("id")
+        .single();
+      if (created) createdIds.push((created as unknown as { id: string }).id);
+    }
+  }
+  const uniqueIds = Array.from(new Set([...existingIds, ...createdIds]));
+
+  const { error: updateError } = await supabase
+    .from("tenders" as any)
+    .update({
+      ai_summary: summary,
+      summary_generated_at: new Date().toISOString(),
+      ai_capability_taxonomy: uniqueIds,
+      taxonomy_generated_at: new Date().toISOString(),
+    } as any)
+    .eq("id", tenderId);
+
+  if (updateError) {
+    throw new Error(`Failed to store tender AI: ${updateError.message}`);
+  }
+
+  return { summary, taxonomy: uniqueIds };
 }

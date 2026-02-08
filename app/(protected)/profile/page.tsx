@@ -119,62 +119,100 @@ export default function ProfilePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Profile</h1>
-        <p className="text-muted-foreground">
-          Manage your personal information
-        </p>
-      </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Profile</h1>
+          <p className="text-muted-foreground">
+            Manage your personal information
+          </p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <User className="w-8 h-8 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-xl">Personal Information</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Update your personal details below
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email (read-only) */}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  className="pl-10 bg-muted"
-                  disabled
-                />
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <User className="w-8 h-8 text-primary" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Email cannot be changed
-              </p>
+              <div>
+                <CardTitle className="text-xl">Personal Information</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Update your personal details below
+                </p>
+              </div>
             </div>
-
-            {/* First Name and Last Name */}
-            <div className="grid grid-cols-2 gap-4">
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Email (read-only) */}
               <div className="space-y-2">
-                <Label htmlFor="firstName">
-                  First Name <span className="text-destructive">*</span>
+                <Label htmlFor="email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    className="pl-10 bg-muted"
+                    disabled
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed
+                </p>
+              </div>
+
+              {/* First Name and Last Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">
+                    First Name <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="First name"
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, firstName: e.target.value })
+                      }
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">
+                    Last Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Last name"
+                    value={formData.lastName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lastName: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Job Title */}
+              <div className="space-y-2">
+                <Label htmlFor="jobTitle">
+                  Job Title / Role <span className="text-destructive">*</span>
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="firstName"
+                    id="jobTitle"
                     type="text"
-                    placeholder="First name"
-                    value={formData.firstName}
+                    placeholder="e.g. CEO, Project Manager, Engineer"
+                    value={formData.jobTitle}
                     onChange={(e) =>
-                      setFormData({ ...formData, firstName: e.target.value })
+                      setFormData({ ...formData, jobTitle: e.target.value })
                     }
                     className="pl-10"
                     required
@@ -182,81 +220,43 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {/* Phone */}
               <div className="space-y-2">
-                <Label htmlFor="lastName">
-                  Last Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  placeholder="Last name"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lastName: e.target.value })
-                  }
-                  required
-                />
+                <Label htmlFor="phone">Phone Number</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Your phone number"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="pl-10"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Job Title */}
-            <div className="space-y-2">
-              <Label htmlFor="jobTitle">
-                Job Title / Role <span className="text-destructive">*</span>
-              </Label>
-              <div className="relative">
-                <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="jobTitle"
-                  type="text"
-                  placeholder="e.g. CEO, Project Manager, Engineer"
-                  value={formData.jobTitle}
-                  onChange={(e) =>
-                    setFormData({ ...formData, jobTitle: e.target.value })
-                  }
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="Your phone number"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button type="submit" className="w-full" disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+
+              <Button type="submit" className="w-full" disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

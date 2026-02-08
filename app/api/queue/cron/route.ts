@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- processing_queue, batch_jobs not in generated types */
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/api";
 

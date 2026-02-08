@@ -49,7 +49,7 @@ export default function TendersPage() {
   const isRestrictedUser = isPendingApproval || isOnboarding;
   const searchParams = useSearchParams();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [filters, setFilters] = useState<TenderFiltersState>({});
   const [matchingFilters, setMatchingFilters] = useState<MatchingFiltersState>({
@@ -118,7 +118,7 @@ export default function TendersPage() {
       const company = companies.find((c) => c.id === companyId);
       setSelectedCompany(company || null);
     },
-    [companies]
+    [companies],
   );
 
   const resetFilters = () => {
@@ -154,12 +154,15 @@ export default function TendersPage() {
         toast.success("All tenders are up to date - no new analysis needed");
       } else {
         toast.success(
-          `Analysis complete! Found ${data.analyzed_count || 0} new matches.`
+          `Analysis complete! Found ${data.analyzed_count || 0} new matches.`,
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error running analysis:", error);
-      const errorMessage = error?.message || "Failed to run tender analysis. Please try again.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to run tender analysis. Please try again.";
       toast.error(errorMessage);
     } finally {
       setAnalyzing(false);

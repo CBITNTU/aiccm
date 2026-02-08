@@ -20,7 +20,6 @@ import {
   User,
   LogOut,
   Search,
-  Users,
   FileText,
   LayoutDashboard,
   Shield,
@@ -275,6 +274,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   useEffect(() => {
     const stored = localStorage.getItem("sidenav-collapsed");
     if (stored !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from localStorage on mount
       setIsCollapsed(stored === "true");
     }
   }, []);

@@ -51,9 +51,15 @@ export async function POST(request: NextRequest) {
       return apiError("Invalid email address", 400);
     }
 
-    // Validate password length
+    // Validate password length (min 6, max 128 to prevent bcrypt DoS)
     if (password.length < 6) {
       return apiError("Password must be at least 6 characters", 400);
+    }
+    if (password.length > 128) {
+      return apiError("Password must be between 6 and 128 characters", 400);
+    }
+    if (password.includes("\0")) {
+      return apiError("Invalid password", 400);
     }
 
     const supabase = createAdminClient();
@@ -76,7 +82,7 @@ export async function POST(request: NextRequest) {
       if (authError.message.includes("already been registered")) {
         return apiError(
           "An account with this email already exists. Please sign in instead.",
-          400
+          400,
         );
       }
       return apiError(authError.message, 400);
@@ -110,7 +116,8 @@ export async function POST(request: NextRequest) {
     const response: SignupResponse = {
       success: true,
       userId,
-      message: "Account created. Please check your email to verify your address.",
+      message:
+        "Account created. Please check your email to verify your address.",
     };
 
     return apiResponse(response, 201);

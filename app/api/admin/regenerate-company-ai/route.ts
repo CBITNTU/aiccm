@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- profiles, capabilities, queue tables have extended columns */
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAuthenticatedUser,
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { companyIds, taxonomyOnly = false } = await request
+    const { companyIds } = await request
       .json()
       .catch(() => ({}));
 

@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server";
 import {
   createAdminClient,
+  createApiClient,
   chatCompletion,
   parseAIJsonResponse,
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import type { CompanyAnalysis } from "@/lib/api/types";
 
 interface CompanyData {
@@ -20,6 +22,17 @@ interface CompanyData {
 
 export async function POST(request: NextRequest) {
   try {
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
     const { companyData, companyId } = (await request.json()) as {
       companyData: CompanyData;
       companyId?: string;
@@ -40,7 +53,7 @@ export async function POST(request: NextRequest) {
     const taxonomyList =
       taxonomies?.map((t) => `${t.name} (Level ${t.level})`).join(", ") || "";
 
-    const prompt = `Analyze this company profile and provide a comprehensive assessment based on the url and company profile:
+    const prompt = `Assess this company. Fill the JSON: competencies, capabilities, strengths, certifications, recommendations, digitalMaturity, safetyRating, marketPosition, suggestedTaxonomies (from available list). UK/tender focus.
 
 Company Name: ${companyData.companyName}
 Website: ${companyData.websiteUrl || "Not provided"}
@@ -52,7 +65,7 @@ Past Projects: ${companyData.pastProjects || "Not provided"}
 
 Available taxonomy categories: ${taxonomyList}
 
-Please provide analysis in the following JSON format:
+JSON format:
 {
   "competencies": ["list of extracted competencies"],
   "capabilities": ["specific technical capabilities"],
@@ -63,14 +76,12 @@ Please provide analysis in the following JSON format:
   "safetyRating": "safety and compliance assessment",
   "marketPosition": "market positioning analysis",
   "suggestedTaxonomies": ["array of taxonomy names from the available list that best match this company's profile"]
-}
-
-Focus on industry standards, UK compliance requirements, and tender readiness. For suggestedTaxonomies, select the most specific and relevant categories from the available taxonomy list.`;
+}`;
 
     console.log("Sending request to OpenAI...");
 
     const systemPrompt =
-      "You are an expert industry analyst specializing in UK market competency assessment and tender evaluation.";
+      "You are an expert industry analyst specializing in UK market competency assessment and tender evaluation. Return valid JSON only. No markdown.";
 
     const response = await chatCompletion(systemPrompt, prompt, {
       temperature: 0.3,
@@ -147,6 +158,14 @@ Focus on industry standards, UK compliance requirements, and tender readiness. F
         }
       }
     }
+
+    await logApiEvent(request, {
+      actionType: "company_capabilities_updated",
+      userId: userId || undefined,
+      entityType: "company",
+      entityId: companyId || undefined,
+      details: { company_name: companyData.companyName },
+    }).catch(() => {});
 
     return apiResponse({ analysis: parsedResult });
   } catch (error) {

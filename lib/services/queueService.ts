@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- processing_queue, batch_jobs not in generated Supabase types */
 import { createAdminClient } from "@/lib/api";
 
 // Types for processing queue (will be updated after migration generates types)
@@ -68,6 +69,7 @@ type BatchJobInsert = {
 export type JobType =
   | "tender_summary"
   | "tender_taxonomy"
+  | "tender_ai_complete" // Combined tender summary + taxonomy in one call
   | "company_summary"
   | "company_taxonomy"
   | "company_ai_complete" // Combined summary + taxonomy in one call
@@ -170,7 +172,7 @@ export async function enqueueBatch(
 
   const batchId = (batchData as unknown as { id: string }).id;
 
-  // Enqueue all jobs with batch_id
+  // Enqueue all jobs with batch_id and optional metadata
   const jobInserts: ProcessingQueueInsert[] = jobs.map((job) => ({
     job_type: job.jobType,
     entity_type: job.entityType,
@@ -181,6 +183,7 @@ export async function enqueueBatch(
     status: "pending",
     priority: job.priority || 0,
     scheduled_at: job.scheduledAt?.toISOString() || new Date().toISOString(),
+    metadata: job.metadata ?? null,
   }));
 
   const { data: jobData, error: jobError } = await supabase
@@ -203,6 +206,41 @@ export async function enqueueBatch(
 }
 
 /**
+ * Clear all pending and processing jobs that belong to demo batches.
+ * Call before starting a new demo run so only the new batch is processed (avoids mixing OpenAI and Gemini calls).
+ * We reset any "processing" demo jobs to "pending" first, then delete all pending demo jobs, so workers
+ * that had already claimed jobs from a previous run don't continue processing them.
+ */
+export async function clearPendingDemoJobs(): Promise<number> {
+  const { data: demoBatches, error: selectError } = await supabase
+    .from("batch_jobs" as any)
+    .select("id")
+    .eq("batch_type", "demo");
+
+  if (selectError) {
+    throw new Error(`Failed to list demo batches: ${selectError.message}`);
+  }
+
+  const batchIds = ((demoBatches ?? []) as unknown as { id: string }[]).map((b) => b.id);
+  if (batchIds.length === 0) return 0;
+
+  // Delete all demo jobs that are pending or processing so no worker continues with an old model.
+  // (Processing = already claimed by a worker; we remove them so only the new run's jobs exist.)
+  const { data: deleted, error: deleteError } = await supabase
+    .from("processing_queue" as any)
+    .delete()
+    .in("batch_id", batchIds)
+    .in("status", ["pending", "processing"])
+    .select("id");
+
+  if (deleteError) {
+    throw new Error(`Failed to clear pending demo jobs: ${deleteError.message}`);
+  }
+
+  return Array.isArray(deleted) ? deleted.length : 0;
+}
+
+/**
  * Get next pending job from queue (ATOMIC - prevents race conditions)
  * Uses database function with SELECT FOR UPDATE SKIP LOCKED to ensure
  * only one worker can claim a job at a time, even with concurrent requests.
@@ -215,8 +253,14 @@ export async function dequeueJob(): Promise<ProcessingQueue | null> {
 
   if (error) {
     // If function doesn't exist yet, fall back to old method (for backward compatibility)
-    if (error.code === "42883" || error.message?.includes("function") || error.message?.includes("does not exist")) {
-      console.warn("⚠️ dequeue_job_atomic() function not found, using fallback method (may have race conditions)");
+    if (
+      error.code === "42883" ||
+      error.message?.includes("function") ||
+      error.message?.includes("does not exist")
+    ) {
+      console.warn(
+        "⚠️ dequeue_job_atomic() function not found, using fallback method (may have race conditions)",
+      );
       return dequeueJobFallback();
     }
     throw new Error(`Failed to dequeue job atomically: ${error.message}`);
@@ -266,7 +310,9 @@ async function dequeueJobFallback(): Promise<ProcessingQueue | null> {
 
     if (claimError || !claimed) {
       // Another worker claimed it, try again recursively
-      console.log(`⚠️ Job ${(batchJob as any).id} was claimed by another worker, retrying...`);
+      console.log(
+        `⚠️ Job ${(batchJob as any).id} was claimed by another worker, retrying...`,
+      );
       return dequeueJobFallback();
     }
 
@@ -310,7 +356,9 @@ async function dequeueJobFallback(): Promise<ProcessingQueue | null> {
 
   if (claimError || !claimed) {
     // Another worker claimed it, try again recursively
-    console.log(`⚠️ Job ${(data as any).id} was claimed by another worker, retrying...`);
+    console.log(
+      `⚠️ Job ${(data as any).id} was claimed by another worker, retrying...`,
+    );
     return dequeueJobFallback();
   }
 
@@ -333,6 +381,62 @@ export async function markJobProcessing(jobId: string): Promise<void> {
   if (error) {
     throw new Error(`Failed to mark job as processing: ${error.message}`);
   }
+}
+
+/**
+ * Reset job back to pending (e.g. when worker hits time limit before processing it).
+ * Use so the job can be picked up by another worker instead of staying stuck in "processing".
+ */
+export async function resetJobToPending(jobId: string): Promise<void> {
+  const { error } = await supabase
+    .from("processing_queue" as any)
+    .update({
+      status: "pending",
+      started_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", jobId);
+
+  if (error) {
+    throw new Error(`Failed to reset job to pending: ${error.message}`);
+  }
+}
+
+/** Default stale threshold: jobs in "processing" longer than this are considered stuck (ms). */
+const STALE_PROCESSING_MS = 15 * 60 * 1000;
+
+/**
+ * Reset jobs stuck in "processing" (e.g. worker timed out or crashed) back to "pending"
+ * so they can be retried. Call at worker startup to recover from previous runs.
+ */
+export async function resetStaleProcessingJobs(): Promise<number> {
+  const staleBefore = new Date(Date.now() - STALE_PROCESSING_MS).toISOString();
+  const { data: stale, error: selectError } = await supabase
+    .from("processing_queue" as any)
+    .select("id")
+    .eq("status", "processing")
+    .lt("started_at", staleBefore);
+
+  if (selectError || !stale?.length) {
+    return 0;
+  }
+
+  const ids = (stale as unknown as { id: string }[]).map((r) => r.id);
+  const { error: updateError } = await supabase
+    .from("processing_queue" as any)
+    .update({
+      status: "pending",
+      started_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .in("id", ids);
+
+  if (updateError) {
+    throw new Error(
+      `Failed to reset stale processing jobs: ${updateError.message}`,
+    );
+  }
+  return ids.length;
 }
 
 /**
@@ -585,15 +689,24 @@ async function updateBatchProgress(
     console.log(`🔄 Job ${jobId} belongs to batch ${batchId}`);
 
     // Use atomic database function to increment counters (prevents race conditions)
-    const { data, error } = await (supabase.rpc as any)("increment_batch_progress", {
-      p_batch_id: batchId,
-      p_outcome: outcome,
-    });
+    const { data, error } = await (supabase.rpc as any)(
+      "increment_batch_progress",
+      {
+        p_batch_id: batchId,
+        p_outcome: outcome,
+      },
+    );
 
     if (error) {
       // If function doesn't exist yet, fall back to old method (for backward compatibility)
-      if (error.code === "42883" || error.message?.includes("function") || error.message?.includes("does not exist")) {
-        console.warn("⚠️ increment_batch_progress() function not found, using fallback method (may have race conditions)");
+      if (
+        error.code === "42883" ||
+        error.message?.includes("function") ||
+        error.message?.includes("does not exist")
+      ) {
+        console.warn(
+          "⚠️ increment_batch_progress() function not found, using fallback method (may have race conditions)",
+        );
         return updateBatchProgressFallback(jobId, outcome);
       }
       console.error(

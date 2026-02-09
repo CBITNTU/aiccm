@@ -106,8 +106,8 @@ export function CompanyDetailModal({
   readOnly = false,
 }: CompanyDetailModalProps) {
   const { user } = useAuth();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+  const [_supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
   );
   const [analysis, setAnalysis] = useState<CompanyAnalysis | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
@@ -123,7 +123,7 @@ export function CompanyDetailModal({
 
   // Type guard to check if company has all fields (is full Company type)
   const isFullCompany = (
-    comp: PublicCompany | Company | null
+    comp: PublicCompany | Company | null,
   ): comp is Company => {
     return comp !== null && "contact_email" in comp;
   };
@@ -162,6 +162,7 @@ export function CompanyDetailModal({
       // Always try to load stored analysis first
       loadStoredAnalysis();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when open/company.id change
   }, [open, company?.id]);
 
   // Return null after all hooks are called
@@ -480,7 +481,10 @@ export function CompanyDetailModal({
                   <ResponsiveContainer width="100%" height={280}>
                     <RadarChart data={radarData}>
                       <PolarGrid />
-                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
+                      <PolarAngleAxis
+                        dataKey="subject"
+                        tick={{ fontSize: 11 }}
+                      />
                       <PolarRadiusAxis
                         angle={90}
                         domain={[0, 100]}
@@ -528,7 +532,9 @@ export function CompanyDetailModal({
                       {analysis?.performanceBenchmark?.overallScore || 0}/100
                     </strong>
                   </div>
-                  <strong className="text-foreground">Executive Summary:</strong>{" "}
+                  <strong className="text-foreground">
+                    Executive Summary:
+                  </strong>{" "}
                   {analysis?.executiveSummary || "No summary available"}
                 </div>
               </div>

@@ -62,11 +62,13 @@ export function MatchingTrigger() {
 
       setJobCount(data.jobCount);
       setIsOpen(true);
-      toast.success(`Queued ${data.jobCount} matching jobs. Click "Start Processing" to begin.`);
+      toast.success(
+        `Queued ${data.jobCount} matching jobs. Click "Start Processing" to begin.`,
+      );
     } catch (error) {
       console.error("Error triggering matching:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to trigger matching"
+        error instanceof Error ? error.message : "Failed to trigger matching",
       );
       setIsOpen(false);
     } finally {
@@ -77,7 +79,7 @@ export function MatchingTrigger() {
   const handleStartWorker = async () => {
     try {
       setIsStartingWorker(true);
-      
+
       const response = await fetch("/api/queue/worker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,7 +94,7 @@ export function MatchingTrigger() {
     } catch (error) {
       console.error("Error starting worker:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to start processing"
+        error instanceof Error ? error.message : "Failed to start processing",
       );
     } finally {
       setIsStartingWorker(false);
@@ -120,7 +122,8 @@ export function MatchingTrigger() {
           <DialogHeader>
             <DialogTitle>Finding Matching Tenders</DialogTitle>
             <DialogDescription>
-              We&apos;re analyzing all available tenders to find the best matches for your company.
+              We&apos;re analyzing all available tenders to find the best
+              matches for your company.
             </DialogDescription>
           </DialogHeader>
 
@@ -128,12 +131,13 @@ export function MatchingTrigger() {
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-900 dark:text-blue-100">
-                  <strong>{jobCount} matching jobs</strong> have been queued. Click the button below to start processing.
+                  <strong>{jobCount} matching jobs</strong> have been queued.
+                  Click the button below to start processing.
                 </p>
               </div>
-              
-              <Button 
-                onClick={handleStartWorker} 
+
+              <Button
+                onClick={handleStartWorker}
                 disabled={isStartingWorker}
                 className="w-full"
               >

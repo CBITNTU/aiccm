@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- processing_queue result types */
 import { NextRequest, NextResponse } from "next/server";
 import {
   dequeueJob,
   markJobCompleted,
   markJobFailed,
+  resetJobToPending,
+  resetStaleProcessingJobs,
   getQueueStats,
   getBatchStatus,
   type JobType,
@@ -10,6 +13,7 @@ import {
 import {
   generateTenderSummary,
   generateTenderCapabilityTaxonomy,
+  generateTenderSummaryAndTaxonomy,
 } from "@/lib/services/tenderAIService";
 import {
   generateCompanySummary,
@@ -37,6 +41,15 @@ async function processJob(job: {
       const taxonomy = await generateTenderCapabilityTaxonomy(job.entity_id);
       return { success: true, taxonomy };
 
+    case "tender_ai_complete":
+      const { summary: tenderSummary, taxonomy: tenderTaxonomy } =
+        await generateTenderSummaryAndTaxonomy(job.entity_id);
+      return {
+        success: true,
+        summary: tenderSummary,
+        taxonomy: tenderTaxonomy,
+      };
+
     case "company_summary":
       // If taxonomy job exists for same company, prefer combined processing
       // For now, keep separate for backward compatibility
@@ -63,12 +76,24 @@ async function processJob(job: {
         taxonomy: combinedTaxonomy,
       };
 
-    case "tender_matching":
+    case "tender_matching": {
       if (!job.company_id || !job.tender_id) {
         throw new Error("Company ID and Tender ID required for matching");
       }
-      const score = await scoreTenderMatch(job.company_id, job.tender_id);
+      const meta = (job.metadata ?? {}) as {
+        demo?: boolean;
+        model?: "gpt-5-nano" | "gemini-2.5-flash-lite";
+        batchLabel?: string;
+        reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+      };
+      const score = await scoreTenderMatch(job.company_id, job.tender_id, {
+        demo: meta.demo,
+        model: meta.model,
+        batchLabel: meta.batchLabel,
+        reasoningEffort: meta.reasoningEffort,
+      });
       return { success: true, score };
+    }
 
     default:
       throw new Error(`Unknown job type: ${job.job_type}`);
@@ -80,15 +105,24 @@ export async function POST(request: NextRequest) {
 
   try {
     const {
-      batchSize = 10, // Small batch for quick processing
+      batchSize = 20, // Increased for higher throughput (was 10)
       maxDurationMs = 50000, // Stop before Vercel's 60s timeout (50s to be safe)
       selfTrigger = true, // Self-trigger to continue processing
-      concurrency = 5, // Lower concurrency for reliability
+      concurrency = 10, // Higher concurrency when using Gemini (was 5)
     } = await request.json().catch(() => ({}));
 
     console.log(
       `🔄 Queue worker started: batchSize=${batchSize}, maxDurationMs=${maxDurationMs}, selfTrigger=${selfTrigger}, concurrency=${concurrency}`,
     );
+
+    // Recover jobs stuck in "processing" from a previous worker run (e.g. timeout/crash)
+    const recovered = await resetStaleProcessingJobs().catch((err) => {
+      console.warn("⚠️ resetStaleProcessingJobs failed:", err);
+      return 0;
+    });
+    if (recovered > 0) {
+      console.log(`🔄 Recovered ${recovered} stale job(s) to pending`);
+    }
 
     const processed: string[] = [];
     const errors: Array<{ jobId: string; error: string }> = [];
@@ -277,6 +311,25 @@ export async function POST(request: NextRequest) {
             `⏱️ Time limit approaching, stopping before chunk (elapsed: ${Date.now() - startTime}ms)`,
           );
           hasMoreJobs = true;
+          // Return unprocessed jobs to pending so they are not stuck in "processing"
+          const processedIds = new Set(processed);
+          const errorIds = new Set(errors.map((e) => e.jobId));
+          const unprocessed = jobsToProcess.filter(
+            (j) => !processedIds.has(j.id) && !errorIds.has(j.id),
+          );
+          for (const job of unprocessed) {
+            try {
+              await resetJobToPending(job.id);
+              console.log(
+                `🔄 Returned job ${job.id} to pending (time limit before processing)`,
+              );
+            } catch (err) {
+              console.error(
+                `❌ Failed to return job ${job.id} to pending:`,
+                err,
+              );
+            }
+          }
           break;
         }
         await Promise.all(chunk.map(processJobWithErrorHandling));
@@ -302,25 +355,26 @@ export async function POST(request: NextRequest) {
       hasMoreJobs = true;
     }
 
-    // Self-trigger next worker if there are more jobs to process
+    // Self-trigger 2 parallel workers when more jobs remain (fair scheduling + throughput)
     if (selfTrigger && hasMoreJobs) {
       const workerUrl = `${process.env.PLATFORM_URL || "http://localhost:3000"}/api/queue/worker`;
+      const payload = {
+        batchSize,
+        maxDurationMs,
+        selfTrigger: true,
+        concurrency,
+      };
       console.log(
-        `🔄 Self-triggering next worker (${stats.pending} pending, ${stats.processing} processing)`,
+        `🔄 Triggering 2 parallel workers (${stats.pending} pending, ${stats.processing} processing)`,
       );
-
-      // Fire-and-forget trigger - cron is backup if this fails
-      fetch(workerUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          batchSize,
-          maxDurationMs,
-          selfTrigger: true,
-          concurrency,
-        }),
-      }).catch((err) => {
-        console.error("❌ Self-trigger failed (cron will recover):", err);
+      [1, 2].forEach(() => {
+        fetch(workerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).catch((err) => {
+          console.error("❌ Worker trigger failed (cron will recover):", err);
+        });
       });
     }
 

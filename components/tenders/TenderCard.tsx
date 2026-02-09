@@ -59,7 +59,7 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
     const deadlineDate = new Date(deadline);
     const today = new Date();
     const daysUntilDeadline = Math.ceil(
-      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
     return daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
   };
@@ -102,7 +102,10 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
               Closing Soon
             </Badge>
           )}
-          <Badge variant={getStatusVariant(tender.status)} className="text-xs capitalize">
+          <Badge
+            variant={getStatusVariant(tender.status)}
+            className="text-xs capitalize"
+          >
             {getStatusLabel(tender.status)}
           </Badge>
         </div>
@@ -158,7 +161,8 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
             className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             onClick={(e) => e.stopPropagation()}
           >
-            {taxonomies.length} {taxonomies.length === 1 ? "category" : "categories"}
+            {taxonomies.length}{" "}
+            {taxonomies.length === 1 ? "category" : "categories"}
             <ChevronDown
               className={`h-3 w-3 transition-transform ${
                 categoriesOpen ? "rotate-180" : ""

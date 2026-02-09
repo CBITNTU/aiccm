@@ -1,0 +1,25 @@
+echo "🔍 Running pre-commit checks..."
+echo ""
+
+# 1. Lint with auto-fix
+echo "▶ Linting (with --fix)..."
+if ! npm run lint -- --fix; then
+  echo ""
+  echo "❌ Lint failed. Fix the errors above and try again."
+  echo "   You can run 'npm run lint -- --fix' locally to see the same output."
+  exit 1
+fi
+echo "✓ Lint passed"
+echo ""
+
+# 2. Build
+echo "▶ Building..."
+if ! npm run build; then
+  echo ""
+  echo "❌ Build failed. Fix the errors above and try again."
+  echo "   You can run 'npm run build' locally to see the same output."
+  exit 1
+fi
+echo "✓ Build passed"
+echo ""
+echo "✅ Pre-commit checks passed. Proceeding with commit."

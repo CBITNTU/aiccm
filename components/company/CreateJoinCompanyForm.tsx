@@ -33,14 +33,19 @@ interface CompanySearchResult {
 
 interface CreateJoinCompanyFormProps {
   userEmail: string;
-  onSuccess?: (result: { action: "create" | "join"; companyId?: string; companyName: string }) => void;
+  onSuccess?: (result: {
+    action: "create" | "join";
+    companyId?: string;
+    companyName: string;
+  }) => void;
 }
 
 export function CreateJoinCompanyForm({
   userEmail,
   onSuccess,
 }: CreateJoinCompanyFormProps) {
-  const router = useRouter();
+  const _router = useRouter();
+  void _router;
   const [activeTab, setActiveTab] = useState<"create" | "join">("create");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +103,7 @@ export function CreateJoinCompanyForm({
     setIsSearching(true);
     try {
       const response = await fetch(
-        `/api/search-companies?q=${encodeURIComponent(query)}`
+        `/api/search-companies?q=${encodeURIComponent(query)}`,
       );
       const data = await response.json();
 
@@ -709,9 +714,9 @@ export function CreateJoinCompanyForm({
 
                   <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
                     <p>
-                      After admin approval, you&apos;ll be able to add more company
-                      details including certifications, capabilities, and team
-                      members.
+                      After admin approval, you&apos;ll be able to add more
+                      company details including certifications, capabilities,
+                      and team members.
                     </p>
                   </div>
 

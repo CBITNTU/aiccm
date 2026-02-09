@@ -1,14 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs, processing_queue not in generated types */
 import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
   chatCompletion,
-  parseAIJsonResponse,
   apiResponse,
   apiError,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { runLLM } from "@/lib/services/llmLimiter";
 import { enqueueBatch } from "@/lib/services/queueService";
+import { getPlatformAISettings } from "@/lib/platformSettings";
 import type { TenderMatchResult } from "@/lib/api/types";
 
 interface CompanyData {
@@ -42,7 +43,9 @@ interface TenderData {
 /**
  * AI-based scoring similar to grant-matching's approach
  * Uses LLM to deeply evaluate company-tender match with weighted criteria
+ * @internal reserved for future batch scoring
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function analyzeTenderMatch(
   company: CompanyData,
   tender: TenderData,
@@ -131,7 +134,6 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       ) + 400;
     const raw = await runLLM(async () => {
       const response = await chatCompletion(systemPrompt, prompt, {
-        model: "gpt-5-nano",
         maxTokens: 8000,
       });
       return response;
@@ -389,6 +391,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`Found ${tenders.length} tenders to analyze`);
 
+    // Platform default AI model and reasoning effort (applies to all matching jobs)
+    const platformAi = await getPlatformAISettings();
+    const metadata: Record<string, unknown> = {
+      model: platformAi.default_ai_model,
+    };
+    if (platformAi.default_reasoning_effort !== "default") {
+      metadata.reasoningEffort = platformAi.default_reasoning_effort;
+    }
+
     // Queue matching jobs instead of processing directly
     const jobs = (tenders as TenderData[]).map((tender) => ({
       jobType: "tender_matching" as const,
@@ -397,6 +408,7 @@ export async function POST(request: NextRequest) {
       companyId: companyData.id,
       tenderId: tender.id,
       priority: 5,
+      metadata,
     }));
 
     // Check if there's already an active batch for this company

@@ -72,7 +72,8 @@ export function PendingApprovalStep({
       default:
         return {
           title: "Profile Complete!",
-          description: "Your individual account has been set up and is pending approval.",
+          description:
+            "Your individual account has been set up and is pending approval.",
           steps: [
             "Our team will review your account",
             "You'll receive an email once your account is approved",
@@ -119,8 +120,8 @@ export function PendingApprovalStep({
                   Keep an eye on your inbox
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  We&apos;ll send you an email as soon as your account is approved.
-                  This usually takes 1-2 business days.
+                  We&apos;ll send you an email as soon as your account is
+                  approved. This usually takes 1-2 business days.
                 </p>
               </div>
             </div>

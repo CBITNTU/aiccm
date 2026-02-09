@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs/processing_queue not in generated Supabase types */
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { apiResponse, apiError } from "@/lib/api";
+import { createApiClient, apiResponse, apiError } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,6 +46,26 @@ export async function GET(request: NextRequest) {
       hasCronSecret: !!process.env.CRON_SECRET,
     };
 
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
+    await logApiEvent(request, {
+      actionType: "queue_status_viewed",
+      userId: userId || undefined,
+      details: {
+        pending: pendingJobs?.length || 0,
+        processing: processingJobs?.length || 0,
+      },
+    }).catch(() => {});
+
     return apiResponse({
       timestamp: new Date().toISOString(),
       environment: envInfo,
@@ -69,7 +91,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     // Check if there are pending jobs
-    const { data: pendingJobs, error: countError } = await supabase
+    const { data: pendingJobs } = await supabase
       .from("processing_queue" as any)
       .select("id", { count: "exact" })
       .eq("status", "pending");
@@ -106,9 +128,30 @@ export async function POST(request: NextRequest) {
     let workerResult = null;
     try {
       workerResult = await workerResponse.json();
-    } catch (e) {
+    } catch {
       workerResult = { error: "Failed to parse response" };
     }
+
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
+    await logApiEvent(request, {
+      actionType: "queue_status_viewed",
+      userId: userId || undefined,
+      details: {
+        pending: pendingCount,
+        triggered: true,
+        workerStatus: workerResponse.status,
+      },
+    }).catch(() => {});
 
     return apiResponse({
       message: workerResponse.ok

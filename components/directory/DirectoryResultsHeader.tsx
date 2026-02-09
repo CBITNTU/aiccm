@@ -34,7 +34,8 @@ export function DirectoryResultsHeader({
           <span className="font-medium text-foreground">
             {start}-{end}
           </span>{" "}
-          of <span className="font-medium text-foreground">{total}</span> companies
+          of <span className="font-medium text-foreground">{total}</span>{" "}
+          companies
         </p>
         {currentPage && totalPages && totalPages > 1 && (
           <p className="text-sm text-muted-foreground">

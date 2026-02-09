@@ -9,7 +9,9 @@ export function EmailVerificationBanner() {
   const { user } = useAuth();
   const [dismissed, setDismissed] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [resendStatus, setResendStatus] = useState<"idle" | "success" | "error">("idle");
+  const [resendStatus, setResendStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
 
   // Don't show if user is verified or banner is dismissed
   if (!user || user.email_confirmed_at || dismissed) {

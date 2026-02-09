@@ -40,6 +40,7 @@ export function TenderStep({
 
   useEffect(() => {
     fetchTenders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run on mount
   }, []);
 
   const fetchTenders = async () => {
@@ -97,7 +98,7 @@ export function TenderStep({
     const deadlineDate = new Date(deadline);
     const today = new Date();
     const daysDiff = Math.ceil(
-      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
     return daysDiff <= 7 && daysDiff >= 0;
   };
@@ -211,7 +212,9 @@ export function TenderStep({
                               <span className="text-muted-foreground">
                                 Buyer:{" "}
                               </span>
-                              <span className="font-medium">{tender.buyer}</span>
+                              <span className="font-medium">
+                                {tender.buyer}
+                              </span>
                             </div>
                             {tender.location && (
                               <div className="flex items-center gap-2">
@@ -254,7 +257,7 @@ export function TenderStep({
                                 <span className="font-medium">
                                   {formatBudget(
                                     tender.budget_min,
-                                    tender.budget_max
+                                    tender.budget_max,
                                   )}
                                 </span>
                               </div>

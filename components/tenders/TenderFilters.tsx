@@ -114,7 +114,7 @@ export function TenderFilters({
               onChange={(e) =>
                 handleFilterChange(
                   "budgetMin",
-                  e.target.value ? Number(e.target.value) : null
+                  e.target.value ? Number(e.target.value) : null,
                 )
               }
               className="w-full"
@@ -131,7 +131,7 @@ export function TenderFilters({
               onChange={(e) =>
                 handleFilterChange(
                   "budgetMax",
-                  e.target.value ? Number(e.target.value) : null
+                  e.target.value ? Number(e.target.value) : null,
                 )
               }
               className="w-full"

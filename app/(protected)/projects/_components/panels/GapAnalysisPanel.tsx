@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useRunGapAnalysis, useUpdateGapAnalysis } from "@/hooks/useProjectMutations";
+import {
+  useRunGapAnalysis,
+  useUpdateGapAnalysis,
+} from "@/hooks/useProjectMutations";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -32,7 +35,15 @@ interface GapAnalysisPanelProps {
   gapAnalysis: GapAnalysis | null;
   recommendedPartners: RecommendedPartner[];
   /** When team is only lead (no partners), gap is derived from tender match. */
-  tenderMatchResult: { overall_score: number | null; capability_score: number | null; experience_score: number | null; location_score: number | null; certification_score: number | null; match_reasons: string[] | null; ai_analysis: { score_explanations?: Record<string, string> } | null } | null;
+  tenderMatchResult: {
+    overall_score: number | null;
+    capability_score: number | null;
+    experience_score: number | null;
+    location_score: number | null;
+    certification_score: number | null;
+    match_reasons: string[] | null;
+    ai_analysis: { score_explanations?: Record<string, string> } | null;
+  } | null;
 }
 
 export function GapAnalysisPanel({
@@ -53,6 +64,7 @@ export function GapAnalysisPanel({
 
   useEffect(() => {
     if (gapAnalysis) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local state from prop
       setCompanyCompetencies(gapAnalysis.companyCompetencies || []);
       setMissingCompetencies(gapAnalysis.missingCompetencies || []);
       setHasEdits(false);
@@ -78,9 +90,9 @@ export function GapAnalysisPanel({
       ? Math.round(
           (companyCompetencies.length /
             (companyCompetencies.length + missingCompetencies.length)) *
-            100
+            100,
         )
-      : gapAnalysis?.coveragePercentage ?? 0;
+      : (gapAnalysis?.coveragePercentage ?? 0);
 
   const handleSaveEdits = async () => {
     try {
@@ -120,11 +132,11 @@ export function GapAnalysisPanel({
       const partnerCount = result.recommendedPartners.length;
 
       toast.success(
-        `Gap analysis complete! Coverage: ${Math.round(result.gapAnalysis.coveragePercentage)}%, ${gaps} gaps, ${partnerCount} partners recommended`
+        `Gap analysis complete! Coverage: ${Math.round(result.gapAnalysis.coveragePercentage)}%, ${gaps} gaps, ${partnerCount} partners recommended`,
       );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to run gap analysis"
+        err instanceof Error ? err.message : "Failed to run gap analysis",
       );
     }
   };
@@ -147,13 +159,15 @@ export function GapAnalysisPanel({
       <div className="py-6">
         {isSolo && tenderMatchResult?.overall_score != null && (
           <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-            Your tender match for this company and tender: <strong>{Math.round(tenderMatchResult.overall_score)}%</strong>. Run gap analysis below to see competency-level breakdown.
+            Your tender match for this company and tender:{" "}
+            <strong>{Math.round(tenderMatchResult.overall_score)}%</strong>. Run
+            gap analysis below to see competency-level breakdown.
           </div>
         )}
         <div className="text-center mb-4">
           <p className="text-muted-foreground mb-4">
-            Run AI-powered gap analysis to identify missing competencies and find
-            recommended partners
+            Run AI-powered gap analysis to identify missing competencies and
+            find recommended partners
           </p>
           <Button
             onClick={handleRunAnalysis}
@@ -237,7 +251,9 @@ export function GapAnalysisPanel({
         </div>
         <Progress value={editedCoverage} className="h-2" />
         <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-          <span>Readiness Score: {Math.round(gapAnalysis.readinessScore)}/100</span>
+          <span>
+            Readiness Score: {Math.round(gapAnalysis.readinessScore)}/100
+          </span>
           <span>
             Analyzed:{" "}
             {new Date(gapAnalysis.analyzedAt).toLocaleDateString("en-GB")}
@@ -343,29 +359,30 @@ export function GapAnalysisPanel({
       )}
 
       {/* Recommendations */}
-      {gapAnalysis.recommendations && gapAnalysis.recommendations.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <h4 className="font-medium mb-3 flex items-center gap-2">
-            <Lightbulb className="h-4 w-4 text-blue-600" />
-            Recommendations
-          </h4>
-          <ul className="space-y-2">
-            {gapAnalysis.recommendations.map((rec, idx) => (
-              <li
-                key={idx}
-                className="text-sm text-muted-foreground flex items-start gap-2"
-              >
-                <span className="text-blue-500 mt-1">-</span>
-                <span>{rec}</span>
-              </li>
-            ))}
-          </ul>
-        </motion.div>
-      )}
+      {gapAnalysis.recommendations &&
+        gapAnalysis.recommendations.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-blue-600" />
+              Recommendations
+            </h4>
+            <ul className="space-y-2">
+              {gapAnalysis.recommendations.map((rec, idx) => (
+                <li
+                  key={idx}
+                  className="text-sm text-muted-foreground flex items-start gap-2"
+                >
+                  <span className="text-blue-500 mt-1">-</span>
+                  <span>{rec}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
 
       {/* Recommended Partners Count */}
       {recommendedPartners.length > 0 && (

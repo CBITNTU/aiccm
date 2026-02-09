@@ -7,8 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronRight, ChevronDown, Search, Folder, FolderOpen } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Search,
+  Folder,
+  FolderOpen,
+} from "lucide-react";
 import { Loader2 } from "lucide-react";
 
 interface TaxonomyTreeSelectorProps {
@@ -29,7 +34,8 @@ export function TaxonomyTreeSelector({
   selectedTaxonomies,
   onSelectionChange,
 }: TaxonomyTreeSelectorProps) {
-  const { taxonomies, loading, getLevel1, getLevel2, getLevel3 } = useTaxonomies();
+  const { taxonomies, loading, getLevel1, getLevel2, getLevel3 } =
+    useTaxonomies();
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
@@ -70,6 +76,7 @@ export function TaxonomyTreeSelector({
     };
 
     return buildTree();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: getLevel* are stable
   }, [taxonomies, getLevel1, getLevel2, getLevel3]);
 
   // Filter tree based on search
@@ -113,7 +120,10 @@ export function TaxonomyTreeSelector({
       onSelectionChange([...selectedTaxonomies, taxonomyId]);
     } else {
       // Remove this taxonomy and all its children
-      const removeTaxonomyAndChildren = (id: string, list: string[]): string[] => {
+      const removeTaxonomyAndChildren = (
+        id: string,
+        list: string[],
+      ): string[] => {
         const taxonomy = taxonomies.find((t) => t.id === id);
         if (!taxonomy) return list;
 
@@ -129,7 +139,9 @@ export function TaxonomyTreeSelector({
         return filtered;
       };
 
-      onSelectionChange(removeTaxonomyAndChildren(taxonomyId, selectedTaxonomies));
+      onSelectionChange(
+        removeTaxonomyAndChildren(taxonomyId, selectedTaxonomies),
+      );
     }
   };
 
@@ -216,8 +228,8 @@ export function TaxonomyTreeSelector({
     <div className="space-y-4">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Select the capabilities needed for this project. You can select multiple
-          capabilities from different categories.
+          Select the capabilities needed for this project. You can select
+          multiple capabilities from different categories.
         </p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -234,7 +246,9 @@ export function TaxonomyTreeSelector({
         <CardContent className="p-4 max-h-[500px] overflow-y-auto">
           {filteredTree.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? "No capabilities found matching your search." : "No capabilities available."}
+              {searchTerm
+                ? "No capabilities found matching your search."
+                : "No capabilities available."}
             </div>
           ) : (
             <div className="space-y-1">
@@ -260,4 +274,3 @@ export function TaxonomyTreeSelector({
     </div>
   );
 }
-

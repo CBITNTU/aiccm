@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // Comprehensive analysis prompt with performance benchmarking
     const financialData =
       (company.financial_data as Record<string, { value?: unknown }>) || {};
-    const complianceData =
+    const _complianceData =
       (company.compliance_data as Record<string, { value?: unknown }>) || {};
 
     // Check data completeness (excluding description)
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       Object.values(dataCompleteness).filter(Boolean).length;
     const isMinimalData = completenessScore < 3; // Less than 3 data points
 
-    const analysisPrompt = `Rate this company across 8 dimensions (0-100). If no data is available, rate it 0. Provide a short explanation for each score.
+    const analysisPrompt = `Score these 8 dimensions (0-100) with a short explanation. Return JSON with performanceBenchmark as below.
 
 ${company.website_url ? `Visit "${company.website_url}" to extract additional information.` : ""}
 
@@ -76,17 +76,6 @@ Employees: ${financialData.employees?.value || "N/A"}
 Net Assets: £${typeof financialData.netAssets?.value === "number" ? financialData.netAssets.value.toLocaleString() : "N/A"}
 Total Assets: £${typeof financialData.totalAssets?.value === "number" ? financialData.totalAssets.value.toLocaleString() : "N/A"}
 Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.value.toLocaleString() : "N/A"}
-
-Rate each dimension (0-100) with explanation:
-- technicalExpertise
-- safetyStandards
-- innovation
-- projectExperience
-- certifications
-- marketReputation
-- financialHealth
-- operationalCapacity
-- overallScore
 
 Return JSON:
 {
@@ -126,7 +115,7 @@ Return JSON:
       isMinimalData,
     });
 
-    const systemPrompt = `You are a business analyst. Rate companies from 0-100 based strictly on available data. If no data exists for a dimension, rate it 0. Visit websites when provided to extract additional information.`;
+    const systemPrompt = `Rate company 0-100 on each dimension from available data only; 0 if no data. Optional: use website when provided.`;
 
     // Log the full prompt for debugging
     console.log("\n" + "=".repeat(80));
@@ -139,7 +128,6 @@ Return JSON:
     console.log("\n" + "=".repeat(80) + "\n");
 
     const response = await chatCompletion(systemPrompt, analysisPrompt, {
-      model: "gpt-5-nano",
       maxTokens: 10000, // Increased for default reasoning tokens plus output
       responseFormat: "json_object", // Request JSON output format
     });

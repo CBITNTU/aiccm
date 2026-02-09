@@ -94,28 +94,28 @@ export function CompanyOnboardingStep2({
   const normalized = prefillData?.normalized || {};
 
   const [description, setDescription] = useState(
-    normalized.description?.value || ""
+    normalized.description?.value || "",
   );
   const [capabilities, setCapabilities] = useState<string[]>(
-    normalized.capabilities?.map((c) => c.value) || []
+    normalized.capabilities?.map((c) => c.value) || [],
   );
   const [newCapability, setNewCapability] = useState("");
 
   const [certifications, setCertifications] = useState<Certification[]>(
-    normalized.certifications || []
+    normalized.certifications || [],
   );
 
   const [equipment, setEquipment] = useState<Equipment[]>(
-    normalized.equipment || []
+    normalized.equipment || [],
   );
 
   const [sectors, setSectors] = useState<string[]>(
-    normalized.sectors?.map((s) => s.value) || []
+    normalized.sectors?.map((s) => s.value) || [],
   );
   const [newSector, setNewSector] = useState("");
 
   const [locations, setLocations] = useState<string[]>(
-    normalized.locations?.map((l) => l.value) || []
+    normalized.locations?.map((l) => l.value) || [],
   );
   const [newLocation, setNewLocation] = useState("");
 
@@ -157,7 +157,7 @@ export function CompanyOnboardingStep2({
   const updateCertification = (
     index: number,
     field: keyof Certification,
-    value: string | boolean
+    value: string | boolean,
   ) => {
     const updated = [...certifications];
     updated[index] = { ...updated[index], [field]: value };
@@ -186,7 +186,7 @@ export function CompanyOnboardingStep2({
   const updateEquipment = (
     index: number,
     field: keyof Equipment,
-    value: string | boolean
+    value: string | boolean,
   ) => {
     const updated = [...equipment];
     updated[index] = { ...updated[index], [field]: value };
@@ -220,7 +220,9 @@ export function CompanyOnboardingStep2({
   };
 
   const handleAcceptAll = () => {
-    setCertifications(certifications.map((cert) => ({ ...cert, verified: true })));
+    setCertifications(
+      certifications.map((cert) => ({ ...cert, verified: true })),
+    );
     setEquipment(equipment.map((eq) => ({ ...eq, verified: true })));
     toast.success("All Data Verified", {
       description: "All auto-filled data has been marked as verified.",
@@ -257,21 +259,25 @@ export function CompanyOnboardingStep2({
         equipment: JSON.stringify(equipment),
         address: normalized.address?.value || null,
         postcode: step1Data.postcode || null,
-        system_extracted: JSON.parse(JSON.stringify({
-          description: normalized.description,
-          capabilities: normalized.capabilities,
-          certifications: normalized.certifications,
-          equipment: normalized.equipment,
-          sectors: normalized.sectors,
-          locations: normalized.locations,
-          address: normalized.address,
-        })),
-        human_verified: JSON.parse(JSON.stringify({
-          certifications: certifications
-            .filter((c) => c.verified)
-            .map((c) => c.name),
-          equipment: equipment.filter((e) => e.verified).map((e) => e.name),
-        })),
+        system_extracted: JSON.parse(
+          JSON.stringify({
+            description: normalized.description,
+            capabilities: normalized.capabilities,
+            certifications: normalized.certifications,
+            equipment: normalized.equipment,
+            sectors: normalized.sectors,
+            locations: normalized.locations,
+            address: normalized.address,
+          }),
+        ),
+        human_verified: JSON.parse(
+          JSON.stringify({
+            certifications: certifications
+              .filter((c) => c.verified)
+              .map((c) => c.name),
+            equipment: equipment.filter((e) => e.verified).map((e) => e.name),
+          }),
+        ),
         financial_data: JSON.parse(JSON.stringify(financial)),
         compliance_data: JSON.parse(JSON.stringify(compliance)),
         status: "active" as const,
@@ -279,7 +285,9 @@ export function CompanyOnboardingStep2({
 
       const { data: createdCompany, error } = await supabase
         .from("companies")
-        .insert(companyData as Database["public"]["Tables"]["companies"]["Insert"])
+        .insert(
+          companyData as Database["public"]["Tables"]["companies"]["Insert"],
+        )
         .select()
         .single();
 
@@ -347,7 +355,7 @@ export function CompanyOnboardingStep2({
               <span className="text-sm font-normal flex items-center gap-2">
                 <span
                   className={`w-2 h-2 rounded-full ${getConfidenceDot(
-                    normalized.description.confidence
+                    normalized.description.confidence,
                   )}`}
                 />
                 <a
@@ -429,7 +437,7 @@ export function CompanyOnboardingStep2({
                     Name{" "}
                     <span
                       className={`w-2 h-2 inline-block rounded-full ${getConfidenceDot(
-                        cert.confidence
+                        cert.confidence,
                       )}`}
                     />
                   </Label>
@@ -522,7 +530,7 @@ export function CompanyOnboardingStep2({
                     Machine/Tool{" "}
                     <span
                       className={`w-2 h-2 inline-block rounded-full ${getConfidenceDot(
-                        eq.confidence
+                        eq.confidence,
                       )}`}
                     />
                   </Label>
@@ -675,7 +683,7 @@ export function CompanyOnboardingStep2({
                   <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                     <span
                       className={`w-2 h-2 rounded-full ${getConfidenceDot(
-                        field.confidence
+                        field.confidence,
                       )}`}
                     />
                     Confidence: {field.confidence}%
@@ -706,7 +714,7 @@ export function CompanyOnboardingStep2({
                   <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                     <span
                       className={`w-2 h-2 rounded-full ${getConfidenceDot(
-                        field.confidence
+                        field.confidence,
                       )}`}
                     />
                     Confidence: {field.confidence}%

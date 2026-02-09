@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs, processing_queue not in generated types */
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAuthenticatedUser,
@@ -100,21 +101,13 @@ export async function POST(request: NextRequest) {
       ).map((t) => t.id);
     }
 
-    // Queue summary and taxonomy jobs for each tender
-    const jobs = tendersToProcess.flatMap((tenderId) => [
-      {
-        jobType: "tender_summary" as const,
-        entityType: "tender" as const,
-        entityId: tenderId,
-        priority: 5,
-      },
-      {
-        jobType: "tender_taxonomy" as const,
-        entityType: "tender" as const,
-        entityId: tenderId,
-        priority: 5,
-      },
-    ]);
+    // Queue one combined AI job per tender (summary + taxonomy in one call)
+    const jobs = tendersToProcess.map((tenderId) => ({
+      jobType: "tender_ai_complete" as const,
+      entityType: "tender" as const,
+      entityId: tenderId,
+      priority: 5,
+    }));
 
     const { batchId } = await enqueueBatch(
       jobs,

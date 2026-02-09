@@ -97,7 +97,7 @@ export default function AdminApprovals() {
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<CompanyDetails | null>(null);
   const [analyzingCompanyId, setAnalyzingCompanyId] = useState<string | null>(
-    null
+    null,
   );
 
   // Rejection dialog state
@@ -177,7 +177,7 @@ export default function AdminApprovals() {
     } catch (error) {
       console.error("Error approving user:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to approve user"
+        error instanceof Error ? error.message : "Failed to approve user",
       );
     } finally {
       setActionLoading(null);
@@ -211,7 +211,7 @@ export default function AdminApprovals() {
     } catch (error) {
       console.error("Error rejecting user:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reject user"
+        error instanceof Error ? error.message : "Failed to reject user",
       );
     } finally {
       setActionLoading(null);
@@ -220,7 +220,7 @@ export default function AdminApprovals() {
 
   const handleApproveJoinRequest = async (
     requestId: string,
-    userName: string
+    userName: string,
   ) => {
     setActionLoading(requestId);
     try {
@@ -240,7 +240,7 @@ export default function AdminApprovals() {
     } catch (error) {
       console.error("Error approving request:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to approve request"
+        error instanceof Error ? error.message : "Failed to approve request",
       );
     } finally {
       setActionLoading(null);
@@ -274,7 +274,7 @@ export default function AdminApprovals() {
     } catch (error) {
       console.error("Error rejecting request:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reject request"
+        error instanceof Error ? error.message : "Failed to reject request",
       );
     } finally {
       setActionLoading(null);
@@ -323,7 +323,7 @@ export default function AdminApprovals() {
     } catch (error) {
       console.error("Error updating company:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to update company"
+        error instanceof Error ? error.message : "Failed to update company",
       );
     } finally {
       setActionLoading(null);
@@ -349,7 +349,7 @@ export default function AdminApprovals() {
     } catch (error) {
       console.error("Error analyzing company:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to analyze company"
+        error instanceof Error ? error.message : "Failed to analyze company",
       );
     } finally {
       setAnalyzingCompanyId(null);
@@ -395,9 +395,10 @@ export default function AdminApprovals() {
 
   const pendingCount = pendingUsers.length;
   const requestsCount = joinRequests.length;
-  const readyForApprovalCount = joinRequests.filter(
-    (r) => r.status === "approved_by_admin"
+  const _readyForApprovalCount = joinRequests.filter(
+    (r) => r.status === "approved_by_admin",
   ).length;
+  void _readyForApprovalCount;
 
   return (
     <>
@@ -494,7 +495,7 @@ export default function AdminApprovals() {
                                 className="mt-2 text-primary"
                                 onClick={() =>
                                   setExpandedUserId(
-                                    isExpanded ? null : user.user_id
+                                    isExpanded ? null : user.user_id,
                                   )
                                 }
                               >

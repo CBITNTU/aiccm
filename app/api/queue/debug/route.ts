@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs/processing_queue not in generated Supabase types */
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/api";
+import { createAdminClient, createApiClient } from "@/lib/api";
 import { getBatchStatus } from "@/lib/services/queueService";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 /**
  * Debug endpoint to check queue and batch status
@@ -8,6 +10,17 @@ import { getBatchStatus } from "@/lib/services/queueService";
  */
 export async function GET(request: NextRequest) {
   try {
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
     const { searchParams } = new URL(request.url);
     const batchId = searchParams.get("batchId");
 
@@ -16,7 +29,7 @@ export async function GET(request: NextRequest) {
     if (batchId) {
       // Get batch status
       const batch = await getBatchStatus(batchId);
-      
+
       // Get jobs in this batch
       const { data: jobs, error: jobsError } = await adminSupabase
         .from("processing_queue" as any)
@@ -26,7 +39,7 @@ export async function GET(request: NextRequest) {
         .limit(20);
 
       // Count jobs by status
-      const { data: allJobs, error: countError } = await adminSupabase
+      const { data: allJobs } = await adminSupabase
         .from("processing_queue" as any)
         .select("status")
         .eq("batch_id", batchId);
@@ -45,6 +58,14 @@ export async function GET(request: NextRequest) {
         else if (j.status === "completed") statusCounts.completed++;
         else if (j.status === "failed") statusCounts.failed++;
       });
+
+      await logApiEvent(request, {
+        actionType: "queue_debug_viewed",
+        userId: userId || undefined,
+        entityType: "batch_job",
+        entityId: batchId,
+        details: { jobCounts: statusCounts },
+      }).catch(() => {});
 
       return NextResponse.json({
         success: true,
@@ -69,8 +90,12 @@ export async function GET(request: NextRequest) {
 
     const queueCounts = {
       total: queueStats?.length || 0,
-      withBatch: (queueStats || []).filter((j: unknown) => (j as { batch_id: string | null }).batch_id).length,
-      withoutBatch: (queueStats || []).filter((j: unknown) => !(j as { batch_id: string | null }).batch_id).length,
+      withBatch: (queueStats || []).filter(
+        (j: unknown) => (j as { batch_id: string | null }).batch_id,
+      ).length,
+      withoutBatch: (queueStats || []).filter(
+        (j: unknown) => !(j as { batch_id: string | null }).batch_id,
+      ).length,
       byStatus: {
         pending: 0,
         processing: 0,
@@ -87,14 +112,20 @@ export async function GET(request: NextRequest) {
       else if (j.status === "failed") queueCounts.byStatus.failed++;
     });
 
+    await logApiEvent(request, {
+      actionType: "queue_debug_viewed",
+      userId: userId || undefined,
+      details: {
+        batch_count: (batches || []).length,
+        queue_total: queueCounts.total,
+      },
+    }).catch(() => {});
+
     return NextResponse.json({
       success: true,
       batches: batches || [],
       queueStats: queueCounts,
-      errors: [
-        batchesError?.message,
-        queueError?.message,
-      ].filter(Boolean),
+      errors: [batchesError?.message, queueError?.message].filter(Boolean),
     });
   } catch (error) {
     console.error("Debug endpoint error:", error);
@@ -103,7 +134,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

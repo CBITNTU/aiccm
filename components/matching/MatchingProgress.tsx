@@ -2,7 +2,13 @@
 
 import { useMatchingProgress } from "@/hooks/useMatchingProgress";
 import { Progress } from "@/components/ui/progress";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -12,8 +18,11 @@ interface MatchingProgressProps {
   onComplete?: () => void;
 }
 
-export function MatchingProgress({ companyId, onComplete }: MatchingProgressProps) {
-  const { status, isLoading, error } = useMatchingProgress(companyId, true);
+export function MatchingProgress({
+  companyId,
+  onComplete,
+}: MatchingProgressProps) {
+  const { status, isLoading: _isLoading, error } = useMatchingProgress(companyId, true);
   const router = useRouter();
 
   if (!companyId) {
@@ -50,9 +59,8 @@ export function MatchingProgress({ companyId, onComplete }: MatchingProgressProp
   }
 
   const isComplete = status.pending === 0 && status.processing === 0;
-  const progress = status.total > 0 
-    ? Math.round((status.completed / status.total) * 100)
-    : 0;
+  const progress =
+    status.total > 0 ? Math.round((status.completed / status.total) * 100) : 0;
 
   const formatTime = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -98,7 +106,9 @@ export function MatchingProgress({ companyId, onComplete }: MatchingProgressProp
           <div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-blue-500" />
-              <span className="font-medium">{status.processing + status.pending}</span>
+              <span className="font-medium">
+                {status.processing + status.pending}
+              </span>
             </div>
             <p className="text-muted-foreground">In Progress</p>
           </div>
@@ -116,7 +126,10 @@ export function MatchingProgress({ companyId, onComplete }: MatchingProgressProp
             <div className="space-y-1">
               {status.results
                 .slice(0, 5)
-                .sort((a, b) => (b.score.overallScore || 0) - (a.score.overallScore || 0))
+                .sort(
+                  (a, b) =>
+                    (b.score.overallScore || 0) - (a.score.overallScore || 0),
+                )
                 .map((result) => (
                   <div
                     key={result.tenderId}

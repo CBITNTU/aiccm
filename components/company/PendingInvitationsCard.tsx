@@ -42,7 +42,10 @@ interface PendingInvitationsCardProps {
   refreshTrigger?: number;
 }
 
-export function PendingInvitationsCard({ companyId, refreshTrigger }: PendingInvitationsCardProps) {
+export function PendingInvitationsCard({
+  companyId,
+  refreshTrigger,
+}: PendingInvitationsCardProps) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -73,6 +76,7 @@ export function PendingInvitationsCard({ companyId, refreshTrigger }: PendingInv
 
   useEffect(() => {
     fetchInvitations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run on companyId/refreshTrigger
   }, [companyId, refreshTrigger]);
 
   const handleCancel = async () => {
@@ -97,7 +101,7 @@ export function PendingInvitationsCard({ companyId, refreshTrigger }: PendingInv
     } catch (error) {
       console.error("Error cancelling invitation:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to cancel invitation"
+        error instanceof Error ? error.message : "Failed to cancel invitation",
       );
     } finally {
       setActionLoading(null);
@@ -159,11 +163,13 @@ export function PendingInvitationsCard({ companyId, refreshTrigger }: PendingInv
     return inv.status === "pending" && expiresAt >= now;
   });
 
-  const recentInvitations = invitations.filter((inv) => {
-    const now = new Date();
-    const expiresAt = new Date(inv.expires_at);
-    return inv.status !== "pending" || expiresAt < now;
-  }).slice(0, 5);
+  const recentInvitations = invitations
+    .filter((inv) => {
+      const now = new Date();
+      const expiresAt = new Date(inv.expires_at);
+      return inv.status !== "pending" || expiresAt < now;
+    })
+    .slice(0, 5);
 
   if (loading) {
     return (
@@ -209,7 +215,9 @@ export function PendingInvitationsCard({ companyId, refreshTrigger }: PendingInv
                         <Mail className="w-4 h-4 text-amber-600" />
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{invitation.email}</p>
+                        <p className="font-medium text-sm">
+                          {invitation.email}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           Expires {formatDate(invitation.expires_at)}
                         </p>
@@ -279,15 +287,13 @@ export function PendingInvitationsCard({ companyId, refreshTrigger }: PendingInv
           <DialogHeader>
             <DialogTitle>Cancel Invitation</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel the invitation to {cancelDialog?.email}?
-              They won&apos;t be able to use the invitation link.
+              Are you sure you want to cancel the invitation to{" "}
+              {cancelDialog?.email}? They won&apos;t be able to use the
+              invitation link.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCancelDialog(null)}
-            >
+            <Button variant="outline" onClick={() => setCancelDialog(null)}>
               Keep Invitation
             </Button>
             <Button

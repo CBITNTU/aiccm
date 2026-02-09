@@ -150,7 +150,7 @@ export default function AdminOnboarding() {
     const matchesSearch =
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (user.firstName?.toLowerCase() || "").includes(
-        searchQuery.toLowerCase()
+        searchQuery.toLowerCase(),
       ) ||
       (user.lastName?.toLowerCase() || "").includes(searchQuery.toLowerCase());
 
@@ -328,7 +328,7 @@ export default function AdminOnboarding() {
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() =>
                           setExpandedUser(
-                            expandedUser === user.userId ? null : user.userId
+                            expandedUser === user.userId ? null : user.userId,
                           )
                         }
                       >
@@ -354,7 +354,7 @@ export default function AdminOnboarding() {
                         <TableCell>
                           <Badge
                             variant={getStepBadgeVariant(
-                              user.onboarding.currentStep
+                              user.onboarding.currentStep,
                             )}
                           >
                             {user.onboarding.currentStepName}
@@ -403,7 +403,7 @@ export default function AdminOnboarding() {
                                       <span className="text-green-600">
                                         Verified{" "}
                                         {formatDate(
-                                          user.emailVerification.verifiedAt
+                                          user.emailVerification.verifiedAt,
                                         )}
                                       </span>
                                     ) : (
@@ -518,7 +518,7 @@ export default function AdminOnboarding() {
                                       >
                                         {user.companyInfo.company.status.replace(
                                           "_",
-                                          " "
+                                          " ",
                                         )}
                                       </Badge>
                                     </div>

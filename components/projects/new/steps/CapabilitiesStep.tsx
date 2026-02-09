@@ -39,7 +39,7 @@ export function CapabilitiesStep({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   useEffect(() => {
@@ -61,8 +61,8 @@ export function CapabilitiesStep({
           data
             ?.map((c) => c.category)
             .filter(
-              (cat): cat is string => cat !== null && cat !== undefined
-            ) || []
+              (cat): cat is string => cat !== null && cat !== undefined,
+            ) || [],
         );
         setExpandedCategories(categories);
       }
@@ -108,7 +108,8 @@ export function CapabilitiesStep({
         const filtered = group.capabilities.filter(
           (cap) =>
             cap.name.toLowerCase().includes(searchLower) ||
-            (group.category && group.category.toLowerCase().includes(searchLower))
+            (group.category &&
+              group.category.toLowerCase().includes(searchLower)),
         );
         return { ...group, capabilities: filtered };
       })
@@ -131,7 +132,7 @@ export function CapabilitiesStep({
       onSelectionChange([...selectedCapabilities, capabilityId]);
     } else {
       onSelectionChange(
-        selectedCapabilities.filter((id) => id !== capabilityId)
+        selectedCapabilities.filter((id) => id !== capabilityId),
       );
     }
   };
@@ -139,13 +140,13 @@ export function CapabilitiesStep({
   const handleSelectAllInCategory = (group: CapabilityGroup) => {
     const categoryCapIds = group.capabilities.map((c) => c.id);
     const allSelected = categoryCapIds.every((id) =>
-      selectedCapabilities.includes(id)
+      selectedCapabilities.includes(id),
     );
 
     if (allSelected) {
       // Deselect all in this category
       onSelectionChange(
-        selectedCapabilities.filter((id) => !categoryCapIds.includes(id))
+        selectedCapabilities.filter((id) => !categoryCapIds.includes(id)),
       );
     } else {
       // Select all in this category
@@ -172,7 +173,7 @@ export function CapabilitiesStep({
 
   const isCategoryPartiallySelected = (group: CapabilityGroup): boolean => {
     const selectedCount = group.capabilities.filter((c) =>
-      selectedCapabilities.includes(c.id)
+      selectedCapabilities.includes(c.id),
     ).length;
     return selectedCount > 0 && selectedCount < group.capabilities.length;
   };
@@ -293,8 +294,8 @@ export function CapabilitiesStep({
                               isFullySelected
                                 ? "text-primary"
                                 : isPartiallySelected
-                                ? "text-primary/50"
-                                : "text-muted-foreground"
+                                  ? "text-primary/50"
+                                  : "text-muted-foreground"
                             }`}
                           />
                           {isFullySelected ? "Deselect All" : "Select All"}
@@ -307,7 +308,7 @@ export function CapabilitiesStep({
                       <div className="ml-6 space-y-1">
                         {group.capabilities.map((capability) => {
                           const isSelected = isCapabilitySelected(
-                            capability.id
+                            capability.id,
                           );
                           return (
                             <div
@@ -322,7 +323,7 @@ export function CapabilitiesStep({
                                 onCheckedChange={(checked) =>
                                   handleCapabilityToggle(
                                     capability.id,
-                                    checked === true
+                                    checked === true,
                                   )
                                 }
                                 id={`capability-${capability.id}`}
@@ -331,7 +332,9 @@ export function CapabilitiesStep({
                                 htmlFor={`capability-${capability.id}`}
                                 className="flex-1 cursor-pointer"
                               >
-                                <span className="text-sm">{capability.name}</span>
+                                <span className="text-sm">
+                                  {capability.name}
+                                </span>
                               </label>
                             </div>
                           );

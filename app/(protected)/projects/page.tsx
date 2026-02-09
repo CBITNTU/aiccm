@@ -26,12 +26,12 @@ export default function ProjectsPage() {
   // Track user's manual selection (null means "use default")
   const [manualCompanyId, setManualCompanyId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    routeProjectId
+    routeProjectId,
   );
   const [projectFilter, setProjectFilter] = useState<ProjectStatus>("active");
 
   const { data: companies, isLoading: loadingCompanies } = useUserCompanies(
-    user?.id ?? null
+    user?.id ?? null,
   );
 
   // Derive selected company from available data (no setState in effect)
@@ -67,7 +67,7 @@ export default function ProjectsPage() {
       // Use replace to avoid adding to browser history on every selection
       router.replace(newUrl, { scroll: false });
     },
-    [router]
+    [router],
   );
 
   // Sync URL when selections change
@@ -85,7 +85,7 @@ export default function ProjectsPage() {
         setSelectedProjectId(null);
       }
     },
-    [selectedCompany?.id]
+    [selectedCompany?.id],
   );
 
   const handleProjectSelect = useCallback((projectId: string | null) => {

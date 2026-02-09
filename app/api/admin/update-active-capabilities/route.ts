@@ -1,5 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, checkSuperadminRole, apiResponse, apiError } from "@/lib/api";
+import { NextRequest } from "next/server";
+import {
+  getAuthenticatedUser,
+  checkSuperadminRole,
+  apiResponse,
+  apiError,
+} from "@/lib/api";
 import { updateActiveCapabilities } from "@/lib/services/capabilityService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
@@ -19,7 +24,7 @@ export async function POST(request: NextRequest) {
     const result = await updateActiveCapabilities();
 
     await logApiEvent(request, {
-      actionType: "company_capabilities_updated" as any, // Custom action type
+      actionType: "company_capabilities_updated",
       userId: user.id,
       userEmail: user.email || undefined,
       details: result,

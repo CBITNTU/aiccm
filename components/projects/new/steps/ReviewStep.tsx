@@ -51,7 +51,7 @@ export function ReviewStep({
   const { user } = useAuth();
   const supabase = createClient();
   const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(
-    new Map()
+    new Map(),
   );
   const [tenderInfo, setTenderInfo] = useState<{
     title: string;

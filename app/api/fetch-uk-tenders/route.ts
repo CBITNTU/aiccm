@@ -35,12 +35,12 @@ interface TenderData {
 // Transform OCDS release data to our tender format
 function transformOCDSToTender(
   release: Record<string, unknown>,
-  ocid: string
+  ocid: string,
 ): TenderData {
   const tender = (release.tender || {}) as Record<string, unknown>;
   const parties = (release.parties || []) as Array<Record<string, unknown>>;
   const buyer = parties.find((p) =>
-    (p.roles as string[] | undefined)?.includes("buyer")
+    (p.roles as string[] | undefined)?.includes("buyer"),
   );
 
   // Extract notice ID from release.id
@@ -144,7 +144,7 @@ async function fetchFromFindTenderAPI(
   limit = 100,
   cursor?: string,
   isAdmin = false,
-  filters?: Record<string, unknown>
+  filters?: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const params = new URLSearchParams();
 
@@ -165,7 +165,7 @@ async function fetchFromFindTenderAPI(
   if (filters?.dateFrom) {
     params.append(
       "updatedFrom",
-      new Date(filters.dateFrom as string).toISOString().slice(0, 19)
+      new Date(filters.dateFrom as string).toISOString().slice(0, 19),
     );
   } else {
     // Default to last 30 days if no date filter
@@ -177,7 +177,7 @@ async function fetchFromFindTenderAPI(
   if (filters?.dateTo) {
     params.append(
       "updatedTo",
-      new Date(filters.dateTo as string).toISOString().slice(0, 19)
+      new Date(filters.dateTo as string).toISOString().slice(0, 19),
     );
   }
 
@@ -196,20 +196,20 @@ async function fetchFromFindTenderAPI(
     // Preserve 429 status for rate limiting detection
     if (response.status === 429) {
       const error: Error & { status?: number } = new Error(
-        `Rate limited (429): ${response.statusText}. Please wait before retrying.`
+        `Rate limited (429): ${response.statusText}. Please wait before retrying.`,
       );
       error.status = 429;
       throw error;
     }
     throw new Error(
-      `Find a Tender API error: ${response.status} ${response.statusText}`
+      `Find a Tender API error: ${response.status} ${response.statusText}`,
     );
   }
 
   const data = await response.json();
   const releasesCount = data.releases?.length || 0;
   console.log(
-    `Received ${releasesCount} releases from API (Admin: ${isAdmin})`
+    `Received ${releasesCount} releases from API (Admin: ${isAdmin})`,
   );
 
   // Log pagination info for debugging
@@ -225,7 +225,7 @@ async function fetchFromFindTenderAPI(
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const { user, error: authError } = await getAuthenticatedUser(request);
+    const { user } = await getAuthenticatedUser(request);
     if (!user) {
       console.error("No authorization header provided");
       return apiError("Authorization required", 401);
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
       limit,
       cursor,
       isAdmin,
-      filters
+      filters,
     );
 
     // Transform OCDS releases to our tender format
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
       | undefined;
     if (releases && releases.length > 0) {
       tenders = releases.map((release) =>
-        transformOCDSToTender(release, release.ocid as string)
+        transformOCDSToTender(release, release.ocid as string),
       );
     }
 
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
           tender.title.toLowerCase().includes(searchLower) ||
           tender.description.toLowerCase().includes(searchLower) ||
           tender.buyer.toLowerCase().includes(searchLower) ||
-          tender.location.toLowerCase().includes(searchLower)
+          tender.location.toLowerCase().includes(searchLower),
       );
     }
 
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `Returning ${filteredTenders.length} tenders from Find a Tender API (admin: ${isAdmin}, total fetched: ${tenders.length})`
+      `Returning ${filteredTenders.length} tenders from Find a Tender API (admin: ${isAdmin}, total fetched: ${tenders.length})`,
     );
 
     // If admin is importing, also save to database with duplicate prevention
@@ -334,14 +334,14 @@ export async function POST(request: NextRequest) {
         .select("reference_number, id")
         .in(
           "reference_number",
-          tendersToInsert.map((t) => t.reference_number)
+          tendersToInsert.map((t) => t.reference_number),
         );
 
       const existingRefs = new Map(
-        existingTenders?.map((t) => [t.reference_number, t.id]) || []
+        existingTenders?.map((t) => [t.reference_number, t.id]) || [],
       );
       const newTenders = tendersToInsert.filter(
-        (t) => !existingRefs.has(t.reference_number)
+        (t) => !existingRefs.has(t.reference_number),
       );
       const duplicatesCount = tendersToInsert.length - newTenders.length;
 
@@ -350,17 +350,17 @@ export async function POST(request: NextRequest) {
           .from("tenders")
           .upsert(
             newTenders as unknown as Database["public"]["Tables"]["tenders"]["Insert"][],
-            { onConflict: "reference_number" }
+            { onConflict: "reference_number" },
           )
           .select(
-            "id, reference_number, title, description, buyer, cpv_codes, location"
+            "id, reference_number, title, description, buyer, cpv_codes, location",
           );
 
         if (insertError) {
           console.error("Error importing tenders:", insertError);
         } else {
           console.log(
-            `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`
+            `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`,
           );
 
           // Log tender import event
@@ -379,31 +379,28 @@ export async function POST(request: NextRequest) {
           // Queue AI processing jobs for new tenders
           if (insertedTenders && insertedTenders.length > 0) {
             console.log(
-              `${insertedTenders.length} tenders ready for AI analysis`
+              `${insertedTenders.length} tenders ready for AI analysis`,
             );
-            
+
             // Queue summary and taxonomy jobs for each new tender
-            const { enqueueBatch } = await import("@/lib/services/queueService");
-            const tenderIds = ((insertedTenders as unknown as { id: string }[]) || []).map((t) => t.id);
-            
-            const jobs = tenderIds.flatMap((tenderId) => [
-              {
-                jobType: "tender_summary" as const,
-                entityType: "tender" as const,
-                entityId: tenderId,
-                priority: 5,
-              },
-              {
-                jobType: "tender_taxonomy" as const,
-                entityType: "tender" as const,
-                entityId: tenderId,
-                priority: 5,
-              },
-            ]);
+            const { enqueueBatch } =
+              await import("@/lib/services/queueService");
+            const tenderIds = (
+              (insertedTenders as unknown as { id: string }[]) || []
+            ).map((t) => t.id);
+
+            const jobs = tenderIds.map((tenderId) => ({
+              jobType: "tender_ai_complete" as const,
+              entityType: "tender" as const,
+              entityId: tenderId,
+              priority: 5,
+            }));
 
             try {
               await enqueueBatch(jobs, "tender_ai_regeneration", user.id);
-              console.log(`Queued ${jobs.length} AI processing jobs for ${tenderIds.length} new tenders`);
+              console.log(
+                `Queued ${jobs.length} AI processing jobs for ${tenderIds.length} new tenders`,
+              );
             } catch (queueError) {
               console.error("Failed to queue AI processing jobs:", queueError);
               // Don't fail the import if queueing fails
@@ -411,7 +408,9 @@ export async function POST(request: NextRequest) {
           }
         }
       } else {
-        console.log(`No new tenders to import - all ${tendersToInsert.length} were duplicates`);
+        console.log(
+          `No new tenders to import - all ${tendersToInsert.length} were duplicates`,
+        );
       }
 
       // Extract pagination info from OCDS response
@@ -419,19 +418,23 @@ export async function POST(request: NextRequest) {
       const links = ocdsData.links as
         | Record<string, string | { href?: string }>
         | undefined;
-      
+
       let nextCursor: string | null = null;
-      
+
       // Handle both cases: links.next as string or as object with href
-      const nextUrlString = typeof links?.next === 'string' 
-        ? links.next 
-        : (links?.next as { href?: string })?.href;
-      
+      const nextUrlString =
+        typeof links?.next === "string"
+          ? links.next
+          : (links?.next as { href?: string })?.href;
+
       if (nextUrlString) {
         try {
           const nextUrl = new URL(nextUrlString);
           nextCursor = nextUrl.searchParams.get("cursor");
-          console.log("Extracted nextCursor:", nextCursor?.substring(0, 50) + "...");
+          console.log(
+            "Extracted nextCursor:",
+            nextCursor?.substring(0, 50) + "...",
+          );
         } catch (e) {
           console.error("Error parsing next URL:", e, nextUrlString);
         }
@@ -439,13 +442,15 @@ export async function POST(request: NextRequest) {
 
       // Return actual imported count (newTenders) not filteredTenders
       const actuallyImported = newTenders.length;
-      
+
       // If we got exactly 100 results (the API limit), there might be more pages
       // even if nextCursor is not explicitly provided
       const gotMaxResults = tenders.length >= 100;
       const hasMorePages = (!!nextCursor || gotMaxResults) && isAdmin;
-      
-      console.log(`Pagination: hasMore=${hasMorePages}, nextCursor=${nextCursor}, gotMaxResults=${gotMaxResults}, isAdmin=${isAdmin}, tenders.length=${tenders.length}`);
+
+      console.log(
+        `Pagination: hasMore=${hasMorePages}, nextCursor=${nextCursor}, gotMaxResults=${gotMaxResults}, isAdmin=${isAdmin}, tenders.length=${tenders.length}`,
+      );
 
       return apiResponse({
         tenders: filteredTenders, // Still return all filtered tenders for display
@@ -465,14 +470,15 @@ export async function POST(request: NextRequest) {
     const links = ocdsData.links as
       | Record<string, string | { href?: string }>
       | undefined;
-    
+
     let nextCursor: string | null = null;
-    
+
     // Handle both cases: links.next as string or as object with href
-    const nextUrlString = typeof links?.next === 'string' 
-      ? links.next 
-      : (links?.next as { href?: string })?.href;
-    
+    const nextUrlString =
+      typeof links?.next === "string"
+        ? links.next
+        : (links?.next as { href?: string })?.href;
+
     if (nextUrlString) {
       try {
         const nextUrl = new URL(nextUrlString);
@@ -506,7 +512,7 @@ export async function POST(request: NextRequest) {
         isAdmin: false,
         message: "Unable to fetch tenders. Please try again later.",
       },
-      500
+      500,
     );
   }
 }

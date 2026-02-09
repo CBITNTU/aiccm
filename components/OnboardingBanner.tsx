@@ -16,7 +16,8 @@ export function OnboardingBanner() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-yellow-300" />
           <span className="font-medium">
-            Complete your onboarding to unlock all features and get approved by the platform admin.
+            Complete your onboarding to unlock all features and get approved by
+            the platform admin.
           </span>
         </div>
         <Button

@@ -1,9 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createApiClient } from "@/lib/api";
 import { getQueueStats } from "@/lib/services/queueService";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const stats = await getQueueStats();
+
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
+    await logApiEvent(request, {
+      actionType: "queue_stats_viewed",
+      userId: userId || undefined,
+    }).catch(() => {});
+
     return NextResponse.json({ success: true, stats });
   } catch (error) {
     console.error("Failed to get queue stats:", error);
@@ -12,7 +31,7 @@ export async function GET() {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

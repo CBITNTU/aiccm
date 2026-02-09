@@ -42,9 +42,16 @@ export function ProjectSummaryStep({
   onClose,
 }: ProjectSummaryStepProps) {
   const { user } = useAuth();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
-  const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(new Map());
-  const [tenderInfo, setTenderInfo] = useState<{ title: string; buyer: string } | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
+  const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(
+    new Map(),
+  );
+  const [tenderInfo, setTenderInfo] = useState<{
+    title: string;
+    buyer: string;
+  } | null>(null);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -61,6 +68,7 @@ export function ProjectSummaryStep({
         fetchTenderInfo();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase/capabilities/tender change
   }, [supabase, selectedCapabilities, selectedTenderId]);
 
   const fetchTenderInfo = async () => {
@@ -193,7 +201,9 @@ export function ProjectSummaryStep({
           <CardContent>
             <div>
               <p className="font-medium">{tenderInfo.title}</p>
-              <p className="text-sm text-muted-foreground">Buyer: {tenderInfo.buyer}</p>
+              <p className="text-sm text-muted-foreground">
+                Buyer: {tenderInfo.buyer}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -231,7 +241,9 @@ export function ProjectSummaryStep({
         </CardHeader>
         <CardContent>
           {selectedCapabilities.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No capabilities selected</p>
+            <p className="text-sm text-muted-foreground">
+              No capabilities selected
+            </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {selectedCapabilities.map((capId) => {
@@ -257,7 +269,9 @@ export function ProjectSummaryStep({
         </CardHeader>
         <CardContent>
           {selectedCompanies.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No companies selected</p>
+            <p className="text-sm text-muted-foreground">
+              No companies selected
+            </p>
           ) : (
             <div className="space-y-3">
               {selectedCompanies.map((company) => (
@@ -287,7 +301,10 @@ export function ProjectSummaryStep({
         <Button variant="outline" onClick={onClose} disabled={creating}>
           Cancel
         </Button>
-        <Button onClick={handleCreateProject} disabled={creating || !projectName.trim()}>
+        <Button
+          onClick={handleCreateProject}
+          disabled={creating || !projectName.trim()}
+        >
           {creating ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -301,4 +318,3 @@ export function ProjectSummaryStep({
     </div>
   );
 }
-

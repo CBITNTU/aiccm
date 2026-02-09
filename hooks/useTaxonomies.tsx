@@ -16,7 +16,7 @@ export interface Taxonomy {
 
 export function useTaxonomies() {
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [taxonomies, setTaxonomies] = useState<Taxonomy[]>([]);
   const [loading, setLoading] = useState(true);

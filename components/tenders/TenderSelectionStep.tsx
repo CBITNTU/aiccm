@@ -9,7 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Search, FileText, MapPin, Calendar, DollarSign, Loader2 } from "lucide-react";
+import {
+  Search,
+  FileText,
+  MapPin,
+  Calendar,
+  DollarSign,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 type Tender = Database["public"]["Tables"]["tenders"]["Row"];
@@ -23,7 +30,9 @@ export function TenderSelectionStep({
   selectedTenderId,
   onTenderSelect,
 }: TenderSelectionStepProps) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,6 +46,7 @@ export function TenderSelectionStep({
     if (supabase) {
       fetchTenders();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase ready
   }, [supabase]);
 
   const fetchTenders = async () => {
@@ -97,7 +107,7 @@ export function TenderSelectionStep({
     const deadlineDate = new Date(deadline);
     const today = new Date();
     const daysDiff = Math.ceil(
-      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
     return daysDiff <= 7 && daysDiff >= 0;
   };
@@ -200,14 +210,22 @@ export function TenderSelectionStep({
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-muted-foreground">Buyer: </span>
-                              <span className="font-medium">{tender.buyer}</span>
+                              <span className="text-muted-foreground">
+                                Buyer:{" "}
+                              </span>
+                              <span className="font-medium">
+                                {tender.buyer}
+                              </span>
                             </div>
                             {tender.location && (
                               <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-muted-foreground">Location: </span>
-                                <span className="font-medium">{tender.location}</span>
+                                <span className="text-muted-foreground">
+                                  Location:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {tender.location}
+                                </span>
                               </div>
                             )}
                             {tender.deadline && (
@@ -219,7 +237,9 @@ export function TenderSelectionStep({
                                       : "text-muted-foreground"
                                   }`}
                                 />
-                                <span className="text-muted-foreground">Deadline: </span>
+                                <span className="text-muted-foreground">
+                                  Deadline:{" "}
+                                </span>
                                 <span
                                   className={`font-medium ${
                                     deadlineSoon ? "text-red-600" : ""
@@ -232,9 +252,14 @@ export function TenderSelectionStep({
                             {(tender.budget_min || tender.budget_max) && (
                               <div className="flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-muted-foreground">Budget: </span>
+                                <span className="text-muted-foreground">
+                                  Budget:{" "}
+                                </span>
                                 <span className="font-medium">
-                                  {formatBudget(tender.budget_min, tender.budget_max)}
+                                  {formatBudget(
+                                    tender.budget_min,
+                                    tender.budget_max,
+                                  )}
                                 </span>
                               </div>
                             )}
@@ -267,4 +292,3 @@ export function TenderSelectionStep({
     </div>
   );
 }
-

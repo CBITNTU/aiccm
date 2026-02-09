@@ -52,7 +52,7 @@ export function DatabaseTenderFeed({
   const [tenders, setTenders] = useState<DatabaseTender[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTender, setSelectedTender] = useState<DatabaseTender | null>(
-    null
+    null,
   );
   const [tenderTaxonomies, setTenderTaxonomies] = useState<
     Record<string, Array<{ id: string; name: string }>>
@@ -78,7 +78,7 @@ export function DatabaseTenderFeed({
       // Apply keyword filter from filters
       if (filters.keyword && filters.keyword.trim()) {
         query = query.or(
-          `title.ilike.%${filters.keyword}%,description.ilike.%${filters.keyword}%,buyer.ilike.%${filters.keyword}%,location.ilike.%${filters.keyword}%`
+          `title.ilike.%${filters.keyword}%,description.ilike.%${filters.keyword}%,buyer.ilike.%${filters.keyword}%,location.ilike.%${filters.keyword}%`,
         );
       }
 
@@ -149,7 +149,10 @@ export function DatabaseTenderFeed({
           .in("tender_id", tenderIds);
 
         if (taxData) {
-          const taxMap: Record<string, Array<{ id: string; name: string }>> = {};
+          const taxMap: Record<
+            string,
+            Array<{ id: string; name: string }>
+          > = {};
           taxData.forEach((tt) => {
             if (!taxMap[tt.tender_id]) taxMap[tt.tender_id] = [];
             const tax = tt.taxonomies as { id: string; name: string } | null;
@@ -283,7 +286,7 @@ export function DatabaseTenderFeed({
                       );
                     }
                     return null;
-                  }
+                  },
                 )}
               </div>
 

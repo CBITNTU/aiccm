@@ -10,19 +10,19 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     // Check if user is superadmin (for system companies) or owns the company
-    const isSuperadmin = await checkSuperadminRole(user.id);
+    await checkSuperadminRole(user.id);
 
     const { companyId, jobTypes, fullRegeneration } = await request.json();
 
     if (!companyId) {
       return NextResponse.json(
         { success: false, error: "Company ID required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -12,7 +12,7 @@ export function getWelcomeVerificationEmailSubject(): string {
 }
 
 export function getWelcomeVerificationEmailHtml(
-  data: WelcomeVerificationEmailData
+  data: WelcomeVerificationEmailData,
 ): string {
   const { userName, signupType, companyName, verificationLink } = data;
   const platformName = getPlatformName();

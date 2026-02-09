@@ -10,7 +10,8 @@ export const ONBOARDING_STEPS = {
   COMPLETE: 5,
 } as const;
 
-export type OnboardingStep = typeof ONBOARDING_STEPS[keyof typeof ONBOARDING_STEPS];
+export type OnboardingStep =
+  (typeof ONBOARDING_STEPS)[keyof typeof ONBOARDING_STEPS];
 
 export const ONBOARDING_STEP_NAMES: Record<OnboardingStep, string> = {
   [ONBOARDING_STEPS.EMAIL_VERIFICATION]: "Email Verification",
@@ -23,7 +24,9 @@ export const ONBOARDING_STEP_NAMES: Record<OnboardingStep, string> = {
 /**
  * Get the next step after the current one
  */
-export function getNextStep(currentStep: OnboardingStep): OnboardingStep | null {
+export function getNextStep(
+  currentStep: OnboardingStep,
+): OnboardingStep | null {
   if (currentStep >= ONBOARDING_STEPS.COMPLETE) {
     return null;
   }

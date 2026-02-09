@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useRunTeamAnalysis, useUpdateTeamAnalysis } from "@/hooks/useProjectMutations";
+import {
+  useRunTeamAnalysis,
+  useUpdateTeamAnalysis,
+} from "@/hooks/useProjectMutations";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +52,7 @@ export function TeamAnalysisPanel({
 
   useEffect(() => {
     if (teamAnalysis) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local state from prop
       setCompanyCompetencies(teamAnalysis.companyCompetencies || []);
       setMissingCompetencies(teamAnalysis.missingCompetencies || []);
       setHasEdits(false);
@@ -74,9 +78,9 @@ export function TeamAnalysisPanel({
       ? Math.round(
           (companyCompetencies.length /
             (companyCompetencies.length + missingCompetencies.length)) *
-            100
+            100,
         )
-      : teamAnalysis?.coveragePercentage ?? 0;
+      : (teamAnalysis?.coveragePercentage ?? 0);
 
   const handleSaveEdits = async () => {
     try {
@@ -122,11 +126,11 @@ export function TeamAnalysisPanel({
 
       toast.success(
         `Team analysis complete! Coverage: ${Math.round(result.teamAnalysis.coveragePercentage)}%` +
-          (gaps > 0 ? `, ${gaps} remaining gaps` : ", no gaps!")
+          (gaps > 0 ? `, ${gaps} remaining gaps` : ", no gaps!"),
       );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to run team analysis"
+        err instanceof Error ? err.message : "Failed to run team analysis",
       );
     }
   };
@@ -234,16 +238,14 @@ export function TeamAnalysisPanel({
       >
         <Card>
           <CardContent className="pt-6">
-            <Label className="text-sm text-muted-foreground">Team Coverage</Label>
+            <Label className="text-sm text-muted-foreground">
+              Team Coverage
+            </Label>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-3xl font-bold text-green-600">
                 {editedCoverage}%
               </span>
-              <Badge
-                variant={
-                  editedCoverage >= 90 ? "default" : "secondary"
-                }
-              >
+              <Badge variant={editedCoverage >= 90 ? "default" : "secondary"}>
                 {editedCoverage >= 90
                   ? "Excellent"
                   : editedCoverage >= 70
@@ -255,7 +257,9 @@ export function TeamAnalysisPanel({
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <Label className="text-sm text-muted-foreground">Team Readiness</Label>
+            <Label className="text-sm text-muted-foreground">
+              Team Readiness
+            </Label>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-3xl font-bold text-green-600">
                 {Math.round(teamAnalysis.readinessScore)}%
@@ -289,7 +293,9 @@ export function TeamAnalysisPanel({
         >
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Team Member Contributions</CardTitle>
+              <CardTitle className="text-base">
+                Team Member Contributions
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {teamAnalysis.teamMembers.map((member, idx) => (
@@ -386,32 +392,35 @@ export function TeamAnalysisPanel({
       </motion.div>
 
       {/* Recommendations */}
-      {teamAnalysis.recommendations && teamAnalysis.recommendations.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Strategic Recommendations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {teamAnalysis.recommendations.map((rec, idx) => (
-                  <li
-                    key={idx}
-                    className="text-sm text-muted-foreground flex items-start gap-2"
-                  >
-                    <span className="text-primary mt-1">-</span>
-                    <span>{rec}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+      {teamAnalysis.recommendations &&
+        teamAnalysis.recommendations.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Strategic Recommendations
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {teamAnalysis.recommendations.map((rec, idx) => (
+                    <li
+                      key={idx}
+                      className="text-sm text-muted-foreground flex items-start gap-2"
+                    >
+                      <span className="text-primary mt-1">-</span>
+                      <span>{rec}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
       {/* Risks */}
       {teamAnalysis.risks && teamAnalysis.risks.length > 0 && (

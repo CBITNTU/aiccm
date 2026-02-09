@@ -13,7 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail, Loader2, UserPlus, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  Mail,
+  Loader2,
+  UserPlus,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface InviteTeamMemberDialogProps {
@@ -77,7 +83,9 @@ export function InviteTeamMemberDialog({
       }, 1500);
     } catch (err) {
       console.error("Invite error:", err);
-      setError(err instanceof Error ? err.message : "Failed to send invitation");
+      setError(
+        err instanceof Error ? err.message : "Failed to send invitation",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +109,8 @@ export function InviteTeamMemberDialog({
             Invite Team Member
           </DialogTitle>
           <DialogDescription>
-            Send an invitation to join {companyName}. They will receive an email with a link to create their account.
+            Send an invitation to join {companyName}. They will receive an email
+            with a link to create their account.
           </DialogDescription>
         </DialogHeader>
 

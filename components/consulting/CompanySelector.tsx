@@ -35,7 +35,7 @@ export function CompanySelector({
   const { user } = useAuth();
   const router = useRouter();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +88,7 @@ export function CompanySelector({
       if (companyToSelect && companyToSelect.id !== selectedCompany?.id) {
         console.log(
           "CompanySelector: Selecting company from prop:",
-          companyToSelect.company_name
+          companyToSelect.company_name,
         );
         setSelectedCompany(companyToSelect);
         onCompanySelect?.(companyToSelect);
@@ -97,11 +97,12 @@ export function CompanySelector({
       // Auto-select first company only if nothing is selected yet
       console.log(
         "CompanySelector: Auto-selecting first company:",
-        companies[0].company_name
+        companies[0].company_name,
       );
       setSelectedCompany(companies[0]);
       onCompanySelect?.(companies[0]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: sync selectedCompany from id/companies
   }, [selectedCompanyId, companies, selectedCompany?.id, onCompanySelect]);
 
   const handleCompanyChange = (companyId: string) => {

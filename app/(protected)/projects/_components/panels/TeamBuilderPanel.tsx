@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAddTeamMember, useRemoveTeamMember } from "@/hooks/useProjectMutations";
+import {
+  useAddTeamMember,
+  useRemoveTeamMember,
+} from "@/hooks/useProjectMutations";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -93,7 +96,7 @@ export function TeamBuilderPanel({
   // Filter out partners that are already team members
   const teamCompanyIds = new Set(teamMembers.map((m) => m.company_id));
   const availablePartners = recommendedPartners.filter(
-    (p) => !teamCompanyIds.has(p.id)
+    (p) => !teamCompanyIds.has(p.id),
   );
 
   return (
@@ -130,7 +133,9 @@ export function TeamBuilderPanel({
                   <TableHead className="hidden md:table-cell">
                     Capabilities
                   </TableHead>
-                  <TableHead className="hidden sm:table-cell">Location</TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    Location
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -171,10 +176,13 @@ export function TeamBuilderPanel({
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Remove Partner</AlertDialogTitle>
+                                <AlertDialogTitle>
+                                  Remove Partner
+                                </AlertDialogTitle>
                                 <AlertDialogDescription>
                                   Are you sure you want to remove{" "}
-                                  {member.companies?.company_name} from the team?
+                                  {member.companies?.company_name} from the
+                                  team?
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -183,7 +191,8 @@ export function TeamBuilderPanel({
                                   onClick={() =>
                                     handleRemoveMember(
                                       member.id,
-                                      member.companies?.company_name || "Partner"
+                                      member.companies?.company_name ||
+                                        "Partner",
                                     )
                                   }
                                 >
@@ -257,11 +266,17 @@ export function TeamBuilderPanel({
                         Matching Competencies:
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {partner.matchingCompetencies.slice(0, 5).map((comp, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {comp}
-                          </Badge>
-                        ))}
+                        {partner.matchingCompetencies
+                          .slice(0, 5)
+                          .map((comp, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {comp}
+                            </Badge>
+                          ))}
                         {partner.matchingCompetencies.length > 5 && (
                           <Badge variant="outline" className="text-xs">
                             +{partner.matchingCompetencies.length - 5} more
@@ -271,12 +286,15 @@ export function TeamBuilderPanel({
                     </div>
                   )}
 
-                {partner.certifications && partner.certifications !== "Not specified" && (
-                  <div className="text-sm text-muted-foreground flex items-start gap-2">
-                    <Award className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span className="line-clamp-2">{partner.certifications}</span>
-                  </div>
-                )}
+                {partner.certifications &&
+                  partner.certifications !== "Not specified" && (
+                    <div className="text-sm text-muted-foreground flex items-start gap-2">
+                      <Award className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span className="line-clamp-2">
+                        {partner.certifications}
+                      </span>
+                    </div>
+                  )}
               </motion.div>
             ))}
           </div>

@@ -24,7 +24,14 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Filter, X, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Filter,
+  X,
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
 
 interface DirectoryFiltersState {
@@ -53,7 +60,7 @@ export function DirectorySearchBar({
 }: DirectorySearchBarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tempTaxonomies, setTempTaxonomies] = useState<string[]>(
-    filters.selectedTaxonomies
+    filters.selectedTaxonomies,
   );
 
   // Handle search term change
@@ -153,7 +160,10 @@ export function DirectorySearchBar({
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetContent
+            side="right"
+            className="w-full sm:max-w-md overflow-y-auto"
+          >
             <SheetHeader>
               <SheetTitle>Filter Companies</SheetTitle>
               <SheetDescription>
@@ -178,7 +188,9 @@ export function DirectorySearchBar({
                     <SelectItem value="all">All locations</SelectItem>
                     {uniqueLocations.map((location) => {
                       const safeValue =
-                        location && location.trim() ? location.trim() : "unknown";
+                        location && location.trim()
+                          ? location.trim()
+                          : "unknown";
                       return (
                         <SelectItem key={location} value={safeValue}>
                           {location}
@@ -288,8 +300,12 @@ function TaxonomyFilterContent({
   selectedTaxonomies: string[];
   onTaxonomiesChange: (taxonomies: string[]) => void;
 }) {
-  const [expandedLevel1, setExpandedLevel1] = useState<Record<string, boolean>>({});
-  const [expandedLevel2, setExpandedLevel2] = useState<Record<string, boolean>>({});
+  const [expandedLevel1, setExpandedLevel1] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [expandedLevel2, setExpandedLevel2] = useState<Record<string, boolean>>(
+    {},
+  );
   const { getLevel1, getLevel2, getLevel3, loading } = useTaxonomies();
 
   const handleTaxonomyToggle = (taxonomyId: string, checked: boolean) => {
@@ -326,10 +342,7 @@ function TaxonomyFilterContent({
           const isLevel1Expanded = expandedLevel1[level1Tax.id];
 
           return (
-            <div
-              key={level1Tax.id}
-              className="border rounded-lg p-2.5 bg-card"
-            >
+            <div key={level1Tax.id} className="border rounded-lg p-2.5 bg-card">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id={`sheet-${level1Tax.id}`}
@@ -367,13 +380,19 @@ function TaxonomyFilterContent({
                     const isLevel2Expanded = expandedLevel2[level2Tax.id];
 
                     return (
-                      <div key={level2Tax.id} className="border-l-2 border-muted pl-3 py-1">
+                      <div
+                        key={level2Tax.id}
+                        className="border-l-2 border-muted pl-3 py-1"
+                      >
                         <div className="flex items-center gap-2">
                           <Checkbox
                             id={`sheet-${level2Tax.id}`}
                             checked={selectedTaxonomies.includes(level2Tax.id)}
                             onCheckedChange={(checked) =>
-                              handleTaxonomyToggle(level2Tax.id, checked as boolean)
+                              handleTaxonomyToggle(
+                                level2Tax.id,
+                                checked as boolean,
+                              )
                             }
                           />
                           <Label
@@ -401,12 +420,20 @@ function TaxonomyFilterContent({
                         {isLevel2Expanded && level3Options.length > 0 && (
                           <div className="ml-5 mt-1 space-y-1">
                             {level3Options.map((level3Tax) => (
-                              <div key={level3Tax.id} className="flex items-center gap-2">
+                              <div
+                                key={level3Tax.id}
+                                className="flex items-center gap-2"
+                              >
                                 <Checkbox
                                   id={`sheet-${level3Tax.id}`}
-                                  checked={selectedTaxonomies.includes(level3Tax.id)}
+                                  checked={selectedTaxonomies.includes(
+                                    level3Tax.id,
+                                  )}
                                   onCheckedChange={(checked) =>
-                                    handleTaxonomyToggle(level3Tax.id, checked as boolean)
+                                    handleTaxonomyToggle(
+                                      level3Tax.id,
+                                      checked as boolean,
+                                    )
                                   }
                                 />
                                 <Label

@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse, apiError } from "@/lib/api";
-import { hashToken, isExpired } from "@/lib/utils/invite-token";
+import {
+  createAdminClient,
+  createApiClient,
+  apiResponse,
+} from "@/lib/api";
+import { sanitizeHexToken, hashToken, isExpired } from "@/lib/utils/invite-token";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export interface ValidateInvitationRequest {
   token: string;
@@ -30,20 +35,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const tokenHash = hashToken(token);
+    const safeToken = sanitizeHexToken(token);
+    if (!safeToken) {
+      return apiResponse<ValidateInvitationResponse>({
+        valid: false,
+        error: "Invalid invitation link",
+      });
+    }
+
+    const tokenHash = hashToken(safeToken);
     const supabase = createAdminClient();
 
     // Find invitation by token hash
     const { data: invitation, error: inviteError } = await supabase
       .from("team_invitations")
-      .select(`
+      .select(
+        `
         id,
         email,
         company_id,
         invited_by,
         status,
         expires_at
-      `)
+      `,
+      )
       .eq("token_hash", tokenHash)
       .single();
 
@@ -81,7 +96,8 @@ export async function POST(request: NextRequest) {
 
       return apiResponse<ValidateInvitationResponse>({
         valid: false,
-        error: "This invitation has expired. Please request a new invitation from your company admin.",
+        error:
+          "This invitation has expired. Please request a new invitation from your company admin.",
       });
     }
 
@@ -99,7 +115,9 @@ export async function POST(request: NextRequest) {
       .eq("user_id", invitation.invited_by)
       .single();
 
-    const inviterName = `${inviterProfile?.first_name || ""} ${inviterProfile?.last_name || ""}`.trim() || "Your colleague";
+    const inviterName =
+      `${inviterProfile?.first_name || ""} ${inviterProfile?.last_name || ""}`.trim() ||
+      "Your colleague";
 
     // Check if user already exists
     const { data: existingProfiles } = await supabase
@@ -108,6 +126,28 @@ export async function POST(request: NextRequest) {
       .ilike("email", invitation.email);
 
     const isExistingUser = !!(existingProfiles && existingProfiles.length > 0);
+
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
+    await logApiEvent(request, {
+      actionType: "profile_viewed",
+      userId: userId || undefined,
+      entityType: "team_invitation",
+      entityId: invitation.id,
+      details: {
+        company_id: invitation.company_id,
+        is_existing_user: isExistingUser,
+      },
+    }).catch(() => {});
 
     return apiResponse<ValidateInvitationResponse>({
       valid: true,

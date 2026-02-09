@@ -6,8 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronRight, ChevronDown, Search, Folder, FolderOpen, Loader2 } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Search,
+  Folder,
+  FolderOpen,
+  Loader2,
+} from "lucide-react";
 import type { Database } from "@/lib/supabase/types";
 
 interface CapabilityTreeSelectorProps {
@@ -15,7 +21,8 @@ interface CapabilityTreeSelectorProps {
   onSelectionChange: (capabilityIds: string[]) => void;
 }
 
-type Capability = Database["public"]["Tables"]["company_capabilities_ref"]["Row"];
+type Capability =
+  Database["public"]["Tables"]["company_capabilities_ref"]["Row"];
 
 interface CapabilityGroup {
   category: string | null;
@@ -29,7 +36,9 @@ export function CapabilityTreeSelector({
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
 
   useEffect(() => {
     const fetchCapabilities = async () => {
@@ -47,7 +56,11 @@ export function CapabilityTreeSelector({
         setCapabilities(data || []);
         // Auto-expand all categories by default
         const categories = new Set(
-          data?.map((c) => c.category).filter((cat): cat is string => cat !== null && cat !== undefined) || []
+          data
+            ?.map((c) => c.category)
+            .filter(
+              (cat): cat is string => cat !== null && cat !== undefined,
+            ) || [],
         );
         setExpandedCategories(categories);
       }
@@ -60,7 +73,7 @@ export function CapabilityTreeSelector({
   // Group capabilities by category
   const groupedCapabilities = useMemo(() => {
     const groups = new Map<string | null, Capability[]>();
-    
+
     capabilities.forEach((cap) => {
       const category = cap.category || "Uncategorized";
       if (!groups.has(category)) {
@@ -94,7 +107,8 @@ export function CapabilityTreeSelector({
         const filtered = group.capabilities.filter(
           (cap) =>
             cap.name.toLowerCase().includes(searchLower) ||
-            (group.category && group.category.toLowerCase().includes(searchLower))
+            (group.category &&
+              group.category.toLowerCase().includes(searchLower)),
         );
         return { ...group, capabilities: filtered };
       })
@@ -116,7 +130,9 @@ export function CapabilityTreeSelector({
     if (checked) {
       onSelectionChange([...selectedCapabilities, capabilityId]);
     } else {
-      onSelectionChange(selectedCapabilities.filter((id) => id !== capabilityId));
+      onSelectionChange(
+        selectedCapabilities.filter((id) => id !== capabilityId),
+      );
     }
   };
 
@@ -141,8 +157,8 @@ export function CapabilityTreeSelector({
     <div className="space-y-4">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Select the capabilities needed for this project. You can select multiple
-          capabilities from different categories.
+          Select the capabilities needed for this project. You can select
+          multiple capabilities from different categories.
         </p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -208,7 +224,9 @@ export function CapabilityTreeSelector({
                     {hasCapabilities && isExpanded && (
                       <div className="ml-6 space-y-1">
                         {group.capabilities.map((capability) => {
-                          const isSelected = isCapabilitySelected(capability.id);
+                          const isSelected = isCapabilitySelected(
+                            capability.id,
+                          );
                           return (
                             <div
                               key={capability.id}
@@ -216,13 +234,14 @@ export function CapabilityTreeSelector({
                                 isSelected ? "bg-primary/10" : ""
                               }`}
                             >
-                              <div className="w-5" /> {/* Spacer for alignment */}
+                              <div className="w-5" />{" "}
+                              {/* Spacer for alignment */}
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={(checked) =>
                                   handleCapabilityToggle(
                                     capability.id,
-                                    checked === true
+                                    checked === true,
                                   )
                                 }
                                 id={`capability-${capability.id}`}
@@ -231,7 +250,9 @@ export function CapabilityTreeSelector({
                                 htmlFor={`capability-${capability.id}`}
                                 className="flex-1 cursor-pointer"
                               >
-                                <span className="text-sm">{capability.name}</span>
+                                <span className="text-sm">
+                                  {capability.name}
+                                </span>
                               </label>
                             </div>
                           );

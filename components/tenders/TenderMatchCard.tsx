@@ -92,7 +92,7 @@ export function TenderMatchCard({
     const deadlineDate = new Date(deadline);
     const today = new Date();
     const daysUntilDeadline = Math.ceil(
-      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
     return daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
   };
@@ -149,19 +149,22 @@ export function TenderMatchCard({
           onClick={onViewDetails}
         >
           {(() => {
-            const scoreExplanations = (result.ai_analysis?.score_explanations as {
-              capability?: string;
-              experience?: string;
-              location?: string;
-              certification?: string;
-            }) || {};
+            const scoreExplanations =
+              (result.ai_analysis?.score_explanations as {
+                capability?: string;
+                experience?: string;
+                location?: string;
+                certification?: string;
+              }) || {};
 
             return (
               <>
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Capability:</span>
-                    <span className={`font-medium ${getScoreColor(result.capability_score)}`}>
+                    <span
+                      className={`font-medium ${getScoreColor(result.capability_score)}`}
+                    >
                       {Math.round(result.capability_score)}%
                     </span>
                   </div>
@@ -174,7 +177,9 @@ export function TenderMatchCard({
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Experience:</span>
-                    <span className={`font-medium ${getScoreColor(result.experience_score)}`}>
+                    <span
+                      className={`font-medium ${getScoreColor(result.experience_score)}`}
+                    >
                       {Math.round(result.experience_score)}%
                     </span>
                   </div>
@@ -187,7 +192,9 @@ export function TenderMatchCard({
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Location:</span>
-                    <span className={`font-medium ${getScoreColor(result.location_score)}`}>
+                    <span
+                      className={`font-medium ${getScoreColor(result.location_score)}`}
+                    >
                       {Math.round(result.location_score)}%
                     </span>
                   </div>
@@ -199,8 +206,12 @@ export function TenderMatchCard({
                 </div>
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">Certification:</span>
-                    <span className={`font-medium ${getScoreColor(result.certification_score)}`}>
+                    <span className="text-muted-foreground">
+                      Certification:
+                    </span>
+                    <span
+                      className={`font-medium ${getScoreColor(result.certification_score)}`}
+                    >
                       {Math.round(result.certification_score)}%
                     </span>
                   </div>
@@ -228,8 +239,9 @@ export function TenderMatchCard({
       {result.match_reasons.length > 0 && (
         <div className="mb-3">
           <p className="text-sm font-medium text-green-700 dark:text-green-400 leading-relaxed">
-            ✓ {result.match_reasons[0].length > 120 
-              ? result.match_reasons[0].substring(0, 120) + "..." 
+            ✓{" "}
+            {result.match_reasons[0].length > 120
+              ? result.match_reasons[0].substring(0, 120) + "..."
               : result.match_reasons[0]}
             {result.match_reasons.length > 1 && (
               <span className="ml-1 text-xs opacity-75">
@@ -274,7 +286,9 @@ export function TenderMatchCard({
               onBookmark();
             }}
             disabled={readOnly}
-            title={readOnly ? "Action restricted for pending accounts" : undefined}
+            title={
+              readOnly ? "Action restricted for pending accounts" : undefined
+            }
           >
             <Bookmark
               className={`h-4 w-4 ${result.is_bookmarked ? "fill-current" : ""}`}
@@ -288,7 +302,9 @@ export function TenderMatchCard({
               onDelete();
             }}
             disabled={isDeleting || readOnly}
-            title={readOnly ? "Action restricted for pending accounts" : undefined}
+            title={
+              readOnly ? "Action restricted for pending accounts" : undefined
+            }
           >
             {isDeleting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

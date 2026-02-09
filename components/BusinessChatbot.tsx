@@ -115,7 +115,7 @@ export function BusinessChatbot({ companyData }: BusinessChatbotProps) {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to get response from advisor");
     } finally {
       setIsLoading(false);

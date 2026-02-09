@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- actionType from options */
 import { NextRequest, NextResponse } from "next/server";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { getAuthenticatedUser } from "@/lib/api";
@@ -11,17 +12,20 @@ export function withEventLogging<T = unknown>(
   options?: {
     actionType?: string;
     skipLogging?: boolean; // For routes that don't need logging
-  }
+  },
 ) {
   return async (request: NextRequest, context?: T): Promise<NextResponse> => {
     const startTime = Date.now();
-    let response: NextResponse = NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    let response: NextResponse = NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
     let status: "success" | "error" | "warning" = "success";
     let errorMessage: string | null = null;
 
     try {
       response = await handler(request, context);
-      
+
       // Determine status from response
       if (response.status >= 500) {
         status = "error";
@@ -44,23 +48,25 @@ export function withEventLogging<T = unknown>(
     } catch (error) {
       status = "error";
       errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       // Create error response
       response = NextResponse.json(
         { error: errorMessage || "Internal server error" },
-        { status: 500 }
+        { status: 500 },
       );
-      
+
       return response;
     } finally {
       // Log the request (unless explicitly skipped)
       if (!options?.skipLogging) {
         try {
           // Get user info if available
-          const { user } = await getAuthenticatedUser(request).catch(() => ({ user: null }));
-          
+          const { user } = await getAuthenticatedUser(request).catch(() => ({
+            user: null,
+          }));
+
           const duration = Date.now() - startTime;
-          
+
           await logApiEvent(request, {
             actionType: (options?.actionType || "api_error") as any, // Allow custom action types for auto-logging
             userId: user?.id || null,

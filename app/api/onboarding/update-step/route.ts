@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- profiles has extended columns */
 import { NextRequest } from "next/server";
 import {
   createApiClient,
@@ -90,8 +91,10 @@ export async function POST(request: NextRequest) {
     const adminClient = createAdminClient();
 
     // Get current profile
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = await (adminClient.from("profiles") as any)
+     
+    const { data: profile, error: profileError } = await (
+      adminClient.from("profiles") as any
+    )
       .select("*, onboarding_step, onboarding_completed_at, account_type")
       .eq("user_id", user.id)
       .single();
@@ -102,7 +105,9 @@ export async function POST(request: NextRequest) {
 
     // Validate step progression (can only go forward from current step or revisit)
     // Allow revisiting previous steps for editing
-    const currentStep = (profile.onboarding_step as number) || ONBOARDING_STEPS.EMAIL_VERIFICATION;
+    const currentStep =
+      (profile.onboarding_step as number) ||
+      ONBOARDING_STEPS.EMAIL_VERIFICATION;
     if (step > currentStep + 1) {
       return apiError("Cannot skip steps", 400);
     }
@@ -112,8 +117,15 @@ export async function POST(request: NextRequest) {
       case ONBOARDING_STEPS.PROFILE_INFO: {
         // Profile Information
         const profileData = data as ProfileData;
-        if (!profileData?.firstName || !profileData?.lastName || !profileData?.jobTitle) {
-          return apiError("First name, last name, and job title are required", 400);
+        if (
+          !profileData?.firstName ||
+          !profileData?.lastName ||
+          !profileData?.jobTitle
+        ) {
+          return apiError(
+            "First name, last name, and job title are required",
+            400,
+          );
         }
 
         // Determine next step based on signup type
@@ -123,8 +135,10 @@ export async function POST(request: NextRequest) {
           ? ONBOARDING_STEPS.COMPANY_INFO
           : ONBOARDING_STEPS.ACCOUNT_TYPE;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: updateError } = await (adminClient.from("profiles") as any)
+         
+        const { error: updateError } = await (
+          adminClient.from("profiles") as any
+        )
           .update({
             first_name: profileData.firstName,
             last_name: profileData.lastName,
@@ -150,13 +164,17 @@ export async function POST(request: NextRequest) {
       case ONBOARDING_STEPS.ACCOUNT_TYPE: {
         // Account Type Selection
         const accountData = data as AccountTypeData;
-        if (!accountData?.accountType || !["individual", "business"].includes(accountData.accountType)) {
+        if (
+          !accountData?.accountType ||
+          !["individual", "business"].includes(accountData.accountType)
+        ) {
           return apiError("Valid account type is required", 400);
         }
 
-        const nextStep = accountData.accountType === "business"
-          ? ONBOARDING_STEPS.COMPANY_INFO
-          : ONBOARDING_STEPS.COMPLETE;
+        const nextStep =
+          accountData.accountType === "business"
+            ? ONBOARDING_STEPS.COMPANY_INFO
+            : ONBOARDING_STEPS.COMPLETE;
         const updates: Record<string, unknown> = {
           account_type: accountData.accountType,
           onboarding_step: nextStep,
@@ -167,8 +185,10 @@ export async function POST(request: NextRequest) {
           updates.signup_type = "individual";
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: updateError } = await (adminClient.from("profiles") as any)
+         
+        const { error: updateError } = await (
+          adminClient.from("profiles") as any
+        )
           .update(updates)
           .eq("user_id", user.id);
 
@@ -180,9 +200,10 @@ export async function POST(request: NextRequest) {
         return apiResponse({
           success: true,
           nextStep,
-          message: accountData.accountType === "individual"
-            ? "Account type saved. Proceeding to completion."
-            : "Account type saved. Please provide company information.",
+          message:
+            accountData.accountType === "individual"
+              ? "Account type saved. Proceeding to completion."
+              : "Account type saved. Please provide company information.",
         });
       }
 
@@ -197,8 +218,10 @@ export async function POST(request: NextRequest) {
         if (companyData.action === "invited-confirm") {
           // Invited user is confirming their company membership
           // Just move to the complete step - the company membership was already created
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: updateError } = await (adminClient.from("profiles") as any)
+           
+          const { error: updateError } = await (
+            adminClient.from("profiles") as any
+          )
             .update({
               onboarding_step: ONBOARDING_STEPS.COMPLETE,
             })
@@ -225,14 +248,25 @@ export async function POST(request: NextRequest) {
 
           // Require at least website URL
           if (!createData.websiteUrl || !createData.websiteUrl.trim()) {
-            return apiError("Website URL is required. Please provide at least a website for your company.", 400);
+            return apiError(
+              "Website URL is required. Please provide at least a website for your company.",
+              400,
+            );
           }
 
           // Basic URL validation
-          const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+          const urlPattern =
+            /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
           const websiteUrl = createData.websiteUrl.trim();
-          if (!urlPattern.test(websiteUrl) && !websiteUrl.startsWith("http://") && !websiteUrl.startsWith("https://")) {
-            return apiError("Please enter a valid website URL (e.g., example.com or https://example.com)", 400);
+          if (
+            !urlPattern.test(websiteUrl) &&
+            !websiteUrl.startsWith("http://") &&
+            !websiteUrl.startsWith("https://")
+          ) {
+            return apiError(
+              "Please enter a valid website URL (e.g., example.com or https://example.com)",
+              400,
+            );
           }
 
           const { data: company, error: companyError } = await adminClient
@@ -268,10 +302,12 @@ export async function POST(request: NextRequest) {
           });
 
           // Update user role to sme-owner
-          await adminClient.from("user_roles").upsert(
-            { user_id: user.id, role: "sme-owner" },
-            { onConflict: "user_id,role" }
-          );
+          await adminClient
+            .from("user_roles")
+            .upsert(
+              { user_id: user.id, role: "sme-owner" },
+              { onConflict: "user_id,role" },
+            );
 
           // Remove individual role
           await adminClient
@@ -281,8 +317,10 @@ export async function POST(request: NextRequest) {
             .eq("role", "individual");
 
           // Update profile
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: profileUpdateError } = await (adminClient.from("profiles") as any)
+           
+          const { error: profileUpdateError } = await (
+            adminClient.from("profiles") as any
+          )
             .update({
               signup_type: "new-company",
               onboarding_step: ONBOARDING_STEPS.COMPLETE,
@@ -303,7 +341,9 @@ export async function POST(request: NextRequest) {
               entityId: company.id,
               priority: 5,
             });
-            console.log(`Queued company_taxonomy job for new company: ${company.id}`);
+            console.log(
+              `Queued company_taxonomy job for new company: ${company.id}`,
+            );
           } catch (queueError) {
             console.error("Failed to queue company taxonomy job:", queueError);
             // Don't fail company creation if queueing fails
@@ -328,7 +368,6 @@ export async function POST(request: NextRequest) {
             companyId: company.id,
             message: `Company "${createData.companyName}" created successfully`,
           });
-
         } else if (companyData.action === "join") {
           // Join existing company
           const joinData = companyData as JoinCompanyData;
@@ -358,7 +397,7 @@ export async function POST(request: NextRequest) {
           if (existingRequest) {
             return apiError(
               `You already have a ${existingRequest.status} request to join this company`,
-              409
+              409,
             );
           }
 
@@ -379,10 +418,12 @@ export async function POST(request: NextRequest) {
           }
 
           // Update user role to sme-member
-          await adminClient.from("user_roles").upsert(
-            { user_id: user.id, role: "sme-member" },
-            { onConflict: "user_id,role" }
-          );
+          await adminClient
+            .from("user_roles")
+            .upsert(
+              { user_id: user.id, role: "sme-member" },
+              { onConflict: "user_id,role" },
+            );
 
           // Remove individual role
           await adminClient
@@ -392,7 +433,6 @@ export async function POST(request: NextRequest) {
             .eq("role", "individual");
 
           // Update profile
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (adminClient.from("profiles") as any)
             .update({
               signup_type: "join-company",
@@ -420,7 +460,9 @@ export async function POST(request: NextRequest) {
             for (const admin of adminProfiles || []) {
               if (admin.email) {
                 const emailData = {
-                  companyAdminName: `${admin.first_name || ""} ${admin.last_name || ""}`.trim() || "Admin",
+                  companyAdminName:
+                    `${admin.first_name || ""} ${admin.last_name || ""}`.trim() ||
+                    "Admin",
                   companyId: joinData.companyId,
                   companyName: company.company_name,
                   requesterName: userName,
@@ -450,8 +492,10 @@ export async function POST(request: NextRequest) {
 
       case ONBOARDING_STEPS.COMPLETE: {
         // Mark onboarding as complete
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: completeError } = await (adminClient.from("profiles") as any)
+         
+        const { error: completeError } = await (
+          adminClient.from("profiles") as any
+        )
           .update({
             onboarding_step: ONBOARDING_STEPS.COMPLETE,
             onboarding_completed_at: new Date().toISOString(),
@@ -565,9 +609,13 @@ export async function GET() {
     }
 
     const adminClient = createAdminClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = await (adminClient.from("profiles") as any)
-      .select("onboarding_step, onboarding_completed_at, account_type, signup_type, first_name, last_name, job_title, invited_to_company_id")
+     
+    const { data: profile, error: profileError } = await (
+      adminClient.from("profiles") as any
+    )
+      .select(
+        "onboarding_step, onboarding_completed_at, account_type, signup_type, first_name, last_name, job_title, invited_to_company_id",
+      )
       .eq("user_id", user.id)
       .single();
 
@@ -576,7 +624,10 @@ export async function GET() {
     }
 
     // Fetch invited company info if user is invited
-    let invitedCompanyInfo: { companyName: string; inviterName: string } | null = null;
+    let invitedCompanyInfo: {
+      companyName: string;
+      inviterName: string;
+    } | null = null;
     if (profile.signup_type === "invited" && profile.invited_to_company_id) {
       // Get company name
       const { data: company } = await adminClient
@@ -606,7 +657,9 @@ export async function GET() {
           .single();
 
         if (inviterProfile) {
-          inviterName = `${inviterProfile.first_name || ""} ${inviterProfile.last_name || ""}`.trim() || "Your team";
+          inviterName =
+            `${inviterProfile.first_name || ""} ${inviterProfile.last_name || ""}`.trim() ||
+            "Your team";
         }
       }
 
@@ -619,7 +672,9 @@ export async function GET() {
     }
 
     return apiResponse({
-      currentStep: (profile.onboarding_step as number) || ONBOARDING_STEPS.EMAIL_VERIFICATION,
+      currentStep:
+        (profile.onboarding_step as number) ||
+        ONBOARDING_STEPS.EMAIL_VERIFICATION,
       completed: !!profile.onboarding_completed_at,
       accountType: profile.account_type as string | null,
       signupType: profile.signup_type as string | null,

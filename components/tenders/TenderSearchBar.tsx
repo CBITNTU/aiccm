@@ -89,7 +89,11 @@ export function TenderSearchBar({
 
   // Handle keyword change
   const handleKeywordChange = (value: string) => {
-    if (filterType === "database" && onDatabaseFiltersChange && databaseFilters) {
+    if (
+      filterType === "database" &&
+      onDatabaseFiltersChange &&
+      databaseFilters
+    ) {
       onDatabaseFiltersChange({ ...databaseFilters, keyword: value });
     } else if (
       filterType === "matching" &&
@@ -120,7 +124,8 @@ export function TenderSearchBar({
       let count = 0;
       if (matchingFilters.sortBy !== "overall_score") count++;
       if (matchingFilters.sortDirection !== "desc") count++;
-      if (matchingFilters.minScore > 0 || matchingFilters.maxScore < 100) count++;
+      if (matchingFilters.minScore > 0 || matchingFilters.maxScore < 100)
+        count++;
       if (matchingFilters.showApplied !== "all") count++;
       if (matchingFilters.quickFilter) count++;
       return count;
@@ -195,7 +200,11 @@ export function TenderSearchBar({
 
   // Remove individual filter
   const removeFilter = (key: string) => {
-    if (filterType === "database" && onDatabaseFiltersChange && databaseFilters) {
+    if (
+      filterType === "database" &&
+      onDatabaseFiltersChange &&
+      databaseFilters
+    ) {
       const newFilters = { ...databaseFilters };
       if (key === "location") newFilters.location = undefined;
       if (key === "status") newFilters.status = undefined;
@@ -251,10 +260,15 @@ export function TenderSearchBar({
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetContent
+            side="right"
+            className="w-full sm:max-w-md overflow-y-auto"
+          >
             <SheetHeader>
               <SheetTitle>
-                {filterType === "database" ? "Filter Tenders" : "Filter & Sort Matches"}
+                {filterType === "database"
+                  ? "Filter Tenders"
+                  : "Filter & Sort Matches"}
               </SheetTitle>
               <SheetDescription>
                 {filterType === "database"
@@ -264,18 +278,22 @@ export function TenderSearchBar({
             </SheetHeader>
 
             <div className="space-y-6 py-6">
-              {filterType === "database" && databaseFilters && onDatabaseFiltersChange && (
-                <DatabaseFilterContent
-                  filters={databaseFilters}
-                  onFiltersChange={onDatabaseFiltersChange}
-                />
-              )}
-              {filterType === "matching" && matchingFilters && onMatchingFiltersChange && (
-                <MatchingFilterContent
-                  filters={matchingFilters}
-                  onFiltersChange={onMatchingFiltersChange}
-                />
-              )}
+              {filterType === "database" &&
+                databaseFilters &&
+                onDatabaseFiltersChange && (
+                  <DatabaseFilterContent
+                    filters={databaseFilters}
+                    onFiltersChange={onDatabaseFiltersChange}
+                  />
+                )}
+              {filterType === "matching" &&
+                matchingFilters &&
+                onMatchingFiltersChange && (
+                  <MatchingFilterContent
+                    filters={matchingFilters}
+                    onFiltersChange={onMatchingFiltersChange}
+                  />
+                )}
             </div>
 
             <SheetFooter className="flex gap-2 sm:flex-row">
@@ -345,7 +363,9 @@ function DatabaseFilterContent({
         <Label className="text-sm font-medium">Date Range</Label>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-xs text-muted-foreground mb-1.5 block">From</Label>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">
+              From
+            </Label>
             <Input
               type="date"
               value={formatDateForInput(filters.dateFrom)}
@@ -353,7 +373,9 @@ function DatabaseFilterContent({
             />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground mb-1.5 block">To</Label>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">
+              To
+            </Label>
             <Input
               type="date"
               value={formatDateForInput(filters.dateTo)}
@@ -378,7 +400,7 @@ function DatabaseFilterContent({
               onChange={(e) =>
                 handleChange(
                   "budgetMin",
-                  e.target.value ? Number(e.target.value) : null
+                  e.target.value ? Number(e.target.value) : null,
                 )
               }
             />
@@ -394,7 +416,7 @@ function DatabaseFilterContent({
               onChange={(e) =>
                 handleChange(
                   "budgetMax",
-                  e.target.value ? Number(e.target.value) : null
+                  e.target.value ? Number(e.target.value) : null,
                 )
               }
             />
@@ -444,7 +466,10 @@ function MatchingFilterContent({
   filters: MatchingFiltersState;
   onFiltersChange: (filters: MatchingFiltersState) => void;
 }) {
-  const handleChange = (key: keyof MatchingFiltersState, value: string | number | null) => {
+  const handleChange = (
+    key: keyof MatchingFiltersState,
+    value: string | number | null,
+  ) => {
     onFiltersChange({ ...filters, [key]: value });
   };
 
@@ -474,7 +499,9 @@ function MatchingFilterContent({
               <SelectItem value="capability_score">Capability Match</SelectItem>
               <SelectItem value="experience_score">Experience Match</SelectItem>
               <SelectItem value="location_score">Location Match</SelectItem>
-              <SelectItem value="certification_score">Certification Match</SelectItem>
+              <SelectItem value="certification_score">
+                Certification Match
+              </SelectItem>
               <SelectItem value="created_at">Date Analyzed</SelectItem>
               <SelectItem value="deadline">Tender Deadline</SelectItem>
               <SelectItem value="budget">Budget</SelectItem>
@@ -553,12 +580,14 @@ function MatchingFilterContent({
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            variant={filters.quickFilter === "high_score" ? "default" : "outline"}
+            variant={
+              filters.quickFilter === "high_score" ? "default" : "outline"
+            }
             size="sm"
             onClick={() =>
               handleChange(
                 "quickFilter",
-                filters.quickFilter === "high_score" ? null : "high_score"
+                filters.quickFilter === "high_score" ? null : "high_score",
               )
             }
           >
@@ -571,7 +600,7 @@ function MatchingFilterContent({
             onClick={() =>
               handleChange(
                 "quickFilter",
-                filters.quickFilter === "urgent" ? null : "urgent"
+                filters.quickFilter === "urgent" ? null : "urgent",
               )
             }
           >
@@ -579,12 +608,14 @@ function MatchingFilterContent({
           </Button>
           <Button
             type="button"
-            variant={filters.quickFilter === "high_value" ? "default" : "outline"}
+            variant={
+              filters.quickFilter === "high_value" ? "default" : "outline"
+            }
             size="sm"
             onClick={() =>
               handleChange(
                 "quickFilter",
-                filters.quickFilter === "high_value" ? null : "high_value"
+                filters.quickFilter === "high_value" ? null : "high_value",
               )
             }
           >

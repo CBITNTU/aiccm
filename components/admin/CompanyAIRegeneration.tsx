@@ -11,9 +11,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { useBatchProgress } from "@/hooks/useBatchProgress";
-import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const STORAGE_KEY = "company_ai_regeneration_batch_id";
@@ -22,7 +27,7 @@ export function CompanyAIRegeneration() {
   const [isOpen, setIsOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
-  const { batch, progress, isLoading } = useBatchProgress(batchId, !!batchId);
+  const { batch, progress, isLoading: _isLoading } = useBatchProgress(batchId, !!batchId);
 
   // Load batch ID from localStorage on mount
   useEffect(() => {
@@ -59,13 +64,15 @@ export function CompanyAIRegeneration() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ batchSize: 10, continuous: true }),
       });
-      
+
       const data = await response.json();
       console.log("✅ Worker triggered:", data);
-      
+
       if (!response.ok) {
         console.error("❌ Worker error:", data);
-        toast.error("Failed to start worker. Jobs are queued but not processing.");
+        toast.error(
+          "Failed to start worker. Jobs are queued but not processing.",
+        );
       } else {
         console.log(`✅ Worker processing: ${data.processed} jobs processed`);
       }
@@ -91,21 +98,24 @@ export function CompanyAIRegeneration() {
       }
 
       setBatchId(data.batchId);
-      toast.success(`Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`);
-      
+      toast.success(
+        `Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`,
+      );
+
       // Manually trigger the worker to start processing
       triggerWorker();
     } catch (error) {
       console.error("Error regenerating company AI:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to start regeneration"
+        error instanceof Error ? error.message : "Failed to start regeneration",
       );
     } finally {
       setIsRegenerating(false);
     }
   };
 
-  const isComplete = batch?.status === "completed" || batch?.status === "failed";
+  const isComplete =
+    batch?.status === "completed" || batch?.status === "failed";
   const isProcessing = batch && !isComplete;
 
   return (
@@ -142,11 +152,13 @@ export function CompanyAIRegeneration() {
         </DialogTrigger>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Regenerate Company AI Summaries & Taxonomies</DialogTitle>
+            <DialogTitle>
+              Regenerate Company AI Summaries & Taxonomies
+            </DialogTitle>
             <DialogDescription>
-              This will regenerate AI summaries and capability taxonomies for all companies.
-              This will dynamically create new capabilities based on company data.
-              This process may take several minutes.
+              This will regenerate AI summaries and capability taxonomies for
+              all companies. This will dynamically create new capabilities based
+              on company data. This process may take several minutes.
             </DialogDescription>
           </DialogHeader>
 
@@ -180,11 +192,15 @@ export function CompanyAIRegeneration() {
                     <p className="text-muted-foreground">Total Jobs</p>
                   </div>
                   <div>
-                    <div className="font-medium text-green-600">{batch.completedJobs}</div>
+                    <div className="font-medium text-green-600">
+                      {batch.completedJobs}
+                    </div>
                     <p className="text-muted-foreground">Completed</p>
                   </div>
                   <div>
-                    <div className="font-medium text-red-600">{batch.failedJobs}</div>
+                    <div className="font-medium text-red-600">
+                      {batch.failedJobs}
+                    </div>
                     <p className="text-muted-foreground">Failed</p>
                   </div>
                 </div>
@@ -203,8 +219,8 @@ export function CompanyAIRegeneration() {
                     {batch.status === "completed"
                       ? "Regeneration Complete"
                       : batch.status === "failed"
-                      ? "Regeneration Failed"
-                      : "Processing..."}
+                        ? "Regeneration Failed"
+                        : "Processing..."}
                   </span>
                 </div>
 
@@ -217,7 +233,8 @@ export function CompanyAIRegeneration() {
                           Jobs Queued
                         </p>
                         <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                          Jobs are queued but not processing. Click the button below to start processing.
+                          Jobs are queued but not processing. Click the button
+                          below to start processing.
                         </p>
                         <Button
                           variant="outline"

@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- tender/result row types */
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -88,7 +89,9 @@ export function TenderDetailDialog({
       const supabase = createClient();
       const { data, error } = await supabase
         .from("tenders")
-        .select("reference_number, documents, ai_summary, ai_capability_taxonomy")
+        .select(
+          "reference_number, documents, ai_summary, ai_capability_taxonomy",
+        )
         .eq("id", result.tender_id)
         .maybeSingle();
 
@@ -106,10 +109,14 @@ export function TenderDetailDialog({
         setTaxonomies(
           taxData
             .map((tt) => ({
-              id: (tt.taxonomies as { id: string; name: string } | null)?.id || "",
-              name: (tt.taxonomies as { id: string; name: string } | null)?.name || "",
+              id:
+                (tt.taxonomies as { id: string; name: string } | null)?.id ||
+                "",
+              name:
+                (tt.taxonomies as { id: string; name: string } | null)?.name ||
+                "",
             }))
-            .filter((t) => t.name)
+            .filter((t) => t.name),
         );
       }
     };
@@ -128,7 +135,7 @@ export function TenderDetailDialog({
   };
 
   const getScoreVariant = (
-    score: number
+    score: number,
   ): "default" | "secondary" | "destructive" => {
     if (score >= 80) return "default";
     if (score >= 60) return "secondary";
@@ -161,7 +168,7 @@ export function TenderDetailDialog({
         tenderId: result.tender_id,
         tenderTitle: result.tenders?.title,
         companyId: companyId,
-      })
+      }),
     );
     router.push("/vo");
   };
@@ -263,7 +270,12 @@ export function TenderDetailDialog({
 
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button onClick={handleApplySolo} className="w-full" size="lg" variant="outline">
+            <Button
+              onClick={handleApplySolo}
+              className="w-full"
+              size="lg"
+              variant="outline"
+            >
               <ExternalLink className="w-4 h-4 mr-2" />
               Go to Original Website
             </Button>
@@ -300,23 +312,29 @@ export function TenderDetailDialog({
             <h4 className="font-medium mb-4">Match Score Breakdown</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(() => {
-                const scoreExplanations = (result.ai_analysis?.score_explanations as {
-                  capability?: string;
-                  experience?: string;
-                  location?: string;
-                  certification?: string;
-                }) || {};
+                const scoreExplanations =
+                  (result.ai_analysis?.score_explanations as {
+                    capability?: string;
+                    experience?: string;
+                    location?: string;
+                    certification?: string;
+                  }) || {};
 
                 return (
                   <>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Capability</span>
-                        <span className={getScoreColor(result.capability_score)}>
+                        <span
+                          className={getScoreColor(result.capability_score)}
+                        >
                           {result.capability_score}%
                         </span>
                       </div>
-                      <Progress value={result.capability_score} className="h-2" />
+                      <Progress
+                        value={result.capability_score}
+                        className="h-2"
+                      />
                       {scoreExplanations.capability && (
                         <p className="text-xs text-muted-foreground mt-1">
                           {scoreExplanations.capability}
@@ -327,11 +345,16 @@ export function TenderDetailDialog({
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Experience</span>
-                        <span className={getScoreColor(result.experience_score)}>
+                        <span
+                          className={getScoreColor(result.experience_score)}
+                        >
                           {result.experience_score}%
                         </span>
                       </div>
-                      <Progress value={result.experience_score} className="h-2" />
+                      <Progress
+                        value={result.experience_score}
+                        className="h-2"
+                      />
                       {scoreExplanations.experience && (
                         <p className="text-xs text-muted-foreground mt-1">
                           {scoreExplanations.experience}
@@ -357,11 +380,16 @@ export function TenderDetailDialog({
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Certification</span>
-                        <span className={getScoreColor(result.certification_score)}>
+                        <span
+                          className={getScoreColor(result.certification_score)}
+                        >
                           {result.certification_score}%
                         </span>
                       </div>
-                      <Progress value={result.certification_score} className="h-2" />
+                      <Progress
+                        value={result.certification_score}
+                        className="h-2"
+                      />
                       {scoreExplanations.certification && (
                         <p className="text-xs text-muted-foreground mt-1">
                           {scoreExplanations.certification}

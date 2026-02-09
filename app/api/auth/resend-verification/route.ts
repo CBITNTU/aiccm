@@ -11,6 +11,7 @@ import {
   getVerificationResendEmailHtml,
   getPlatformUrl,
 } from "@/lib/email";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,8 +75,24 @@ export async function POST(request: NextRequest) {
 
     if (!emailResult.success) {
       console.error("Failed to send verification email:", emailResult.error);
+      await logApiEvent(request, {
+        actionType: "email_verification_resent",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        status: "error",
+        errorMessage:
+          typeof emailResult.error === "string"
+            ? emailResult.error
+            : String(emailResult.error),
+      }).catch(() => {});
       return apiError("Failed to send verification email", 500);
     }
+
+    await logApiEvent(request, {
+      actionType: "email_verification_resent",
+      userId: user.id,
+      userEmail: user.email || undefined,
+    }).catch(() => {});
 
     return apiResponse({
       success: true,

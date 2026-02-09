@@ -23,10 +23,12 @@ import {
 import { Search, Trash2, Building2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-type Company = Database['public']['Tables']['companies']['Row'];
+type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 export function AdminCompanyManager() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,12 +44,15 @@ export function AdminCompanyManager() {
     if (supabase) {
       fetchCompanies();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase ready
   }, [supabase]);
 
   useEffect(() => {
-    const filtered = companies.filter(company =>
-      company.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (company.description && company.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    const filtered = companies.filter(
+      (company) =>
+        company.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (company.description &&
+          company.description.toLowerCase().includes(searchTerm.toLowerCase())),
     );
     setFilteredCompanies(filtered);
   }, [companies, searchTerm]);
@@ -57,48 +62,51 @@ export function AdminCompanyManager() {
 
     try {
       const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .order('company_name');
+        .from("companies")
+        .select("*")
+        .order("company_name");
 
       if (error) throw error;
       setCompanies(data || []);
     } catch (error) {
-      console.error('Error fetching companies:', error);
-      toast.error('Failed to load companies');
+      console.error("Error fetching companies:", error);
+      toast.error("Failed to load companies");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteCompany = async (companyId: string, companyName: string) => {
+  const handleDeleteCompany = async (
+    companyId: string,
+    companyName: string,
+  ) => {
     if (!supabase) return;
 
     setDeleting(companyId);
     try {
       const { error } = await supabase
-        .from('companies')
+        .from("companies")
         .delete()
-        .eq('id', companyId);
+        .eq("id", companyId);
 
       if (error) {
-        console.error('Delete error:', error);
+        console.error("Delete error:", error);
         toast.error(`Failed to delete ${companyName}: ${error.message}`);
       } else {
         toast.success(`Successfully deleted ${companyName}`);
         // Remove from local state
-        setCompanies(prev => prev.filter(c => c.id !== companyId));
+        setCompanies((prev) => prev.filter((c) => c.id !== companyId));
       }
     } catch (error) {
-      console.error('Error deleting company:', error);
+      console.error("Error deleting company:", error);
       toast.error(`Error deleting ${companyName}`);
     } finally {
       setDeleting(null);
     }
   };
 
-  const systemCompanies = filteredCompanies.filter(c => c.is_system_company);
-  const userCompanies = filteredCompanies.filter(c => !c.is_system_company);
+  const systemCompanies = filteredCompanies.filter((c) => c.is_system_company);
+  const userCompanies = filteredCompanies.filter((c) => !c.is_system_company);
 
   if (loading) {
     return (
@@ -131,7 +139,8 @@ export function AdminCompanyManager() {
             />
           </div>
           <div className="mt-4 text-sm text-muted-foreground">
-            Total: {companies.length} companies ({systemCompanies.length} system, {userCompanies.length} user)
+            Total: {companies.length} companies ({systemCompanies.length}{" "}
+            system, {userCompanies.length} user)
           </div>
         </CardContent>
       </Card>
@@ -142,7 +151,9 @@ export function AdminCompanyManager() {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="secondary">System Companies</Badge>
-              <span className="text-sm font-normal">({systemCompanies.length})</span>
+              <span className="text-sm font-normal">
+                ({systemCompanies.length})
+              </span>
             </div>
           </CardTitle>
         </CardHeader>
@@ -154,11 +165,17 @@ export function AdminCompanyManager() {
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {systemCompanies.map((company) => (
-                <div key={company.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div
+                  key={company.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
                   <div className="flex-1">
                     <div className="font-medium">{company.company_name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {company.postcode} {company.description ? `• ${company.description.substring(0, 100)}...` : ''}
+                      {company.postcode}{" "}
+                      {company.description
+                        ? `• ${company.description.substring(0, 100)}...`
+                        : ""}
                     </div>
                   </div>
                   <AlertDialog>
@@ -179,14 +196,20 @@ export function AdminCompanyManager() {
                           Delete System Company
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete <strong>{company.company_name}</strong>?
-                          This action cannot be undone and will remove all associated data.
+                          Are you sure you want to delete{" "}
+                          <strong>{company.company_name}</strong>? This action
+                          cannot be undone and will remove all associated data.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => handleDeleteCompany(company.id, company.company_name)}
+                          onClick={() =>
+                            handleDeleteCompany(
+                              company.id,
+                              company.company_name,
+                            )
+                          }
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                           Delete Company
@@ -207,7 +230,9 @@ export function AdminCompanyManager() {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="outline">User Companies</Badge>
-              <span className="text-sm font-normal">({userCompanies.length})</span>
+              <span className="text-sm font-normal">
+                ({userCompanies.length})
+              </span>
             </div>
           </CardTitle>
         </CardHeader>
@@ -219,7 +244,10 @@ export function AdminCompanyManager() {
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {userCompanies.map((company) => (
-                <div key={company.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div
+                  key={company.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
                   <div className="flex-1">
                     <div className="font-medium">{company.company_name}</div>
                     <div className="text-sm text-muted-foreground">
@@ -244,14 +272,20 @@ export function AdminCompanyManager() {
                           Delete User Company
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete <strong>{company.company_name}</strong>?
-                          This action cannot be undone.
+                          Are you sure you want to delete{" "}
+                          <strong>{company.company_name}</strong>? This action
+                          cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => handleDeleteCompany(company.id, company.company_name)}
+                          onClick={() =>
+                            handleDeleteCompany(
+                              company.id,
+                              company.company_name,
+                            )
+                          }
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                           Delete Company
@@ -269,8 +303,9 @@ export function AdminCompanyManager() {
       <Alert>
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Note:</strong> You can delete user companies you own, but system companies require superadmin permissions.
-          If you can&apos;t delete system companies, you may need superadmin role assignment.
+          <strong>Note:</strong> You can delete user companies you own, but
+          system companies require superadmin permissions. If you can&apos;t
+          delete system companies, you may need superadmin role assignment.
         </AlertDescription>
       </Alert>
     </div>

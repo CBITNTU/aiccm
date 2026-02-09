@@ -8,7 +8,9 @@ export type EventActionType =
   | "user_login"
   | "user_logout"
   | "user_signup"
+  | "user_signup_invite"
   | "user_email_verified"
+  | "email_verification_resent"
   | "password_reset_requested"
   | "password_reset_completed"
   // Company actions
@@ -19,6 +21,8 @@ export type EventActionType =
   | "company_member_invited"
   | "company_member_approved"
   | "company_member_removed"
+  | "company_searched"
+  | "company_prefill_requested"
   // Tender actions
   | "tender_viewed"
   | "tender_bookmarked"
@@ -26,20 +30,26 @@ export type EventActionType =
   | "tender_applied"
   | "tender_imported"
   | "tender_ai_generated"
+  | "tender_analyzed"
   // Matching actions
   | "matching_started"
   | "matching_triggered"
   | "matching_completed"
+  | "matching_cancelled"
   | "matching_result_viewed"
   // Profile actions
   | "profile_updated"
   | "profile_viewed"
+  | "onboarding_verification_checked"
+  | "platform_stats_viewed"
   // Project/VO actions
   | "project_created"
   | "project_updated"
   | "project_deleted"
   | "project_member_invited"
   | "project_member_joined"
+  | "project_analyzed"
+  | "team_analyzed"
   // Admin actions
   | "admin_user_approved"
   | "admin_user_rejected"
@@ -48,10 +58,21 @@ export type EventActionType =
   | "admin_tender_imported"
   | "admin_tender_ai_regenerated"
   | "admin_taxonomy_updated"
+  | "admin_demo_sync_run"
+  | "admin_demo_sync_add_user"
+  | "admin_demo_sync_results"
+  | "admin_onboarding"
+  | "admin_edit_pending_company"
   // Queue/Processing
   | "queue_job_created"
   | "queue_job_completed"
   | "queue_job_failed"
+  | "queue_status_viewed"
+  | "queue_stats_viewed"
+  | "queue_job_status_viewed"
+  | "queue_debug_viewed"
+  // Other
+  | "chat_advisor_used"
   // System events
   | "system_error"
   | "rate_limit_exceeded"
@@ -141,7 +162,7 @@ export function extractRequestInfo(request: {
       // Check if headers is a Headers object (has .get method) or a plain object
       const isHeadersObject =
         headers instanceof Headers ||
-        typeof (headers as any).get === "function";
+        typeof (headers as unknown as Headers & { get?: (name: string) => string | null }).get === "function";
 
       // Get IP address (check various headers for proxies)
       let forwardedFor: string | string[] | null = null;

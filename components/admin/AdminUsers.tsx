@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- profile/user row types */
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
@@ -40,12 +41,14 @@ interface User {
 }
 
 export default function AdminUsers() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
+    null,
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [_selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [eventsDialogOpen, setEventsDialogOpen] = useState(false);
   const [userEvents, setUserEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
@@ -60,12 +63,14 @@ export default function AdminUsers() {
     if (supabase && user) {
       checkAdminStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase/user change
   }, [supabase, user]);
 
   useEffect(() => {
     if (isAdmin && supabase) {
       fetchUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when isAdmin/supabase change
   }, [isAdmin, supabase]);
 
   const checkAdminStatus = async () => {
@@ -105,17 +110,20 @@ export default function AdminUsers() {
 
       if (rolesError) throw rolesError;
 
-      const roleMap = new Map(userRoles?.map(ur => [ur.user_id, ur.role]));
+      const roleMap = new Map(userRoles?.map((ur) => [ur.user_id, ur.role]));
 
-      const formattedUsers: User[] = profiles?.map(profile => ({
-        id: profile.user_id,
-        email: profile.email || "",
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        created_at: profile.created_at,
-        last_sign_in_at: profile.created_at, // Placeholder, ideally from auth.users
-        role: (roleMap.get(profile.user_id) as 'superadmin' | 'sme-owner') || 'sme-owner'
-      })) || [];
+      const formattedUsers: User[] =
+        profiles?.map((profile) => ({
+          id: profile.user_id,
+          email: profile.email || "",
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          created_at: profile.created_at,
+          last_sign_in_at: profile.created_at, // Placeholder, ideally from auth.users
+          role:
+            (roleMap.get(profile.user_id) as "superadmin" | "sme-owner") ||
+            "sme-owner",
+        })) || [];
 
       setUsers(formattedUsers);
     } catch (error: any) {
@@ -131,7 +139,7 @@ export default function AdminUsers() {
 
     if (
       !confirm(
-        "Are you sure you want to delete this user? This action cannot be undone."
+        "Are you sure you want to delete this user? This action cannot be undone.",
       )
     ) {
       return;
@@ -158,7 +166,7 @@ export default function AdminUsers() {
 
   const fetchUserEvents = async (userId: string) => {
     if (!supabase) return;
-    
+
     setLoadingEvents(true);
     try {
       const { data, error } = await supabase
@@ -184,7 +192,10 @@ export default function AdminUsers() {
     await fetchUserEvents(userId);
   };
 
-  const toggleUserRole = async (userId: string, currentRole: "superadmin" | "sme-owner") => {
+  const toggleUserRole = async (
+    userId: string,
+    currentRole: "superadmin" | "sme-owner",
+  ) => {
     if (!supabase) return;
 
     const newRole = currentRole === "superadmin" ? "sme-owner" : "superadmin";
@@ -223,7 +234,7 @@ export default function AdminUsers() {
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${u.first_name} ${u.last_name}`
         .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+        .includes(searchTerm.toLowerCase()),
   );
 
   if (!isAdmin && !loading) {
@@ -232,8 +243,8 @@ export default function AdminUsers() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            You don&apos;t have permission to access this page. Superadmin access
-            required.
+            You don&apos;t have permission to access this page. Superadmin
+            access required.
           </AlertDescription>
         </Alert>
       </div>
@@ -253,7 +264,9 @@ export default function AdminUsers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">User Management</h2>
+          <h2 className="text-2xl font-bold text-foreground">
+            User Management
+          </h2>
           <p className="text-muted-foreground mt-2">
             Manage platform users and their permissions
           </p>
@@ -313,13 +326,17 @@ export default function AdminUsers() {
                     <TableCell>
                       <Badge
                         variant={
-                          userData.role === "superadmin" ? "default" : "secondary"
+                          userData.role === "superadmin"
+                            ? "default"
+                            : "secondary"
                         }
                         className="capitalize"
                       >
                         {(() => {
                           // Handle both new and old role values for display
-                          return userData.role === "superadmin" ? "Superadmin" : "SME Owner";
+                          return userData.role === "superadmin"
+                            ? "Superadmin"
+                            : "SME Owner";
                         })()}
                       </Badge>
                     </TableCell>
@@ -340,11 +357,16 @@ export default function AdminUsers() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            toggleUserRole(userData.id, userData.role || "sme-owner")
+                            toggleUserRole(
+                              userData.id,
+                              userData.role || "sme-owner",
+                            )
                           }
                         >
                           <Shield className="w-4 h-4 mr-1" />
-                          {userData.role === "superadmin" ? "Remove Superadmin" : "Make Superadmin"}
+                          {userData.role === "superadmin"
+                            ? "Remove Superadmin"
+                            : "Make Superadmin"}
                         </Button>
                         <Button
                           variant="destructive"
@@ -376,8 +398,8 @@ export default function AdminUsers() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Superadmin Instructions:</strong> To create a superadmin account,
-            you need to:
+            <strong>Superadmin Instructions:</strong> To create a superadmin
+            account, you need to:
             <br />
             1. Create a regular account through signup
             <br />
@@ -404,7 +426,9 @@ export default function AdminUsers() {
             </div>
           ) : userEvents.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No events found for this user.</p>
+              <p className="text-muted-foreground">
+                No events found for this user.
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -429,10 +453,13 @@ export default function AdminUsers() {
                       <TableCell>
                         {event.entity_type && event.entity_id ? (
                           <span className="text-sm">
-                            {event.entity_type}: {event.entity_id.substring(0, 8)}...
+                            {event.entity_type}:{" "}
+                            {event.entity_id.substring(0, 8)}...
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <span className="text-muted-foreground text-sm">
+                            -
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -441,8 +468,8 @@ export default function AdminUsers() {
                             event.status === "success"
                               ? "default"
                               : event.status === "error"
-                              ? "destructive"
-                              : "secondary"
+                                ? "destructive"
+                                : "secondary"
                           }
                         >
                           {event.status || "success"}
@@ -452,7 +479,8 @@ export default function AdminUsers() {
                         {new Date(event.created_at).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        {event.details && Object.keys(event.details).length > 0 ? (
+                        {event.details &&
+                        Object.keys(event.details).length > 0 ? (
                           <details className="text-xs">
                             <summary className="cursor-pointer text-primary hover:underline">
                               View details
@@ -462,7 +490,9 @@ export default function AdminUsers() {
                             </pre>
                           </details>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <span className="text-muted-foreground text-sm">
+                            -
+                          </span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -476,4 +506,3 @@ export default function AdminUsers() {
     </div>
   );
 }
-

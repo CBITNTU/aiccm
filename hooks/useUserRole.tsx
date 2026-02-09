@@ -9,7 +9,7 @@ import type { Database } from "@/lib/supabase/types";
 export const useUserRole = () => {
   const { user, loading: authLoading } = useAuth();
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null
+    null,
   );
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

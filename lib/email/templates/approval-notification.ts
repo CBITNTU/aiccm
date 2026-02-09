@@ -1,4 +1,5 @@
 import { getPlatformName, getPlatformUrl } from "../index";
+import { escapeHtml } from "../utils";
 
 export interface ApprovalNotificationEmailData {
   userName: string;
@@ -9,7 +10,7 @@ export interface ApprovalNotificationEmailData {
 }
 
 export function getApprovalNotificationEmailSubject(
-  data: ApprovalNotificationEmailData
+  data: ApprovalNotificationEmailData,
 ): string {
   const platformName = getPlatformName();
   if (data.approved) {
@@ -19,22 +20,29 @@ export function getApprovalNotificationEmailSubject(
 }
 
 export function getApprovalNotificationEmailHtml(
-  data: ApprovalNotificationEmailData
+  data: ApprovalNotificationEmailData,
 ): string {
   const { userName, approved, rejectionReason, signupType, companyName } = data;
-  const platformName = getPlatformName();
-  const dashboardUrl = getPlatformUrl("/dashboard");
+  const _platformName = getPlatformName();
+  const _dashboardUrl = getPlatformUrl("/dashboard");
 
   if (approved) {
-    return getApprovedEmailHtml(userName, signupType, companyName);
+    return getApprovedEmailHtml(
+      escapeHtml(userName),
+      signupType,
+      companyName != null ? escapeHtml(companyName) : undefined,
+    );
   }
-  return getRejectedEmailHtml(userName, rejectionReason);
+  return getRejectedEmailHtml(
+    escapeHtml(userName),
+    rejectionReason != null ? escapeHtml(rejectionReason) : undefined,
+  );
 }
 
 function getApprovedEmailHtml(
   userName: string,
   signupType: string,
-  companyName?: string
+  companyName?: string,
 ): string {
   const platformName = getPlatformName();
   const dashboardUrl = getPlatformUrl("/dashboard");
@@ -130,7 +138,7 @@ function getApprovedEmailHtml(
 
 function getRejectedEmailHtml(
   userName: string,
-  rejectionReason?: string
+  rejectionReason?: string,
 ): string {
   const platformName = getPlatformName();
   const platformUrl = getPlatformUrl();
@@ -190,7 +198,7 @@ export interface CompanyAdminApprovalEmailData {
 }
 
 export function getCompanyAdminApprovalEmailSubject(
-  data: CompanyAdminApprovalEmailData
+  data: CompanyAdminApprovalEmailData,
 ): string {
   if (data.approvedByCompanyAdmin) {
     return `${data.companyName} has approved your join request - Pending platform approval`;
@@ -199,10 +207,11 @@ export function getCompanyAdminApprovalEmailSubject(
 }
 
 export function getCompanyAdminApprovalEmailHtml(
-  data: CompanyAdminApprovalEmailData
+  data: CompanyAdminApprovalEmailData,
 ): string {
-  const { userName, companyName, approvedByCompanyAdmin, companyAdminName } =
+  const { userName, companyName, approvedByCompanyAdmin, companyAdminName: _companyAdminName } =
     data;
+  void _companyAdminName;
   const platformName = getPlatformName();
 
   if (approvedByCompanyAdmin) {

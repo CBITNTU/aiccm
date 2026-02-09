@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -271,38 +266,39 @@ export function TeamBuilder({
             </div>
 
             {/* Team Member Contributions */}
-            {teamAnalysis.teamMembers && teamAnalysis.teamMembers.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    Team Member Contributions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {teamAnalysis.teamMembers.map((member, idx) => (
-                    <div key={idx} className="border rounded-lg p-3">
-                      <div className="font-semibold text-sm mb-2 flex items-center gap-2">
-                        {idx === 0 && (
-                          <Crown className="h-4 w-4 text-yellow-500" />
-                        )}
-                        {member.companyName}
+            {teamAnalysis.teamMembers &&
+              teamAnalysis.teamMembers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      Team Member Contributions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {teamAnalysis.teamMembers.map((member, idx) => (
+                      <div key={idx} className="border rounded-lg p-3">
+                        <div className="font-semibold text-sm mb-2 flex items-center gap-2">
+                          {idx === 0 && (
+                            <Crown className="h-4 w-4 text-yellow-500" />
+                          )}
+                          {member.companyName}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {member.contribution.map((contrib, cIdx) => (
+                            <Badge
+                              key={cIdx}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {contrib}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {member.contribution.map((contrib, cIdx) => (
-                          <Badge
-                            key={cIdx}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {contrib}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
             {/* Team Competencies */}
             <Card>

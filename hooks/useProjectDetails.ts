@@ -3,7 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
-import type { Project, GapAnalysis, TeamAnalysis, RecommendedPartner } from "./useProjects";
+import type {
+  Project,
+  GapAnalysis,
+  TeamAnalysis,
+  RecommendedPartner,
+} from "./useProjects";
 
 export interface Tender {
   id: string;
@@ -74,7 +79,7 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
       `
       *,
       tenders:target_tender_id (*)
-    `
+    `,
     )
     .eq("id", projectId)
     .single();
@@ -90,7 +95,7 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
       `
       *,
       companies:company_id (*)
-    `
+    `,
     )
     .eq("vo_id", projectId);
 
@@ -107,7 +112,9 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
   if (project.lead_company_id && project.target_tender_id) {
     const { data: matchRow } = await supabase
       .from("matching_results")
-      .select("id, overall_score, capability_score, experience_score, location_score, certification_score, match_reasons, ai_analysis")
+      .select(
+        "id, overall_score, capability_score, experience_score, location_score, certification_score, match_reasons, ai_analysis",
+      )
       .eq("company_id", project.lead_company_id)
       .eq("tender_id", project.target_tender_id)
       .maybeSingle();

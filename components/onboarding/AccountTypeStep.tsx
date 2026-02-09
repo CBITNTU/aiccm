@@ -4,7 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { User, Building2, Loader2, Search, Users, FileText } from "lucide-react";
+import {
+  User,
+  Building2,
+  Loader2,
+  Search,
+  Users,
+  FileText,
+} from "lucide-react";
 import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
 interface AccountTypeStepProps {
@@ -12,7 +19,9 @@ interface AccountTypeStepProps {
 }
 
 export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
-  const [selectedType, setSelectedType] = useState<"individual" | "business" | null>(null);
+  const [selectedType, setSelectedType] = useState<
+    "individual" | "business" | null
+  >(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,8 +53,7 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
       onComplete(selectedType);
     } catch (error) {
       console.error("Error saving account type:", error);
-      const message =
-        error instanceof Error ? error.message : "Failed to save";
+      const message = error instanceof Error ? error.message : "Failed to save";
       setError(message);
     } finally {
       setIsLoading(false);
@@ -56,7 +64,9 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
     <div className="w-full max-w-2xl mx-auto">
       <Card className="card-professional">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">How would you like to use TNDRX?</CardTitle>
+          <CardTitle className="text-2xl">
+            How would you like to use TNDRX?
+          </CardTitle>
           <p className="text-muted-foreground mt-2">
             Choose the option that best describes your needs
           </p>
@@ -75,9 +85,7 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
             >
               <div
                 className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
-                  selectedType === "individual"
-                    ? "bg-primary/10"
-                    : "bg-muted"
+                  selectedType === "individual" ? "bg-primary/10" : "bg-muted"
                 }`}
               >
                 <User
@@ -137,9 +145,7 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
             >
               <div
                 className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
-                  selectedType === "business"
-                    ? "bg-primary/10"
-                    : "bg-muted"
+                  selectedType === "business" ? "bg-primary/10" : "bg-muted"
                 }`}
               >
                 <Building2

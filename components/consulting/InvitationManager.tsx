@@ -38,14 +38,14 @@ export function InvitationManager({
 
   // Filter out lead and already accepted members
   const invitableMembers = members.filter(
-    (m) => m.role === "invited" || m.role === "member"
+    (m) => m.role === "invited" || m.role === "member",
   );
 
   const togglePartner = (partnerId: string) => {
     setSelectedPartners((prev) =>
       prev.includes(partnerId)
         ? prev.filter((id) => id !== partnerId)
-        : [...prev, partnerId]
+        : [...prev, partnerId],
     );
   };
 

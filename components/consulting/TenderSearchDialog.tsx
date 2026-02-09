@@ -47,7 +47,9 @@ async function searchTenders(query: string): Promise<Tender[]> {
 
   let queryBuilder = supabase
     .from("tenders")
-    .select("id, title, buyer, deadline, status, location, budget_max, description")
+    .select(
+      "id, title, buyer, deadline, status, location, budget_max, description",
+    )
     .in("status", ["open", "closing_soon"])
     .order("deadline", { ascending: true })
     .limit(50);
@@ -55,7 +57,7 @@ async function searchTenders(query: string): Promise<Tender[]> {
   if (query.trim()) {
     // Search in title, buyer, and description
     queryBuilder = queryBuilder.or(
-      `title.ilike.%${query}%,buyer.ilike.%${query}%,description.ilike.%${query}%`
+      `title.ilike.%${query}%,buyer.ilike.%${query}%,description.ilike.%${query}%`,
     );
   }
 
@@ -89,6 +91,7 @@ export function TenderSearchDialog({
   // Reset search when dialog opens
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset form when dialog opens
       setSearchQuery("");
       setDebouncedQuery("");
     }
@@ -100,7 +103,8 @@ export function TenderSearchDialog({
     enabled: open,
   });
 
-  const filteredTenders = tenders?.filter((t) => t.id !== excludeTenderId) || [];
+  const filteredTenders =
+    tenders?.filter((t) => t.id !== excludeTenderId) || [];
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "No deadline";
@@ -172,7 +176,9 @@ export function TenderSearchDialog({
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium line-clamp-2">{tender.title}</h4>
+                      <h4 className="font-medium line-clamp-2">
+                        {tender.title}
+                      </h4>
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
@@ -208,10 +214,16 @@ export function TenderSearchDialog({
                     </div>
 
                     <Badge
-                      variant={tender.status === "closing_soon" ? "destructive" : "secondary"}
+                      variant={
+                        tender.status === "closing_soon"
+                          ? "destructive"
+                          : "secondary"
+                      }
                       className="shrink-0"
                     >
-                      {tender.status === "closing_soon" ? "Closing Soon" : "Open"}
+                      {tender.status === "closing_soon"
+                        ? "Closing Soon"
+                        : "Open"}
                     </Badge>
                   </div>
                 </div>

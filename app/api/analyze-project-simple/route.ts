@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
-import { chatCompletion, apiResponse, apiError } from "@/lib/api";
+import {
+  createApiClient,
+  chatCompletion,
+  apiResponse,
+  apiError,
+} from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
-const SYSTEM_PROMPT = `You are a tender analysis expert. Respond with valid JSON only.`;
+const SYSTEM_PROMPT = `You are a tender analysis expert. Respond with valid JSON only. Keep response concise.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +27,22 @@ export async function POST(request: NextRequest) {
       .replace(/```json\n?/g, "")
       .replace(/```\n?/g, "")
       .trim();
+
+    let userId: string | undefined;
+    try {
+      const supabaseAuth = await createApiClient();
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser();
+      userId = user?.id;
+    } catch {
+      // Optional auth
+    }
+
+    await logApiEvent(request, {
+      actionType: "project_analyzed",
+      userId: userId || undefined,
+    }).catch(() => {});
 
     return apiResponse({ content: cleanContent });
   } catch (error) {

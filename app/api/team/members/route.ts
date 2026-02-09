@@ -5,6 +5,7 @@ import {
   apiError,
   getAuthenticatedUser,
 } from "@/lib/api";
+import { logApiEvent } from "@/lib/services/eventLogger";
 
 export interface RemoveMemberRequest {
   memberId: string;
@@ -54,7 +55,11 @@ export async function DELETE(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    if (!membership || membership.role !== "admin" || membership.status !== "approved") {
+    if (
+      !membership ||
+      membership.role !== "admin" ||
+      membership.status !== "approved"
+    ) {
       return apiError("You are not an admin of this company", 403);
     }
 
@@ -85,7 +90,10 @@ export async function DELETE(request: NextRequest) {
         .eq("status", "approved");
 
       if (adminCount && adminCount.length <= 1) {
-        return apiError("Cannot remove the only admin. Promote another member to admin first.", 400);
+        return apiError(
+          "Cannot remove the only admin. Promote another member to admin first.",
+          400,
+        );
       }
     }
 
@@ -106,6 +114,15 @@ export async function DELETE(request: NextRequest) {
       .update({ invited_to_company_id: null })
       .eq("user_id", memberToRemove.user_id)
       .eq("invited_to_company_id", companyId);
+
+    await logApiEvent(request, {
+      actionType: "company_member_removed",
+      userId: user.id,
+      userEmail: user.email || undefined,
+      entityType: "company",
+      entityId: companyId,
+      details: { member_id: memberId },
+    }).catch(() => {});
 
     return apiResponse<RemoveMemberResponse>({
       success: true,

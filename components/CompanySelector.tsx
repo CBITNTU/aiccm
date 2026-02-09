@@ -85,6 +85,7 @@ export function CompanySelector({
       setSelectedCompany(companies[0]);
       onCompanySelect?.(companies[0]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: sync selected company from id/companies
   }, [selectedCompanyId, companies, selectedCompany?.id, onCompanySelect]);
 
   const handleCompanyChange = (companyId: string) => {

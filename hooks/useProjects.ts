@@ -68,12 +68,11 @@ export interface RecommendedPartner {
 
 async function fetchProjects(
   companyId: string,
-  filter: ProjectStatus
+  filter: ProjectStatus,
 ): Promise<Project[]> {
   const supabase = createClient();
 
-  const statusesToQuery =
-    filter === "active" ? ["draft", "active"] : [filter];
+  const statusesToQuery = filter === "active" ? ["draft", "active"] : [filter];
 
   const { data, error } = await supabase
     .from("virtual_organizations")
@@ -86,7 +85,7 @@ async function fetchProjects(
         buyer,
         deadline
       )
-    `
+    `,
     )
     .eq("lead_company_id", companyId)
     .in("status", statusesToQuery)

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { generateObject } from "ai";
+import { generateObject, zodSchema } from "ai";
 import { openai } from "@ai-sdk/openai";
 import {
   apiResponse,
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     const { default_ai_model } = await getPlatformAISettings();
     const result = await generateObject({
       model: openai(default_ai_model),
-      schema: teamAnalysisResponseSchema,
+      schema: zodSchema(teamAnalysisResponseSchema),
       prompt,
     });
 

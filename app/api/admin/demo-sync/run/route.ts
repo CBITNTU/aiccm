@@ -38,11 +38,8 @@ export async function POST(request: NextRequest) {
       Math.max(1, Number(body.tenderCount) || DEFAULT_TENDER_COUNT),
     );
 
-    if (model !== "gpt-5-nano" && model !== "gemini-2.5-flash-lite") {
-      return apiError(
-        "Invalid model; use gpt-5-nano or gemini-2.5-flash-lite",
-        400,
-      );
+    if (model !== "gpt-5-nano") {
+      return apiError("Invalid model; use gpt-5-nano", 400);
     }
 
     const validEfforts = [

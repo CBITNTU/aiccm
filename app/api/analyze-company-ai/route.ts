@@ -2,13 +2,12 @@ import { NextRequest } from "next/server";
 import {
   createAdminClient,
   createApiClient,
-  chatCompletion,
-  parseAIJsonResponse,
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { aiGenerateObject } from "@/lib/ai";
+import { companyAnalysisSchema } from "@/lib/schemas/companyAnalysis";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import type { CompanyAnalysis } from "@/lib/api/types";
 
 interface CompanyData {
   companyName: string;
@@ -63,51 +62,22 @@ Certifications: ${companyData.certifications || "Not provided"}
 Equipment: ${companyData.equipment || "Not provided"}
 Past Projects: ${companyData.pastProjects || "Not provided"}
 
-Available taxonomy categories: ${taxonomyList}
-
-JSON format:
-{
-  "competencies": ["list of extracted competencies"],
-  "capabilities": ["specific technical capabilities"],
-  "strengths": ["key competitive strengths"],
-  "certifications": ["standardized certification list"],
-  "recommendations": ["improvement recommendations"],
-  "digitalMaturity": "assessment of digital capabilities",
-  "safetyRating": "safety and compliance assessment",
-  "marketPosition": "market positioning analysis",
-  "suggestedTaxonomies": ["array of taxonomy names from the available list that best match this company's profile"]
-}`;
-
-    console.log("Sending request to OpenAI...");
+Available taxonomy categories: ${taxonomyList}`;
 
     const systemPrompt =
-      "You are an expert industry analyst specializing in UK market competency assessment and tender evaluation. Return valid JSON only. No markdown.";
+      "You are an expert industry analyst specializing in UK market competency assessment and tender evaluation.";
 
-    const response = await chatCompletion(systemPrompt, prompt, {
+    console.log("Sending request to AI...");
+
+    const parsedResult = await aiGenerateObject({
+      schema: companyAnalysisSchema,
+      system: systemPrompt,
+      prompt,
       temperature: 0.3,
       maxTokens: 5000,
     });
 
-    console.log("OpenAI response received");
-
-    // Parse JSON response with improved error handling
-    let parsedResult: CompanyAnalysis;
-    try {
-      parsedResult = parseAIJsonResponse<CompanyAnalysis>(response);
-    } catch (e) {
-      console.warn("Failed to parse OpenAI response, using defaults:", e);
-      parsedResult = {
-        competencies: ["General Construction"],
-        capabilities: ["Basic Construction Services"],
-        strengths: ["Experience in Construction"],
-        certifications: [],
-        recommendations: ["Consider obtaining relevant certifications"],
-        digitalMaturity: "Requires assessment",
-        safetyRating: "Requires assessment",
-        marketPosition: "Requires further analysis",
-        suggestedTaxonomies: [],
-      };
-    }
+    console.log("AI response received and parsed");
 
     // Auto-tag company with suggested taxonomies
     if (

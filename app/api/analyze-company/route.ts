@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
 import {
   createAdminClient,
-  chatCompletion,
-  parseAIJsonResponse,
   apiResponse,
   apiError,
   getAuthenticatedUser,
 } from "@/lib/api";
+import { aiGenerateObject } from "@/lib/ai";
+import { performanceBenchmarkSchema } from "@/lib/schemas/performanceBenchmark";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { generateCompanyCapabilityTaxonomy } from "@/lib/services/companyAIService";
 import type { DeepCompanyAnalysis } from "@/lib/api/types";
@@ -35,32 +35,6 @@ export async function POST(request: NextRequest) {
     // Comprehensive analysis prompt with performance benchmarking
     const financialData =
       (company.financial_data as Record<string, { value?: unknown }>) || {};
-    const _complianceData =
-      (company.compliance_data as Record<string, { value?: unknown }>) || {};
-
-    // Check data completeness (excluding description)
-    const hasCapabilities =
-      !!company.key_capabilities && company.key_capabilities.length > 20;
-    const hasFinancialData = Object.keys(financialData).length > 0;
-    const hasCertifications =
-      !!company.certifications && company.certifications.length > 5;
-    const hasProjects =
-      !!company.past_projects && company.past_projects.length > 20;
-    const hasWebsite = !!company.website_url;
-    const hasLocation = !!company.postcode;
-
-    const dataCompleteness = {
-      hasCapabilities,
-      hasFinancialData,
-      hasCertifications,
-      hasProjects,
-      hasWebsite,
-      hasLocation,
-    };
-
-    const completenessScore =
-      Object.values(dataCompleteness).filter(Boolean).length;
-    const isMinimalData = completenessScore < 3; // Less than 3 data points
 
     const analysisPrompt = `Score these 8 dimensions (0-100) with a short explanation. Return JSON with performanceBenchmark as below.
 
@@ -75,98 +49,36 @@ Past Projects: ${company.past_projects || "N/A"}
 Employees: ${financialData.employees?.value || "N/A"}
 Net Assets: £${typeof financialData.netAssets?.value === "number" ? financialData.netAssets.value.toLocaleString() : "N/A"}
 Total Assets: £${typeof financialData.totalAssets?.value === "number" ? financialData.totalAssets.value.toLocaleString() : "N/A"}
-Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.value.toLocaleString() : "N/A"}
-
-Return JSON:
-{
-  "performanceBenchmark": {
-    "technicalExpertise": {"score": 0, "explanation": "short explanation"},
-    "safetyStandards": {"score": 0, "explanation": "short explanation"},
-    "innovation": {"score": 0, "explanation": "short explanation"},
-    "projectExperience": {"score": 0, "explanation": "short explanation"},
-    "certifications": {"score": 0, "explanation": "short explanation"},
-    "marketReputation": {"score": 0, "explanation": "short explanation"},
-    "financialHealth": {"score": 0, "explanation": "short explanation"},
-    "operationalCapacity": {"score": 0, "explanation": "short explanation"},
-    "overallScore": {"score": 0, "explanation": "short explanation"}
-  }
-}`;
-
-    console.log("Sending analyze-company request to OpenAI...");
-    console.log("📊 COMPANY DATA IN DATABASE:");
-    console.log({
-      name: company.company_name,
-      website: company.website_url || "N/A",
-      key_capabilities: company.key_capabilities
-        ? `${company.key_capabilities.substring(0, 50)}...`
-        : "N/A",
-      equipment: company.equipment || "N/A",
-      certifications: company.certifications || "N/A",
-      past_projects: company.past_projects
-        ? `${company.past_projects.substring(0, 50)}...`
-        : "N/A",
-      hasFinancialData: Object.keys(financialData).length > 0,
-      hasCapabilities: !!company.key_capabilities,
-      hasCertifications: hasCertifications,
-      hasProjects: hasProjects,
-      hasWebsite: hasWebsite,
-      hasLocation: hasLocation,
-      completenessScore,
-      isMinimalData,
-    });
+Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.value.toLocaleString() : "N/A"}`;
 
     const systemPrompt = `Rate company 0-100 on each dimension from available data only; 0 if no data. Optional: use website when provided.`;
 
-    // Log the full prompt for debugging
-    console.log("\n" + "=".repeat(80));
-    console.log("📋 FULL PROMPT BEING SENT TO AI:");
-    console.log("=".repeat(80));
-    console.log("\n🔹 SYSTEM PROMPT:");
-    console.log(systemPrompt);
-    console.log("\n🔹 ANALYSIS PROMPT:");
-    console.log(analysisPrompt);
-    console.log("\n" + "=".repeat(80) + "\n");
-
-    const response = await chatCompletion(systemPrompt, analysisPrompt, {
-      maxTokens: 10000, // Increased for default reasoning tokens plus output
-      responseFormat: "json_object", // Request JSON output format
-    });
-
-    console.log("OpenAI response received, length:", response.length);
+    console.log("Sending analyze-company request to AI...");
 
     let analysis: DeepCompanyAnalysis;
     try {
-      const rawAnalysis = parseAIJsonResponse<{
-        performanceBenchmark: Record<
-          string,
-          { score: number; explanation: string } | number
-        >;
-      }>(response);
-      console.log("✅ Successfully parsed AI analysis");
+      const rawAnalysis = await aiGenerateObject({
+        schema: performanceBenchmarkSchema,
+        system: systemPrompt,
+        prompt: analysisPrompt,
+        maxTokens: 10000,
+      });
 
-      // Transform the new structure to the expected format
+      console.log("AI response received and parsed");
+
       const benchmark = rawAnalysis.performanceBenchmark;
-      const transformScore = (
-        value: { score: number; explanation: string } | number | undefined,
-      ): number => {
-        if (typeof value === "number") return value;
-        if (value && typeof value === "object" && "score" in value)
-          return value.score;
-        return 0;
-      };
-
       analysis = {
         companyInfo: {},
         performanceBenchmark: {
-          technicalExpertise: transformScore(benchmark.technicalExpertise),
-          safetyStandards: transformScore(benchmark.safetyStandards),
-          innovation: transformScore(benchmark.innovation),
-          projectExperience: transformScore(benchmark.projectExperience),
-          certifications: transformScore(benchmark.certifications),
-          marketReputation: transformScore(benchmark.marketReputation),
-          financialHealth: transformScore(benchmark.financialHealth),
-          operationalCapacity: transformScore(benchmark.operationalCapacity),
-          overallScore: transformScore(benchmark.overallScore),
+          technicalExpertise: benchmark.technicalExpertise.score,
+          safetyStandards: benchmark.safetyStandards.score,
+          innovation: benchmark.innovation.score,
+          projectExperience: benchmark.projectExperience.score,
+          certifications: benchmark.certifications.score,
+          marketReputation: benchmark.marketReputation.score,
+          financialHealth: benchmark.financialHealth.score,
+          operationalCapacity: benchmark.operationalCapacity.score,
+          overallScore: benchmark.overallScore.score,
         },
         coreCompetencies: [],
         digitalMaturity: "Not assessed yet",
@@ -188,11 +100,9 @@ Return JSON:
         analysis.performanceBenchmark,
       );
     } catch (parseError) {
-      console.error("Failed to parse OpenAI response:", parseError);
-      console.error("Raw OpenAI response:", response);
-      // Fallback analysis if parsing fails
+      console.error("Failed to get AI analysis:", parseError);
       console.warn(
-        "⚠️ Using FALLBACK analysis - AI parsing failed. This is hardcoded data!",
+        "Using FALLBACK analysis - AI call failed. This is hardcoded data!",
       );
       analysis = {
         companyInfo: {},
@@ -287,11 +197,9 @@ Return JSON:
 
     if (updateError) {
       console.error("Error saving analysis to database:", updateError);
-      // Continue anyway - we'll still return the analysis even if saving fails
     }
 
     // Generate capabilities from the static list based on company analysis
-    // This assigns capabilities from company_capabilities_ref to the company
     try {
       console.log("Generating company capabilities from static list...");
       const capabilityIds = await generateCompanyCapabilityTaxonomy(
@@ -299,29 +207,26 @@ Return JSON:
         false,
       );
       console.log(
-        `✅ Generated ${capabilityIds.length} capabilities for company ${companyId}`,
+        `Generated ${capabilityIds.length} capabilities for company ${companyId}`,
       );
     } catch (capabilityError) {
       console.error(
         "Failed to generate company capabilities:",
         capabilityError,
       );
-      // Don't fail the analysis if capability generation fails
-      // User can still edit capabilities manually
     }
 
     console.log(
-      "✅ Company analysis completed and saved for:",
+      "Company analysis completed and saved for:",
       company.company_name,
     );
-    console.log("Overall score:", analysis.performanceBenchmark?.overallScore);
 
     // Log analysis event
     const { user } = await getAuthenticatedUser(request).catch(() => ({
       user: null,
     }));
     await logApiEvent(request, {
-      actionType: "company_updated", // Analysis updates company data
+      actionType: "company_updated",
       userId: user?.id || null,
       userEmail: user?.email || undefined,
       entityType: "company",
@@ -330,7 +235,7 @@ Return JSON:
         analysisType: "comprehensive",
         companyName: company.company_name,
       },
-    }).catch(() => {}); // Don't fail if logging fails
+    }).catch(() => {});
 
     return apiResponse({
       success: true,

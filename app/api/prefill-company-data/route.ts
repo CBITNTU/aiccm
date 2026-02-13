@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
-import { getOpenAIClient, createApiClient, apiResponse } from "@/lib/api";
+import { createApiClient, apiResponse } from "@/lib/api";
+import { aiGenerateObject } from "@/lib/ai";
+import { companyPrefillSchema } from "@/lib/schemas/companyPrefill";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 const UA =
@@ -180,8 +182,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4) OpenAI normalization
-    console.log("Starting OpenAI analysis...");
+    // 4) AI normalization using Vercel AI SDK
+    console.log("Starting AI analysis...");
 
     const systemPrompt = `You are a company data extraction assistant specializing in UK company financial data.
 You will receive (possibly partial) HTML from Companies House, Endole, and the company's website.
@@ -200,8 +202,8 @@ STRICT RULES (NO HALLUCINATIONS):
 - Compute debtRatio = totalLiabilities / totalAssets (round to 3 decimals) when both > 0.
 - Set confidence to 0.9 if data is clearly present, 0.5 if partially present, 0 if missing.
 
-DESCRIPTION REQUIREMENTS (180–250 words):
-Write a single cohesive paragraph (~180–250 words) that covers, in order, using only evidence found:
+DESCRIPTION REQUIREMENTS (180-250 words):
+Write a single cohesive paragraph (~180-250 words) that covers, in order, using only evidence found:
 1) Who they are: legal name, trading name (if shown), incorporation year or age (only if explicitly stated).
 2) What they do: core products/services and key capabilities/processes.
 3) Sectors/markets: industries served and typical customer profiles.
@@ -214,9 +216,7 @@ If any item is not present in the sources, omit it silently (do NOT invent or gu
 OTHER FIELDS:
 - Capabilities/sectors/equipment/certifications: prefer website and Endole narrative/feature lists.
 - Evidence must be one of: "endole", "companies_house", "website". Use the source you relied on most for each field.
-- For compliance fields, if dates are visible in Companies House HTML, use them; otherwise leave blank with low confidence.
-
-Return ONLY the JSON object in the specified schema.`;
+- For compliance fields, if dates are visible in Companies House HTML, use them; otherwise leave blank with low confidence.`;
 
     const userPrompt = `Company Name: ${companyName}
 Company Number: ${companyNumber || "N/A"}
@@ -232,31 +232,6 @@ ${result.website ? result.website.html : "Not available"}
 
 Extract and structure the company information with confidence scores.
 
-Schema to return:
-{
-  "description": {"value": "", "confidence": 0, "evidence": ""},
-  "capabilities": [{"value": "", "confidence": 0, "evidence": ""}],
-  "certifications": [{"name": "", "issuer": "", "certId": "", "validUntil": "", "confidence": 0, "evidence": ""}],
-  "equipment": [{"name": "", "model": "", "capacity": "", "notes": "", "confidence": 0, "evidence": ""}],
-  "sectors": [{"value": "", "confidence": 0, "evidence": ""}],
-  "locations": [{"value": "", "confidence": 0, "evidence": ""}],
-  "address": {"value": "", "confidence": 0, "evidence": ""},
-  "financial": {
-    "employees": {"value": 0, "confidence": 0, "evidence": ""},
-    "netAssets": {"value": 0, "confidence": 0, "evidence": ""},
-    "totalAssets": {"value": 0, "confidence": 0, "evidence": ""},
-    "totalLiabilities": {"value": 0, "confidence": 0, "evidence": ""},
-    "cash": {"value": 0, "confidence": 0, "evidence": ""},
-    "debtRatio": {"value": 0, "confidence": 0, "evidence": ""}
-  },
-  "compliance": {
-    "accountsFiled": {"value": "", "confidence": 0, "evidence": ""},
-    "accountsDue": {"value": "", "confidence": 0, "evidence": ""},
-    "confirmationStatement": {"value": "", "confidence": 0, "evidence": ""},
-    "activeCharges": {"value": 0, "confidence": 0, "evidence": ""}
-  }
-}
-
 EXTRACTION RULES:
 - CAREFULLY scan the entire Endole HTML for financial tables and rows
 - Look for patterns like: <td>Net Assets</td><td>£1,234,567</td> or similar
@@ -266,24 +241,18 @@ EXTRACTION RULES:
 - Set confidence=0.9 when data is clearly found, 0 when truly not present
 - debtRatio must be computed when totalAssets and totalLiabilities are both > 0`;
 
-    const openai = getOpenAIClient();
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" },
+    const normalized = await aiGenerateObject({
+      schema: companyPrefillSchema,
+      system: systemPrompt,
+      prompt: userPrompt,
+      modelId: "gpt-4o",
       temperature: 0.1,
-      max_tokens: 8000,
+      maxTokens: 8000,
     });
 
-    const content = completion.choices[0]?.message?.content;
-    if (content) {
-      result.normalized = JSON.parse(content);
-    }
+    result.normalized = normalized;
 
-    console.log("OpenAI analysis completed successfully");
+    console.log("AI analysis completed successfully");
 
     await logApiEvent(request, {
       actionType: "company_prefill_requested",

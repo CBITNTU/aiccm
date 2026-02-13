@@ -2,12 +2,18 @@ import { NextRequest } from "next/server";
 import {
   createAdminClient,
   createApiClient,
-  chatCompletion,
-  parseAIJsonResponse,
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { aiGenerateObject } from "@/lib/ai";
+import { z } from "zod";
 import { logApiEvent } from "@/lib/services/eventLogger";
+
+const tenderTaxonomySuggestionSchema = z.object({
+  taxonomies: z
+    .array(z.string())
+    .describe("Array of taxonomy category names that best match this tender"),
+});
 
 interface TenderData {
   title: string;
@@ -58,27 +64,24 @@ ${tenderData.location ? `Location: ${tenderData.location}` : ""}
 
 Available taxonomy categories: ${taxonomyList}
 
-Pick 2-5 categories that best match this tender. Output a JSON array of taxonomy names. Focus on the most specific categories.`;
+Pick 2-5 categories that best match this tender. Focus on the most specific categories.`;
 
     console.log("Analyzing tender:", tenderData.title);
 
     const systemPrompt =
-      "You are an expert at analyzing tender documents and categorizing them. Return only valid JSON arrays of category names.";
+      "You are an expert at analyzing tender documents and categorizing them.";
 
-    const response = await chatCompletion(systemPrompt, prompt, {
+    const parsed = await aiGenerateObject({
+      schema: tenderTaxonomySuggestionSchema,
+      system: systemPrompt,
+      prompt,
       temperature: 0.2,
       maxTokens: 10000,
     });
 
-    console.log("AI response:", response);
+    const suggestedTaxonomies = parsed.taxonomies;
 
-    let suggestedTaxonomies: string[] = [];
-    try {
-      suggestedTaxonomies = parseAIJsonResponse<string[]>(response);
-    } catch (e) {
-      console.error("Failed to parse AI response:", response, e);
-      suggestedTaxonomies = [];
-    }
+    console.log("AI suggested taxonomies:", suggestedTaxonomies);
 
     // Auto-tag tender if tenderId provided
     if (tenderId && suggestedTaxonomies.length > 0 && taxonomies) {

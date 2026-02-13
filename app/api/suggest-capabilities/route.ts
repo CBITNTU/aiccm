@@ -2,11 +2,11 @@ import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
   createAdminClient,
-  chatCompletion,
   apiResponse,
   apiError,
-  parseAIJsonResponse,
 } from "@/lib/api";
+import { aiGenerateObject } from "@/lib/ai";
+import { existingCapabilitiesSchema } from "@/lib/schemas/capabilitySuggestion";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
@@ -62,11 +62,10 @@ export async function POST(request: NextRequest) {
     }
 
     // CRITICAL: Get capabilities that companies actually have (have links in junction table)
-    // This ensures we only suggest capabilities that will find companies in Step 3
     const { data: companyCapabilityLinks } = await adminSupabase
       .from("company_capabilities")
       .select("capability_id")
-      .limit(10000); // Get a sample to see which capabilities are used
+      .limit(10000);
 
     const usedCapabilityIds = new Set(
       (companyCapabilityLinks || []).map(
@@ -75,19 +74,8 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      `📊 Found ${usedCapabilityIds.size} capabilities that companies actually have`,
+      `Found ${usedCapabilityIds.size} capabilities that companies actually have`,
     );
-    console.log(`📊 Total capabilities in ref table: ${capabilities.length}`);
-
-    // Format capabilities for AI
-    const capabilitiesByCategory: Record<string, string[]> = {};
-    capabilities.forEach((cap) => {
-      const category = cap.category || "Uncategorized";
-      if (!capabilitiesByCategory[category]) {
-        capabilitiesByCategory[category] = [];
-      }
-      capabilitiesByCategory[category].push(cap.name);
-    });
 
     // Separate capabilities into "used by companies" and "not used yet"
     const usedCapabilitiesByCategory: Record<string, string[]> = {};
@@ -127,8 +115,7 @@ export async function POST(request: NextRequest) {
 
     const capabilitiesList = `${usedCapabilitiesList}\n\n${unusedCapabilitiesList}`;
 
-    // Create AI prompt (shortened for token savings)
-    const systemPrompt = `From the list below, pick capability names that match the tender. Prefer capabilities from the USED BY COMPANIES section. Output JSON only: {"existing":["Name1","Name2"]}. No new capabilities.`;
+    const systemPrompt = `From the list below, pick capability names that match the tender. Prefer capabilities from the USED BY COMPANIES section. No new capabilities.`;
 
     const budgetRange =
       tender.budget_min || tender.budget_max
@@ -147,34 +134,16 @@ ${tender.cpv_codes && tender.cpv_codes.length > 0 ? `CPV Codes: ${tender.cpv_cod
 Available Capabilities:
 ${capabilitiesList}
 
-Prefer USED BY COMPANIES. Return JSON: existing = array of capability names from the list.`;
+Prefer USED BY COMPANIES. Return existing = array of capability names from the list.`;
 
-    // Call OpenAI
-    const response = await chatCompletion(systemPrompt, userPrompt, {
+    const parsed = await aiGenerateObject({
+      schema: existingCapabilitiesSchema,
+      system: systemPrompt,
+      prompt: userPrompt,
       maxTokens: 8000,
     });
 
-    // Parse AI response - only existing capabilities, no new ones
-    let existingCapabilityNames: string[] = [];
-
-    try {
-      // Use parseAIJsonResponse to handle comments
-      const parsed = parseAIJsonResponse<{ existing?: string[] }>(response);
-      existingCapabilityNames = Array.isArray(parsed.existing)
-        ? parsed.existing
-        : [];
-    } catch (e) {
-      console.error("Failed to parse AI response:", e);
-      // Fallback: try to extract just existing names as array
-      try {
-        const arrayMatch = response.match(/\[[\s\S]*?\]/);
-        if (arrayMatch) {
-          existingCapabilityNames = JSON.parse(arrayMatch[0]);
-        }
-      } catch (e2) {
-        console.error("Failed to parse as array too:", e2);
-      }
-    }
+    const existingCapabilityNames = parsed.existing;
 
     // Map capability names to IDs (only from static list)
     const suggestedCapabilityIds = existingCapabilityNames
@@ -193,12 +162,12 @@ Prefer USED BY COMPANIES. Return JSON: existing = array of capability names from
     ];
 
     console.log(
-      `📊 Final suggestion: ${prioritizedIds.filter((id) => usedCapabilityIds.has(id)).length} used capabilities, ${prioritizedIds.filter((id) => !usedCapabilityIds.has(id)).length} unused capabilities`,
+      `Final suggestion: ${prioritizedIds.filter((id) => usedCapabilityIds.has(id)).length} used capabilities, ${prioritizedIds.filter((id) => !usedCapabilityIds.has(id)).length} unused capabilities`,
     );
 
     // Log capability suggestion event
     await logApiEvent(request, {
-      actionType: "tender_viewed", // User is viewing/analyzing tender
+      actionType: "tender_viewed",
       userId: user.id,
       userEmail: user.email || undefined,
       entityType: "tender",
@@ -207,7 +176,7 @@ Prefer USED BY COMPANIES. Return JSON: existing = array of capability names from
         suggestedCapabilitiesCount: prioritizedIds.length,
         totalCapabilities: capabilities.length,
       },
-    }).catch(() => {}); // Don't fail if logging fails
+    }).catch(() => {});
 
     return apiResponse({
       suggestedCapabilityIds: prioritizedIds,

@@ -25,7 +25,7 @@ let cacheTime = 0;
 const CACHE_MS = 60_000; // 1 minute
 
 /**
- * Get platform default AI settings. Used by chatCompletion and match-tenders when no override is provided.
+ * Get platform default AI settings. Used by aiGenerateObject/aiGenerateText when no override is provided.
  * Cached for 1 minute to avoid DB hit on every request.
  */
 export async function getPlatformAISettings(): Promise<PlatformAISettings> {

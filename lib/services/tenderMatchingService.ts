@@ -1,13 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- queue, matching result types */
-import {
-  createAdminClient,
-  chatCompletion,
-  geminiCompletion,
-  parseAIJsonResponse,
-  type MatchingModelId,
-} from "@/lib/api";
-import { getPlatformAISettings } from "@/lib/platformSettings";
-import { runLLM, runGeminiLLM } from "./llmLimiter";
+import { createAdminClient, type MatchingModelId } from "@/lib/api";
+import { aiGenerateObject } from "@/lib/ai";
+import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 
 const supabase = createAdminClient();
 
@@ -54,9 +48,7 @@ export async function scoreTenderMatch(
   tenderId: string,
   options?: ScoreTenderMatchOptions,
 ): Promise<MatchingScore> {
-  const platform = await getPlatformAISettings();
-  const model: MatchingModelId =
-    (options?.model ?? platform.default_ai_model) as MatchingModelId;
+  const model: string | undefined = options?.model;
   const isDemo = options?.demo === true;
   const batchLabel = options?.batchLabel ?? "User A";
   // Fetch company data with AI-generated summary and taxonomy
@@ -151,7 +143,7 @@ export async function scoreTenderMatch(
   const _isMinimalData = dataPoints < 3;
   void _isMinimalData;
 
-  const systemPrompt = `You are an expert at evaluating company-tender matches. 
+  const systemPrompt = `You are an expert at evaluating company-tender matches.
 
 FIRST: Check if company and tender industries/sectors match (e.g., construction, healthcare, IT, telecom). If industries DON'T MATCH, set capabilityScore = 0 immediately. If industries match, rate capability relevance 0-100. Then rate Certification, Experience, Location 0-100 independently. No assumptions.
 
@@ -168,7 +160,7 @@ For improvementSuggestions: Provide 2-3 SHORT, ACTIONABLE suggestions for improv
 - Example: "Add ISO 9001 certification to improve competitiveness"
 - Example: "Highlight more healthcare project case studies"
 
-Return JSON with capabilityScore, experienceScore, locationScore, certificationScore, matchReasons (array of short strings), improvementSuggestions (array of short strings), aiAnalysis (brief summary), and scoreExplanations (object with short explanations for each score).`;
+FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate capability 0-100. Then rate certification, experience, location 0-100.`;
 
   const userPrompt = `Company: ${companyData.company_name || "N/A"}
 ${hasDescription ? `Description: ${companyData.description}` : "Description: NOT PROVIDED"}
@@ -188,195 +180,108 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
 
   // Log the prompt for debugging
   console.log("\n" + "=".repeat(80));
-  console.log(`🔄 Matching: ${companyData.company_name} → ${tenderData.title}`);
+  console.log(`Matching: ${companyData.company_name} → ${tenderData.title}`);
 
-  // Call LLM with rate limiting (OpenAI or Gemini based on model)
-  let response: string;
-  try {
-    if (model === "gemini-2.5-flash-lite") {
-      response = await runGeminiLLM(async () => {
-        console.log("📞 Calling Gemini API...");
-        const aiResponse = await geminiCompletion(systemPrompt, userPrompt, {
-          model: "gemini-2.5-flash-lite",
-          maxTokens: 2048,
-        });
-        console.log(`📥 Received Gemini response (${aiResponse.length} chars)`);
-        if (aiResponse.length === 0) {
-          console.error("⚠️ WARNING: Gemini returned empty response!");
-        }
-        return aiResponse;
-      }, 4000);
-    } else {
-      response = await runLLM(async () => {
-        console.log("📞 Calling OpenAI API...");
-        const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-          model,
-          maxTokens: 8000,
-          responseFormat: "json_object",
-          ...(options?.reasoningEffort && {
-            reasoningEffort: options.reasoningEffort,
-          }),
-        });
-        console.log(`📥 Received response (${aiResponse.length} chars)`);
-        if (aiResponse.length === 0) {
-          console.error("⚠️ WARNING: OpenAI returned empty response!");
-        }
-        return aiResponse;
-      }, 4000);
-    }
-  } catch (error: unknown) {
-    const err = error as {
-      message?: string;
-      status?: number;
-      code?: string;
-      type?: string;
-      stack?: string;
-    };
-    console.error("❌ Error calling LLM API:", error);
-    console.error("Error details:", {
-      message: err?.message,
-      status: err?.status,
-      code: err?.code,
-      type: err?.type,
-      stack: err?.stack,
-    });
-    throw error;
-  }
-
-  console.log(`✅ Got AI response (${response.length} chars)`);
-
-  // Parse AI response
+  // Call LLM with rate limiting via aiGenerateObject (rate limiter is built in)
   let score: MatchingScore;
 
   try {
-    // Use the parseAIJsonResponse helper which handles markdown code blocks and comments
-    let parsed;
-    try {
-      parsed = parseAIJsonResponse(response);
-    } catch (parseError) {
-      // Fallback to simple regex if parseAIJsonResponse fails
-      console.warn(
-        "parseAIJsonResponse failed, trying regex fallback:",
-        parseError,
-      );
-      console.warn("Response length:", response.length);
-      console.warn(
-        "Response preview (first 1000 chars):",
-        response.substring(0, 1000),
-      );
+    const parsed = await aiGenerateObject({
+      schema: matchingScoreSchema,
+      system: systemPrompt,
+      prompt: userPrompt,
+      modelId: model,
+      maxTokens: 8000,
+      estTokens: 4000,
+    });
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          parsed = JSON.parse(jsonMatch[0]);
-        } catch {
-          console.error(
-            "Regex match found but JSON.parse failed. Matched content:",
-            jsonMatch[0].substring(0, 500),
-          );
-          throw new Error(
-            `Failed to parse JSON from response. Response length: ${response.length}. Preview: ${response.substring(0, 1000)}`,
-          );
-        }
-      } else {
-        console.error(
-          "No JSON pattern found in response. Full response:",
-          response,
-        );
-        throw new Error(
-          `No JSON found in response. Response length: ${response.length}. Full response: ${response}`,
-        );
-      }
+    console.log(`Got AI response for matching`);
+
+    // Get scores from AI (no overallScore from AI - we calculate it)
+    let capabilityScore = Math.max(
+      0,
+      Math.min(100, parsed.capabilityScore || 0),
+    );
+    let experienceScore = Math.max(
+      0,
+      Math.min(100, parsed.experienceScore || 0),
+    );
+    let certificationScore = Math.max(
+      0,
+      Math.min(100, parsed.certificationScore || 0),
+    );
+    let locationScore = Math.max(0, Math.min(100, parsed.locationScore || 0));
+
+    // Enforce rules based on data completeness - mark 0 if data is missing
+    if (!hasCapabilities) {
+      capabilityScore = 0;
     }
 
-    if (parsed) {
-      // Get scores from AI (no overallScore from AI - we calculate it)
-      let capabilityScore = Math.max(
-        0,
-        Math.min(100, parsed.capabilityScore || 0),
-      );
-      let experienceScore = Math.max(
-        0,
-        Math.min(100, parsed.experienceScore || 0),
-      );
-      let certificationScore = Math.max(
-        0,
-        Math.min(100, parsed.certificationScore || 0),
-      );
-      let locationScore = Math.max(0, Math.min(100, parsed.locationScore || 0));
-
-      // Enforce rules based on data completeness - mark 0 if data is missing
-      if (!hasCapabilities) {
-        capabilityScore = 0;
-      }
-
-      if (!hasExperience) {
-        experienceScore = 0;
-      }
-
-      if (!hasCertifications) {
-        certificationScore = 0;
-      }
-
-      if (!hasLocation) {
-        locationScore = 0;
-      }
-
-      // Calculate overall score locally using weights
-      // Capability MUST MATCH - it's a gate, not a weight
-      // If capability doesn't match (< 50), overall score is 0
-      let overallScore = 0;
-      if (capabilityScore >= 50) {
-        // If capability matches, calculate based on other factors only
-        // Weights: Certification 50%, Experience 40%, Location 10% = 100%
-        overallScore = Math.round(
-          certificationScore * 0.5 +
-            experienceScore * 0.4 +
-            locationScore * 0.1,
-        );
-      }
-
-      const scoreExplanations = parsed.scoreExplanations || {};
-
-      // Override explanations when we force scores to 0
-      const finalScoreExplanations = {
-        capability: !hasCapabilities
-          ? "No capabilities listed - score set to 0"
-          : scoreExplanations.capability ||
-            `Capability score: ${capabilityScore}%`,
-        experience: !hasExperience
-          ? "No past projects listed - score set to 0"
-          : scoreExplanations.experience ||
-            `Experience score: ${experienceScore}%`,
-        location: !hasLocation
-          ? "Location not provided - score set to 0. Do not assume location."
-          : scoreExplanations.location || `Location score: ${locationScore}%`,
-        certification: !hasCertifications
-          ? "No certifications listed - score set to 0"
-          : scoreExplanations.certification ||
-            `Certification score: ${certificationScore}%`,
-      };
-
-      score = {
-        overallScore,
-        capabilityScore,
-        experienceScore,
-        locationScore,
-        certificationScore,
-        matchReasons: Array.isArray(parsed.matchReasons)
-          ? parsed.matchReasons
-          : [],
-        improvementSuggestions: Array.isArray(parsed.improvementSuggestions)
-          ? parsed.improvementSuggestions
-          : [],
-        aiAnalysis: parsed.aiAnalysis || response,
-        scoreExplanations: finalScoreExplanations,
-      };
-    } else {
-      throw new Error("No JSON found in response");
+    if (!hasExperience) {
+      experienceScore = 0;
     }
+
+    if (!hasCertifications) {
+      certificationScore = 0;
+    }
+
+    if (!hasLocation) {
+      locationScore = 0;
+    }
+
+    // Calculate overall score locally using weights
+    // Capability MUST MATCH - it's a gate, not a weight
+    // If capability doesn't match (< 50), overall score is 0
+    let overallScore = 0;
+    if (capabilityScore >= 50) {
+      // If capability matches, calculate based on other factors only
+      // Weights: Certification 50%, Experience 40%, Location 10% = 100%
+      overallScore = Math.round(
+        certificationScore * 0.5 +
+          experienceScore * 0.4 +
+          locationScore * 0.1,
+      );
+    }
+
+    const scoreExplanations = parsed.scoreExplanations || {
+      capability: "",
+      experience: "",
+      location: "",
+      certification: "",
+    };
+
+    // Override explanations when we force scores to 0
+    const finalScoreExplanations = {
+      capability: !hasCapabilities
+        ? "No capabilities listed - score set to 0"
+        : scoreExplanations.capability ||
+          `Capability score: ${capabilityScore}%`,
+      experience: !hasExperience
+        ? "No past projects listed - score set to 0"
+        : scoreExplanations.experience ||
+          `Experience score: ${experienceScore}%`,
+      location: !hasLocation
+        ? "Location not provided - score set to 0. Do not assume location."
+        : scoreExplanations.location || `Location score: ${locationScore}%`,
+      certification: !hasCertifications
+        ? "No certifications listed - score set to 0"
+        : scoreExplanations.certification ||
+          `Certification score: ${certificationScore}%`,
+    };
+
+    score = {
+      overallScore,
+      capabilityScore,
+      experienceScore,
+      locationScore,
+      certificationScore,
+      matchReasons: parsed.matchReasons,
+      improvementSuggestions: parsed.improvementSuggestions,
+      aiAnalysis: parsed.aiAnalysis,
+      scoreExplanations: finalScoreExplanations,
+    };
   } catch (e) {
-    console.error("Failed to parse AI response for matching:", e);
+    console.error("Failed to get AI response for matching:", e);
     // Fallback to conservative default scores based on data
     const fallbackCapability = hasCapabilities ? 50 : 0;
     const fallbackExperience = hasExperience ? 50 : 0;
@@ -402,7 +307,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       certificationScore: fallbackCertification,
       matchReasons: ["AI analysis unavailable"],
       improvementSuggestions: ["Unable to generate suggestions"],
-      aiAnalysis: response,
+      aiAnalysis: "AI analysis failed",
       scoreExplanations: {
         capability: "Analysis unavailable",
         experience: "Analysis unavailable",
@@ -423,6 +328,8 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     },
   };
 
+  const modelUsed = model ?? "platform-default";
+
   if (isDemo) {
     const { error: insertError } = await supabase
       .from("demo_matching_results" as any)
@@ -430,7 +337,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
         batch_label: batchLabel,
         company_id: companyId,
         tender_id: tenderId,
-        model_used: model,
+        model_used: modelUsed,
         overall_score: score.overallScore,
         capability_score: score.capabilityScore,
         experience_score: score.experienceScore,
@@ -476,7 +383,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   }
 
   console.log(
-    `✅ Match complete: ${companyData.company_name} → ${tenderData.title} (Score: ${score.overallScore}%)`,
+    `Match complete: ${companyData.company_name} → ${tenderData.title} (Score: ${score.overallScore}%)`,
   );
   return score;
 }

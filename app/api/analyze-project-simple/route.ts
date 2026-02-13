@@ -1,10 +1,6 @@
 import { NextRequest } from "next/server";
-import {
-  createApiClient,
-  chatCompletion,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { createApiClient, apiResponse, apiError } from "@/lib/api";
+import { aiGenerateText } from "@/lib/ai";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 const SYSTEM_PROMPT = `You are a tender analysis expert. Respond with valid JSON only. Keep response concise.`;
@@ -17,7 +13,9 @@ export async function POST(request: NextRequest) {
       return apiError("Prompt is required", 400);
     }
 
-    const response = await chatCompletion(SYSTEM_PROMPT, prompt, {
+    const response = await aiGenerateText({
+      system: SYSTEM_PROMPT,
+      prompt,
       maxTokens: 10000,
       temperature: 0.2,
     });

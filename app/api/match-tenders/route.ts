@@ -1,13 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs, processing_queue not in generated types */
 import { NextRequest } from "next/server";
-import {
-  getAuthenticatedUser,
-  chatCompletion,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
+import { aiGenerateObject } from "@/lib/ai";
+import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { runLLM } from "@/lib/services/llmLimiter";
 import { enqueueBatch } from "@/lib/services/queueService";
 import { getPlatformAISettings } from "@/lib/platformSettings";
 import type { TenderMatchResult } from "@/lib/api/types";
@@ -132,32 +128,14 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       Math.ceil(
         (prompt.length + companyProfile.length + tenderInfo.length) / 4,
       ) + 400;
-    const raw = await runLLM(async () => {
-      const response = await chatCompletion(systemPrompt, prompt, {
-        maxTokens: 8000,
-      });
-      return response;
-    }, estTokens);
 
-    // Log the AI response
-    console.log("\n" + "=".repeat(80));
-    console.log("🤖 AI RESPONSE FOR TENDER MATCHING:");
-    console.log("=".repeat(80));
-    console.log(raw);
-    console.log("\n" + "=".repeat(80) + "\n");
-
-    // Parse JSON response
-    let parsed: any;
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in response");
-      }
-    } catch (e) {
-      throw new Error(`Failed to parse JSON: ${e}`);
-    }
+    const parsed = await aiGenerateObject({
+      schema: matchingScoreSchema,
+      system: systemPrompt,
+      prompt,
+      maxTokens: 8000,
+      estTokens,
+    });
 
     let capabilityScore = Math.max(
       0,
@@ -191,14 +169,13 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       );
     }
 
-    // Get explanations from parsed JSON
-    const scoreExplanations = parsed.scoreExplanations || {};
-    const matchReasons = Array.isArray(parsed.matchReasons)
-      ? parsed.matchReasons
-      : [];
-    const improvementSuggestions = Array.isArray(parsed.improvementSuggestions)
-      ? parsed.improvementSuggestions
-      : [];
+    // Get explanations from parsed result
+    const scoreExplanations = parsed.scoreExplanations || {
+      capability: "",
+      experience: "",
+      location: "",
+      certification: "",
+    };
 
     // Override explanations when we force scores to 0
     const finalScoreExplanations = {
@@ -226,20 +203,20 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       location_score: Math.max(0, Math.min(100, locationScore)),
       certification_score: Math.max(0, Math.min(100, certificationScore)),
       match_reasons:
-        matchReasons.length > 0
-          ? matchReasons
+        parsed.matchReasons.length > 0
+          ? parsed.matchReasons
           : ["Limited match - review details"],
       improvement_suggestions:
-        improvementSuggestions.length > 0
-          ? improvementSuggestions
+        parsed.improvementSuggestions.length > 0
+          ? parsed.improvementSuggestions
           : ["Profile alignment could be improved"],
       ai_analysis: {
         summary: parsed.aiAnalysis || "Match analysis completed",
-        strengths: matchReasons,
-        weaknesses: improvementSuggestions,
+        strengths: parsed.matchReasons,
+        weaknesses: parsed.improvementSuggestions,
         recommendations:
-          improvementSuggestions.length > 0
-            ? improvementSuggestions
+          parsed.improvementSuggestions.length > 0
+            ? parsed.improvementSuggestions
             : ["Continue building relevant capabilities"],
         score_explanations: finalScoreExplanations,
       },

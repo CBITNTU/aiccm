@@ -1,10 +1,6 @@
 import { NextRequest } from "next/server";
-import {
-  chatCompletion,
-  createApiClient,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { createApiClient, apiResponse, apiError } from "@/lib/api";
+import { aiGenerateText } from "@/lib/ai";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 const SYSTEM_PROMPT = `You are a helpful business advisor for a tender matching platform. Provide practical, actionable advice in a friendly and professional tone. Keep responses concise but informative. Topics: profile optimization, tender strategies, partnerships.`;
@@ -17,7 +13,9 @@ export async function POST(request: NextRequest) {
       return apiError("Prompt is required", 400);
     }
 
-    const response = await chatCompletion(SYSTEM_PROMPT, prompt, {
+    const response = await aiGenerateText({
+      system: SYSTEM_PROMPT,
+      prompt,
       maxTokens: 500,
       temperature: 0.7,
     });

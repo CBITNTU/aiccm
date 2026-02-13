@@ -15,7 +15,7 @@ const DEFAULT_MATCH_COUNT = 50;
 
 /**
  * POST /api/admin/demo-sync/add-user
- * Body: { matchCount?: number, model: "gpt-5-nano" | "gemini-2.5-flash-lite" }
+ * Body: { matchCount?: number, model: "gpt-5-nano" }
  * Enqueues another batch of demo matching jobs (batchLabel "User B") without truncating.
  */
 export async function POST(request: NextRequest) {
@@ -33,11 +33,8 @@ export async function POST(request: NextRequest) {
       Math.max(1, Number(body.matchCount) || DEFAULT_MATCH_COUNT),
     );
 
-    if (model !== "gpt-5-nano" && model !== "gemini-2.5-flash-lite") {
-      return apiError(
-        "Invalid model; use gpt-5-nano or gemini-2.5-flash-lite",
-        400,
-      );
+    if (model !== "gpt-5-nano") {
+      return apiError("Invalid model; use gpt-5-nano", 400);
     }
 
     const validEfforts = [

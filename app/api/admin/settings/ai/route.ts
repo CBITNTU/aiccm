@@ -10,8 +10,9 @@ import {
   setPlatformAISettings,
   type DefaultReasoningEffort,
 } from "@/lib/platformSettings";
+import { SUPPORTED_MODELS } from "@/lib/ai";
 
-const VALID_MODELS = ["gpt-5-nano"] as const;
+const VALID_MODELS: readonly string[] = SUPPORTED_MODELS.map((m) => m.id);
 const VALID_EFFORTS: DefaultReasoningEffort[] = [
   "default",
   "none",
@@ -57,11 +58,14 @@ export async function PATCH(request: NextRequest) {
     if (!isAdmin) return apiError("Forbidden: Superadmin access required", 403);
 
     const body = await request.json().catch(() => ({}));
-    const updates: { default_ai_model?: string; default_reasoning_effort?: DefaultReasoningEffort } = {};
+    const updates: {
+      default_ai_model?: string;
+      default_reasoning_effort?: DefaultReasoningEffort;
+    } = {};
 
     if (body.default_ai_model != null) {
       const v = String(body.default_ai_model).trim();
-      if (!VALID_MODELS.includes(v as (typeof VALID_MODELS)[number])) {
+      if (!VALID_MODELS.includes(v)) {
         return apiError(
           `Invalid default_ai_model; supported: ${VALID_MODELS.join(", ")}`,
           400,
@@ -70,7 +74,9 @@ export async function PATCH(request: NextRequest) {
       updates.default_ai_model = v;
     }
     if (body.default_reasoning_effort != null) {
-      const v = String(body.default_reasoning_effort).trim() as DefaultReasoningEffort;
+      const v = String(
+        body.default_reasoning_effort,
+      ).trim() as DefaultReasoningEffort;
       if (!VALID_EFFORTS.includes(v)) {
         return apiError(
           `Invalid default_reasoning_effort; supported: ${VALID_EFFORTS.join(", ")}`,

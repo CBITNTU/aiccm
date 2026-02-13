@@ -1,13 +1,11 @@
 import { NextRequest } from "next/server";
-import { generateObject, zodSchema } from "ai";
-import { openai } from "@ai-sdk/openai";
 import {
   apiResponse,
   apiError,
   getAuthenticatedUser,
   createAdminClient,
 } from "@/lib/api";
-import { getPlatformAISettings } from "@/lib/platformSettings";
+import { aiGenerateObject } from "@/lib/ai";
 import {
   analyzeTeamRequestSchema,
   teamAnalysisResponseSchema,
@@ -86,18 +84,16 @@ export async function POST(request: NextRequest) {
     // Build the prompt
     const prompt = buildTeamAnalysisPrompt(company, tender, teamMembers);
 
-    // Use Vercel AI SDK with structured output (model from platform default)
-    const { default_ai_model } = await getPlatformAISettings();
-    const result = await generateObject({
-      model: openai(default_ai_model),
-      schema: zodSchema(teamAnalysisResponseSchema),
+    // Use shared AI wrapper (provider-agnostic, rate-limited)
+    const result = await aiGenerateObject({
+      schema: teamAnalysisResponseSchema,
       prompt,
     });
 
     // Build the team analysis data with metadata
     const teamAnalysisData = {
       type: "team" as const,
-      ...result.object,
+      ...result,
       analyzedAt: new Date().toISOString(),
     };
 

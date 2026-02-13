@@ -2,7 +2,8 @@
 import { generateObject, generateText, zodSchema } from "ai";
 import type { LanguageModel } from "ai";
 import type { ZodType } from "zod";
-import { resolveModel, getPlatformModel } from "./provider";
+import { resolveModel, getProviderName } from "./models";
+import { getPlatformModel } from "./provider";
 import { runLLM } from "@/lib/services/llmLimiter";
 
 interface BaseOptions {
@@ -22,13 +23,21 @@ interface GenerateObjectOptions<T> extends BaseOptions {
 }
 
 /**
- * Normalise reasoning effort for gpt-5-nano which only supports minimal/low/medium/high.
+ * Normalise reasoning effort.
+ * - For DeepSeek models: pass through (handled by buildProviderOptions).
+ * - For GPT-5 nano: clamp unsupported values (only supports minimal/low/medium/high).
+ * - For other OpenAI models: only GPT-5 supports reasoning effort.
  */
 function normaliseReasoningEffort(
   effort: string | undefined,
   modelId: string,
 ): string | undefined {
   if (!effort) return undefined;
+
+  // DeepSeek: pass through; buildProviderOptions maps to thinking mode
+  if (modelId.startsWith("deepseek-")) return effort;
+
+  // OpenAI: only GPT-5 models support reasoning effort
   const isGPT5 = modelId.startsWith("gpt-5");
   if (!isGPT5) return undefined;
 
@@ -39,9 +48,28 @@ function normaliseReasoningEffort(
   return effort;
 }
 
+/**
+ * Build provider-specific options for the AI SDK call.
+ * - OpenAI: passes reasoningEffort.
+ * - DeepSeek: deepseek-reasoner has built-in thinking; deepseek-chat can
+ *   have thinking enabled via provider options when reasoning effort is set.
+ */
 function buildProviderOptions(
   reasoningEffort: string | undefined,
+  provider: string,
+  modelId: string,
 ): Record<string, any> | undefined {
+  if (provider === "deepseek") {
+    // deepseek-reasoner always uses thinking mode; no extra options needed
+    if (modelId === "deepseek-reasoner") return undefined;
+    // For deepseek-chat, enable thinking mode when reasoning effort is non-trivial
+    if (reasoningEffort && reasoningEffort !== "none") {
+      return { deepseek: { thinking: { type: "enabled" } } };
+    }
+    return undefined;
+  }
+
+  // OpenAI
   if (!reasoningEffort) return undefined;
   return { openai: { reasoningEffort } };
 }
@@ -77,6 +105,7 @@ export async function aiGenerateObject<T>(
       reasoningEffort,
       resolvedModelId,
     );
+    const provider = getProviderName(resolvedModelId);
 
     const result = await generateObject({
       model,
@@ -85,7 +114,11 @@ export async function aiGenerateObject<T>(
       prompt,
       maxOutputTokens: maxTokens,
       temperature,
-      providerOptions: buildProviderOptions(normalisedEffort),
+      providerOptions: buildProviderOptions(
+        normalisedEffort,
+        provider,
+        resolvedModelId,
+      ),
     });
 
     return result.object;
@@ -96,9 +129,7 @@ export async function aiGenerateObject<T>(
  * Rate-limited wrapper around Vercel AI SDK `generateText()`.
  * Uses the platform default model unless `modelId` is provided.
  */
-export async function aiGenerateText(
-  options: BaseOptions,
-): Promise<string> {
+export async function aiGenerateText(options: BaseOptions): Promise<string> {
   const { system, prompt, maxTokens, temperature, modelId, estTokens } =
     options;
 
@@ -123,6 +154,7 @@ export async function aiGenerateText(
       reasoningEffort,
       resolvedModelId,
     );
+    const provider = getProviderName(resolvedModelId);
 
     const result = await generateText({
       model,
@@ -130,7 +162,11 @@ export async function aiGenerateText(
       prompt,
       maxOutputTokens: maxTokens,
       temperature,
-      providerOptions: buildProviderOptions(normalisedEffort),
+      providerOptions: buildProviderOptions(
+        normalisedEffort,
+        provider,
+        resolvedModelId,
+      ),
     });
 
     return result.text;

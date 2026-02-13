@@ -8,23 +8,28 @@ import {
 import { aiGenerateObject } from "@/lib/ai";
 import { existingCapabilitiesSchema } from "@/lib/schemas/capabilitySuggestion";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { z } from "zod";
+
+const suggestCapabilitiesInputSchema = z.object({
+  tenderId: z.string().uuid(),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const { user, error: authError } = await getAuthenticatedUser(request);
 
     if (authError || !user) {
-      console.error("Authentication error in suggest-capabilities:", authError);
       return apiError("Unauthorized. Please log in to use this feature.", 401);
     }
 
-    const { tenderId } = await request.json();
+    const body = await request.json();
+    const parseResult = suggestCapabilitiesInputSchema.safeParse(body);
 
-    if (!tenderId) {
-      return apiError("Tender ID is required", 400);
+    if (!parseResult.success) {
+      return apiError("Invalid request body", 400, parseResult.error.message);
     }
 
-    console.log("Fetching tender for capability suggestions:", tenderId);
+    const { tenderId } = parseResult.data;
 
     // Use admin client to bypass RLS for reading tender (user is already authenticated)
     const adminSupabase = createAdminClient();
@@ -38,17 +43,9 @@ export async function POST(request: NextRequest) {
       .eq("id", tenderId)
       .single();
 
-    if (tenderError) {
-      console.error("Error fetching tender:", tenderError);
-      return apiError(`Tender not found: ${tenderError.message}`, 404);
-    }
-
-    if (!tender) {
-      console.error("Tender not found, ID:", tenderId);
+    if (tenderError || !tender) {
       return apiError("Tender not found", 404);
     }
-
-    console.log("Tender found:", tender.title);
 
     // Fetch all available capabilities (public table, no RLS needed)
     const { data: capabilities, error: capabilitiesError } = await adminSupabase
@@ -61,7 +58,7 @@ export async function POST(request: NextRequest) {
       return apiError("Failed to fetch capabilities", 500);
     }
 
-    // CRITICAL: Get capabilities that companies actually have (have links in junction table)
+    // Get capabilities that companies actually have
     const { data: companyCapabilityLinks } = await adminSupabase
       .from("company_capabilities")
       .select("capability_id")
@@ -71,10 +68,6 @@ export async function POST(request: NextRequest) {
       (companyCapabilityLinks || []).map(
         (link: { capability_id: string }) => link.capability_id,
       ),
-    );
-
-    console.log(
-      `Found ${usedCapabilityIds.size} capabilities that companies actually have`,
     );
 
     // Separate capabilities into "used by companies" and "not used yet"
@@ -98,7 +91,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Format capabilities list - prioritize used capabilities
     const usedCapabilitiesList = Object.entries(usedCapabilitiesByCategory)
       .map(
         ([category, names]) =>
@@ -161,11 +153,6 @@ Prefer USED BY COMPANIES. Return existing = array of capability names from the l
       ...suggestedCapabilityIds.filter((id) => !usedCapabilityIds.has(id)),
     ];
 
-    console.log(
-      `Final suggestion: ${prioritizedIds.filter((id) => usedCapabilityIds.has(id)).length} used capabilities, ${prioritizedIds.filter((id) => !usedCapabilityIds.has(id)).length} unused capabilities`,
-    );
-
-    // Log capability suggestion event
     await logApiEvent(request, {
       actionType: "tender_viewed",
       userId: user.id,

@@ -147,42 +147,21 @@ export function useRunGapAnalysis() {
     mutationFn: async ({
       projectId,
       company,
-      tender,
+      tenderId,
     }: {
       projectId: string;
       company: Company;
-      tender: Tender;
+      tenderId: string;
     }) => {
-      const prompt = `
-You are a tender analysis expert. Analyze this tender requirement against a single company's capabilities to identify gaps.
+      // Call server-side API which handles prompt construction and AI call
+      const aiData = await api.analyzeProjectSimple({
+        projectId,
+        companyId: company.id,
+        tenderId,
+      });
+      const analysis = aiData.analysis;
 
-Tender: ${tender.title}
-Description: ${tender.description || "Not provided"}
-Buyer: ${tender.buyer_name || "Not specified"}
-Value: £${tender.value?.toLocaleString() || "Not specified"}
-Location: ${tender.region || "UK"}
-
-Company: ${company.company_name}
-- Capabilities: ${company.key_capabilities || "Not specified"}
-- Certifications: ${company.certifications || "None"}
-- Past Projects: ${company.past_projects || "None"}
-- Description: ${company.description || "None"}
-
-Provide a detailed JSON analysis with:
-1. requiredCompetencies: Array of key competencies needed for this tender (be specific)
-2. companyCompetencies: Array of what this company currently has
-3. missingCompetencies: Array of gaps that need to be filled
-4. coveragePercentage: Number (0-100) of requirement coverage by this company alone
-5. readinessScore: Number (0-100) company readiness score
-6. risks: Array of potential risks for bidding alone
-7. recommendations: Array of strategic recommendations to fill gaps
-
-Return ONLY valid JSON, no markdown.`;
-
-      const aiData = await api.analyzeProjectSimple(prompt);
-      const analysis = JSON.parse(aiData.content);
-
-      // Get partner recommendations
+      // Get partner recommendations based on missing competencies
       const missingComps = analysis.missingCompetencies || [];
       let recommendations: RecommendedPartner[] = [];
 
@@ -240,17 +219,12 @@ Return ONLY valid JSON, no markdown.`;
         }
       }
 
-      const coveragePercentage = Math.round(
-        Number(analysis.coveragePercentage) ?? 0,
-      );
-      const readinessScore = Math.round(Number(analysis.readinessScore) ?? 0);
-
       const gapAnalysisData: GapAnalysis = {
         ...analysis,
         companyCompetencies: analysis.companyCompetencies || [],
         missingCompetencies: analysis.missingCompetencies || [],
-        coveragePercentage,
-        readinessScore,
+        coveragePercentage: Math.round(analysis.coveragePercentage ?? 0),
+        readinessScore: Math.round(analysis.readinessScore ?? 0),
         type: "gap",
         analyzedAt: new Date().toISOString(),
       };

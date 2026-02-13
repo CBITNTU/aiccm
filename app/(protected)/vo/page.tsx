@@ -179,11 +179,11 @@ export default function ConsultingPage() {
       if (ownerCompany?.id === routeCompanyId) return;
 
       try {
-        const { data: company, error } = await supabase
+        // RLS policy allows access for both owners and approved team members
+      const { data: company, error } = await supabase
           .from("companies")
           .select("*")
           .eq("id", routeCompanyId)
-          .eq("user_id", user.id)
           .single();
 
         if (error) {
@@ -399,35 +399,13 @@ export default function ConsultingPage() {
       setAnalyzing(true);
       toast.info("Starting gap analysis...");
 
-      const prompt = `
-You are a tender analysis expert. Analyze this tender requirement against a single company's capabilities to identify gaps.
+      const aiData = await api.analyzeProjectSimple({
+        projectId: voId,
+        companyId: company.id,
+        tenderId: tenderData.id,
+      });
 
-Tender: ${tenderData.title}
-Description: ${tenderData.description || "Not provided"}
-Buyer: ${tenderData.buyer_name || "Not specified"}
-Value: £${tenderData.value?.toLocaleString() || "Not specified"}
-Location: ${tenderData.region || "UK"}
-
-Company: ${company.company_name}
-- Capabilities: ${company.key_capabilities || "Not specified"}
-- Certifications: ${company.certifications || "None"}
-- Past Projects: ${company.past_projects || "None"}
-- Description: ${company.description || "None"}
-
-Provide a detailed JSON analysis with:
-1. requiredCompetencies: Array of key competencies needed for this tender (be specific)
-2. companyCompetencies: Array of what this company currently has
-3. missingCompetencies: Array of gaps that need to be filled
-4. coveragePercentage: Number (0-100) of requirement coverage by this company alone
-5. readinessScore: Number (0-100) company readiness score
-6. risks: Array of potential risks for bidding alone
-7. recommendations: Array of strategic recommendations to fill gaps
-
-Return ONLY valid JSON, no markdown.`;
-
-      const aiData = await api.analyzeProjectSimple(prompt);
-
-      const analysis = JSON.parse(aiData.content);
+      const analysis = aiData.analysis;
 
       // Get partner recommendations
       const missingComps = analysis.missingCompetencies || [];
@@ -530,76 +508,51 @@ Return ONLY valid JSON, no markdown.`;
     tenderData: Tender,
     members: TeamMember[],
   ) => {
-    if (!supabase) return;
-
     try {
       setAnalyzing(true);
       toast.info("Starting team analysis...");
 
-      const allCompanies = [company, ...members.map((m) => m.companies)].filter(
-        Boolean,
-      );
-
-      const prompt = `
-You are a tender analysis expert. Analyze this tender against a full consortium team.
-
-Tender: ${tenderData.title}
-Description: ${tenderData.description || "Not provided"}
-Buyer: ${tenderData.buyer_name || "Not specified"}
-Value: £${tenderData.value?.toLocaleString() || "Not specified"}
-Location: ${tenderData.region || "UK"}
-
-Team Members:
-${allCompanies
-  .map(
-    (c, idx) => `
-${idx + 1}. ${c?.company_name} ${idx === 0 ? "(Lead)" : "(Partner)"}
-   - Capabilities: ${c?.key_capabilities || "Not specified"}
-   - Certifications: ${c?.certifications || "None"}
-   - Past Projects: ${c?.past_projects || "None"}
-   - Description: ${c?.description || "None"}
-`,
-  )
-  .join("\n")}
-
-Provide a detailed JSON analysis with:
-1. requiredCompetencies: Array of key competencies needed
-2. companyCompetencies: Array of combined team capabilities
-3. missingCompetencies: Array of any remaining gaps
-4. coveragePercentage: Number (0-100) of requirement coverage by full team
-5. readinessScore: Number (0-100) team readiness
-6. risks: Array of potential risks
-7. recommendations: Array of strategic recommendations
-8. teamMembers: Array of objects with {companyName: string, contribution: string[]} showing each member's key contributions
-
-Return ONLY valid JSON, no markdown.`;
-
-      const result = await api.analyzeProjectSimple(prompt);
-
-      const analysis = JSON.parse(result.content);
+      // Use the proper analyze-team endpoint (server-side prompt, Zod validation)
+      const result = await api.analyzeTeam({
+        projectId: voId,
+        company: {
+          id: company.id,
+          company_name: company.company_name,
+          key_capabilities: company.key_capabilities,
+          certifications: company.certifications,
+          past_projects: company.past_projects,
+          description: company.description,
+        },
+        tender: {
+          title: tenderData.title,
+          description: tenderData.description,
+          buyer_name: tenderData.buyer_name || tenderData.buyer,
+          value: tenderData.value,
+          region: tenderData.region || tenderData.location,
+        },
+        teamMembers: members.map((m) => ({
+          companies: m.companies
+            ? {
+                company_name: m.companies.company_name,
+                key_capabilities: m.companies.key_capabilities,
+                certifications: m.companies.certifications,
+                past_projects: m.companies.past_projects,
+                description: m.companies.description,
+              }
+            : null,
+        })),
+      });
 
       const teamAnalysisData: TeamAnalysis = {
-        ...analysis,
-        type: "team",
-        analyzedAt: new Date().toISOString(),
-        teamMembers: analysis.teamMembers || [],
+        ...result.teamAnalysis,
       };
 
       setTeamAnalysis(teamAnalysisData);
 
-      // Save team analysis to database
-      await supabase
-        .from("virtual_organizations")
-        .update({
-          team_analysis:
-            teamAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
-        })
-        .eq("id", voId);
-
-      const gaps = analysis.missingCompetencies?.length || 0;
+      const gaps = teamAnalysisData.missingCompetencies?.length || 0;
 
       toast.success(
-        `Team analysis complete! Coverage: ${analysis.coveragePercentage}%, ` +
+        `Team analysis complete! Coverage: ${teamAnalysisData.coveragePercentage}%, ` +
           `${gaps} gaps remaining with current team`,
       );
     } catch (error) {

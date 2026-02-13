@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/api";
-import { createAdminClient } from "@/lib/api";
 import { batchScoreTendersForCompany } from "@/lib/services/tenderMatchingService";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { getUserCompanyIds } from "@/lib/api/validation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,22 +17,17 @@ export async function POST(request: NextRequest) {
 
     const { tenderIds } = await request.json().catch(() => ({}));
 
-    // Get user's company
-    const adminSupabase = createAdminClient();
-    const { data: companies, error: companyError } = await adminSupabase
-      .from("companies")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1);
+    // Get user's companies (owned + team memberships)
+    const companyIds = await getUserCompanyIds(user.id);
 
-    if (companyError || !companies || companies.length === 0) {
+    if (companyIds.length === 0) {
       return NextResponse.json(
         { success: false, error: "Company not found for user" },
         { status: 404 },
       );
     }
 
-    const companyId = (companies[0] as { id: string }).id;
+    const companyId = companyIds[0];
 
     // Queue matching jobs
     const { jobCount, batchId } = await batchScoreTendersForCompany(

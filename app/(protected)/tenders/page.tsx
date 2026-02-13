@@ -83,10 +83,11 @@ export default function TendersPage() {
 
     const fetchCompanies = async () => {
       try {
+        // Fetch companies the user owns or is an approved team member of
+        // (RLS policy on companies table handles the filtering)
         const { data, error } = await supabase
           .from("companies")
           .select("*")
-          .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
         if (error) throw error;

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs, processing_queue not in generated types */
 import { NextRequest } from "next/server";
-import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
+import { getAuthenticatedUser, apiResponse, apiError, createAdminClient } from "@/lib/api";
+import { isCompanyMember } from "@/lib/api/validation";
 import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { logApiEvent } from "@/lib/services/eventLogger";
@@ -284,40 +285,71 @@ export async function POST(request: NextRequest) {
     const targetCompanyId = requestBody.companyId;
 
     let company;
+    const adminSupabase = createAdminClient();
 
     if (targetCompanyId) {
-      // Use specific company if provided
-      const { data: specificCompany, error: specificCompanyError } =
-        await supabase
-          .from("companies")
-          .select("*")
-          .eq("id", targetCompanyId)
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .single();
-
-      if (specificCompanyError || !specificCompany) {
+      // Use specific company if provided — check membership (owner or team member)
+      const hasAccess = await isCompanyMember(user.id, targetCompanyId);
+      if (!hasAccess) {
         return apiError(
           `Company not found or access denied: ${targetCompanyId}`,
           404,
         );
       }
 
+      const { data: specificCompany, error: specificCompanyError } =
+        await adminSupabase
+          .from("companies")
+          .select("*")
+          .eq("id", targetCompanyId)
+          .eq("status", "active")
+          .single();
+
+      if (specificCompanyError || !specificCompany) {
+        return apiError(
+          `Company not found or not active: ${targetCompanyId}`,
+          404,
+        );
+      }
+
       company = specificCompany;
     } else {
-      // Get user's first active company if no specific company provided
-      const { data: companies, error: companyError } = await supabase
+      // Get user's own active company first
+      const { data: ownCompanies } = await supabase
         .from("companies")
         .select("*")
         .eq("user_id", user.id)
         .eq("status", "active")
         .limit(1);
 
-      if (companyError || !companies || companies.length === 0) {
-        return apiError("No active company found for user", 404);
+      if (ownCompanies && ownCompanies.length > 0) {
+        company = ownCompanies[0];
+      } else {
+        // Fall back to companies where user is an approved team member
+        const { data: memberships } = await adminSupabase
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", user.id)
+          .eq("status", "approved")
+          .limit(1);
+
+        if (memberships && memberships.length > 0) {
+          const { data: memberCompany } = await adminSupabase
+            .from("companies")
+            .select("*")
+            .eq("id", memberships[0].company_id)
+            .eq("status", "active")
+            .single();
+
+          if (memberCompany) {
+            company = memberCompany;
+          }
+        }
       }
 
-      company = companies[0];
+      if (!company) {
+        return apiError("No active company found for user", 404);
+      }
     }
 
     const companyData = company as CompanyData;

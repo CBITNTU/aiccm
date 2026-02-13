@@ -22,7 +22,6 @@ function buildTeamAnalysisPrompt(
   tender: TenderInput,
   teamMembers: TeamMemberInput[],
 ): string {
-  // Combine lead company with team members
   const allCompanies = [
     company,
     ...teamMembers.map((m) => m.companies).filter(Boolean),
@@ -109,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error("Database error saving team analysis:", dbError);
-      return apiError("Failed to save team analysis", 500, dbError.message);
+      return apiError("Failed to save team analysis", 500);
     }
 
     await logApiEvent(request, {

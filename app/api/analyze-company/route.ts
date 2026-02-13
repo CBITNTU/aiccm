@@ -1,44 +1,36 @@
 import { NextRequest } from "next/server";
-import {
-  createAdminClient,
-  apiResponse,
-  apiError,
-  getAuthenticatedUser,
-} from "@/lib/api";
+import { createAdminClient, apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { performanceBenchmarkSchema } from "@/lib/schemas/performanceBenchmark";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { generateCompanyCapabilityTaxonomy } from "@/lib/services/companyAIService";
 import type { DeepCompanyAnalysis } from "@/lib/api/types";
+import { z } from "zod";
+import {
+  requireAuth,
+  validateBody,
+  handleApiError,
+  isCompanyMember,
+} from "@/lib/api/validation";
 
-export async function POST(request: NextRequest) {
-  try {
-    const { companyId } = await request.json();
+const analyzeCompanyInputSchema = z.object({
+  companyId: z.string().uuid(),
+});
 
-    if (!companyId) {
-      return apiError("Company ID is required", 400);
-    }
+function buildPerformanceBenchmarkPrompt(
+  company: {
+    company_name: string;
+    website_url?: string | null;
+    key_capabilities?: string | null;
+    equipment?: string | null;
+    certifications?: string | null;
+    past_projects?: string | null;
+    financial_data?: Record<string, { value?: unknown }> | null;
+  },
+): string {
+  const financialData = company.financial_data || {};
 
-    const supabase = createAdminClient();
-
-    // Fetch company data
-    const { data: company, error: companyError } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("id", companyId)
-      .single();
-
-    if (companyError || !company) {
-      return apiError("Company not found", 404);
-    }
-
-    // Comprehensive analysis prompt with performance benchmarking
-    const financialData =
-      (company.financial_data as Record<string, { value?: unknown }>) || {};
-
-    const analysisPrompt = `Score these 8 dimensions (0-100) with a short explanation. Return JSON with performanceBenchmark as below.
-
-${company.website_url ? `Visit "${company.website_url}" to extract additional information.` : ""}
+  return `Score these 8 dimensions (0-100) with a short explanation. Return JSON with performanceBenchmark as below.
 
 Company: ${company.company_name}
 Website: ${company.website_url || "N/A"}
@@ -50,88 +42,73 @@ Employees: ${financialData.employees?.value || "N/A"}
 Net Assets: £${typeof financialData.netAssets?.value === "number" ? financialData.netAssets.value.toLocaleString() : "N/A"}
 Total Assets: £${typeof financialData.totalAssets?.value === "number" ? financialData.totalAssets.value.toLocaleString() : "N/A"}
 Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.value.toLocaleString() : "N/A"}`;
+}
 
-    const systemPrompt = `Rate company 0-100 on each dimension from available data only; 0 if no data. Optional: use website when provided.`;
+export async function POST(request: NextRequest) {
+  try {
+    const { user } = await requireAuth(request);
+    const { companyId } = await validateBody(
+      request,
+      analyzeCompanyInputSchema,
+    );
 
-    console.log("Sending analyze-company request to AI...");
+    const supabase = createAdminClient();
 
-    let analysis: DeepCompanyAnalysis;
-    try {
-      const rawAnalysis = await aiGenerateObject({
-        schema: performanceBenchmarkSchema,
-        system: systemPrompt,
-        prompt: analysisPrompt,
-        maxTokens: 10000,
-      });
+    // Verify ownership or superadmin
+    const { data: company, error: companyError } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("id", companyId)
+      .single();
 
-      console.log("AI response received and parsed");
-
-      const benchmark = rawAnalysis.performanceBenchmark;
-      analysis = {
-        companyInfo: {},
-        performanceBenchmark: {
-          technicalExpertise: benchmark.technicalExpertise.score,
-          safetyStandards: benchmark.safetyStandards.score,
-          innovation: benchmark.innovation.score,
-          projectExperience: benchmark.projectExperience.score,
-          certifications: benchmark.certifications.score,
-          marketReputation: benchmark.marketReputation.score,
-          financialHealth: benchmark.financialHealth.score,
-          operationalCapacity: benchmark.operationalCapacity.score,
-          overallScore: benchmark.overallScore.score,
-        },
-        coreCompetencies: [],
-        digitalMaturity: "Not assessed yet",
-        safetyRating: "Not assessed yet",
-        marketPosition: "Not assessed yet",
-        businessInsights: [],
-        competitivePositioning: "Developing",
-        swotSummary: {
-          strengths: [],
-          weaknesses: [],
-          opportunities: [],
-          threats: [],
-        },
-        executiveSummary: "Analysis completed.",
-      };
-
-      console.log(
-        "Performance benchmark scores:",
-        analysis.performanceBenchmark,
-      );
-    } catch (parseError) {
-      console.error("Failed to get AI analysis:", parseError);
-      console.warn(
-        "Using FALLBACK analysis - AI call failed. This is hardcoded data!",
-      );
-      analysis = {
-        companyInfo: {},
-        performanceBenchmark: {
-          technicalExpertise: 50,
-          safetyStandards: 50,
-          innovation: 50,
-          projectExperience: 50,
-          certifications: 50,
-          marketReputation: 50,
-          financialHealth: 50,
-          operationalCapacity: 50,
-          overallScore: 50,
-        },
-        coreCompetencies: ["General construction"],
-        digitalMaturity: "Not assessed yet",
-        safetyRating: "Not assessed yet",
-        marketPosition: "Not assessed yet",
-        businessInsights: ["Analysis incomplete, please try again"],
-        competitivePositioning: "Emerging Player",
-        swotSummary: {
-          strengths: ["Established presence"],
-          weaknesses: ["Limited data"],
-          opportunities: ["Market expansion"],
-          threats: ["Competition"],
-        },
-        executiveSummary: "Analysis could not be completed.",
-      };
+    if (companyError || !company) {
+      return apiResponse({ error: "Company not found" }, 404);
     }
+
+    const hasAccess = await isCompanyMember(user.id, companyId);
+    if (!hasAccess) {
+      return apiResponse({ error: "Not authorized to analyze this company" }, 403);
+    }
+
+    const prompt = buildPerformanceBenchmarkPrompt(
+      company as unknown as Parameters<typeof buildPerformanceBenchmarkPrompt>[0],
+    );
+
+    const rawAnalysis = await aiGenerateObject({
+      schema: performanceBenchmarkSchema,
+      system: `Rate company 0-100 on each dimension from available data only; 0 if no data.`,
+      prompt,
+      maxTokens: 10000,
+    });
+
+    const benchmark = rawAnalysis.performanceBenchmark;
+    const analysis: DeepCompanyAnalysis = {
+      companyInfo: {},
+      performanceBenchmark: {
+        technicalExpertise: benchmark.technicalExpertise.score,
+        safetyStandards: benchmark.safetyStandards.score,
+        innovation: benchmark.innovation.score,
+        projectExperience: benchmark.projectExperience.score,
+        certifications: benchmark.certifications.score,
+        marketReputation: benchmark.marketReputation.score,
+        financialHealth: benchmark.financialHealth.score,
+        operationalCapacity: benchmark.operationalCapacity.score,
+        overallScore: benchmark.overallScore.score,
+      },
+      coreCompetencies: [],
+      digitalMaturity: "Not assessed yet",
+      safetyRating: "Not assessed yet",
+      marketPosition: "Not assessed yet",
+      businessInsights: [],
+      competitivePositioning: "Developing",
+      swotSummary: {
+        strengths: [],
+        weaknesses: [],
+        opportunities: [],
+        threats: [],
+      },
+      executiveSummary: "Analysis completed.",
+    };
 
     // Save analysis results AND fill company information fields
     const updateData: Record<string, unknown> = {
@@ -139,7 +116,6 @@ Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.val
       updated_at: new Date().toISOString(),
     };
 
-    // Fill in company fields if they were empty or inadequate
     const companyInfo = analysis.companyInfo || {};
 
     if (
@@ -179,7 +155,6 @@ Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.val
       updateData.postcode = companyInfo.postcode;
     }
 
-    // Update assessment ratings from analysis
     if (analysis.digitalMaturity) {
       updateData.digital_maturity = analysis.digitalMaturity;
     }
@@ -199,36 +174,17 @@ Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.val
       console.error("Error saving analysis to database:", updateError);
     }
 
-    // Generate capabilities from the static list based on company analysis
+    // Generate capabilities from the static list
     try {
-      console.log("Generating company capabilities from static list...");
-      const capabilityIds = await generateCompanyCapabilityTaxonomy(
-        companyId,
-        false,
-      );
-      console.log(
-        `Generated ${capabilityIds.length} capabilities for company ${companyId}`,
-      );
+      await generateCompanyCapabilityTaxonomy(companyId, false);
     } catch (capabilityError) {
-      console.error(
-        "Failed to generate company capabilities:",
-        capabilityError,
-      );
+      console.error("Failed to generate company capabilities:", capabilityError);
     }
 
-    console.log(
-      "Company analysis completed and saved for:",
-      company.company_name,
-    );
-
-    // Log analysis event
-    const { user } = await getAuthenticatedUser(request).catch(() => ({
-      user: null,
-    }));
     await logApiEvent(request, {
       actionType: "company_updated",
-      userId: user?.id || null,
-      userEmail: user?.email || undefined,
+      userId: user.id,
+      userEmail: user.email || undefined,
       entityType: "company",
       entityId: companyId,
       details: {
@@ -242,15 +198,6 @@ Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.val
       analysis,
     });
   } catch (error) {
-    console.error("Error in analyze-company:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-
-    return apiResponse(
-      {
-        error: message,
-        success: false,
-      },
-      500,
-    );
+    return handleApiError(error);
   }
 }

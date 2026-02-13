@@ -6,6 +6,7 @@ import {
   apiError,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { isCompanyMember } from "@/lib/api/validation";
 
 interface ProjectRequest {
   name: string;
@@ -31,16 +32,9 @@ export async function POST(request: NextRequest) {
     // Use admin client to bypass RLS
     const supabaseAdmin = createAdminClient();
 
-    // Verify user owns the company
-    const { data: company, error: companyError } = await supabaseAdmin
-      .from("companies")
-      .select("*")
-      .eq("id", company_id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (companyError || !company) {
-      console.error("Company verification failed:", companyError);
+    // Verify user is owner or approved team member
+    const hasAccess = await isCompanyMember(user.id, company_id);
+    if (!hasAccess) {
       return apiError("Company not found or unauthorized", 403);
     }
 

@@ -1,51 +1,63 @@
 import { NextRequest } from "next/server";
-import {
-  createAdminClient,
-  createApiClient,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { createAdminClient, apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
-import { z } from "zod";
+import { tenderTaxonomySuggestionSchema } from "@/lib/schemas/tenderTaxonomy";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { z } from "zod";
+import {
+  requireAuth,
+  validateBody,
+  handleApiError,
+} from "@/lib/api/validation";
 
-const tenderTaxonomySuggestionSchema = z.object({
-  taxonomies: z
-    .array(z.string())
-    .describe("Array of taxonomy category names that best match this tender"),
+const analyzeTenderInputSchema = z.object({
+  tenderData: z.object({
+    title: z.string().min(1).max(500),
+    description: z.string().max(10000).optional(),
+    buyer: z.string().max(500),
+    cpv_codes: z.array(z.string()).optional(),
+    location: z.string().max(200).optional(),
+  }),
+  tenderId: z.string().uuid().optional(),
 });
 
-interface TenderData {
-  title: string;
-  description?: string;
-  buyer: string;
-  cpv_codes?: string[];
-  location?: string;
+function buildTenderAnalysisPrompt(
+  tenderData: z.infer<typeof analyzeTenderInputSchema>["tenderData"],
+  taxonomyList: string,
+): string {
+  return `Tender Title: ${tenderData.title}
+Description: ${tenderData.description || "Not provided"}
+Buyer: ${tenderData.buyer}
+${tenderData.cpv_codes ? `CPV Codes: ${tenderData.cpv_codes.join(", ")}` : ""}
+${tenderData.location ? `Location: ${tenderData.location}` : ""}
+
+Available taxonomy categories: ${taxonomyList}
+
+Pick 2-5 categories that best match this tender. Focus on the most specific categories.`;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Optional auth
-    }
-
-    const { tenderData, tenderId } = (await request.json()) as {
-      tenderData: TenderData;
-      tenderId?: string;
-    };
-
-    if (!tenderData || !tenderData.title) {
-      return apiError("tenderData with title is required", 400);
-    }
+    const { user } = await requireAuth(request);
+    const { tenderData, tenderId } = await validateBody(
+      request,
+      analyzeTenderInputSchema,
+    );
 
     const supabase = createAdminClient();
+
+    // If tenderId provided, verify tender exists
+    if (tenderId) {
+      const { data: existingTender } = await supabase
+        .from("tenders")
+        .select("id")
+        .eq("id", tenderId)
+        .single();
+
+      if (!existingTender) {
+        return apiResponse({ error: "Tender not found" }, 404);
+      }
+    }
 
     // Fetch available taxonomies
     const { data: taxonomies } = await supabase
@@ -56,24 +68,12 @@ export async function POST(request: NextRequest) {
     const taxonomyList =
       taxonomies?.map((t) => `${t.name} (Level ${t.level})`).join(", ") || "";
 
-    const prompt = `Tender Title: ${tenderData.title}
-Description: ${tenderData.description || "Not provided"}
-Buyer: ${tenderData.buyer}
-${tenderData.cpv_codes ? `CPV Codes: ${tenderData.cpv_codes.join(", ")}` : ""}
-${tenderData.location ? `Location: ${tenderData.location}` : ""}
-
-Available taxonomy categories: ${taxonomyList}
-
-Pick 2-5 categories that best match this tender. Focus on the most specific categories.`;
-
-    console.log("Analyzing tender:", tenderData.title);
-
-    const systemPrompt =
-      "You are an expert at analyzing tender documents and categorizing them.";
+    const prompt = buildTenderAnalysisPrompt(tenderData, taxonomyList);
 
     const parsed = await aiGenerateObject({
       schema: tenderTaxonomySuggestionSchema,
-      system: systemPrompt,
+      system:
+        "You are an expert at analyzing tender documents and categorizing them.",
       prompt,
       temperature: 0.2,
       maxTokens: 10000,
@@ -81,12 +81,8 @@ Pick 2-5 categories that best match this tender. Focus on the most specific cate
 
     const suggestedTaxonomies = parsed.taxonomies;
 
-    console.log("AI suggested taxonomies:", suggestedTaxonomies);
-
     // Auto-tag tender if tenderId provided
     if (tenderId && suggestedTaxonomies.length > 0 && taxonomies) {
-      console.log("Auto-tagging tender with taxonomies:", suggestedTaxonomies);
-
       const taxonomyIds = taxonomies
         .filter((t) =>
           suggestedTaxonomies.some(
@@ -98,35 +94,23 @@ Pick 2-5 categories that best match this tender. Focus on the most specific cate
         .map((t) => t.id);
 
       if (taxonomyIds.length > 0) {
-        // Remove existing taxonomies
         await supabase
           .from("tender_taxonomies")
           .delete()
           .eq("tender_id", tenderId);
 
-        // Insert new taxonomies
         const taxonomyInserts = taxonomyIds.map((taxId) => ({
           tender_id: tenderId,
           taxonomy_id: taxId,
         }));
 
-        const { error: taxonomyError } = await supabase
-          .from("tender_taxonomies")
-          .insert(taxonomyInserts);
-
-        if (taxonomyError) {
-          console.error("Error inserting tender taxonomies:", taxonomyError);
-        } else {
-          console.log(
-            `Successfully tagged tender with ${taxonomyIds.length} taxonomies`,
-          );
-        }
+        await supabase.from("tender_taxonomies").insert(taxonomyInserts);
       }
     }
 
     await logApiEvent(request, {
       actionType: "tender_analyzed",
-      userId: userId || undefined,
+      userId: user.id,
       entityType: "tender",
       entityId: tenderId || undefined,
       details: {
@@ -140,8 +124,6 @@ Pick 2-5 categories that best match this tender. Focus on the most specific cate
       taxonomyCount: suggestedTaxonomies.length,
     });
   } catch (error) {
-    console.error("Error in analyze-tender:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError("Failed to analyze tender", 500, message);
+    return handleApiError(error);
   }
 }

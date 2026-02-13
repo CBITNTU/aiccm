@@ -1,8 +1,21 @@
 import { NextRequest } from "next/server";
-import { createApiClient, apiResponse } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { companyPrefillSchema } from "@/lib/schemas/companyPrefill";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { z } from "zod";
+import {
+  requireAuth,
+  validateBody,
+  validateUrl,
+  handleApiError,
+} from "@/lib/api/validation";
+
+const prefillInputSchema = z.object({
+  companyName: z.string().min(1).max(200),
+  companyNumber: z.string().length(8).optional(),
+  websiteUrl: z.string().url().optional(),
+});
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36";
@@ -11,17 +24,14 @@ interface PrefillResult {
   companiesHouse: {
     url: string;
     found: boolean;
-    html?: string;
   } | null;
   endole: {
     url: string;
     found: boolean;
-    html?: string;
   } | null;
   website: {
     url: string;
     found: boolean;
-    html?: string;
   } | null;
   normalized: unknown;
   errors: string[];
@@ -51,10 +61,7 @@ function tidyHtml(html: string, max = 15000): string {
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
     .replace(/<!--[\s\S]*?-->/g, "");
 
-  // Preserve table structure by keeping newlines in tables
   cleaned = cleaned.replace(/(<\/tr>|<\/td>|<\/th>)/gi, "$1\n");
-
-  // Clean up excessive whitespace but preserve single newlines
   cleaned = cleaned.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n");
 
   return cleaned.slice(0, max);
@@ -62,24 +69,16 @@ function tidyHtml(html: string, max = 15000): string {
 
 export async function POST(request: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Optional auth
+    const { user } = await requireAuth(request);
+    const { companyName, companyNumber, websiteUrl } = await validateBody(
+      request,
+      prefillInputSchema,
+    );
+
+    // Validate websiteUrl if provided (SSRF protection)
+    if (websiteUrl) {
+      validateUrl(websiteUrl);
     }
-
-    const { companyName, companyNumber, websiteUrl } = await request.json();
-
-    console.log("Starting data prefill for:", {
-      companyName,
-      companyNumber,
-      websiteUrl,
-    });
 
     const result: PrefillResult = {
       companiesHouse: null,
@@ -89,19 +88,23 @@ export async function POST(request: NextRequest) {
       errors: [],
     };
 
+    // Internal HTML storage for AI prompt (not returned to client)
+    let companiesHouseHtml = "";
+    let endoleHtml = "";
+    let websiteHtml = "";
+
     // 1) Companies House page
     if (companyNumber && companyNumber.length === 8) {
       try {
         const chUrl = `https://find-and-update.company-information.service.gov.uk/company/${companyNumber}`;
         const chResponse = await safeFetch(chUrl);
         if (chResponse.ok) {
-          const chHtml = await chResponse.text();
+          const chHtmlRaw = await chResponse.text();
+          companiesHouseHtml = tidyHtml(chHtmlRaw, 8000);
           result.companiesHouse = {
             url: chUrl,
             found: true,
-            html: tidyHtml(chHtml, 8000),
           };
-          console.log("Companies House data fetched");
         } else {
           result.errors.push(`Companies House page HTTP ${chResponse.status}`);
         }
@@ -113,7 +116,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 2) Endole (PRIMARY for finance)
-    let endoleHtml = "";
     let endoleUrl = "";
 
     const tryEndole = async () => {
@@ -144,12 +146,11 @@ export async function POST(request: NextRequest) {
       if (companyNumber && companyName) {
         await tryEndole();
         if (endoleHtml) {
+          endoleHtml = tidyHtml(endoleHtml, 25000);
           result.endole = {
             url: endoleUrl,
             found: true,
-            html: tidyHtml(endoleHtml, 25000),
           };
-          console.log("Endole data fetched");
         } else {
           result.errors.push("Endole data not found or blocked");
         }
@@ -166,12 +167,11 @@ export async function POST(request: NextRequest) {
         const websiteResponse = await safeFetch(websiteUrl);
         if (websiteResponse.ok) {
           const websiteHtmlContent = await websiteResponse.text();
+          websiteHtml = tidyHtml(websiteHtmlContent, 8000);
           result.website = {
             url: websiteUrl,
             found: true,
-            html: tidyHtml(websiteHtmlContent, 8000),
           };
-          console.log("Website data fetched");
         } else {
           result.errors.push(`Website HTTP ${websiteResponse.status}`);
         }
@@ -182,9 +182,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4) AI normalization using Vercel AI SDK
-    console.log("Starting AI analysis...");
-
+    // 4) AI normalization using Vercel AI SDK (uses platform default model)
     const systemPrompt = `You are a company data extraction assistant specializing in UK company financial data.
 You will receive (possibly partial) HTML from Companies House, Endole, and the company's website.
 Your task is to extract and normalize the requested fields with high accuracy.
@@ -222,13 +220,13 @@ OTHER FIELDS:
 Company Number: ${companyNumber || "N/A"}
 
 --- Companies House (truncated HTML) ---
-${result.companiesHouse ? result.companiesHouse.html : "Not available"}
+${companiesHouseHtml || "Not available"}
 
 --- Endole (CLEANED HTML - PRIMARY FOR FINANCE) ---
-${result.endole ? result.endole.html : "Not available"}
+${endoleHtml || "Not available"}
 
 --- Website (truncated HTML) ---
-${result.website ? result.website.html : "Not available"}
+${websiteHtml || "Not available"}
 
 Extract and structure the company information with confidence scores.
 
@@ -245,18 +243,15 @@ EXTRACTION RULES:
       schema: companyPrefillSchema,
       system: systemPrompt,
       prompt: userPrompt,
-      modelId: "gpt-4o",
       temperature: 0.1,
       maxTokens: 8000,
     });
 
     result.normalized = normalized;
 
-    console.log("AI analysis completed successfully");
-
     await logApiEvent(request, {
       actionType: "company_prefill_requested",
-      userId: userId || undefined,
+      userId: user.id,
       details: {
         companyName,
         companyNumber: !!companyNumber,
@@ -266,18 +261,6 @@ EXTRACTION RULES:
 
     return apiResponse(result);
   } catch (error) {
-    console.error("Error in prefill-company-data:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiResponse(
-      {
-        error: message,
-        companiesHouse: null,
-        endole: null,
-        website: null,
-        normalized: null,
-        errors: [message],
-      },
-      500,
-    );
+    return handleApiError(error);
   }
 }

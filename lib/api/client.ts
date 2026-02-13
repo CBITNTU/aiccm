@@ -146,10 +146,25 @@ export const api = {
       { body: { projectId } },
     ),
 
-  // Analyze project simple
-  analyzeProjectSimple: (prompt: string) =>
-    apiCall<{ content: string }>("analyze-project-simple", {
-      body: { prompt },
+  // Analyze project simple (gap analysis)
+  analyzeProjectSimple: (data: {
+    projectId: string;
+    companyId: string;
+    tenderId: string;
+  }) =>
+    apiCall<{
+      analysis: {
+        requiredCompetencies: string[];
+        companyCompetencies: string[];
+        missingCompetencies: string[];
+        coveragePercentage: number;
+        readinessScore: number;
+        risks: string[];
+        recommendations: string[];
+      };
+      projectId: string;
+    }>("analyze-project-simple", {
+      body: data,
     }),
 
   // Fetch UK tenders

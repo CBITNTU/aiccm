@@ -33,10 +33,6 @@ export async function POST(request: NextRequest) {
       Math.max(1, Number(body.matchCount) || DEFAULT_MATCH_COUNT),
     );
 
-    if (model !== "gpt-5-nano") {
-      return apiError("Invalid model; use gpt-5-nano", 400);
-    }
-
     const validEfforts = [
       "none",
       "minimal",
@@ -47,7 +43,9 @@ export async function POST(request: NextRequest) {
     ] as const;
     const reasoningEffort =
       typeof body.reasoningEffort === "string" &&
-      validEfforts.includes(body.reasoningEffort as (typeof validEfforts)[number])
+      validEfforts.includes(
+        body.reasoningEffort as (typeof validEfforts)[number],
+      )
         ? (body.reasoningEffort as (typeof validEfforts)[number])
         : undefined;
 

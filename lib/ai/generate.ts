@@ -37,6 +37,9 @@ function normaliseReasoningEffort(
   // DeepSeek: pass through; buildProviderOptions maps to thinking mode
   if (modelId.startsWith("deepseek-")) return effort;
 
+  // Gemini: pass through; buildProviderOptions maps to thinkingBudget
+  if (modelId.startsWith("gemini-")) return effort;
+
   // OpenAI: only GPT-5 models support reasoning effort
   const isGPT5 = modelId.startsWith("gpt-5");
   if (!isGPT5) return undefined;
@@ -48,11 +51,22 @@ function normaliseReasoningEffort(
   return effort;
 }
 
+/** Map reasoning effort levels to Gemini thinkingBudget token counts. */
+const GEMINI_THINKING_BUDGET: Record<string, number> = {
+  none: 0,
+  minimal: 1024,
+  low: 2048,
+  medium: 4096,
+  high: 8192,
+  xhigh: 16384,
+};
+
 /**
  * Build provider-specific options for the AI SDK call.
  * - OpenAI: passes reasoningEffort.
  * - DeepSeek: deepseek-reasoner has built-in thinking; deepseek-chat can
  *   have thinking enabled via provider options when reasoning effort is set.
+ * - Google: maps reasoning effort to a thinkingBudget token count.
  */
 function buildProviderOptions(
   reasoningEffort: string | undefined,
@@ -65,6 +79,15 @@ function buildProviderOptions(
     // For deepseek-chat, enable thinking mode when reasoning effort is non-trivial
     if (reasoningEffort && reasoningEffort !== "none") {
       return { deepseek: { thinking: { type: "enabled" } } };
+    }
+    return undefined;
+  }
+
+  if (provider === "google") {
+    if (!reasoningEffort || reasoningEffort === "none") return undefined;
+    const budget = GEMINI_THINKING_BUDGET[reasoningEffort];
+    if (budget != null) {
+      return { google: { thinkingConfig: { thinkingBudget: budget } } };
     }
     return undefined;
   }

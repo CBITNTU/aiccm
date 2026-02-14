@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +12,12 @@ import { Building2, CheckCircle2, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  postcode?: string | null;
+  [key: string]: unknown;
+}
 
 interface ProjectSummaryStepProps {
   selectedTenderId: string | null;
@@ -42,9 +45,6 @@ export function ProjectSummaryStep({
   onClose,
 }: ProjectSummaryStepProps) {
   const { user } = useAuth();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(
     new Map(),
   );
@@ -55,53 +55,35 @@ export function ProjectSummaryStep({
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
-  useEffect(() => {
-    if (supabase) {
-      if (selectedCapabilities.length > 0) {
-        fetchCapabilityNames();
-      }
-      if (selectedTenderId) {
-        fetchTenderInfo();
-      }
+    if (selectedCapabilities.length > 0) {
+      fetchCapabilityNames();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase/capabilities/tender change
-  }, [supabase, selectedCapabilities, selectedTenderId]);
+    if (selectedTenderId) {
+      fetchTenderInfo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when capabilities/tender change
+  }, [selectedCapabilities, selectedTenderId]);
 
   const fetchTenderInfo = async () => {
-    if (!supabase || !selectedTenderId) return;
+    if (!selectedTenderId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("tenders")
-        .select("title, buyer")
-        .eq("id", selectedTenderId)
-        .single();
-
-      if (error) throw error;
-      setTenderInfo(data ? { title: data.title, buyer: data.buyer } : null);
+      const result = await api.getTender(selectedTenderId);
+      const tender = result.tender as { title: string; buyer: string };
+      setTenderInfo({ title: tender.title, buyer: tender.buyer });
     } catch (error) {
       console.error("Error fetching tender info:", error);
     }
   };
 
   const fetchCapabilityNames = async () => {
-    if (!supabase) return;
-
     try {
-      const { data, error } = await supabase
-        .from("company_capabilities_ref")
-        .select("id, name")
-        .in("id", selectedCapabilities);
-
-      if (error) throw error;
-
+      const result = await api.getCapabilities();
       const nameMap = new Map<string, string>();
-      data?.forEach((cap) => {
-        nameMap.set(cap.id, cap.name);
+      result.capabilities?.forEach((cap) => {
+        if (selectedCapabilities.includes(cap.id)) {
+          nameMap.set(cap.id, cap.name);
+        }
       });
       setCapabilityNames(nameMap);
     } catch (error) {
@@ -115,63 +97,29 @@ export function ProjectSummaryStep({
       return;
     }
 
-    if (!supabase || !user) {
-      toast.error("Database connection not available");
+    if (!user) {
+      toast.error("User session not available");
       return;
     }
 
     try {
       setCreating(true);
 
-      // Create the virtual organization (project)
-      // project_owner_id will be automatically set by the trigger
-      const { data: project, error: projectError } = await supabase
-        .from("virtual_organizations")
-        .insert({
-          name: projectName,
-          description: projectDescription || null,
-          lead_company_id: leadCompanyId,
-          target_tender_id: selectedTenderId,
-          status: "draft",
-          project_owner_id: user.id, // Explicitly set, but trigger will also handle it
-        })
-        .select()
-        .single();
+      const result = await api.createProject({
+        name: projectName,
+        description: projectDescription || undefined,
+        target_tender_id: selectedTenderId,
+        company_id: leadCompanyId,
+      });
 
-      if (projectError) {
-        console.error("Project creation error:", projectError);
-        throw new Error(projectError.message);
-      }
-
-      // Add the lead company as a member with 'lead' role
-      const { error: leadMemberError } = await supabase
-        .from("vo_members")
-        .insert({
-          vo_id: project.id,
-          company_id: leadCompanyId,
-          role: "lead",
-        });
-
-      if (leadMemberError) {
-        console.error("Lead member error:", leadMemberError);
-        // Continue even if this fails - the project is created
-      }
+      const project = result.project as { id: string };
 
       // Add selected companies as members
-      if (selectedCompanies.length > 0) {
-        const memberInserts = selectedCompanies.map((company) => ({
-          vo_id: project.id,
-          company_id: company.id,
-          role: "member" as const,
-        }));
-
-        const { error: membersError } = await supabase
-          .from("vo_members")
-          .insert(memberInserts);
-
-        if (membersError) {
-          console.error("Members error:", membersError);
-          // Continue even if this fails - the project is created
+      for (const company of selectedCompanies) {
+        try {
+          await api.addProjectMember(project.id, company.id);
+        } catch (memberError) {
+          console.error("Error adding member:", memberError);
         }
       }
 

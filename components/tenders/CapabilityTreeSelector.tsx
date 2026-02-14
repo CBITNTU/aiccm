@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,15 +14,17 @@ import {
   FolderOpen,
   Loader2,
 } from "lucide-react";
-import type { Database } from "@/lib/supabase/types";
 
 interface CapabilityTreeSelectorProps {
   selectedCapabilities: string[];
   onSelectionChange: (capabilityIds: string[]) => void;
 }
 
-type Capability =
-  Database["public"]["Tables"]["company_capabilities_ref"]["Row"];
+interface Capability {
+  id: string;
+  name: string;
+  category: string | null;
+}
 
 interface CapabilityGroup {
   category: string | null;
@@ -42,27 +44,20 @@ export function CapabilityTreeSelector({
 
   useEffect(() => {
     const fetchCapabilities = async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("company_capabilities_ref")
-        .select("*")
-        .eq("is_active", true) // Only show active capabilities (same as admin panel)
-        .order("category")
-        .order("name");
-
-      if (error) {
-        console.error("Error fetching capabilities:", error);
-      } else {
-        setCapabilities(data || []);
+      try {
+        const result = await api.getCapabilities();
+        setCapabilities(result.capabilities || []);
         // Auto-expand all categories by default
         const categories = new Set(
-          data
+          result.capabilities
             ?.map((c) => c.category)
             .filter(
               (cat): cat is string => cat !== null && cat !== undefined,
             ) || [],
         );
         setExpandedCategories(categories);
+      } catch (error) {
+        console.error("Error fetching capabilities:", error);
       }
       setLoading(false);
     };

@@ -1,8 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import type {
   Project,
   GapAnalysis,
@@ -70,58 +69,13 @@ export interface ProjectDetails {
 }
 
 async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
-  const supabase = createClient();
+  const data = await api.getProjectDetails(projectId);
 
-  // Fetch project details
-  const { data: projectData, error: projectError } = await supabase
-    .from("virtual_organizations")
-    .select(
-      `
-      *,
-      tenders:target_tender_id (*)
-    `,
-    )
-    .eq("id", projectId)
-    .single();
-
-  if (projectError) {
-    throw new Error(projectError.message);
-  }
-
-  // Fetch team members
-  const { data: membersData, error: membersError } = await supabase
-    .from("vo_members")
-    .select(
-      `
-      *,
-      companies:company_id (*)
-    `,
-    )
-    .eq("vo_id", projectId);
-
-  if (membersError) {
-    throw new Error(membersError.message);
-  }
-
-  const project = projectData as unknown as Project;
+  const project = data.project as unknown as Project;
   const tender = project.tenders as unknown as Tender | null;
-  const teamMembers = (membersData as unknown as TeamMember[]) || [];
-
-  // When project has a tender and lead company, fetch tender match for "single company" gap display
-  let tenderMatchResult: TenderMatchResult | null = null;
-  if (project.lead_company_id && project.target_tender_id) {
-    const { data: matchRow } = await supabase
-      .from("matching_results")
-      .select(
-        "id, overall_score, capability_score, experience_score, location_score, certification_score, match_reasons, ai_analysis",
-      )
-      .eq("company_id", project.lead_company_id)
-      .eq("tender_id", project.target_tender_id)
-      .maybeSingle();
-    if (matchRow) {
-      tenderMatchResult = matchRow as unknown as TenderMatchResult;
-    }
-  }
+  const teamMembers = (data.teamMembers as unknown as TeamMember[]) || [];
+  const tenderMatchResult =
+    (data.tenderMatchResult as unknown as TenderMatchResult) || null;
 
   return {
     project,
@@ -146,20 +100,8 @@ export function useProjectDetails(projectId: string | null) {
 
 // Fetch available tenders for project creation
 async function fetchAvailableTenders(): Promise<Tender[]> {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("tenders")
-    .select("id, title, buyer, deadline")
-    .in("status", ["open", "closing_soon"])
-    .order("deadline", { ascending: true })
-    .limit(50);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data as Tender[]) || [];
+  const data = await api.getAvailableTenders();
+  return (data.tenders as Tender[]) || [];
 }
 
 export function useAvailableTenders(enabled = true) {
@@ -173,25 +115,15 @@ export function useAvailableTenders(enabled = true) {
 }
 
 // Get lead company details
-type Company = Database["public"]["Tables"]["companies"]["Row"];
-
-async function fetchCompanyById(companyId: string): Promise<Company | null> {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("companies")
-    .select("*")
-    .eq("id", companyId)
-    .single();
-
-  if (error) {
-    if (error.code === "PGRST116") {
-      return null; // Not found
-    }
-    throw new Error(error.message);
+async function fetchCompanyById(
+  companyId: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const data = await api.getCompany(companyId);
+    return data.company;
+  } catch {
+    return null;
   }
-
-  return data;
 }
 
 export function useCompanyById(companyId: string | null) {

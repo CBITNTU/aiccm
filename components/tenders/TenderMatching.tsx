@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -115,27 +115,8 @@ export function TenderMatching({
         return;
       }
 
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("matching_results")
-        .select(
-          `
-          *,
-          tenders (
-            title,
-            buyer,
-            description,
-            location,
-            deadline,
-            budget_min,
-            budget_max
-          )
-        `,
-        )
-        .eq("company_id", companyId);
-
-      if (error) throw error;
-      setMatchingResults((data as MatchingResult[]) || []);
+      const data = await api.getMatchingResults({ companyId });
+      setMatchingResults((data.results as unknown as MatchingResult[]) || []);
     } catch (error) {
       console.error("Error fetching matching results:", error);
       toast.error("Failed to fetch matching results");
@@ -614,13 +595,7 @@ export function TenderMatching({
   const deleteResult = async (resultId: string) => {
     setDeleting(resultId);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("matching_results")
-        .delete()
-        .eq("id", resultId);
-
-      if (error) throw error;
+      await api.deleteMatchingResult(resultId);
 
       setMatchingResults((prev) =>
         prev.filter((result) => result.id !== resultId),
@@ -636,13 +611,7 @@ export function TenderMatching({
 
   const toggleBookmark = async (resultId: string, currentStatus: boolean) => {
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("matching_results")
-        .update({ is_bookmarked: !currentStatus })
-        .eq("id", resultId);
-
-      if (error) throw error;
+      await api.toggleBookmark(resultId, !currentStatus);
 
       setMatchingResults((prev) =>
         prev.map((result) =>

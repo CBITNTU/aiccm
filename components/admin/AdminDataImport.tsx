@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 
 // Construction companies data from the Excel file
@@ -308,22 +306,12 @@ const CONSTRUCTION_COMPANIES = [
 ];
 
 export function AdminDataImport() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
 
-  useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
   const handleImportCompanies = async () => {
-    if (!supabase) return;
-
     setIsImporting(true);
     setProgress(0);
     setImportedCount(0);
@@ -337,36 +325,14 @@ export function AdminDataImport() {
         const company = CONSTRUCTION_COMPANIES[i];
 
         try {
-          // Check if company already exists
-          const { data: existing } = await supabase
-            .from("companies")
-            .select("id")
-            .eq("company_name", company.company_name)
-            .eq("is_system_company", true)
-            .maybeSingle();
+          await api.adminImportCompany({
+            ...company,
+            user_id: null,
+            is_system_company: true,
+            status: "active",
+          });
 
-          if (!existing) {
-            // Insert as system company
-            // user_id is null for system companies (made nullable in migration)
-            const { error } = await supabase.from("companies").insert({
-              ...company,
-              user_id: null, // NULL for system companies (not empty string)
-              is_system_company: true,
-              status: "active",
-            } as Database["public"]["Tables"]["companies"]["Insert"]);
-
-            if (error) {
-              setErrors((prev) => [
-                ...prev,
-                `Failed to import ${company.company_name}: ${error.message}`,
-              ]);
-            } else {
-              successCount++;
-            }
-          } else {
-            // Company already exists
-            successCount++;
-          }
+          successCount++;
         } catch (err) {
           setErrors((prev) => [
             ...prev,
@@ -404,7 +370,6 @@ export function AdminDataImport() {
             <Button
               onClick={handleImportCompanies}
               className="w-full"
-              disabled={!supabase}
             >
               Import Companies Data
             </Button>

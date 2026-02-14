@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { EmailVerificationStep } from "@/components/onboarding/EmailVerificationStep";
 import { ProfileInfoStep } from "@/components/onboarding/ProfileInfoStep";
 import { AccountTypeStep } from "@/components/onboarding/AccountTypeStep";
@@ -94,33 +94,12 @@ export default function OnboardingPage() {
         data.signupType === "new-company" ||
         data.signupType === "join-company"
       ) {
-        // Fetch company name from backend
-        const supabase = createClient();
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user) {
-          // Check for owned company
-          const { data: company } = await supabase
-            .from("companies")
-            .select("company_name")
-            .eq("user_id", userData.user.id)
-            .single();
-
-          if (company) {
-            companyName = company.company_name;
-          } else {
-            // Check for join request
-            const { data: joinRequest } = await supabase
-              .from("company_join_requests")
-              .select("company_name_requested")
-              .eq("user_id", userData.user.id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .single();
-
-            if (joinRequest) {
-              companyName = joinRequest.company_name_requested;
-            }
-          }
+        // Fetch company name from approval status endpoint
+        try {
+          const approvalResult = await api.getApprovalStatus();
+          companyName = approvalResult.companyName;
+        } catch {
+          // Silently fail - company name is optional here
         }
       }
 

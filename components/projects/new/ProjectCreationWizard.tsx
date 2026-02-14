@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- step/result types */
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,9 +14,14 @@ import { CompaniesStep } from "./steps/CompaniesStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
-import type { Database } from "@/lib/supabase/types";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  postcode?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 interface ProjectCreationWizardProps {
   initialTenderId?: string;
@@ -53,7 +57,6 @@ export function ProjectCreationWizard({
 }: ProjectCreationWizardProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const supabase = createClient();
 
   // Determine starting step based on whether we have a tender ID
   const [currentStep, setCurrentStep] = useState(initialTenderId ? 2 : 1);
@@ -89,14 +92,9 @@ export function ProjectCreationWizard({
       }
 
       try {
-        const { data, error } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setUserCompanies(data || []);
+        const result = await api.getMyCompanies();
+        const data = (result.companies as unknown as Company[]) || [];
+        setUserCompanies(data);
 
         // Auto-select company if initialCompanyId provided, or select first company
         if (initialCompanyId) {
@@ -118,7 +116,7 @@ export function ProjectCreationWizard({
     };
 
     fetchCompanies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when user changes
   }, [user?.id]);
 
   // Fetch AI-suggested capabilities when entering step 2 with a selected tender

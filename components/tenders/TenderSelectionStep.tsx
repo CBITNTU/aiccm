@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +17,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-type Tender = Database["public"]["Tables"]["tenders"]["Row"];
+interface Tender {
+  id: string;
+  title: string;
+  buyer: string;
+  deadline: string | null;
+  status: string | null;
+  location: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  description: string | null;
+  reference_number: string | null;
+}
 
 interface TenderSelectionStepProps {
   selectedTenderId: string | null;
@@ -30,47 +39,26 @@ export function TenderSelectionStep({
   selectedTenderId,
   onTenderSelect,
 }: TenderSelectionStepProps) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
+    const fetchTenders = async () => {
+      try {
+        setLoading(true);
+        const result = await api.getAvailableTendersSearch();
+        setTenders((result.tenders as unknown as Tender[]) || []);
+      } catch (error) {
+        console.error("Error fetching tenders:", error);
+        toast.error("Failed to load tenders");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTenders();
   }, []);
-
-  useEffect(() => {
-    if (supabase) {
-      fetchTenders();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase ready
-  }, [supabase]);
-
-  const fetchTenders = async () => {
-    if (!supabase) return;
-
-    try {
-      setLoading(true);
-      // Fetch open and closing_soon tenders
-      const { data, error } = await supabase
-        .from("tenders")
-        .select("*")
-        .in("status", ["open", "closing_soon"])
-        .order("deadline", { ascending: true })
-        .limit(100);
-
-      if (error) throw error;
-      setTenders(data || []);
-    } catch (error) {
-      console.error("Error fetching tenders:", error);
-      toast.error("Failed to load tenders");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredTenders = tenders.filter((tender) => {
     const searchLower = searchTerm.toLowerCase();

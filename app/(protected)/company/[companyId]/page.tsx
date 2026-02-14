@@ -4,8 +4,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import {
   Card,
@@ -89,9 +87,6 @@ export default function CompanyDetailPage() {
     });
   };
 
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [companyData, setCompanyData] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -129,93 +124,20 @@ export default function CompanyDetailPage() {
   >([]);
   const [editedProjects, setEditedProjects] = useState<PastProject[]>([]);
 
-  // Initialize supabase client
-  useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-      setLoading(false);
-    }
-  }, []);
-
   // Fetch company data
   useEffect(() => {
-    if (!supabase || !user || !companyId) return;
+    if (!user || !companyId) return;
 
     const fetchCompanyData = async () => {
       try {
-        // First, check if user has access (owner or approved member)
-        const ownerQuery = supabase
-          .from("companies")
-          .select("id")
-          .eq("id", companyId)
-          .eq("user_id", user.id)
-          .single();
+        const data = await api.getCompany(companyId);
+        setCompanyData(data.company as unknown as Company);
+        setIsOwner(data.isOwner);
+        setCompanyCapabilities(data.capabilities);
 
-        const memberQuery = supabase
-          .from("company_members")
-          .select("company_id")
-          .eq("company_id", companyId)
-          .eq("user_id", user.id)
-          .eq("status", "approved")
-          .single();
-
-        const [ownerResult, memberResult] = await Promise.all([
-          ownerQuery,
-          memberQuery,
-        ]);
-
-        const userIsOwner = !ownerResult.error;
-        const hasAccess = userIsOwner || !memberResult.error;
-
-        if (!hasAccess) {
-          console.log("User has no access to this company");
-          router.push("/profile");
-          return;
-        }
-
-        // Set owner status for UI permissions
-        setIsOwner(userIsOwner);
-
-        // User has access, fetch full company data
-        const { data, error } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("id", companyId)
-          .single();
-
-        if (error) {
-          if (error.code === "PGRST116") {
-            router.push("/profile");
-            return;
-          }
-          throw error;
-        }
-
-        setCompanyData(data);
-
-        if (data.ai_analysis) {
-          setAnalysis(data.ai_analysis as Record<string, unknown>);
-        }
-
-        // Fetch company capabilities from junction table
-        const { data: capabilitiesData, error: capsError } = await supabase
-          .from("company_capabilities")
-          .select("company_capabilities_ref(id, name, category)")
-          .eq("company_id", companyId);
-
-        if (!capsError && capabilitiesData) {
-          const caps = capabilitiesData
-            .map((cc: any) => cc.company_capabilities_ref)
-            .filter(Boolean)
-            .map((ref: any) => ({
-              id: ref.id,
-              name: ref.name,
-              category: ref.category,
-            }));
-          setCompanyCapabilities(caps);
+        const company = data.company as Record<string, unknown>;
+        if (company.ai_analysis) {
+          setAnalysis(company.ai_analysis as Record<string, unknown>);
         }
       } catch (error) {
         console.error("Error fetching company data:", error);
@@ -227,29 +149,18 @@ export default function CompanyDetailPage() {
     };
 
     fetchCompanyData();
-  }, [supabase, user, companyId, router]);
+  }, [user, companyId, router]);
 
   const handleSaveOverview = async () => {
-    if (!companyData || !supabase) return;
+    if (!companyData) return;
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("companies")
-        .update({
-          description: editedDescription,
-          key_capabilities: editedCapabilities,
-        })
-        .eq("id", companyData.id);
-
-      if (error) throw error;
-
-      setCompanyData({
-        ...companyData,
+      const result = await api.updateCompany(companyData.id, {
         description: editedDescription,
         key_capabilities: editedCapabilities,
       });
-
+      setCompanyData(result.company as unknown as Company);
       toast.success("Overview updated successfully");
       setIsEditingOverview(false);
     } catch (error) {
@@ -261,32 +172,18 @@ export default function CompanyDetailPage() {
   };
 
   const handleSaveBasicInfo = async () => {
-    if (!companyData || !supabase) return;
+    if (!companyData) return;
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("companies")
-        .update({
-          company_name: editedCompanyName.trim(),
-          postcode: editedLocation.trim(),
-          contact_email: editedEmail.trim(),
-          website_url: editedWebsite.trim(),
-          contact_phone: editedPhone.trim(),
-        })
-        .eq("id", companyData.id);
-
-      if (error) throw error;
-
-      setCompanyData({
-        ...companyData,
+      const result = await api.updateCompany(companyData.id, {
         company_name: editedCompanyName.trim(),
         postcode: editedLocation.trim(),
         contact_email: editedEmail.trim(),
         website_url: editedWebsite.trim(),
         contact_phone: editedPhone.trim(),
       });
-
+      setCompanyData(result.company as unknown as Company);
       toast.success("Company information updated successfully");
       setIsEditingBasicInfo(false);
     } catch (error) {
@@ -298,24 +195,14 @@ export default function CompanyDetailPage() {
   };
 
   const handleSaveOperationLocations = async () => {
-    if (!companyData || !supabase) return;
+    if (!companyData) return;
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("companies")
-        .update({
-          operation_locations: editedOperationLocations,
-        })
-        .eq("id", companyData.id);
-
-      if (error) throw error;
-
-      setCompanyData({
-        ...companyData,
+      const result = await api.updateCompany(companyData.id, {
         operation_locations: editedOperationLocations,
       });
-
+      setCompanyData(result.company as unknown as Company);
       toast.success("Operation locations updated");
       setIsEditingOperationLocations(false);
     } catch (error) {
@@ -327,24 +214,14 @@ export default function CompanyDetailPage() {
   };
 
   const handleSaveCertifications = async () => {
-    if (!companyData || !supabase) return;
+    if (!companyData) return;
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("companies")
-        .update({
-          certifications: JSON.stringify(editedCertifications),
-        })
-        .eq("id", companyData.id);
-
-      if (error) throw error;
-
-      setCompanyData({
-        ...companyData,
+      const result = await api.updateCompany(companyData.id, {
         certifications: JSON.stringify(editedCertifications),
       });
-
+      setCompanyData(result.company as unknown as Company);
       toast.success("Certifications updated successfully");
       setIsEditingCertifications(false);
     } catch (error) {
@@ -356,24 +233,14 @@ export default function CompanyDetailPage() {
   };
 
   const handleSaveProjects = async () => {
-    if (!companyData || !supabase) return;
+    if (!companyData) return;
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("companies")
-        .update({
-          past_projects: JSON.stringify(editedProjects),
-        })
-        .eq("id", companyData.id);
-
-      if (error) throw error;
-
-      setCompanyData({
-        ...companyData,
+      const result = await api.updateCompany(companyData.id, {
         past_projects: JSON.stringify(editedProjects),
       });
-
+      setCompanyData(result.company as unknown as Company);
       toast.success("Projects updated successfully");
       setIsEditingProjects(false);
     } catch (error) {
@@ -385,7 +252,7 @@ export default function CompanyDetailPage() {
   };
 
   const handleRefreshAnalysis = async () => {
-    if (!companyData || !supabase) return;
+    if (!companyData) return;
 
     setIsAnalyzing(true);
     try {
@@ -394,35 +261,10 @@ export default function CompanyDetailPage() {
       if (data?.success && data?.analysis) {
         setAnalysis(data.analysis as Record<string, unknown>);
 
-        const { data: updatedData } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("id", companyData.id)
-          .single();
-
-        if (updatedData) {
-          setCompanyData(updatedData);
-        }
-
-        // Refresh capabilities after analysis
-        if (supabase) {
-          const { data: capabilitiesData } = await supabase
-            .from("company_capabilities")
-            .select("company_capabilities_ref(id, name, category)")
-            .eq("company_id", companyData.id);
-
-          if (capabilitiesData) {
-            const caps = capabilitiesData
-              .map((cc: any) => cc.company_capabilities_ref)
-              .filter(Boolean)
-              .map((ref: any) => ({
-                id: ref.id,
-                name: ref.name,
-                category: ref.category,
-              }));
-            setCompanyCapabilities(caps);
-          }
-        }
+        // Refresh company data and capabilities via API
+        const refreshed = await api.getCompany(companyData.id);
+        setCompanyData(refreshed.company as unknown as Company);
+        setCompanyCapabilities(refreshed.capabilities);
 
         toast.success(
           "Company profile analysis has been refreshed. Capabilities have been generated from the static list.",
@@ -964,25 +806,9 @@ export default function CompanyDetailPage() {
               companyId={companyId}
               onUpdate={() => {
                 // Refresh capabilities when updated
-                if (supabase) {
-                  supabase
-                    .from("company_capabilities")
-                    .select("company_capabilities_ref(id, name, category)")
-                    .eq("company_id", companyId)
-                    .then(({ data, error }) => {
-                      if (!error && data) {
-                        const caps = data
-                          .map((cc: any) => cc.company_capabilities_ref)
-                          .filter(Boolean)
-                          .map((ref: any) => ({
-                            id: ref.id,
-                            name: ref.name,
-                            category: ref.category,
-                          }));
-                        setCompanyCapabilities(caps);
-                      }
-                    });
-                }
+                api.getCompany(companyId).then((data) => {
+                  setCompanyCapabilities(data.capabilities);
+                });
               }}
             />
 

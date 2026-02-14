@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bookmark, Loader2, Search, X } from "lucide-react";
@@ -79,36 +79,13 @@ export function SavedTenders({
   const fetchSavedResults = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-      let query = supabase
-        .from("matching_results")
-        .select(
-          `
-          *,
-          tenders (
-            title,
-            buyer,
-            description,
-            location,
-            deadline,
-            budget_min,
-            budget_max
-          )
-        `,
-        )
-        .eq("is_bookmarked", true)
-        .order("created_at", { ascending: false });
-
-      // Filter by company if provided
-      if (companyId) {
-        query = query.eq("company_id", companyId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setSavedResults((data as unknown as MatchingResult[]) || []);
-      setFilteredResults((data as unknown as MatchingResult[]) || []);
+      const data = await api.getMatchingResults({
+        companyId,
+        bookmarked: true,
+      });
+      const results = (data.results as unknown as MatchingResult[]) || [];
+      setSavedResults(results);
+      setFilteredResults(results);
     } catch (error) {
       console.error("Error fetching saved results:", error);
       toast.error("Failed to fetch saved tenders");
@@ -119,13 +96,7 @@ export function SavedTenders({
 
   const removeBookmark = async (resultId: string) => {
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("matching_results")
-        .update({ is_bookmarked: false })
-        .eq("id", resultId);
-
-      if (error) throw error;
+      await api.toggleBookmark(resultId, false);
 
       setSavedResults((prev) =>
         prev.filter((result) => result.id !== resultId),

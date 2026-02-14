@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,9 +25,6 @@ import { toast } from "sonner";
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 export function AdminCompanyManager() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,16 +32,8 @@ export function AdminCompanyManager() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
+    fetchCompanies();
   }, []);
-
-  useEffect(() => {
-    if (supabase) {
-      fetchCompanies();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase ready
-  }, [supabase]);
 
   useEffect(() => {
     const filtered = companies.filter(
@@ -58,16 +46,9 @@ export function AdminCompanyManager() {
   }, [companies, searchTerm]);
 
   const fetchCompanies = async () => {
-    if (!supabase) return;
-
     try {
-      const { data, error } = await supabase
-        .from("companies")
-        .select("*")
-        .order("company_name");
-
-      if (error) throw error;
-      setCompanies(data || []);
+      const data = await api.adminListCompanies();
+      setCompanies((data.companies as unknown as Company[]) || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast.error("Failed to load companies");
@@ -80,23 +61,11 @@ export function AdminCompanyManager() {
     companyId: string,
     companyName: string,
   ) => {
-    if (!supabase) return;
-
     setDeleting(companyId);
     try {
-      const { error } = await supabase
-        .from("companies")
-        .delete()
-        .eq("id", companyId);
-
-      if (error) {
-        console.error("Delete error:", error);
-        toast.error(`Failed to delete ${companyName}: ${error.message}`);
-      } else {
-        toast.success(`Successfully deleted ${companyName}`);
-        // Remove from local state
-        setCompanies((prev) => prev.filter((c) => c.id !== companyId));
-      }
+      await api.adminDeleteCompany(companyId);
+      toast.success(`Successfully deleted ${companyName}`);
+      setCompanies((prev) => prev.filter((c) => c.id !== companyId));
     } catch (error) {
       console.error("Error deleting company:", error);
       toast.error(`Error deleting ${companyName}`);

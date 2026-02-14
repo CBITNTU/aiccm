@@ -10,9 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { Database } from "@/lib/supabase/types";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -50,48 +48,8 @@ export function CompanyCardNew({
   onClick,
   taxonomies: propTaxonomies,
 }: CompanyCardNewProps) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
-  const [taxonomies, setTaxonomies] = useState<
-    Array<{ id: string; name: string }>
-  >(propTaxonomies || []);
   const [showAllCategories, setShowAllCategories] = useState(false);
-
-  // Initialize supabase client
-  useEffect(() => {
-    const client = createClient();
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- init client once on mount
-    setSupabase(client);
-  }, []);
-
-  // Fetch taxonomies if not provided as props
-  useEffect(() => {
-    if (propTaxonomies || !supabase) return;
-
-    const fetchTaxonomies = async () => {
-      const { data } = await supabase
-        .from("company_taxonomies")
-        .select("taxonomy_id, taxonomies(id, name)")
-        .eq("company_id", company.id);
-
-      if (data) {
-        setTaxonomies(
-          data
-            .map((ct) => ({
-              id:
-                (ct.taxonomies as { id: string; name: string } | null)?.id ||
-                "",
-              name:
-                (ct.taxonomies as { id: string; name: string } | null)?.name ||
-                "",
-            }))
-            .filter((t) => t.name),
-        );
-      }
-    };
-    fetchTaxonomies();
-  }, [supabase, company.id, propTaxonomies]);
+  const taxonomies = propTaxonomies || [];
 
   // Get capabilities from AI analysis or manual input
   const getCapabilities = (): string[] => {

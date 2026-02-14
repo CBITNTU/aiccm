@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities -- capabilities/taxonomy row types; copy uses quotes */
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -52,8 +52,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
 import { useBatchProgress } from "@/hooks/useBatchProgress";
 import { Progress } from "@/components/ui/progress";
 
@@ -64,9 +62,6 @@ type Capability = {
 };
 
 const AdminTaxonomyEditor = () => {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,22 +90,14 @@ const AdminTaxonomyEditor = () => {
   } = useBatchProgress(regenerationBatchId, !!regenerationBatchId);
 
   useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
+    fetchCapabilities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount
   }, []);
-
-  useEffect(() => {
-    if (supabase) {
-      fetchCapabilities();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase ready
-  }, [supabase]);
 
   // Refresh capabilities when regeneration completes
   const batchStatus = batch?.status ?? undefined;
   useEffect(() => {
-    if (!supabase || batchStatus !== "completed" || !regenerationBatchId)
-      return;
+    if (batchStatus !== "completed" || !regenerationBatchId) return;
 
     console.log("🔄 Batch completed, refreshing capabilities list...");
     // Small delay to ensure database is updated
@@ -124,49 +111,24 @@ const AdminTaxonomyEditor = () => {
 
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when batch completes
-  }, [batchStatus, supabase]); // Only batchStatus and supabase - don't include batchId to keep array size constant
+  }, [batchStatus]); // Only batchStatus - don't include batchId to keep array size constant
 
   const fetchCapabilities = async () => {
-    if (!supabase) return;
-
     setLoading(true);
     try {
-      // PostgREST defaults to 1000 rows - we need to fetch all capabilities
-      // Use a high limit or pagination. For now, using a high limit (100k should be enough)
-      let allCapabilities: any[] = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("company_capabilities_ref")
-          .select("id, name, category")
-          .order("category")
-          .order("name")
-          .range(page * pageSize, (page + 1) * pageSize - 1);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          allCapabilities = [...allCapabilities, ...data];
-          page++;
-          hasMore = data.length === pageSize;
-        } else {
-          hasMore = false;
-        }
-      }
+      const { capabilities: allCapabilities } =
+        await api.adminListCapabilities();
 
       // Filter out null categories and map to ensure type safety
       const validCapabilities = (allCapabilities || [])
         .filter(
           (c): c is { id: string; name: string; category: string } =>
-            c.category !== null,
+            (c as any).category !== null,
         )
         .map((c) => ({
-          id: c.id,
-          name: c.name,
-          category: c.category,
+          id: c.id as string,
+          name: c.name as string,
+          category: c.category as string,
         }));
 
       // Log the fetched capabilities
@@ -237,16 +199,9 @@ const AdminTaxonomyEditor = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!supabase) return;
-
     setDeletingId(id);
     try {
-      const { error } = await supabase
-        .from("company_capabilities_ref")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
+      await api.adminDeleteCapability(id);
 
       toast.success("Capability deleted successfully");
       await fetchCapabilities();
@@ -259,8 +214,6 @@ const AdminTaxonomyEditor = () => {
   };
 
   const handleSave = async () => {
-    if (!supabase) return;
-
     try {
       if (!formData.name.trim() || !formData.category.trim()) {
         toast.error("Name and category are required");
@@ -269,28 +222,21 @@ const AdminTaxonomyEditor = () => {
 
       if (editingCapability) {
         // Update existing
-        const { error } = await supabase
-          .from("company_capabilities_ref")
-          .update({
-            name: formData.name.trim(),
-            category: formData.category.trim(),
-          })
-          .eq("id", editingCapability.id);
+        await api.adminUpdateCapability(editingCapability.id, {
+          name: formData.name.trim(),
+          category: formData.category.trim(),
+        });
 
-        if (error) throw error;
         toast.success("Capability updated successfully");
         setIsEditDialogOpen(false);
         setEditingCapability(null);
       } else {
         // Create new
-        const { error } = await supabase
-          .from("company_capabilities_ref")
-          .insert({
-            name: formData.name.trim(),
-            category: formData.category.trim(),
-          });
+        await api.adminCreateCapability({
+          name: formData.name.trim(),
+          category: formData.category.trim(),
+        });
 
-        if (error) throw error;
         toast.success("Capability created successfully");
         setIsCreateDialogOpen(false);
       }

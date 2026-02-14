@@ -12,7 +12,7 @@ import {
 import { Loader2, Search, Play } from "lucide-react";
 import { toast } from "sonner";
 import { MatchingProgress } from "./MatchingProgress";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export function MatchingTrigger() {
@@ -33,18 +33,14 @@ export function MatchingTrigger() {
       setIsTriggering(true);
 
       // Get user's company
-      const supabase = createClient();
-      const { data: companies, error } = await supabase
-        .from("companies")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1);
+      const result = await api.getMyCompanies();
+      const companies = result.companies as { id: string }[];
 
-      if (error || !companies || companies.length === 0) {
+      if (!companies || companies.length === 0) {
         throw new Error("No company found for user");
       }
 
-      const userCompanyId = (companies[0] as { id: string }).id;
+      const userCompanyId = companies[0].id;
       setCompanyId(userCompanyId);
 
       // Trigger matching (queue jobs)

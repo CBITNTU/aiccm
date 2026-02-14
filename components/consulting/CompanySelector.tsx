@@ -11,11 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Building2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -34,39 +33,20 @@ export function CompanySelector({
 }: CompanySelectorProps) {
   const { user } = useAuth();
   const router = useRouter();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
-  // Initialize supabase client
-  useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
   useEffect(() => {
     const fetchCompanies = async () => {
-      if (!user || !supabase) {
+      if (!user) {
         setLoading(false);
         return;
       }
 
       try {
-        const { data, error } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          console.error("Supabase error:", error);
-          throw error;
-        }
-
-        setCompanies(data || []);
+        const data = await api.getMyCompanies();
+        setCompanies((data.companies as unknown as Company[]) || []);
       } catch (error) {
         console.error("Error fetching companies:", error);
         setCompanies([]);
@@ -76,7 +56,7 @@ export function CompanySelector({
     };
 
     fetchCompanies();
-  }, [user, supabase]);
+  }, [user]);
 
   // Handle company selection based on prop or auto-select
   useEffect(() => {
@@ -86,19 +66,11 @@ export function CompanySelector({
       // Prop-driven selection (from route or parent)
       const companyToSelect = companies.find((c) => c.id === selectedCompanyId);
       if (companyToSelect && companyToSelect.id !== selectedCompany?.id) {
-        console.log(
-          "CompanySelector: Selecting company from prop:",
-          companyToSelect.company_name,
-        );
         setSelectedCompany(companyToSelect);
         onCompanySelect?.(companyToSelect);
       }
     } else if (!selectedCompany) {
       // Auto-select first company only if nothing is selected yet
-      console.log(
-        "CompanySelector: Auto-selecting first company:",
-        companies[0].company_name,
-      );
       setSelectedCompany(companies[0]);
       onCompanySelect?.(companies[0]);
     }

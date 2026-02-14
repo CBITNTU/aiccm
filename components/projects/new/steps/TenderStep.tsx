@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +18,19 @@ import {
   SkipForward,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/lib/supabase/types";
 
-type Tender = Database["public"]["Tables"]["tenders"]["Row"];
+interface Tender {
+  id: string;
+  title: string;
+  buyer: string;
+  deadline: string | null;
+  status: string | null;
+  location: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  description: string | null;
+  reference_number: string | null;
+}
 
 interface TenderStepProps {
   selectedTenderId: string | null;
@@ -33,35 +43,26 @@ export function TenderStep({
   onTenderSelect,
   onSkip,
 }: TenderStepProps) {
-  const supabase = createClient();
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
+    const fetchTenders = async () => {
+      try {
+        setLoading(true);
+        const result = await api.getAvailableTendersSearch();
+        setTenders((result.tenders as unknown as Tender[]) || []);
+      } catch (error) {
+        console.error("Error fetching tenders:", error);
+        toast.error("Failed to load tenders");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchTenders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run on mount
   }, []);
-
-  const fetchTenders = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("tenders")
-        .select("*")
-        .in("status", ["open", "closing_soon"])
-        .order("deadline", { ascending: true })
-        .limit(100);
-
-      if (error) throw error;
-      setTenders(data || []);
-    } catch (error) {
-      console.error("Error fetching tenders:", error);
-      toast.error("Failed to load tenders");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredTenders = tenders.filter((tender) => {
     const searchLower = searchTerm.toLowerCase();

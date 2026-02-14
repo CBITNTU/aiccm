@@ -2,8 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- company/query result types */
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +24,25 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  companies_house_number?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  postcode?: string | null;
+  address?: string | null;
+  description?: string | null;
+  website_url?: string | null;
+  key_capabilities?: string | null;
+  certifications?: string | null;
+  status?: string | null;
+  user_id?: string | null;
+  is_system_company?: boolean | null;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
 
 interface CompaniesStepProps {
   selectedCapabilityIds: string[];
@@ -42,7 +59,6 @@ export function CompaniesStep({
   selectedCompanies,
   onSelectionChange,
 }: CompaniesStepProps) {
-  const supabase = createClient();
   const [companies, setCompanies] = useState<CompanyWithCapabilities[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -65,220 +81,10 @@ export function CompaniesStep({
 
     try {
       setLoading(true);
-
-      // Get capability info for fallback
-      const { data: capabilityCheck } = await supabase
-        .from("company_capabilities_ref")
-        .select("id, name, category")
-        .in("id", selectedCapabilityIds);
-
-      // Use a join query to get companies with matching capabilities
-      const { data: companyCapabilitiesData, error: joinError } = await supabase
-        .from("company_capabilities")
-        .select(
-          `
-          company_id,
-          capability_id,
-          companies!inner(
-            id,
-            company_name,
-            companies_house_number,
-            contact_email,
-            contact_phone,
-            postcode,
-            address,
-            description,
-            website_url,
-            key_capabilities,
-            certifications,
-            status,
-            user_id,
-            is_system_company,
-            created_at,
-            updated_at
-          )
-        `,
-        )
-        .in("capability_id", selectedCapabilityIds);
-
-      if (joinError) {
-        console.error("Error fetching companies by capabilities:", joinError);
-        throw joinError;
-      }
-
-      // FALLBACK: If no companies found by capability IDs, try text search
-      if (
-        (companyCapabilitiesData?.length || 0) === 0 &&
-        capabilityCheck &&
-        capabilityCheck.length > 0
-      ) {
-        console.log(
-          "FALLBACK: No companies found by capability IDs, trying text search...",
-        );
-
-        const genericWords = new Set([
-          "services",
-          "service",
-          "solutions",
-          "solution",
-          "management",
-          "consulting",
-          "consultancy",
-          "design",
-          "development",
-          "installation",
-          "maintenance",
-          "support",
-        ]);
-
-        const searchKeywords = capabilityCheck
-          .map((c) => {
-            const words = c.name.toLowerCase().split(/\s+/);
-            return words.filter((w) => w.length > 4 && !genericWords.has(w));
-          })
-          .flat()
-          .filter((term, index, arr) => arr.indexOf(term) === index)
-          .slice(0, 3);
-
-        if (searchKeywords.length > 0) {
-          const orConditions = searchKeywords
-            .map(
-              (keyword) =>
-                `description.ilike.%${keyword}%,key_capabilities.ilike.%${keyword}%`,
-            )
-            .join(",");
-
-          const { data: textSearchResults, error: textSearchError } =
-            await supabase
-              .from("companies")
-              .select(
-                "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, created_at, updated_at",
-              )
-              .eq("status", "active")
-              .or(orConditions)
-              .limit(50);
-
-          if (
-            !textSearchError &&
-            textSearchResults &&
-            textSearchResults.length > 0
-          ) {
-            const filteredResults = textSearchResults.filter((company: any) => {
-              const desc = (company.description || "").toLowerCase();
-              const keyCaps = (company.key_capabilities || "").toLowerCase();
-              const combined = `${desc} ${keyCaps}`;
-
-              const keywordMatches = searchKeywords.filter((keyword) =>
-                combined.includes(keyword),
-              ).length;
-              const fullNameMatches = capabilityCheck.some((cap) => {
-                const fullName = cap.name.toLowerCase();
-                return (
-                  combined.includes(fullName) ||
-                  combined.includes(fullName.replace(/\s+/g, " "))
-                );
-              });
-
-              return (
-                keywordMatches >= Math.min(2, searchKeywords.length) ||
-                fullNameMatches
-              );
-            });
-
-            if (filteredResults.length > 0) {
-              const fallbackCompanies = filteredResults.map((company: any) => ({
-                ...company,
-                capabilities: capabilityCheck.map((c) => ({
-                  id: c.id,
-                  name: c.name,
-                })),
-              }));
-
-              const uniqueFallbackCompanies = new Map<
-                string,
-                CompanyWithCapabilities
-              >();
-              fallbackCompanies.forEach((company: any) => {
-                if (!uniqueFallbackCompanies.has(company.id)) {
-                  uniqueFallbackCompanies.set(company.id, company);
-                }
-              });
-
-              const companiesArray = Array.from(
-                uniqueFallbackCompanies.values(),
-              ).sort((a, b) => a.company_name.localeCompare(b.company_name));
-
-              const companiesWithCapabilities = await Promise.all(
-                companiesArray.map(async (company) => {
-                  const { data: capabilities } = await supabase
-                    .from("company_capabilities")
-                    .select("capability_id, company_capabilities_ref(id, name)")
-                    .eq("company_id", company.id)
-                    .in("capability_id", selectedCapabilityIds);
-
-                  return {
-                    ...company,
-                    capabilities:
-                      capabilities?.map((c: any) => ({
-                        id: c.company_capabilities_ref.id,
-                        name: c.company_capabilities_ref.name,
-                      })) ||
-                      capabilityCheck.map((c) => ({ id: c.id, name: c.name })),
-                  };
-                }),
-              );
-
-              setCompanies(companiesWithCapabilities);
-              setLoading(false);
-              return;
-            }
-          }
-        }
-      }
-
-      // Deduplicate companies and filter by status
-      const uniqueCompanies = new Map<string, CompanyWithCapabilities>();
-
-      (companyCapabilitiesData || []).forEach((item: any) => {
-        const company = item.companies;
-        if (
-          company &&
-          (company.status === "active" ||
-            company.status === "pending_review") &&
-          !uniqueCompanies.has(company.id)
-        ) {
-          uniqueCompanies.set(company.id, {
-            ...company,
-            capabilities: [],
-          });
-        }
+      const result = await api.getCompaniesByCapabilities({
+        capabilityIds: selectedCapabilityIds,
       });
-
-      const companiesArray = Array.from(uniqueCompanies.values()).sort((a, b) =>
-        a.company_name.localeCompare(b.company_name),
-      );
-
-      // Fetch capabilities for each company
-      const companiesWithCapabilities = await Promise.all(
-        companiesArray.map(async (company) => {
-          const { data: capabilities } = await supabase
-            .from("company_capabilities")
-            .select("capability_id, company_capabilities_ref(id, name)")
-            .eq("company_id", company.id)
-            .in("capability_id", selectedCapabilityIds);
-
-          return {
-            ...company,
-            capabilities:
-              capabilities?.map((c: any) => ({
-                id: c.company_capabilities_ref.id,
-                name: c.company_capabilities_ref.name,
-              })) || [],
-          };
-        }),
-      );
-
-      setCompanies(companiesWithCapabilities);
+      setCompanies((result.companies as unknown as CompanyWithCapabilities[]) || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast.error(

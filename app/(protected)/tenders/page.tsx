@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -50,9 +49,6 @@ export default function TendersPage() {
   // Users are restricted if they're pending approval OR still onboarding
   const isRestrictedUser = isPendingApproval || isOnboarding;
   const searchParams = useSearchParams();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [filters, setFilters] = useState<TenderFiltersState>({});
   const [matchingFilters, setMatchingFilters] = useState<MatchingFiltersState>({
     sortBy: "overall_score",
@@ -65,72 +61,35 @@ export default function TendersPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
 
+  // DatabaseTenderFeed still accepts a supabase client prop — keep until it's migrated
+  const supabase = useMemo(() => createClient(), []);
+
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
-  // Initialize supabase client
-  useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-    }
-  }, []);
-
   // Fetch user companies and auto-select the first one
   useEffect(() => {
-    if (!supabase || !user) return;
+    if (!user) return;
 
     const fetchCompanies = async () => {
       try {
-        // Fetch companies the user owns
-        const { data: ownedCompanies, error: ownedError } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("user_id", user.id);
+        const result = await api.getMyCompanies();
+        const data = result.companies as unknown as Company[];
 
-        if (ownedError) throw ownedError;
-
-        // Fetch companies the user is an approved team member of
-        const { data: memberships, error: memberError } = await supabase
-          .from("company_members")
-          .select("company_id")
-          .eq("user_id", user.id)
-          .eq("status", "approved");
-
-        if (memberError) throw memberError;
-
-        let memberCompanies: typeof ownedCompanies = [];
-        if (memberships && memberships.length > 0) {
-          const memberCompanyIds = memberships.map((m) => m.company_id);
-          const { data: memberData, error: memberCompaniesError } =
-            await supabase
-              .from("companies")
-              .select("*")
-              .in("id", memberCompanyIds);
-
-          if (memberCompaniesError) throw memberCompaniesError;
-          memberCompanies = memberData || [];
-        }
-
-        // Merge, deduplicate, and sort by created_at descending
-        const allCompanies = [...(ownedCompanies || []), ...memberCompanies];
+        // Deduplicate and sort by created_at descending
         const uniqueCompanies = Array.from(
-          new Map(allCompanies.map((c) => [c.id, c])).values()
+          new Map(data.map((c) => [c.id, c])).values()
         ).sort(
           (a, b) =>
             new Date(b.created_at).getTime() -
             new Date(a.created_at).getTime()
         );
 
-        const data = uniqueCompanies;
-        setCompanies(data);
+        setCompanies(uniqueCompanies);
 
-        // Auto-select the first company if none is selected
-        if (data && data.length > 0 && !selectedCompany) {
-          setSelectedCompany(data[0]);
+        if (uniqueCompanies.length > 0 && !selectedCompany) {
+          setSelectedCompany(uniqueCompanies[0]);
         }
       } catch (error) {
         console.error("Error fetching companies:", error);
@@ -139,7 +98,7 @@ export default function TendersPage() {
 
     fetchCompanies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, user]); // intentionally excluding selectedCompany to only auto-select once
+  }, [user]);
 
   const handleFiltersChange = (newFilters: TenderFiltersState) => {
     setFilters(newFilters);
@@ -204,15 +163,6 @@ export default function TendersPage() {
       setAnalyzing(false);
     }
   };
-
-  if (!supabase) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <div>

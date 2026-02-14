@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,9 +32,6 @@ interface User {
 }
 
 export default function AdminUsersPage() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,35 +39,27 @@ export default function AdminUsersPage() {
   const { user } = useAuth();
 
   useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
-  useEffect(() => {
-    if (supabase && user) {
+    if (user) {
       checkAdminStatus();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase/user change
-  }, [supabase, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when user changes
+  }, [user]);
 
   useEffect(() => {
-    if (isAdmin && supabase) {
+    if (isAdmin) {
       fetchUsers();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when isAdmin/supabase change
-  }, [isAdmin, supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when isAdmin changes
+  }, [isAdmin]);
 
   const checkAdminStatus = async () => {
-    if (!user || !supabase) return;
+    if (!user) return;
 
     try {
-      const { data } = await supabase.rpc("has_role", {
-        _user_id: user.id,
-        _role: "superadmin",
-      });
+      const { isAdmin: adminStatus } = await api.getUserRole();
 
-      setIsAdmin(data ?? false);
-      if (!data) {
+      setIsAdmin(adminStatus);
+      if (!adminStatus) {
         setLoading(false);
       }
     } catch (error) {
@@ -82,40 +69,27 @@ export default function AdminUsersPage() {
   };
 
   const fetchUsers = async () => {
-    if (!supabase) return;
-
     try {
-      // Fetch users from profiles table
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*");
-
-      if (profilesError) throw profilesError;
-
-      // Fetch all user roles
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("*");
-
-      if (rolesError) throw rolesError;
+      const { profiles, roles } = await api.adminListUsers();
 
       // Create a map of user roles
       const roleMap = new Map<string, string>();
       roles?.forEach((role) => {
-        roleMap.set(role.user_id, role.role);
+        roleMap.set(role.user_id as string, role.role as string);
       });
 
       const formattedUsers: User[] =
         profiles?.map((profile) => ({
-          id: profile.user_id,
-          email: profile.email || "",
-          first_name: profile.first_name || undefined,
-          last_name: profile.last_name || undefined,
-          created_at: profile.created_at,
-          last_sign_in_at: profile.created_at,
+          id: profile.user_id as string,
+          email: (profile.email as string) || "",
+          first_name: (profile.first_name as string) || undefined,
+          last_name: (profile.last_name as string) || undefined,
+          created_at: profile.created_at as string,
+          last_sign_in_at: profile.created_at as string,
           role:
-            (roleMap.get(profile.user_id) as "superadmin" | "sme-owner") ||
-            "sme-owner",
+            (roleMap.get(profile.user_id as string) as
+              | "superadmin"
+              | "sme-owner") || "sme-owner",
         })) || [];
 
       setUsers(formattedUsers);
@@ -128,8 +102,6 @@ export default function AdminUsersPage() {
   };
 
   const deleteUser = async (userId: string) => {
-    if (!supabase) return;
-
     if (
       !confirm(
         "Are you sure you want to delete this user? This action cannot be undone.",
@@ -139,13 +111,7 @@ export default function AdminUsersPage() {
     }
 
     try {
-      // Delete user profile (this will cascade to companies and other related data)
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("user_id", userId);
-
-      if (error) throw error;
+      await api.adminDeleteUser(userId);
 
       toast.success("User has been successfully deleted");
 
@@ -161,27 +127,15 @@ export default function AdminUsersPage() {
     userId: string,
     currentRole: "superadmin" | "sme-owner",
   ) => {
-    if (!supabase) return;
-
     const newRole = currentRole === "superadmin" ? "sme-owner" : "superadmin";
 
     try {
       if (newRole === "superadmin") {
         // Add superadmin role
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role: "superadmin" });
-
-        if (error) throw error;
+        await api.adminAddUserRole(userId, "superadmin");
       } else {
         // Remove superadmin role
-        const { error } = await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", userId)
-          .eq("role", "superadmin");
-
-        if (error) throw error;
+        await api.adminRemoveUserRole(userId, "superadmin");
       }
 
       toast.success(`User role changed to ${newRole}`);

@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import {
   Dialog,
   DialogContent,
@@ -39,110 +37,59 @@ export function CompanySearchDialog({
   excludeCompanyIds,
   selectedCapabilityIds = [],
 }: CompanySearchDialogProps) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [searchQuery, setSearchQuery] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
 
-  // Initialize supabase client
   useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
-  useEffect(() => {
-    if (open && supabase) {
+    if (open) {
       searchCompanies();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, searchQuery, supabase, selectedCapabilityIds?.join(",")]);
+  }, [open, searchQuery, selectedCapabilityIds?.join(",")]);
 
   const searchCompanies = async () => {
-    if (!supabase) return;
-
     try {
       setLoading(true);
 
-      // If capability IDs are provided, filter by them through the junction table
       if (selectedCapabilityIds && selectedCapabilityIds.length > 0) {
-        // Query companies that have ANY of the selected capabilities
-        const { data: capabilityLinks, error: linkError } = await supabase
-          .from("company_capabilities")
-          .select("company_id")
-          .in("capability_id", selectedCapabilityIds);
+        // Use capability-based search
+        const result = await api.getCompaniesByCapabilities({
+          capabilityIds: selectedCapabilityIds,
+          excludeCompanyIds,
+        });
+        let filtered = (result.companies as unknown as Company[]) || [];
 
-        if (linkError) throw linkError;
-
-        // Get unique company IDs
-        const companyIds = Array.from(
-          new Set((capabilityLinks || []).map((link) => link.company_id)),
-        );
-
-        if (companyIds.length === 0) {
-          // No companies found with these capabilities
-          setCompanies([]);
-          setLoading(false);
-          return;
-        }
-
-        // Now query companies with those IDs
-        let query = supabase
-          .from("companies")
-          .select(
-            "id, company_name, key_capabilities, certifications, postcode",
-          )
-          .eq("status", "active")
-          .in("id", companyIds);
-
-        if (excludeCompanyIds.length > 0) {
-          const filteredIds = companyIds.filter(
-            (id) => !excludeCompanyIds.includes(id),
-          );
-          if (filteredIds.length === 0) {
-            setCompanies([]);
-            setLoading(false);
-            return;
-          }
-          query = query.in("id", filteredIds);
-        }
-
+        // Client-side text filter if search query provided
         if (searchQuery) {
-          query = query.or(
-            `company_name.ilike.%${searchQuery}%,key_capabilities.ilike.%${searchQuery}%,postcode.ilike.%${searchQuery}%`,
+          const q = searchQuery.toLowerCase();
+          filtered = filtered.filter(
+            (c) =>
+              c.company_name.toLowerCase().includes(q) ||
+              c.key_capabilities?.toLowerCase().includes(q) ||
+              c.postcode?.toLowerCase().includes(q),
           );
         }
 
-        const { data, error } = await query.limit(100); // Increased limit since we're filtering
-
-        if (error) throw error;
-        setCompanies(data || []);
+        setCompanies(filtered);
       } else {
-        // Original behavior: no capability filtering
-        let query = supabase
-          .from("companies")
-          .select(
-            "id, company_name, key_capabilities, certifications, postcode",
-          )
-          .eq("status", "active")
-          .limit(20);
+        // Use directory search for general company search
+        const result = await api.getDirectory({
+          search: searchQuery || undefined,
+          limit: 20,
+        });
+        let filtered =
+          (result.companies as unknown as Company[]) || [];
 
+        // Filter out excluded companies
         if (excludeCompanyIds.length > 0) {
-          query = query.not("id", "in", `(${excludeCompanyIds.join(",")})`);
-        }
-
-        if (searchQuery) {
-          query = query.or(
-            `company_name.ilike.%${searchQuery}%,key_capabilities.ilike.%${searchQuery}%,postcode.ilike.%${searchQuery}%`,
+          filtered = filtered.filter(
+            (c) => !excludeCompanyIds.includes(c.id),
           );
         }
 
-        const { data, error } = await query;
-
-        if (error) throw error;
-        setCompanies(data || []);
+        setCompanies(filtered);
       }
     } catch (error: unknown) {
       console.error("Error searching companies:", error);

@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tender row types */
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,58 +80,28 @@ export default function TenderDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const supabase = createClient();
-
-      // Fetch tender
-      const { data: tenderData, error: tenderError } = await supabase
-        .from("tenders")
-        .select("*")
-        .eq("id", tenderId)
-        .maybeSingle();
-
-      if (tenderError || !tenderData) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
-      setTender(tenderData as any);
-
-      // Fetch taxonomies
-      const { data: taxData } = await supabase
-        .from("tender_taxonomies")
-        .select("taxonomy_id, taxonomies(id, name)")
-        .eq("tender_id", tenderId);
-
-      if (taxData) {
-        setTaxonomies(
-          taxData
-            .map((tt) => ({
-              id:
-                (tt.taxonomies as { id: string; name: string } | null)?.id ||
-                "",
-              name:
-                (tt.taxonomies as { id: string; name: string } | null)?.name ||
-                "",
-            }))
-            .filter((t) => t.name),
-        );
-      }
-
-      // Fetch match data if companyId provided
-      if (companyId) {
-        const { data: matchResult } = await supabase
-          .from("matching_results")
-          .select(
-            "id, overall_score, capability_score, experience_score, location_score, certification_score, match_reasons, improvement_suggestions, ai_analysis",
-          )
-          .eq("tender_id", tenderId)
-          .eq("company_id", companyId)
-          .maybeSingle();
-
-        if (matchResult) {
-          setMatchData(matchResult as MatchData);
+      try {
+        // Fetch tender + taxonomies
+        const tenderResult = await api.getTender(tenderId);
+        if (!tenderResult.tender) {
+          setNotFound(true);
+          setLoading(false);
+          return;
         }
+
+        setTender(tenderResult.tender as any);
+        setTaxonomies(tenderResult.taxonomies);
+
+        // Fetch match data if companyId provided
+        if (companyId) {
+          const matchResult = await api.getTenderMatch(tenderId, companyId);
+          if (matchResult.match) {
+            setMatchData(matchResult.match as unknown as MatchData);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching tender:", error);
+        setNotFound(true);
       }
 
       setLoading(false);

@@ -39,6 +39,8 @@ interface TenderFiltersState {
   dateFrom?: string;
   dateTo?: string;
   selectedTaxonomies?: string[];
+  sortBy?: string;
+  sortDirection?: string;
 }
 
 export default function TendersPage() {
@@ -156,7 +158,7 @@ export default function TendersPage() {
   );
 
   const resetFilters = () => {
-    setFilters({ selectedTaxonomies: [] });
+    setFilters({ selectedTaxonomies: [], sortBy: "deadline", sortDirection: "desc" });
   };
 
   const resetMatchingFilters = () => {

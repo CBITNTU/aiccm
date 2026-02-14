@@ -30,7 +30,18 @@ import {
   RotateCcw,
   TrendingUp,
   TrendingDown,
+  ArrowUpDown,
 } from "lucide-react";
+
+const DATABASE_SORT_OPTIONS = [
+  { value: "deadline:desc", label: "Deadline (newest first)" },
+  { value: "deadline:asc", label: "Deadline (oldest first)" },
+  { value: "publication_date:desc", label: "Published (newest first)" },
+  { value: "publication_date:asc", label: "Published (oldest first)" },
+  { value: "budget_max:desc", label: "Budget (highest first)" },
+  { value: "budget_min:asc", label: "Budget (lowest first)" },
+  { value: "title:asc", label: "Title (A-Z)" },
+] as const;
 
 // Database filters interface
 interface TenderFiltersState {
@@ -42,6 +53,8 @@ interface TenderFiltersState {
   dateFrom?: string;
   dateTo?: string;
   selectedTaxonomies?: string[];
+  sortBy?: string;
+  sortDirection?: string;
 }
 
 // Matching filters interface
@@ -119,6 +132,8 @@ export function TenderSearchBar({
         databaseFilters.selectedTaxonomies.length > 0
       )
         count++;
+      if (databaseFilters.sortBy && databaseFilters.sortBy !== "deadline") count++;
+      if (databaseFilters.sortDirection && databaseFilters.sortDirection !== "desc") count++;
       return count;
     } else if (filterType === "matching" && matchingFilters) {
       let count = 0;
@@ -174,6 +189,16 @@ export function TenderSearchBar({
           label: "To",
           value: databaseFilters.dateTo,
         });
+      if (databaseFilters.sortBy && databaseFilters.sortBy !== "deadline") {
+        const sortOption = DATABASE_SORT_OPTIONS.find(
+          (o) => o.value === `${databaseFilters.sortBy}:${databaseFilters.sortDirection || "desc"}`
+        );
+        pills.push({
+          key: "sort",
+          label: "Sort",
+          value: sortOption?.label || `${databaseFilters.sortBy}`,
+        });
+      }
     } else if (filterType === "matching" && matchingFilters) {
       if (matchingFilters.minScore > 0 || matchingFilters.maxScore < 100)
         pills.push({
@@ -212,6 +237,10 @@ export function TenderSearchBar({
       if (key === "budgetMax") newFilters.budgetMax = undefined;
       if (key === "dateFrom") newFilters.dateFrom = undefined;
       if (key === "dateTo") newFilters.dateTo = undefined;
+      if (key === "sort") {
+        newFilters.sortBy = "deadline";
+        newFilters.sortDirection = "desc";
+      }
       onDatabaseFiltersChange(newFilters);
     } else if (
       filterType === "matching" &&
@@ -245,6 +274,27 @@ export function TenderSearchBar({
             onChange={(e) => handleKeywordChange(e.target.value)}
           />
         </div>
+        {filterType === "database" && databaseFilters && onDatabaseFiltersChange && (
+          <Select
+            value={`${databaseFilters.sortBy || "deadline"}:${databaseFilters.sortDirection || "desc"}`}
+            onValueChange={(value) => {
+              const [sortBy, sortDirection] = value.split(":");
+              onDatabaseFiltersChange({ ...databaseFilters, sortBy, sortDirection });
+            }}
+          >
+            <SelectTrigger className="h-11 w-[220px] shrink-0">
+              <ArrowUpDown className="h-4 w-4 mr-2 shrink-0" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DATABASE_SORT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" className="h-11 gap-2">

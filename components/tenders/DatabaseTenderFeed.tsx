@@ -34,6 +34,8 @@ interface TenderFilters {
   dateFrom?: string;
   dateTo?: string;
   selectedTaxonomies?: string[];
+  sortBy?: string;
+  sortDirection?: string;
 }
 
 interface DatabaseTenderFeedProps {
@@ -71,7 +73,7 @@ export function DatabaseTenderFeed({
         .from("tenders")
         .select("*", { count: "exact" })
         .neq("status", "closed")
-        .order("deadline", { ascending: false });
+        .order(filters.sortBy || "deadline", { ascending: (filters.sortDirection || "desc") === "asc" });
 
       // Apply keyword filter from filters
       if (filters.keyword && filters.keyword.trim()) {

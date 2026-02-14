@@ -366,7 +366,7 @@ export default function AdminApprovals() {
         );
       case "join-company":
         return (
-          <Badge className="bg-purple-100 text-purple-800">Join Company</Badge>
+          <Badge className="bg-primary/10 text-primary">Join Company</Badge>
         );
       default:
         return <Badge variant="outline">{signupType}</Badge>;

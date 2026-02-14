@@ -50,12 +50,12 @@ export function getAdminNotificationEmailHtml(
 
   const signupTypeBadgeColor =
     signupType === "individual"
-      ? "#3b82f6"
+      ? "#2563EB"
       : signupType === "new-company"
-        ? "#10b981"
+        ? "#2563EB"
         : signupType === "invited"
           ? "#f59e0b"
-          : "#8b5cf6";
+          : "#2563EB";
 
   return `
 <!DOCTYPE html>
@@ -87,7 +87,7 @@ export function getAdminNotificationEmailHtml(
         </tr>
         <tr>
           <td style="padding: 8px 0; font-weight: bold;">Email:</td>
-          <td style="padding: 8px 0;"><a href="mailto:${userEmail}" style="color: #667eea;">${userEmail}</a></td>
+          <td style="padding: 8px 0;"><a href="mailto:${userEmail}" style="color: #2563EB;">${userEmail}</a></td>
         </tr>
         ${
           jobTitle
@@ -122,7 +122,7 @@ export function getAdminNotificationEmailHtml(
     </div>
     ${
       signupType === "new-company"
-        ? `<p style="text-align: center; color: #666; font-size: 14px; margin-top: 10px;">Direct link: <a href="${approvalsUrl}" style="color: #667eea;">${approvalsUrl}</a></p>`
+        ? `<p style="text-align: center; color: #666; font-size: 14px; margin-top: 10px;">Direct link: <a href="${approvalsUrl}" style="color: #2563EB;">${approvalsUrl}</a></p>`
         : ""
     }
 

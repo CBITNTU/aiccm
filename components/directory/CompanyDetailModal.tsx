@@ -223,7 +223,7 @@ export function CompanyDetailModal({
                   Verified
                 </Badge>
               ) : company.is_system_company ? (
-                <Badge className="gap-1 border-0 bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white">
+                <Badge className="gap-1 border-0 bg-primary text-white dark:bg-primary dark:text-white">
                   <Sparkles className="h-3 w-3" />
                   AI Generated
                 </Badge>

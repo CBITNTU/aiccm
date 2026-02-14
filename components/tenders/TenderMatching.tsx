@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AlertCircle, Target, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
-import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { TenderMatchCard } from "./TenderMatchCard";
 
 export interface MatchingFiltersState {
@@ -66,7 +66,7 @@ interface TenderMatchingProps {
 export function TenderMatching({
   companyId,
   filters: filtersProp,
-  onCreateProject,
+  onCreateProject: _onCreateProject,
   readOnly = false,
   onAnalyze,
   analyzing: externalAnalyzing,
@@ -74,13 +74,10 @@ export function TenderMatching({
   const { user } = useAuth();
   const [matchingResults, setMatchingResults] = useState<MatchingResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [selectedResult, setSelectedResult] = useState<MatchingResult | null>(
-    null,
-  );
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Progress tracking state
   const [matchingProgress, setMatchingProgress] = useState<{
@@ -781,8 +778,7 @@ export function TenderMatching({
               key={result.id}
               result={result}
               onViewDetails={() => {
-                setSelectedResult(result);
-                setDialogOpen(true);
+                router.push(`/tenders/${result.tender_id}?companyId=${companyId}`);
               }}
               onBookmark={() => toggleBookmark(result.id, result.is_bookmarked)}
               onDelete={() => deleteResult(result.id)}
@@ -793,22 +789,6 @@ export function TenderMatching({
         </div>
       )}
 
-      {selectedResult && (
-        <TenderDetailDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          result={selectedResult}
-          companyId={companyId}
-          onCreateProject={
-            readOnly
-              ? undefined
-              : onCreateProject
-                ? (tenderId) => onCreateProject(tenderId)
-                : undefined
-          }
-          readOnly={readOnly}
-        />
-      )}
     </div>
   );
 }

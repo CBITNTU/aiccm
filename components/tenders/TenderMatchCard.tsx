@@ -71,10 +71,10 @@ export function TenderMatchCard({
   const formatBudget = (min?: number, max?: number): string => {
     if (!min && !max) return "Not specified";
     if (min && max && min !== max) {
-      return `£${min.toLocaleString()} - £${max.toLocaleString()}`;
+      return `${min.toLocaleString()} - ${max.toLocaleString()}`;
     }
-    if (min) return `£${min.toLocaleString()}`;
-    if (max) return `£${max.toLocaleString()}`;
+    if (min) return `${min.toLocaleString()}`;
+    if (max) return `${max.toLocaleString()}`;
     return "Not specified";
   };
 
@@ -149,14 +149,6 @@ export function TenderMatchCard({
           onClick={onViewDetails}
         >
           {(() => {
-            const scoreExplanations =
-              (result.ai_analysis?.score_explanations as {
-                capability?: string;
-                experience?: string;
-                location?: string;
-                certification?: string;
-              }) || {};
-
             return (
               <>
                 <div className="flex flex-col gap-0.5 text-xs group">
@@ -168,11 +160,6 @@ export function TenderMatchCard({
                       {Math.round(result.capability_score)}%
                     </span>
                   </div>
-                  {scoreExplanations.capability && (
-                    <span className="text-[10px] text-muted-foreground/70 max-w-[200px] line-clamp-1 group-hover:line-clamp-none">
-                      {scoreExplanations.capability}
-                    </span>
-                  )}
                 </div>
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
@@ -183,11 +170,6 @@ export function TenderMatchCard({
                       {Math.round(result.experience_score)}%
                     </span>
                   </div>
-                  {scoreExplanations.experience && (
-                    <span className="text-[10px] text-muted-foreground/70 max-w-[200px] line-clamp-1 group-hover:line-clamp-none">
-                      {scoreExplanations.experience}
-                    </span>
-                  )}
                 </div>
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
@@ -198,11 +180,6 @@ export function TenderMatchCard({
                       {Math.round(result.location_score)}%
                     </span>
                   </div>
-                  {scoreExplanations.location && (
-                    <span className="text-[10px] text-muted-foreground/70 max-w-[200px] line-clamp-1 group-hover:line-clamp-none">
-                      {scoreExplanations.location}
-                    </span>
-                  )}
                 </div>
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
@@ -215,11 +192,6 @@ export function TenderMatchCard({
                       {Math.round(result.certification_score)}%
                     </span>
                   </div>
-                  {scoreExplanations.certification && (
-                    <span className="text-[10px] text-muted-foreground/70 max-w-[200px] line-clamp-1 group-hover:line-clamp-none">
-                      {scoreExplanations.certification}
-                    </span>
-                  )}
                 </div>
               </>
             );
@@ -238,7 +210,7 @@ export function TenderMatchCard({
       {/* Match reasons */}
       {result.match_reasons.length > 0 && (
         <div className="mb-3">
-          <p className="text-sm font-medium text-green-700 dark:text-green-400 leading-relaxed">
+          <p className="text-sm font-medium text-blue-700 leading-relaxed">
             ✓{" "}
             {result.match_reasons[0].length > 120
               ? result.match_reasons[0].substring(0, 120) + "..."

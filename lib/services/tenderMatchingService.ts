@@ -237,9 +237,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       // If capability matches, calculate based on other factors only
       // Weights: Certification 50%, Experience 40%, Location 10% = 100%
       overallScore = Math.round(
-        certificationScore * 0.5 +
-          experienceScore * 0.4 +
-          locationScore * 0.1,
+        certificationScore * 0.5 + experienceScore * 0.4 + locationScore * 0.1,
       );
     }
 

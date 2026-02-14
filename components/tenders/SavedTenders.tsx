@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bookmark, Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
-import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { TenderMatchCard } from "./TenderMatchCard";
 
 interface MatchingResult {
@@ -46,13 +46,10 @@ export function SavedTenders({
   readOnly = false,
 }: SavedTendersProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [savedResults, setSavedResults] = useState<MatchingResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedResult, setSelectedResult] = useState<MatchingResult | null>(
-    null,
-  );
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
 
   useEffect(() => {
@@ -211,8 +208,7 @@ export function SavedTenders({
               key={result.id}
               result={result}
               onViewDetails={() => {
-                setSelectedResult(result);
-                setDialogOpen(true);
+                router.push(`/tenders/${result.tender_id}?companyId=${result.company_id}`);
               }}
               onBookmark={() => removeBookmark(result.id)}
               onDelete={() => removeBookmark(result.id)}
@@ -222,15 +218,6 @@ export function SavedTenders({
         </div>
       )}
 
-      {selectedResult && (
-        <TenderDetailDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          result={selectedResult}
-          companyId={selectedResult.company_id}
-          readOnly={readOnly}
-        />
-      )}
     </div>
   );
 }

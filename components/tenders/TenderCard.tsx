@@ -39,9 +39,9 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
   const formatBudget = (min?: number, max?: number) => {
     if (!min && !max) return "Not disclosed";
     if (min && max && min !== max)
-      return `£${min.toLocaleString()} - £${max.toLocaleString()}`;
-    if (min) return `£${min.toLocaleString()}`;
-    if (max) return `£${max.toLocaleString()}`;
+      return `${min.toLocaleString()} - ${max.toLocaleString()}`;
+    if (min) return `${min.toLocaleString()}`;
+    if (max) return `${max.toLocaleString()}`;
     return "Not disclosed";
   };
 

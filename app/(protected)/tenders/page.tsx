@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
-import type { Database } from "@/lib/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -27,7 +25,12 @@ import { SavedTenders } from "@/components/tenders/SavedTenders";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  created_at: string;
+  [key: string]: unknown;
+}
 
 interface TenderFiltersState {
   keyword?: string;
@@ -60,9 +63,6 @@ export default function TendersPage() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
-
-  // DatabaseTenderFeed still accepts a supabase client prop — keep until it's migrated
-  const supabase = useMemo(() => createClient(), []);
 
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
@@ -230,7 +230,6 @@ export default function TendersPage() {
               placeholder="Search by title, buyer, location, or description..."
             />
             <DatabaseTenderFeed
-              supabase={supabase}
               filters={filters}
               readOnly={isRestrictedUser}
               onCreateProject={

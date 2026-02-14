@@ -385,6 +385,44 @@ export const api = {
     }),
 
   // Tenders
+  searchTenders: (params: {
+    keyword?: string;
+    location?: string;
+    status?: string;
+    budgetMin?: number;
+    budgetMax?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    taxonomyIds?: string[];
+    sortBy?: string;
+    sortDirection?: string;
+    page?: number;
+    pageSize?: number;
+  }) =>
+    apiCall<{
+      tenders: Record<string, unknown>[];
+      totalCount: number;
+      taxonomies: Record<string, { id: string; name: string }[]>;
+    }>("tenders/search", {
+      method: "GET",
+      params: {
+        ...(params.keyword && { keyword: params.keyword }),
+        ...(params.location && { location: params.location }),
+        ...(params.status && { status: params.status }),
+        ...(params.budgetMin && { budgetMin: params.budgetMin }),
+        ...(params.budgetMax && { budgetMax: params.budgetMax }),
+        ...(params.dateFrom && { dateFrom: params.dateFrom }),
+        ...(params.dateTo && { dateTo: params.dateTo }),
+        ...(params.taxonomyIds?.length && {
+          taxonomyIds: params.taxonomyIds.join(","),
+        }),
+        ...(params.sortBy && { sortBy: params.sortBy }),
+        ...(params.sortDirection && { sortDirection: params.sortDirection }),
+        ...(params.page && { page: params.page }),
+        ...(params.pageSize && { pageSize: params.pageSize }),
+      },
+    }),
+
   getTender: (tenderId: string) =>
     apiCall<{
       tender: Record<string, unknown>;

@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- profiles, company_taxonomies extended columns */
-import { createAdminClient, chatCompletion } from "@/lib/api";
-import { runLLM } from "./llmLimiter";
+import { createAdminClient } from "@/lib/api";
+import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
+import {
+  existingCapabilitiesSchema,
+  companySummaryAndTaxonomySchema,
+} from "@/lib/schemas/capabilitySuggestion";
 
 const supabase = createAdminClient();
 
@@ -52,16 +56,12 @@ ${company.postcode ? `Location: ${company.postcode}` : ""}
 
 Summarize.`;
 
-  // Call OpenAI with rate limiting
-  const summary = await runLLM(
-    async () => {
-      const response = await chatCompletion(systemPrompt, userPrompt, {
-        maxTokens: 1000,
-      });
-      return response;
-    },
-    2000, // Estimated tokens
-  );
+  const summary = await aiGenerateText({
+    system: systemPrompt,
+    prompt: userPrompt,
+    maxTokens: 1000,
+    estTokens: 2000,
+  });
 
   // Store summary in database
   const { error: updateError } = await supabase
@@ -83,7 +83,7 @@ Summarize.`;
  * Generate capability taxonomy for a company
  * Returns array of capability IDs and creates new capabilities if needed
  * @param companyId - The company ID
- * @param fullRegeneration - If true, start from base/generic categories only. If false, show all capabilities for incremental updates.
+ * @param _fullRegeneration - If true, start from base/generic categories only. If false, show all capabilities for incremental updates.
  */
 export async function generateCompanyCapabilityTaxonomy(
   companyId: string,
@@ -137,7 +137,7 @@ export async function generateCompanyCapabilityTaxonomy(
     )
     .join("\n\n");
 
-  const systemPrompt = `From the STATIC capability list below, pick 2-5 IDs that best match the company. Do not create new capabilities. Output valid JSON only: {"existing":["id1","id2"]}. No comments, no markdown.`;
+  const systemPrompt = `From the STATIC capability list below, pick 2-5 IDs that best match the company. Do not create new capabilities.`;
 
   const userPrompt = `Company Details:
 Name: ${company.company_name || "N/A"}
@@ -150,37 +150,17 @@ ${company.past_projects ? `Past Projects: ${company.past_projects}` : ""}
 Available Capabilities:
 ${capabilitiesList}
 
-Return JSON: existing = array of capability IDs from the list.`;
+Return existing = array of capability IDs from the list.`;
 
-  // Call OpenAI with rate limiting
-  const response = await runLLM(
-    async () => {
-      const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        maxTokens: 4000, // Increased for default reasoning tokens plus output
-        responseFormat: "json_object", // Request JSON output format
-      });
-      return aiResponse;
-    },
-    3000, // Estimated tokens
-  );
+  const parsed = await aiGenerateObject({
+    schema: existingCapabilitiesSchema,
+    system: systemPrompt,
+    prompt: userPrompt,
+    maxTokens: 4000,
+    estTokens: 3000,
+  });
 
-  // Parse AI response - only existing capabilities, no new ones
-  let existingIds: string[] = [];
-
-  try {
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
-    }
-  } catch (e) {
-    console.error("Failed to parse AI response for capabilities:", e);
-    // Try to extract just the existing IDs if new format fails
-    const arrayMatch = response.match(/\[[\s\S]*?\]/);
-    if (arrayMatch) {
-      existingIds = JSON.parse(arrayMatch[0]);
-    }
-  }
+  const existingIds = parsed.existing;
 
   // Only use existing capabilities from static list
   const uniqueIds = Array.from(new Set(existingIds));
@@ -210,7 +190,6 @@ Return JSON: existing = array of capability IDs from the list.`;
       `Failed to delete existing capabilities for company ${companyId}:`,
       deleteError,
     );
-    // Don't throw - we'll try to insert anyway
   }
 
   // Insert new capability links
@@ -229,11 +208,9 @@ Return JSON: existing = array of capability IDs from the list.`;
         `Failed to insert capability links for company ${companyId}:`,
         insertError,
       );
-      // Don't throw - taxonomy is stored, just junction table failed
-      // This is a non-critical error, but we should log it
     } else {
       console.log(
-        `✅ Populated ${uniqueIds.length} capabilities in junction table for company ${companyId}`,
+        `Populated ${uniqueIds.length} capabilities in junction table for company ${companyId}`,
       );
     }
   }
@@ -245,7 +222,7 @@ Return JSON: existing = array of capability IDs from the list.`;
  * Generate both summary and taxonomy for a company in a single AI call
  * This is more efficient than calling them separately
  * @param companyId - The company ID
- * @param fullRegeneration - If true, start from base/generic categories only
+ * @param _fullRegeneration - If true, start from base/generic categories only
  * @returns Object with summary and taxonomy IDs
  */
 export async function generateCompanySummaryAndTaxonomy(
@@ -309,21 +286,9 @@ CRITICAL RULES - STATIC CAPABILITIES LIST:
 - The list is static - no new categories or capabilities can be created
 - Select 2-5 capabilities that best match the company
 
-CRITICAL FORMATTING RULES:
-- Return ONLY valid JSON - nothing else
-- NO comments (// or /* */) anywhere in the response
-- NO explanations or text before or after the JSON
-- NO markdown code blocks (no \`\`\`json\`\`\`)
-- Start with { and end with }
-- Use only double quotes for strings
-- Do NOT add comments after values
-
-Return a JSON object with:
+Provide:
 1. "summary": A concise 200-word professional summary covering core competencies, achievements, certifications, market position, and unique value propositions
-2. "existing": Array of capability IDs (strings) from the provided STATIC list only
-
-Example (copy this exact format, no comments):
-{"summary": "Company summary text here...", "existing": ["capability-id-1", "capability-id-2"]}`;
+2. "existing": Array of capability IDs (strings) from the provided STATIC list only`;
 
   const userPrompt = `Company Details:
 Name: ${company.company_name || "N/A"}
@@ -338,42 +303,18 @@ ${company.postcode ? `Location: ${company.postcode}` : ""}
 Available Capabilities (STATIC LIST - DO NOT CREATE NEW ONES):
 ${capabilitiesList}
 
-Generate a JSON object with:
-- "summary": Professional 200-word company summary
-- "existing": Array of relevant capability IDs from the STATIC list above only
+Generate a summary and select relevant capability IDs from the STATIC list above only.`;
 
-Return ONLY valid JSON (no comments, no explanations, no markdown).`;
+  const parsed = await aiGenerateObject({
+    schema: companySummaryAndTaxonomySchema,
+    system: systemPrompt,
+    prompt: userPrompt,
+    maxTokens: 2500,
+    estTokens: 3500,
+  });
 
-  // Call OpenAI with rate limiting (single call for both tasks)
-  const response = await runLLM(
-    async () => {
-      const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        maxTokens: 2500, // Slightly higher for combined output
-      });
-      return aiResponse;
-    },
-    3500, // Estimated tokens for combined request
-  );
-
-  // Parse AI response - only existing capabilities, no new ones
-  let summary = "";
-  let existingIds: string[] = [];
-
-  try {
-    const parsed = JSON.parse(response);
-    summary = parsed.summary || "";
-    existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
-  } catch (e) {
-    console.error(
-      "Failed to parse AI response for combined summary/taxonomy:",
-      e,
-    );
-    // Try to extract just summary if JSON parsing fails
-    const summaryMatch = response.match(/"summary"\s*:\s*"([^"]+)"/);
-    if (summaryMatch) {
-      summary = summaryMatch[1];
-    }
-  }
+  const summary = parsed.summary;
+  const existingIds = parsed.existing;
 
   // Only use existing capabilities from static list
   const uniqueIds = Array.from(new Set(existingIds));

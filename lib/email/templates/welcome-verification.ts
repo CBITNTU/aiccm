@@ -68,7 +68,7 @@ export function getWelcomeVerificationEmailHtml(
   <title>Welcome to ${platformName}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+  <div style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); padding: 30px; border-radius: 10px 10px 0 0;">
     <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to ${platformName}!</h1>
   </div>
 
@@ -80,13 +80,13 @@ export function getWelcomeVerificationEmailHtml(
     ${signupTypeMessage}
 
     <!-- Email Verification Section -->
-    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin: 25px 0;">
-      <p style="margin: 0 0 15px 0; font-weight: bold; color: #1e40af;">Please verify your email address</p>
-      <p style="margin: 0 0 20px 0; color: #1e40af;">Click the button below to verify your email and activate your account.</p>
+    <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 20px; margin: 25px 0;">
+      <p style="margin: 0 0 15px 0; font-weight: bold; color: #1E40AF;">Please verify your email address</p>
+      <p style="margin: 0 0 20px 0; color: #1E40AF;">Click the button below to verify your email and activate your account.</p>
       <div style="text-align: center;">
-        <a href="${verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; text-decoration: none; padding: 14px 35px; border-radius: 6px; font-weight: bold; font-size: 16px;">Verify Email Address</a>
+        <a href="${verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 35px; border-radius: 6px; font-weight: bold; font-size: 16px;">Verify Email Address</a>
       </div>
-      <p style="margin: 20px 0 0 0; font-size: 12px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:<br><a href="${verificationLink}" style="color: #3b82f6; word-break: break-all;">${verificationLink}</a></p>
+      <p style="margin: 20px 0 0 0; font-size: 12px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:<br><a href="${verificationLink}" style="color: #2563EB; word-break: break-all;">${verificationLink}</a></p>
     </div>
 
     <!-- Pending Approval Section -->

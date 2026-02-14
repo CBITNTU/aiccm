@@ -41,7 +41,7 @@ export function getCompanyJoinRequestEmailHtml(
   <title>New Join Request</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: #8b5cf6; padding: 30px; border-radius: 10px 10px 0 0;">
+  <div style="background: #2563EB; padding: 30px; border-radius: 10px 10px 0 0;">
     <h1 style="color: white; margin: 0; font-size: 24px;">New Team Member Request</h1>
   </div>
 
@@ -51,7 +51,7 @@ export function getCompanyJoinRequestEmailHtml(
     <p>Someone has requested to join your company on ${platformName}.</p>
 
     <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
-      <h3 style="margin: 0 0 15px 0; color: #8b5cf6;">Requestor Details</h3>
+      <h3 style="margin: 0 0 15px 0; color: #2563EB;">Requestor Details</h3>
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
           <td style="padding: 8px 0; font-weight: bold; width: 120px;">Name:</td>
@@ -59,7 +59,7 @@ export function getCompanyJoinRequestEmailHtml(
         </tr>
         <tr>
           <td style="padding: 8px 0; font-weight: bold;">Email:</td>
-          <td style="padding: 8px 0;"><a href="mailto:${requesterEmail}" style="color: #8b5cf6;">${requesterEmail}</a></td>
+          <td style="padding: 8px 0;"><a href="mailto:${requesterEmail}" style="color: #2563EB;">${requesterEmail}</a></td>
         </tr>
         ${
           requesterJobTitle
@@ -81,7 +81,7 @@ export function getCompanyJoinRequestEmailHtml(
     ${
       message
         ? `
-    <div style="background: #f3f4f6; border-left: 4px solid #8b5cf6; padding: 15px; margin: 20px 0;">
+    <div style="background: #f3f4f6; border-left: 4px solid #2563EB; padding: 15px; margin: 20px 0;">
       <p style="margin: 0; font-weight: bold;">Message from ${requesterName}:</p>
       <p style="margin: 10px 0 0 0; font-style: italic;">"${message}"</p>
     </div>
@@ -89,13 +89,13 @@ export function getCompanyJoinRequestEmailHtml(
         : ""
     }
 
-    <div style="background: #ede9fe; border-left: 4px solid #8b5cf6; padding: 15px; margin: 20px 0;">
+    <div style="background: #DBEAFE; border-left: 4px solid #2563EB; padding: 15px; margin: 20px 0;">
       <p style="margin: 0;"><strong>What happens next?</strong></p>
       <p style="margin: 10px 0 0 0;">If you approve this request, the platform administrator will also need to approve before the user gains access to your company.</p>
     </div>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${membersUrl}" style="display: inline-block; background: #8b5cf6; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold;">Review Request</a>
+      <a href="${membersUrl}" style="display: inline-block; background: #2563EB; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold;">Review Request</a>
     </div>
 
     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">

@@ -1,6 +1,21 @@
 import { NextRequest } from "next/server";
-import { getOpenAIClient, createApiClient, apiResponse } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
+import { aiGenerateObject } from "@/lib/ai";
+import { companyPrefillSchema } from "@/lib/schemas/companyPrefill";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { z } from "zod";
+import {
+  requireAuth,
+  validateBody,
+  validateUrl,
+  handleApiError,
+} from "@/lib/api/validation";
+
+const prefillInputSchema = z.object({
+  companyName: z.string().min(1).max(200),
+  companyNumber: z.string().length(8).optional(),
+  websiteUrl: z.string().url().optional(),
+});
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36";
@@ -9,17 +24,14 @@ interface PrefillResult {
   companiesHouse: {
     url: string;
     found: boolean;
-    html?: string;
   } | null;
   endole: {
     url: string;
     found: boolean;
-    html?: string;
   } | null;
   website: {
     url: string;
     found: boolean;
-    html?: string;
   } | null;
   normalized: unknown;
   errors: string[];
@@ -49,10 +61,7 @@ function tidyHtml(html: string, max = 15000): string {
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
     .replace(/<!--[\s\S]*?-->/g, "");
 
-  // Preserve table structure by keeping newlines in tables
   cleaned = cleaned.replace(/(<\/tr>|<\/td>|<\/th>)/gi, "$1\n");
-
-  // Clean up excessive whitespace but preserve single newlines
   cleaned = cleaned.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n");
 
   return cleaned.slice(0, max);
@@ -60,24 +69,16 @@ function tidyHtml(html: string, max = 15000): string {
 
 export async function POST(request: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Optional auth
+    const { user } = await requireAuth(request);
+    const { companyName, companyNumber, websiteUrl } = await validateBody(
+      request,
+      prefillInputSchema,
+    );
+
+    // Validate websiteUrl if provided (SSRF protection)
+    if (websiteUrl) {
+      validateUrl(websiteUrl);
     }
-
-    const { companyName, companyNumber, websiteUrl } = await request.json();
-
-    console.log("Starting data prefill for:", {
-      companyName,
-      companyNumber,
-      websiteUrl,
-    });
 
     const result: PrefillResult = {
       companiesHouse: null,
@@ -87,19 +88,23 @@ export async function POST(request: NextRequest) {
       errors: [],
     };
 
+    // Internal HTML storage for AI prompt (not returned to client)
+    let companiesHouseHtml = "";
+    let endoleHtml = "";
+    let websiteHtml = "";
+
     // 1) Companies House page
     if (companyNumber && companyNumber.length === 8) {
       try {
         const chUrl = `https://find-and-update.company-information.service.gov.uk/company/${companyNumber}`;
         const chResponse = await safeFetch(chUrl);
         if (chResponse.ok) {
-          const chHtml = await chResponse.text();
+          const chHtmlRaw = await chResponse.text();
+          companiesHouseHtml = tidyHtml(chHtmlRaw, 8000);
           result.companiesHouse = {
             url: chUrl,
             found: true,
-            html: tidyHtml(chHtml, 8000),
           };
-          console.log("Companies House data fetched");
         } else {
           result.errors.push(`Companies House page HTTP ${chResponse.status}`);
         }
@@ -111,7 +116,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 2) Endole (PRIMARY for finance)
-    let endoleHtml = "";
     let endoleUrl = "";
 
     const tryEndole = async () => {
@@ -142,12 +146,11 @@ export async function POST(request: NextRequest) {
       if (companyNumber && companyName) {
         await tryEndole();
         if (endoleHtml) {
+          endoleHtml = tidyHtml(endoleHtml, 25000);
           result.endole = {
             url: endoleUrl,
             found: true,
-            html: tidyHtml(endoleHtml, 25000),
           };
-          console.log("Endole data fetched");
         } else {
           result.errors.push("Endole data not found or blocked");
         }
@@ -164,12 +167,11 @@ export async function POST(request: NextRequest) {
         const websiteResponse = await safeFetch(websiteUrl);
         if (websiteResponse.ok) {
           const websiteHtmlContent = await websiteResponse.text();
+          websiteHtml = tidyHtml(websiteHtmlContent, 8000);
           result.website = {
             url: websiteUrl,
             found: true,
-            html: tidyHtml(websiteHtmlContent, 8000),
           };
-          console.log("Website data fetched");
         } else {
           result.errors.push(`Website HTTP ${websiteResponse.status}`);
         }
@@ -180,9 +182,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4) OpenAI normalization
-    console.log("Starting OpenAI analysis...");
-
+    // 4) AI normalization using Vercel AI SDK (uses platform default model)
     const systemPrompt = `You are a company data extraction assistant specializing in UK company financial data.
 You will receive (possibly partial) HTML from Companies House, Endole, and the company's website.
 Your task is to extract and normalize the requested fields with high accuracy.
@@ -200,8 +200,8 @@ STRICT RULES (NO HALLUCINATIONS):
 - Compute debtRatio = totalLiabilities / totalAssets (round to 3 decimals) when both > 0.
 - Set confidence to 0.9 if data is clearly present, 0.5 if partially present, 0 if missing.
 
-DESCRIPTION REQUIREMENTS (180–250 words):
-Write a single cohesive paragraph (~180–250 words) that covers, in order, using only evidence found:
+DESCRIPTION REQUIREMENTS (180-250 words):
+Write a single cohesive paragraph (~180-250 words) that covers, in order, using only evidence found:
 1) Who they are: legal name, trading name (if shown), incorporation year or age (only if explicitly stated).
 2) What they do: core products/services and key capabilities/processes.
 3) Sectors/markets: industries served and typical customer profiles.
@@ -214,48 +214,21 @@ If any item is not present in the sources, omit it silently (do NOT invent or gu
 OTHER FIELDS:
 - Capabilities/sectors/equipment/certifications: prefer website and Endole narrative/feature lists.
 - Evidence must be one of: "endole", "companies_house", "website". Use the source you relied on most for each field.
-- For compliance fields, if dates are visible in Companies House HTML, use them; otherwise leave blank with low confidence.
-
-Return ONLY the JSON object in the specified schema.`;
+- For compliance fields, if dates are visible in Companies House HTML, use them; otherwise leave blank with low confidence.`;
 
     const userPrompt = `Company Name: ${companyName}
 Company Number: ${companyNumber || "N/A"}
 
 --- Companies House (truncated HTML) ---
-${result.companiesHouse ? result.companiesHouse.html : "Not available"}
+${companiesHouseHtml || "Not available"}
 
 --- Endole (CLEANED HTML - PRIMARY FOR FINANCE) ---
-${result.endole ? result.endole.html : "Not available"}
+${endoleHtml || "Not available"}
 
 --- Website (truncated HTML) ---
-${result.website ? result.website.html : "Not available"}
+${websiteHtml || "Not available"}
 
 Extract and structure the company information with confidence scores.
-
-Schema to return:
-{
-  "description": {"value": "", "confidence": 0, "evidence": ""},
-  "capabilities": [{"value": "", "confidence": 0, "evidence": ""}],
-  "certifications": [{"name": "", "issuer": "", "certId": "", "validUntil": "", "confidence": 0, "evidence": ""}],
-  "equipment": [{"name": "", "model": "", "capacity": "", "notes": "", "confidence": 0, "evidence": ""}],
-  "sectors": [{"value": "", "confidence": 0, "evidence": ""}],
-  "locations": [{"value": "", "confidence": 0, "evidence": ""}],
-  "address": {"value": "", "confidence": 0, "evidence": ""},
-  "financial": {
-    "employees": {"value": 0, "confidence": 0, "evidence": ""},
-    "netAssets": {"value": 0, "confidence": 0, "evidence": ""},
-    "totalAssets": {"value": 0, "confidence": 0, "evidence": ""},
-    "totalLiabilities": {"value": 0, "confidence": 0, "evidence": ""},
-    "cash": {"value": 0, "confidence": 0, "evidence": ""},
-    "debtRatio": {"value": 0, "confidence": 0, "evidence": ""}
-  },
-  "compliance": {
-    "accountsFiled": {"value": "", "confidence": 0, "evidence": ""},
-    "accountsDue": {"value": "", "confidence": 0, "evidence": ""},
-    "confirmationStatement": {"value": "", "confidence": 0, "evidence": ""},
-    "activeCharges": {"value": 0, "confidence": 0, "evidence": ""}
-  }
-}
 
 EXTRACTION RULES:
 - CAREFULLY scan the entire Endole HTML for financial tables and rows
@@ -266,28 +239,19 @@ EXTRACTION RULES:
 - Set confidence=0.9 when data is clearly found, 0 when truly not present
 - debtRatio must be computed when totalAssets and totalLiabilities are both > 0`;
 
-    const openai = getOpenAIClient();
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" },
+    const normalized = await aiGenerateObject({
+      schema: companyPrefillSchema,
+      system: systemPrompt,
+      prompt: userPrompt,
       temperature: 0.1,
-      max_tokens: 8000,
+      maxTokens: 8000,
     });
 
-    const content = completion.choices[0]?.message?.content;
-    if (content) {
-      result.normalized = JSON.parse(content);
-    }
-
-    console.log("OpenAI analysis completed successfully");
+    result.normalized = normalized;
 
     await logApiEvent(request, {
       actionType: "company_prefill_requested",
-      userId: userId || undefined,
+      userId: user.id,
       details: {
         companyName,
         companyNumber: !!companyNumber,
@@ -297,18 +261,6 @@ EXTRACTION RULES:
 
     return apiResponse(result);
   } catch (error) {
-    console.error("Error in prefill-company-data:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiResponse(
-      {
-        error: message,
-        companiesHouse: null,
-        endole: null,
-        website: null,
-        normalized: null,
-        errors: [message],
-      },
-      500,
-    );
+    return handleApiError(error);
   }
 }

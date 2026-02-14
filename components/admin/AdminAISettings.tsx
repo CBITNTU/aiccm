@@ -13,6 +13,7 @@ import {
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import type { DefaultReasoningEffort } from "@/lib/platformSettings";
+import { SUPPORTED_MODELS } from "@/lib/ai/models";
 
 type ReasoningOption = DefaultReasoningEffort;
 
@@ -37,7 +38,9 @@ export function AdminAISettings() {
         );
       } catch (e) {
         if (!cancelled) {
-          toast.error(e instanceof Error ? e.message : "Failed to load settings");
+          toast.error(
+            e instanceof Error ? e.message : "Failed to load settings",
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -61,7 +64,9 @@ export function AdminAISettings() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save");
-      toast.success("Default AI settings saved. They apply to all AI requests.");
+      toast.success(
+        "Default AI settings saved. They apply to all AI requests.",
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally {
@@ -84,23 +89,24 @@ export function AdminAISettings() {
       <CardHeader>
         <CardTitle>Default AI settings</CardTitle>
         <p className="text-sm text-muted-foreground">
-          These apply to all AI requests across the app (matching, company/tender
-          analysis, chat, etc.) when no override is provided.
+          These apply to all AI requests across the app (matching,
+          company/tender analysis, chat, etc.) when no override is provided.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Default model</span>
-            <Select
-              value={defaultModel}
-              onValueChange={setDefaultModel}
-            >
+            <Select value={defaultModel} onValueChange={setDefaultModel}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gpt-5-nano">GPT-5 nano</SelectItem>
+                {SUPPORTED_MODELS.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -108,7 +114,9 @@ export function AdminAISettings() {
             <span className="text-sm font-medium">Reasoning effort</span>
             <Select
               value={defaultReasoningEffort}
-              onValueChange={(v) => setDefaultReasoningEffort(v as ReasoningOption)}
+              onValueChange={(v) =>
+                setDefaultReasoningEffort(v as ReasoningOption)
+              }
             >
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Default" />

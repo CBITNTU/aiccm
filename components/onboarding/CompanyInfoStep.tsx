@@ -392,8 +392,8 @@ export function CompanyInfoStep({
     <div className="w-full max-w-lg mx-auto">
       <Card className="card-professional">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <Building2 className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+          <div className="w-16 h-16 bg-primary/10 dark:bg-primary/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <Building2 className="w-8 h-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">Company Information</CardTitle>
           <p className="text-muted-foreground mt-2">

@@ -82,7 +82,7 @@ async function processJob(job: {
       }
       const meta = (job.metadata ?? {}) as {
         demo?: boolean;
-        model?: "gpt-5-nano" | "gemini-2.5-flash-lite";
+        model?: "gpt-5-nano";
         batchLabel?: string;
         reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
       };

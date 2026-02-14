@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tenders, profiles extended columns */
+import { createAdminClient } from "@/lib/api";
+import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
 import {
-  createAdminClient,
-  chatCompletion,
-  parseAIJsonResponse,
-} from "@/lib/api";
-import { runLLM } from "./llmLimiter";
+  tenderCapabilitiesSchema,
+  tenderSummaryAndTaxonomySchema,
+} from "@/lib/schemas/capabilitySuggestion";
 
 const TENDER_SELECT =
   "title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements";
@@ -53,16 +53,12 @@ ${requirementsText ? `Requirements: ${requirementsText}` : ""}
 
 Summarize.`;
 
-  // Call OpenAI with rate limiting
-  const summary = await runLLM(
-    async () => {
-      const response = await chatCompletion(systemPrompt, userPrompt, {
-        maxTokens: 1000,
-      });
-      return response;
-    },
-    2000, // Estimated tokens
-  );
+  const summary = await aiGenerateText({
+    system: systemPrompt,
+    prompt: userPrompt,
+    maxTokens: 1000,
+    estTokens: 2000,
+  });
 
   // Store summary in database
   const { error: updateError } = await supabase
@@ -131,7 +127,7 @@ export async function generateTenderCapabilityTaxonomy(
     )
     .join("\n\n");
 
-  const systemPrompt = `Output valid JSON only: no comments, no markdown. Example: {"existing":["id1","id2"],"new":[{"name":"...","category":"..."}]}. Be selective - only capabilities clearly needed or highly relevant.`;
+  const systemPrompt = `Be selective - only capabilities clearly needed or highly relevant. Return existing IDs from the list, and new capabilities with name and category.`;
 
   const userPrompt = `Tender Details:
 Title: ${tender.title || "N/A"}
@@ -146,48 +142,18 @@ ${tender.requirements ? `Requirements: ${typeof tender.requirements === "string"
 Available Capabilities:
 ${capabilitiesList}
 
-Return JSON: existing (IDs from list), new (name, category).`;
+Return existing (IDs from list) and new (name, category).`;
 
-  // Call OpenAI with rate limiting
-  const response = await runLLM(
-    async () => {
-      const aiResponse = await chatCompletion(systemPrompt, userPrompt, {
-        maxTokens: 3000,
-      });
-      return aiResponse;
-    },
-    3000, // Estimated tokens
-  );
+  const parsed = await aiGenerateObject({
+    schema: tenderCapabilitiesSchema,
+    system: systemPrompt,
+    prompt: userPrompt,
+    maxTokens: 3000,
+    estTokens: 3000,
+  });
 
-  // Parse AI response using the global parser (handles comments automatically)
-  let existingIds: string[] = [];
-  let newCapabilities: Array<{ name: string; category: string }> = [];
-
-  try {
-    // Use the global parseAIJsonResponse which handles comments
-    const parsed = parseAIJsonResponse<{
-      existing?: string[];
-      new?: Array<{ name: string; category: string }>;
-    }>(response);
-    existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
-    newCapabilities = Array.isArray(parsed.new) ? parsed.new : [];
-  } catch (e) {
-    console.error("Failed to parse AI response for capabilities:", e);
-    console.error("Response was:", response.substring(0, 500));
-    // Try to extract just the existing IDs if new format fails
-    try {
-      const arrayMatch = response.match(/\[[\s\S]*?\]/);
-      if (arrayMatch) {
-        const parsedArray = parseAIJsonResponse<string[]>(arrayMatch[0]);
-        existingIds = Array.isArray(parsedArray) ? parsedArray : [];
-      }
-    } catch (e2) {
-      console.error("Failed to parse as array too:", e2);
-      // Return empty arrays if all parsing fails
-      existingIds = [];
-      newCapabilities = [];
-    }
-  }
+  const existingIds = parsed.existing;
+  const newCapabilities = parsed.new;
 
   // Create new capabilities and remove duplicates
   const createdIds: string[] = [];
@@ -302,13 +268,10 @@ export async function generateTenderSummaryAndTaxonomy(
       : JSON.stringify(tender.requirements)
     : "";
 
-  const systemPrompt = `You are an expert at analyzing tenders. Return ONLY valid JSON with no comments or markdown.
-
+  const systemPrompt = `You are an expert at analyzing tenders. Provide:
 1. "summary": A concise 200-word professional summary (key requirements, scope, budget, timeline, ideal candidate).
 2. "existing": Array of capability IDs (strings) from the provided list that are relevant.
-3. "new": Array of objects with "name" and "category" for new capabilities not in the list.
-
-Format: {"summary":"...","existing":["id1","id2"],"new":[{"name":"...","category":"..."}]}`;
+3. "new": Array of objects with "name" and "category" for new capabilities not in the list.`;
 
   const userPrompt = `Tender:
 Title: ${tender.title || "N/A"}
@@ -323,33 +286,19 @@ ${requirementsText ? `Requirements: ${requirementsText}` : ""}
 Available capabilities:
 ${capabilitiesList}
 
-Return one JSON object with summary, existing (IDs), and new (name/category).`;
+Return one object with summary, existing (IDs), and new (name/category).`;
 
-  const response = await runLLM(
-    async () =>
-      chatCompletion(systemPrompt, userPrompt, {
-        maxTokens: 2500,
-        responseFormat: "json_object",
-      }),
-    3500,
-  );
+  const parsed = await aiGenerateObject({
+    schema: tenderSummaryAndTaxonomySchema,
+    system: systemPrompt,
+    prompt: userPrompt,
+    maxTokens: 2500,
+    estTokens: 3500,
+  });
 
-  let summary = "";
-  let existingIds: string[] = [];
-  let newCapabilities: Array<{ name: string; category: string }> = [];
-
-  try {
-    const parsed = parseAIJsonResponse<{
-      summary?: string;
-      existing?: string[];
-      new?: Array<{ name: string; category: string }>;
-    }>(response);
-    summary = typeof parsed.summary === "string" ? parsed.summary : "";
-    existingIds = Array.isArray(parsed.existing) ? parsed.existing : [];
-    newCapabilities = Array.isArray(parsed.new) ? parsed.new : [];
-  } catch {
-    summary = response;
-  }
+  const summary = parsed.summary;
+  const existingIds = parsed.existing;
+  const newCapabilities = parsed.new;
 
   const createdIds: string[] = [];
   for (const newCap of newCapabilities) {

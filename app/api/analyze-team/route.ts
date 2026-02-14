@@ -1,13 +1,11 @@
 import { NextRequest } from "next/server";
-import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
 import {
   apiResponse,
   apiError,
   getAuthenticatedUser,
   createAdminClient,
 } from "@/lib/api";
-import { getPlatformAISettings } from "@/lib/platformSettings";
+import { aiGenerateObject } from "@/lib/ai";
 import {
   analyzeTeamRequestSchema,
   teamAnalysisResponseSchema,
@@ -24,7 +22,6 @@ function buildTeamAnalysisPrompt(
   tender: TenderInput,
   teamMembers: TeamMemberInput[],
 ): string {
-  // Combine lead company with team members
   const allCompanies = [
     company,
     ...teamMembers.map((m) => m.companies).filter(Boolean),
@@ -86,10 +83,8 @@ export async function POST(request: NextRequest) {
     // Build the prompt
     const prompt = buildTeamAnalysisPrompt(company, tender, teamMembers);
 
-    // Use Vercel AI SDK with structured output (model from platform default)
-    const { default_ai_model } = await getPlatformAISettings();
-    const result = await generateObject({
-      model: openai(default_ai_model),
+    // Use shared AI wrapper (provider-agnostic, rate-limited)
+    const result = await aiGenerateObject({
       schema: teamAnalysisResponseSchema,
       prompt,
     });
@@ -97,7 +92,7 @@ export async function POST(request: NextRequest) {
     // Build the team analysis data with metadata
     const teamAnalysisData = {
       type: "team" as const,
-      ...result.object,
+      ...result,
       analyzedAt: new Date().toISOString(),
     };
 
@@ -113,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error("Database error saving team analysis:", dbError);
-      return apiError("Failed to save team analysis", 500, dbError.message);
+      return apiError("Failed to save team analysis", 500);
     }
 
     await logApiEvent(request, {

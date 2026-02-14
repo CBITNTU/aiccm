@@ -105,7 +105,7 @@ function getApprovedEmailHtml(
   <title>Account Approved</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+  <div style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); padding: 30px; border-radius: 10px 10px 0 0;">
     <h1 style="color: white; margin: 0; font-size: 28px;">Account Approved!</h1>
   </div>
 
@@ -117,10 +117,10 @@ function getApprovedEmailHtml(
     ${welcomeMessage}
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 35px; border-radius: 5px; font-weight: bold; font-size: 16px;">Go to Dashboard</a>
+      <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 35px; border-radius: 5px; font-weight: bold; font-size: 16px;">Go to Dashboard</a>
     </div>
 
-    <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0;">
+    <div style="background: #EFF6FF; border-left: 4px solid #2563EB; padding: 15px; margin: 20px 0;">
       <p style="margin: 0;"><strong>Need Help Getting Started?</strong></p>
       <p style="margin: 10px 0 0 0;">Check out our platform guide or reach out to our support team if you have any questions.</p>
     </div>
@@ -224,7 +224,7 @@ export function getCompanyAdminApprovalEmailHtml(
   <title>Company Approval Received</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: #3b82f6; padding: 30px; border-radius: 10px 10px 0 0;">
+  <div style="background: #2563EB; padding: 30px; border-radius: 10px 10px 0 0;">
     <h1 style="color: white; margin: 0; font-size: 24px;">Company Approval Received!</h1>
   </div>
 
@@ -233,7 +233,7 @@ export function getCompanyAdminApprovalEmailHtml(
 
     <p>Good news! <strong>${companyName}</strong> has approved your request to join their team.</p>
 
-    <div style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0;">
+    <div style="background: #DBEAFE; border-left: 4px solid #2563EB; padding: 15px; margin: 20px 0;">
       <p style="margin: 0;"><strong>Next Step</strong></p>
       <p style="margin: 10px 0 0 0;">Your request is now pending final approval from the ${platformName} team. You'll receive another email once this is complete.</p>
     </div>

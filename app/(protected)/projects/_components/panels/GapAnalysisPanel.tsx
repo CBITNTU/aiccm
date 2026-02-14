@@ -119,13 +119,7 @@ export function GapAnalysisPanel({
       const result = await runAnalysis.mutateAsync({
         projectId,
         company,
-        tender: {
-          title: tender.title,
-          description: tender.description,
-          buyer_name: tender.buyer_name || tender.buyer,
-          value: tender.value,
-          region: tender.region || tender.location,
-        },
+        tenderId: tender.id,
       });
 
       const gaps = result.gapAnalysis.missingCompetencies?.length || 0;

@@ -38,7 +38,7 @@ function formatDurationMs(ms: number): string {
   return `${s}s`;
 }
 
-type DemoModel = "gpt-5-nano" | "gemini-2.5-flash-lite";
+type DemoModel = "gpt-5-nano";
 
 /** GPT-5 nano thinking level: lower = faster, fewer reasoning tokens. "default" = API default. */
 type ReasoningEffortOption =
@@ -315,9 +315,6 @@ export function AdminDemoSync() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="gpt-5-nano">GPT-5 nano</SelectItem>
-                  <SelectItem value="gemini-2.5-flash-lite">
-                    Gemini 2.5 Flash-Lite
-                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

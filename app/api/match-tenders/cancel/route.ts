@@ -4,7 +4,6 @@ import {
   getAuthenticatedUser,
   apiResponse,
   apiError,
-  createApiClient,
   createAdminClient,
 } from "@/lib/api";
 import { getBatchStatus } from "@/lib/services/queueService";
@@ -30,16 +29,11 @@ export async function POST(request: NextRequest) {
       return apiError("Batch not found", 404);
     }
 
-    // Verify user has access to this batch
+    // Verify user has access to this batch (owner or team member)
     if (batchStatus.companyId) {
-      const supabase = await createApiClient();
-      const { data: company } = await supabase
-        .from("companies")
-        .select("user_id")
-        .eq("id", batchStatus.companyId)
-        .single();
-
-      if (!company || company.user_id !== user.id) {
+      const { isCompanyMember } = await import("@/lib/api/validation");
+      const hasAccess = await isCompanyMember(user.id, batchStatus.companyId);
+      if (!hasAccess) {
         return apiError("Access denied", 403);
       }
     }

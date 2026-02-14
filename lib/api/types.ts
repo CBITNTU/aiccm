@@ -1,5 +1,8 @@
 // Shared API request/response types
 
+// Re-export Zod-inferred CompanyAnalysis type
+export type { CompanyAnalysis } from "@/lib/schemas/companyAnalysis";
+
 export interface PlatformStats {
   companies: number;
   tenders: number;
@@ -31,18 +34,6 @@ export interface CompanyAIAnalysisRequest {
     pastProjects?: string;
   };
   companyId?: string;
-}
-
-export interface CompanyAnalysis {
-  competencies: string[];
-  capabilities: string[];
-  strengths: string[];
-  certifications: string[];
-  recommendations: string[];
-  digitalMaturity: string;
-  safetyRating: string;
-  marketPosition: string;
-  suggestedTaxonomies?: string[];
 }
 
 export interface DeepCompanyAnalysis {

@@ -60,7 +60,7 @@ export function HeroSection() {
       label: "Available Opportunities",
       value: realStats.tenders.toString(),
       icon: FileText,
-      gradient: "from-secondary to-secondary/80",
+      gradient: "from-accent to-accent/80",
       description: "Current tender opportunities",
     },
     {
@@ -74,7 +74,7 @@ export function HeroSection() {
       label: "Active Projects",
       value: realStats.projects.toString(),
       icon: Award,
-      gradient: "from-primary to-secondary",
+      gradient: "from-primary to-primary/80",
       description: "Collaborative consortiums formed",
     },
   ];
@@ -92,7 +92,7 @@ export function HeroSection() {
       title: "Intelligent Opportunity Matching",
       description:
         "Get matched to relevant opportunities with explainable AI scoring and detailed capability analysis for informed decisions.",
-      gradient: "from-secondary/20 to-secondary/5",
+      gradient: "from-accent/20 to-accent/5",
     },
     {
       icon: Network,
@@ -106,14 +106,14 @@ export function HeroSection() {
   return (
     <section className="relative overflow-hidden min-h-screen">
       {/* Enhanced Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-primary/5 to-secondary/5" />
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-primary/5 to-accent/5" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,hsl(var(--primary)/0.1),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(var(--secondary)/0.1),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(var(--accent)/0.1),transparent_50%)]" />
 
       {/* Animated Background Elements */}
-      <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full blur-3xl animate-float" />
+      <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-primary/20 to-accent/20 rounded-full blur-3xl animate-float" />
       <div
-        className="absolute top-40 right-20 w-48 h-48 bg-gradient-to-r from-secondary/15 to-accent/15 rounded-full blur-3xl animate-float"
+        className="absolute top-40 right-20 w-48 h-48 bg-gradient-to-r from-accent/15 to-primary/15 rounded-full blur-3xl animate-float"
         style={{ animationDelay: "1s" }}
       />
       <div
@@ -132,7 +132,7 @@ export function HeroSection() {
                 <span className="gradient-hero bg-clip-text text-transparent">
                   Empowering Collaboration through Competence
                 </span>
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 -z-10" />
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 blur opacity-30 -z-10" />
               </span>
             </h1>
 
@@ -286,9 +286,9 @@ export function HeroSection() {
             </Card>
 
             <Card className="relative overflow-hidden border-0 bg-card/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 group">
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <CardContent className="relative p-8 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-secondary to-secondary/80 mb-6 group-hover:scale-110 transition-transform duration-500 shadow-lg">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-accent/80 mb-6 group-hover:scale-110 transition-transform duration-500 shadow-lg">
                   <Clock className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-4">

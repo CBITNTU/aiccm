@@ -245,7 +245,7 @@ export default function AdminOnboarding() {
           >
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-purple-500" />
+                <Building2 className="w-4 h-4 text-primary" />
                 <div className="text-2xl font-bold">
                   {stats.byStep.accountType + stats.byStep.companyInfo}
                 </div>

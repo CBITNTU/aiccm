@@ -39,6 +39,8 @@ interface TenderFiltersState {
   dateFrom?: string;
   dateTo?: string;
   selectedTaxonomies?: string[];
+  sortBy?: string;
+  sortDirection?: string;
 }
 
 export default function TendersPage() {
@@ -83,14 +85,48 @@ export default function TendersPage() {
 
     const fetchCompanies = async () => {
       try {
-        const { data, error } = await supabase
+        // Fetch companies the user owns
+        const { data: ownedCompanies, error: ownedError } = await supabase
           .from("companies")
           .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+          .eq("user_id", user.id);
 
-        if (error) throw error;
-        setCompanies(data || []);
+        if (ownedError) throw ownedError;
+
+        // Fetch companies the user is an approved team member of
+        const { data: memberships, error: memberError } = await supabase
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", user.id)
+          .eq("status", "approved");
+
+        if (memberError) throw memberError;
+
+        let memberCompanies: typeof ownedCompanies = [];
+        if (memberships && memberships.length > 0) {
+          const memberCompanyIds = memberships.map((m) => m.company_id);
+          const { data: memberData, error: memberCompaniesError } =
+            await supabase
+              .from("companies")
+              .select("*")
+              .in("id", memberCompanyIds);
+
+          if (memberCompaniesError) throw memberCompaniesError;
+          memberCompanies = memberData || [];
+        }
+
+        // Merge, deduplicate, and sort by created_at descending
+        const allCompanies = [...(ownedCompanies || []), ...memberCompanies];
+        const uniqueCompanies = Array.from(
+          new Map(allCompanies.map((c) => [c.id, c])).values()
+        ).sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
+        );
+
+        const data = uniqueCompanies;
+        setCompanies(data);
 
         // Auto-select the first company if none is selected
         if (data && data.length > 0 && !selectedCompany) {
@@ -122,7 +158,7 @@ export default function TendersPage() {
   );
 
   const resetFilters = () => {
-    setFilters({ selectedTaxonomies: [] });
+    setFilters({ selectedTaxonomies: [], sortBy: "deadline", sortDirection: "desc" });
   };
 
   const resetMatchingFilters = () => {

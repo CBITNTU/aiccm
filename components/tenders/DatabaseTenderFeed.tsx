@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { ChevronLeft, ChevronRight, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TenderViewDialog } from "./TenderViewDialog";
 import { TenderCard } from "./TenderCard";
 import { ResultsHeader } from "./ResultsHeader";
 import { toast } from "sonner";
@@ -34,6 +34,8 @@ interface TenderFilters {
   dateFrom?: string;
   dateTo?: string;
   selectedTaxonomies?: string[];
+  sortBy?: string;
+  sortDirection?: string;
 }
 
 interface DatabaseTenderFeedProps {
@@ -46,14 +48,12 @@ interface DatabaseTenderFeedProps {
 export function DatabaseTenderFeed({
   supabase,
   filters = {},
-  onCreateProject,
-  readOnly = false,
+  onCreateProject: _onCreateProject,
+  readOnly: _readOnly = false,
 }: DatabaseTenderFeedProps) {
+  const router = useRouter();
   const [tenders, setTenders] = useState<DatabaseTender[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTender, setSelectedTender] = useState<DatabaseTender | null>(
-    null,
-  );
   const [tenderTaxonomies, setTenderTaxonomies] = useState<
     Record<string, Array<{ id: string; name: string }>>
   >({});
@@ -73,7 +73,7 @@ export function DatabaseTenderFeed({
         .from("tenders")
         .select("*", { count: "exact" })
         .neq("status", "closed")
-        .order("publication_date", { ascending: false });
+        .order(filters.sortBy || "deadline", { ascending: (filters.sortDirection || "desc") === "asc" });
 
       // Apply keyword filter from filters
       if (filters.keyword && filters.keyword.trim()) {
@@ -236,7 +236,7 @@ export function DatabaseTenderFeed({
                 key={tender.id}
                 tender={tender}
                 taxonomies={tenderTaxonomies[tender.id]}
-                onClick={() => setSelectedTender(tender)}
+                onClick={() => router.push(`/tenders/${tender.id}`)}
               />
             ))}
           </div>
@@ -304,14 +304,6 @@ export function DatabaseTenderFeed({
         </>
       )}
 
-      {/* Tender View Dialog */}
-      <TenderViewDialog
-        tender={selectedTender}
-        open={!!selectedTender}
-        onOpenChange={(open) => !open && setSelectedTender(null)}
-        onCreateProject={readOnly ? undefined : onCreateProject}
-        readOnly={readOnly}
-      />
     </div>
   );
 }

@@ -11,10 +11,10 @@ export function OnboardingBanner() {
   if (!isOnboarding) return null;
 
   return (
-    <div className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-4 py-3">
+    <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-yellow-300" />
+          <Sparkles className="h-5 w-5 text-blue-100" />
           <span className="font-medium">
             Complete your onboarding to unlock all features and get approved by
             the platform admin.
@@ -23,7 +23,7 @@ export function OnboardingBanner() {
         <Button
           asChild
           size="sm"
-          className="bg-white text-purple-700 hover:bg-purple-50 font-semibold"
+          className="bg-white text-blue-700 hover:bg-blue-50 font-semibold"
         >
           <Link href="/onboarding" className="flex items-center gap-1">
             Continue Onboarding

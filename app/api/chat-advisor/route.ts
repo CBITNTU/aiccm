@@ -1,54 +1,41 @@
 import { NextRequest } from "next/server";
-import {
-  chatCompletion,
-  createApiClient,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { apiResponse } from "@/lib/api";
+import { aiGenerateText } from "@/lib/ai";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { z } from "zod";
+import {
+  requireAuth,
+  validateBody,
+  sanitizeTextInput,
+  handleApiError,
+} from "@/lib/api/validation";
+
+const chatAdvisorInputSchema = z.object({
+  prompt: z.string().min(1).max(2000),
+});
 
 const SYSTEM_PROMPT = `You are a helpful business advisor for a tender matching platform. Provide practical, actionable advice in a friendly and professional tone. Keep responses concise but informative. Topics: profile optimization, tender strategies, partnerships.`;
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt } = await request.json();
+    const { user } = await requireAuth(request);
+    const { prompt } = await validateBody(request, chatAdvisorInputSchema);
+    const sanitizedPrompt = sanitizeTextInput(prompt, 2000);
 
-    if (!prompt) {
-      return apiError("Prompt is required", 400);
-    }
-
-    const response = await chatCompletion(SYSTEM_PROMPT, prompt, {
+    const response = await aiGenerateText({
+      system: SYSTEM_PROMPT,
+      prompt: sanitizedPrompt,
       maxTokens: 500,
       temperature: 0.7,
     });
 
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Optional auth
-    }
-
     await logApiEvent(request, {
       actionType: "chat_advisor_used",
-      userId: userId || undefined,
+      userId: user.id,
     }).catch(() => {});
 
     return apiResponse({ response });
   } catch (error) {
-    console.error("Chat advisor error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiResponse(
-      {
-        error: message,
-        response:
-          "I'm experiencing technical difficulties. Please try asking about profile optimization, tender strategies, or partnership opportunities.",
-      },
-      500,
-    );
+    return handleApiError(error);
   }
 }

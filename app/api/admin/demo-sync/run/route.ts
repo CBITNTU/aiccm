@@ -38,13 +38,6 @@ export async function POST(request: NextRequest) {
       Math.max(1, Number(body.tenderCount) || DEFAULT_TENDER_COUNT),
     );
 
-    if (model !== "gpt-5-nano" && model !== "gemini-2.5-flash-lite") {
-      return apiError(
-        "Invalid model; use gpt-5-nano or gemini-2.5-flash-lite",
-        400,
-      );
-    }
-
     const validEfforts = [
       "none",
       "minimal",
@@ -55,7 +48,9 @@ export async function POST(request: NextRequest) {
     ] as const;
     const reasoningEffort =
       typeof body.reasoningEffort === "string" &&
-      validEfforts.includes(body.reasoningEffort as (typeof validEfforts)[number])
+      validEfforts.includes(
+        body.reasoningEffort as (typeof validEfforts)[number],
+      )
         ? (body.reasoningEffort as (typeof validEfforts)[number])
         : undefined;
 

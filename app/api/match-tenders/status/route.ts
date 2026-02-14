@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, createAdminClient } from "@/lib/api";
+import { getAuthenticatedUser } from "@/lib/api";
 import { getMatchingJobsForCompany } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { getUserCompanyIds } from "@/lib/api/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,22 +15,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's company
-    const adminSupabase = createAdminClient();
-    const { data: companies, error: companyError } = await adminSupabase
-      .from("companies")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1);
+    // Get user's companies (owned + team memberships)
+    const companyIds = await getUserCompanyIds(user.id);
 
-    if (companyError || !companies || companies.length === 0) {
+    if (companyIds.length === 0) {
       return NextResponse.json(
         { success: false, error: "Company not found for user" },
         { status: 404 },
       );
     }
 
-    const companyId = (companies[0] as { id: string }).id;
+    const companyId = companyIds[0];
 
     // Get matching jobs status
     const jobs = await getMatchingJobsForCompany(companyId);

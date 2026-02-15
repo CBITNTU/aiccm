@@ -220,19 +220,17 @@ async function fetchFromTEDAPI(
   const requestBody: Record<string, unknown> = {
     query: builtQuery,
     fields,
-    page: page,
     limit: Math.min(limit, 250), // Max 250 per TED Search API (Swagger)
-    scope: "ACTIVE", // ACTIVE, ARCHIVED, or ALL
+    scope: "ALL", // ALL to maximise results (ACTIVE often returns 0)
     checkQuerySyntax: true, // Enable syntax checking to get better errors
-    paginationMode: iterationNextToken ? "ITERATION" : "PAGE_NUMBER",
+    paginationMode: "ITERATION", // Use iteration for consistent cursor-based paging
     onlyLatestVersions: true, // Only get latest versions
   };
 
-  // Add iteration token if provided (for pagination)
   if (iterationNextToken) {
     requestBody.iterationNextToken = iterationNextToken;
-    requestBody.paginationMode = "ITERATION";
   }
+  // Iteration mode uses token only; no page. (Page is for PAGE_NUMBER mode.)
 
   console.log("[TED] query=", builtQuery, "| never * | Admin:", isAdmin, "Page:", page);
   console.log("TED API Request Body:", JSON.stringify(requestBody, null, 2));
@@ -244,6 +242,9 @@ async function fetchFromTEDAPI(
   };
   if (process.env.TED_API_KEY) {
     headers["Authorization"] = `Bearer ${process.env.TED_API_KEY}`;
+    console.log("[TED] TED_API_KEY is set, sending Authorization header");
+  } else {
+    console.log("[TED] TED_API_KEY not set (optional for Search API)");
   }
   const response = await fetch(url, {
     method: "POST",
@@ -294,9 +295,15 @@ async function fetchFromTEDAPI(
 
   // Extract notices from response
   const notices = (data.notices || []) as Array<Record<string, unknown>>;
-  const total = data.totalNoticeCount || notices.length;
-  const nextToken = data.iterationNextToken;
-  const hasMore = !!nextToken || notices.length >= limit;
+  const total = data.totalNoticeCount ?? notices.length;
+  let nextToken = data.iterationNextToken;
+  let hasMore = !!nextToken || notices.length >= limit;
+
+  // If TED returns 0 notices, do not return a token—stop pagination so we don't loop forever.
+  if (notices.length === 0) {
+    nextToken = undefined;
+    hasMore = false;
+  }
 
   console.log(
     `Received ${notices.length} notices from TED API (Admin: ${isAdmin}, Total: ${total}, HasMore: ${hasMore})`,
@@ -496,7 +503,7 @@ export async function POST(request: NextRequest) {
       duplicatesSkipped: 0,
       ...(notices.length === 0 && {
         message:
-          "TED returned no notices for this date range. Try a wider range or add TED_API_KEY to .env.local (optional; see https://docs.ted.europa.eu/api/latest/).",
+          "TED returned no notices. We use scope ALL and a date query; the Search API sometimes returns empty. Try a wider date range, or test the same query in the TED Swagger UI (https://api.ted.europa.eu/swagger-ui/index.html).",
       }),
     });
   } catch (error) {

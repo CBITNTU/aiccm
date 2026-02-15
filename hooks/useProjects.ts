@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/queryKeys";
 import type { Database } from "@/lib/supabase/types";
 
 export type ProjectStatus = "active" | "completed" | "archived";
@@ -76,7 +77,7 @@ async function fetchProjects(
 
 export function useProjects(companyId: string | null, filter: ProjectStatus) {
   return useQuery({
-    queryKey: ["projects", companyId, filter],
+    queryKey: queryKeys.projects(companyId!, filter),
     queryFn: () => fetchProjects(companyId!, filter),
     enabled: !!companyId,
     staleTime: 30 * 1000, // 30 seconds
@@ -94,10 +95,10 @@ async function fetchUserCompanies(): Promise<Company[]> {
 
 export function useUserCompanies(userId: string | null) {
   return useQuery({
-    queryKey: ["userCompanies", userId],
+    queryKey: queryKeys.myCompanies(userId!),
     queryFn: () => fetchUserCompanies(),
     enabled: !!userId,
-    staleTime: 60 * 1000,
+    staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
 }

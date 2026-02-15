@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api/client";
 import type { Database } from "@/lib/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useDirectory } from "@/hooks/useDirectory";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CompanyCardNew } from "@/components/directory/CompanyCardNew";
 import { CompanyDetailModal } from "@/components/directory/CompanyDetailModal";
@@ -56,58 +55,31 @@ export default function DirectoryPage() {
   const { isPendingApproval, isOnboarding } = useAuth();
 
   const isRestrictedUser = isPendingApproval || isOnboarding;
-  const [companies, setCompanies] = useState<PublicCompany[]>([]);
-  const [taxonomiesByCompany, setTaxonomiesByCompany] = useState<
-    Record<string, { id: string; name: string }[]>
-  >({});
-  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<DirectoryFilters>(defaultFilters);
   const [selectedCompany, setSelectedCompany] = useState<PublicCompany | null>(
     null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 25;
 
-  const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
-  const [uniqueCapabilities, setUniqueCapabilities] = useState<string[]>([]);
+  const { data: directoryData, isLoading: loading, refetch } = useDirectory({
+    search: filters.searchTerm.trim() || undefined,
+    location: filters.location !== "all" ? filters.location : undefined,
+    capability: filters.capability !== "all" ? filters.capability : undefined,
+    taxonomyIds:
+      filters.selectedTaxonomies.length > 0
+        ? filters.selectedTaxonomies
+        : undefined,
+    page: currentPage,
+    limit: itemsPerPage,
+  });
 
-  // Fetch companies
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setLoading(true);
-
-        const result = await api.getDirectory({
-          search: filters.searchTerm.trim() || undefined,
-          location:
-            filters.location !== "all" ? filters.location : undefined,
-          capability:
-            filters.capability !== "all" ? filters.capability : undefined,
-          taxonomyIds:
-            filters.selectedTaxonomies.length > 0
-              ? filters.selectedTaxonomies
-              : undefined,
-          page: currentPage,
-          limit: itemsPerPage,
-        });
-
-        setCompanies(result.companies as unknown as PublicCompany[]);
-        setTaxonomiesByCompany(result.taxonomiesByCompany);
-        setTotalCount(result.totalCount);
-        setUniqueLocations(result.uniqueLocations);
-        setUniqueCapabilities(result.uniqueCapabilities);
-      } catch (error) {
-        console.error("Error fetching companies:", error);
-        toast.error("Failed to load companies");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCompanies();
-  }, [filters, currentPage]);
+  const companies = (directoryData?.companies as unknown as PublicCompany[]) ?? [];
+  const taxonomiesByCompany = directoryData?.taxonomiesByCompany ?? {};
+  const totalCount = directoryData?.totalCount ?? 0;
+  const uniqueLocations = directoryData?.uniqueLocations ?? [];
+  const uniqueCapabilities = directoryData?.uniqueCapabilities ?? [];
 
   const handleCompanyClick = (company: PublicCompany) => {
     setSelectedCompany(company);
@@ -123,7 +95,7 @@ export default function DirectoryPage() {
   };
 
   const handleRefresh = () => {
-    setFilters({ ...filters });
+    refetch();
   };
 
   // Reset to page 1 when filters change

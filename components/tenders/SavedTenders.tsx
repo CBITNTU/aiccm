@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { useSavedTenders } from "@/hooks/useSavedTenders";
+import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bookmark, Loader2, Search, X } from "lucide-react";
@@ -45,19 +47,12 @@ export function SavedTenders({
   companyId,
   readOnly = false,
 }: SavedTendersProps) {
-  const { user } = useAuth();
   const router = useRouter();
-  const [savedResults, setSavedResults] = useState<MatchingResult[]>([]);
+  const queryClient = useQueryClient();
+  const { data: savedData, isLoading: loading } = useSavedTenders(companyId);
+  const savedResults = (savedData?.results as unknown as MatchingResult[]) ?? [];
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
-  const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
-
-  useEffect(() => {
-    if (user) {
-      fetchSavedResults();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when user/companyId change
-  }, [user, companyId]);
 
   // Apply keyword filter whenever savedResults or keyword changes
   useEffect(() => {
@@ -76,32 +71,14 @@ export function SavedTenders({
     }
   }, [savedResults, keyword]);
 
-  const fetchSavedResults = async () => {
-    setLoading(true);
-    try {
-      const data = await api.getMatchingResults({
-        companyId,
-        bookmarked: true,
-      });
-      const results = (data.results as unknown as MatchingResult[]) || [];
-      setSavedResults(results);
-      setFilteredResults(results);
-    } catch (error) {
-      console.error("Error fetching saved results:", error);
-      toast.error("Failed to fetch saved tenders");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const removeBookmark = async (resultId: string) => {
     try {
       await api.toggleBookmark(resultId, false);
-
-      setSavedResults((prev) =>
-        prev.filter((result) => result.id !== resultId),
-      );
       toast.success("Removed from saved tenders");
+      if (companyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.savedTenders(companyId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchingResults(companyId) });
+      }
     } catch (error) {
       console.error("Error removing bookmark:", error);
       toast.error("Failed to remove bookmark");

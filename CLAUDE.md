@@ -96,15 +96,32 @@ components/              # React components
 └── tenders/             # Tender-related components
 
 hooks/                   # Custom React hooks
-├── useAuth.tsx
-├── useTaxonomies.tsx
-└── useUserRole.tsx
+├── useAuth.tsx          # Authentication hook
+├── useTaxonomies.tsx    # Taxonomy data hook
+├── useUserRole.tsx      # User role hook
+├── useDashboard.ts      # Dashboard data query
+├── useMyCompanies.ts    # User's companies query
+├── useDirectory.ts      # Company directory query
+├── useTenders.ts        # Tender search query
+├── useSavedTenders.ts   # Saved/bookmarked tenders query
+├── useMatchingResults.ts# Matching results query
+├── useProfile.ts        # User profile query
+├── useProjects.ts       # Projects query
+├── useCompanyMutations.ts # Company update/analyze mutations
+├── useTenderMutations.ts  # Tender matching/bookmark mutations
+├── useProjectMutations.ts # Project CRUD mutations
+├── useBatchProgress.ts  # Batch operation progress
+└── useMatchingProgress.ts # Matching progress polling
 
 lib/                     # Utilities
 ├── supabase/            # Supabase client (browser + server)
-│   ├── server.ts        # Server-side client
-│   └── client.ts        # Client-side client
+│   ├── server.ts        # Server-side client (API routes + server components)
+│   └── client.ts        # Client-side client (auth only!)
 ├── api/                 # API utilities
+│   ├── index.ts         # apiResponse, apiError, getAuthenticatedUser, createAdminClient
+│   ├── client.ts        # Typed API client for frontend (api.*)
+│   └── validation.ts    # requireAuth, validateBody, handleApiError helpers
+├── queryKeys.ts         # Centralized React Query cache key factory
 ├── email/               # Email utilities
 ├── cpvCodes.ts          # CPV code taxonomy
 └── utils.ts             # General utilities
@@ -124,14 +141,17 @@ middleware.ts            # Auth middleware for route protection
 - `middleware.ts` handles route protection at the edge
 - `(protected)` route group contains all authenticated pages
 - Server components can access session via `createClient()` from `lib/supabase/server.ts`
-- Client components use `createClient()` from `lib/supabase/client.ts`
+- Client-side Supabase client (`lib/supabase/client.ts`) is used **only for auth** (login, signup, session). Never use it for data queries
 - Always check for company existence before redirecting to dashboard
 
-**Data Flow**:
+**Data Flow (Client-Side Architecture)**:
 
-- TanStack Query for server state management (caching, refetching)
-- Supabase client for database operations
-- Real-time subscriptions available but not widely used
+- **No direct Supabase access from client components** for data queries — use the typed `api` client from `lib/api/client.ts`
+- All data operations go through Next.js API routes (`app/api/`)
+- API routes use `requireAuth()` + `createAdminClient()` for server-side Supabase access
+- TanStack Query hooks in `hooks/` handle caching, refetching, and cache invalidation
+- Centralized query key factory in `lib/queryKeys.ts` ensures consistent cache keys
+- Mutation hooks invalidate related query keys on success for automatic UI updates
 
 **UI Component Pattern**:
 
@@ -278,23 +298,38 @@ Note: For Vercel deployment, environment variables are configured in the Vercel 
 **Adding a new API endpoint**:
 
 1. Create a new folder in `app/api/[endpoint-name]/`
-2. Add `route.ts` in that folder with HTTP method handlers
+2. Add `route.ts` in that folder using the standard helpers
 
 ```typescript
-import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { apiResponse, createAdminClient } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  // Your logic here
-  return NextResponse.json({ data: "result" });
+  try {
+    const { user } = await requireAuth(request);
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return apiResponse({ companies: data });
+  } catch (error) {
+    return handleApiError(error);
+  }
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const body = await request.json();
-  // Your logic here
-  return NextResponse.json({ data: "result" });
+  try {
+    const { user } = await requireAuth(request);
+    const body = await request.json();
+    const supabase = createAdminClient();
+    // Your logic here
+    return apiResponse({ success: true });
+  } catch (error) {
+    return handleApiError(error);
+  }
 }
 ```
 
@@ -313,40 +348,70 @@ export default async function Page() {
 }
 ```
 
-**Querying Supabase (Client Component)**:
+**Using the API client (Client Component)**:
 
 ```typescript
 "use client";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 
-const supabase = createClient();
-const { data, error } = await supabase
-  .from("companies")
-  .select("*")
-  .eq("user_id", userId);
+// Direct API call (for one-off use)
+const data = await api.getMyCompanies();
 ```
 
-**Using TanStack Query**:
+**Creating a query hook**:
 
 ```typescript
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/queryKeys";
 
-const supabase = createClient();
-
-const { data, isLoading, error } = useQuery({
-  queryKey: ["companies", userId],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("user_id", userId);
-    if (error) throw error;
-    return data;
-  },
-});
+export function useDashboard(userId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.dashboard(userId!),
+    queryFn: () => api.getDashboard(),
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+}
 ```
+
+**Creating a mutation hook with cache invalidation**:
+
+```typescript
+"use client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/queryKeys";
+
+export function useUpdateCompany() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ companyId, updates }: { companyId: string; updates: Record<string, unknown> }) =>
+      api.updateCompany(companyId, updates),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.company(variables.companyId) });
+      queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["directory"] });
+    },
+  });
+}
+```
+
+**Adding a new data query (end-to-end)**:
+
+1. Add API route in `app/api/[endpoint]/route.ts` using `requireAuth` + `createAdminClient`
+2. Add typed method to the `api` object in `lib/api/client.ts`
+3. Add query key to `lib/queryKeys.ts`
+4. Create query hook in `hooks/use[Domain].ts` using `queryKeys` and `api`
+5. If mutations are needed, create `hooks/use[Domain]Mutations.ts` with cache invalidation
+
+**Cache invalidation after mutations**:
+
+- Use partial key matching to invalidate all variants of a query: `queryClient.invalidateQueries({ queryKey: ["myCompanies"] })`
+- This invalidates all keys starting with `["myCompanies"]` regardless of additional parameters
+- Always invalidate related queries too (e.g., updating a company should invalidate `["directory"]` and `["dashboard"]`)
 
 **Adding a shadcn/ui component**:
 

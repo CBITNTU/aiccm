@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { api } from "@/lib/api/client";
+import { useMyCompanies } from "@/hooks/useMyCompanies";
 import type { Database } from "@/lib/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ import {
   DollarSign,
   Clock,
 } from "lucide-react";
-import { toast } from "sonner";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -47,37 +46,16 @@ interface CompanyWithMembership extends Company {
 export default function MyCompaniesPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [companies, setCompanies] = useState<CompanyWithMembership[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rawCompanies, isLoading: loading, isError } = useMyCompanies(user?.id ?? null);
+  const companies = (rawCompanies as unknown as CompanyWithMembership[]) ?? [];
 
-  // Fetch company data
+  // Redirect to new company page if no companies or on error
   useEffect(() => {
-    if (!user) return;
-
-    const fetchCompanyData = async () => {
-      try {
-        const data = await api.getMyCompanies();
-        const allCompanies = data.companies as unknown as CompanyWithMembership[];
-
-        if (allCompanies.length === 0) {
-          router.push("/my-companies/new");
-          return;
-        }
-
-        setCompanies(allCompanies);
-      } catch (error) {
-        console.error("Error fetching company data:", error);
-        toast.error("Error", {
-          description: "Failed to load company data",
-        });
-        router.push("/my-companies/new");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCompanyData();
-  }, [user, router]);
+    if (loading) return;
+    if (isError || (!loading && companies.length === 0)) {
+      router.push("/my-companies/new");
+    }
+  }, [loading, isError, companies.length, router]);
 
   const handleCompanyClick = (company: CompanyWithMembership) => {
     // Don't navigate if pending join, pending membership review, or company pending review

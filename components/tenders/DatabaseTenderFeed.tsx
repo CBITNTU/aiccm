@@ -6,8 +6,20 @@ import { ChevronLeft, ChevronRight, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TenderCard } from "./TenderCard";
 import { ResultsHeader } from "./ResultsHeader";
-import { toast } from "sonner";
-import { api } from "@/lib/api/client";
+import { useTenders } from "@/hooks/useTenders";
+
+interface TenderFilters {
+  keyword?: string;
+  location?: string;
+  status?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  selectedTaxonomies?: string[];
+  sortBy?: string;
+  sortDirection?: string;
+}
 
 interface DatabaseTender {
   id: string;
@@ -24,19 +36,6 @@ interface DatabaseTender {
   cpv_codes: string[];
 }
 
-interface TenderFilters {
-  keyword?: string;
-  location?: string;
-  status?: string;
-  budgetMin?: number;
-  budgetMax?: number;
-  dateFrom?: string;
-  dateTo?: string;
-  selectedTaxonomies?: string[];
-  sortBy?: string;
-  sortDirection?: string;
-}
-
 interface DatabaseTenderFeedProps {
   filters?: TenderFilters;
   onCreateProject?: (tenderId: string) => void;
@@ -49,68 +48,40 @@ export function DatabaseTenderFeed({
   readOnly: _readOnly = false,
 }: DatabaseTenderFeedProps) {
   const router = useRouter();
-  const [tenders, setTenders] = useState<DatabaseTender[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [tenderTaxonomies, setTenderTaxonomies] = useState<
-    Record<string, Array<{ id: string; name: string }>>
-  >({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 25;
-
-  const fetchDatabaseTenders = async (page = 1) => {
-    setLoading(true);
-
-    try {
-      const result = await api.searchTenders({
-        keyword: filters.keyword,
-        location: filters.location,
-        status: filters.status,
-        budgetMin: filters.budgetMin,
-        budgetMax: filters.budgetMax,
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo,
-        taxonomyIds: filters.selectedTaxonomies,
-        sortBy: filters.sortBy,
-        sortDirection: filters.sortDirection,
-        page,
-        pageSize: itemsPerPage,
-      });
-
-      setTenders((result.tenders as unknown as DatabaseTender[]) || []);
-      setTotalCount(result.totalCount || 0);
-      setTenderTaxonomies(result.taxonomies || {});
-    } catch (error) {
-      console.error("Error fetching tenders:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to fetch tenders";
-
-      toast.error("Error", {
-        description: errorMessage,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = () => {
-    fetchDatabaseTenders(currentPage);
-  };
-
-  const goToPage = (page: number) => {
-    setCurrentPage(page);
-  };
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
 
-  // Fetch tenders when filters or page changes
-  useEffect(() => {
-    fetchDatabaseTenders(currentPage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, currentPage]);
+  const { data, isLoading: loading, refetch } = useTenders({
+    keyword: filters.keyword,
+    location: filters.location,
+    status: filters.status,
+    budgetMin: filters.budgetMin,
+    budgetMax: filters.budgetMax,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    taxonomyIds: filters.selectedTaxonomies,
+    sortBy: filters.sortBy,
+    sortDirection: filters.sortDirection,
+    page: currentPage,
+    pageSize: itemsPerPage,
+  });
+
+  const tenders = (data?.tenders as unknown as DatabaseTender[]) ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const tenderTaxonomies = data?.taxonomies ?? {};
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;

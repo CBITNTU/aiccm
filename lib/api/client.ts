@@ -643,6 +643,28 @@ export const api = {
       { method: "PUT", body: { taxonomyIds } },
     ),
 
+  // Profile
+  getProfile: () =>
+    apiCall<{
+      profile: {
+        firstName: string;
+        lastName: string;
+        jobTitle: string;
+        phone: string;
+        email: string;
+      };
+    }>("profile/update", { method: "GET" }),
+
+  updateProfile: (data: {
+    firstName: string;
+    lastName: string;
+    jobTitle: string;
+    phone: string;
+  }) =>
+    apiCall<{ success: boolean }>("profile/update", {
+      body: data,
+    }),
+
   // User approval status
   getApprovalStatus: () =>
     apiCall<{

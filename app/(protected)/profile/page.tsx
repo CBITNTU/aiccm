@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { User, Briefcase, Phone, Mail, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 interface ProfileData {
   firstName: string;
@@ -20,9 +20,10 @@ interface ProfileData {
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { data: profileData, isLoading } = useProfile(user?.id);
+  const updateProfile = useUpdateProfile(user?.id);
   const [error, setError] = useState<string | null>(null);
+  const [formSeeded, setFormSeeded] = useState(false);
   const [formData, setFormData] = useState<ProfileData>({
     firstName: "",
     lastName: "",
@@ -31,40 +32,22 @@ export default function ProfilePage() {
     email: "",
   });
 
-  // Fetch profile data on mount
+  // Seed form once from server data
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await fetch("/api/profile/update");
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch profile");
-        }
-
-        setFormData({
-          firstName: data.profile.firstName || "",
-          lastName: data.profile.lastName || "",
-          jobTitle: data.profile.jobTitle || "",
-          phone: data.profile.phone || "",
-          email: data.profile.email || user?.email || "",
-        });
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-        toast.error("Failed to load profile data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchProfile();
+    if (profileData && !formSeeded) {
+      setFormData({
+        firstName: profileData.firstName || "",
+        lastName: profileData.lastName || "",
+        jobTitle: profileData.jobTitle || "",
+        phone: profileData.phone || "",
+        email: profileData.email || user?.email || "",
+      });
+      setFormSeeded(true);
     }
-  }, [user]);
+  }, [profileData, formSeeded, user?.email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
 
     // Validation
@@ -74,40 +57,18 @@ export default function ProfilePage() {
       !formData.jobTitle.trim()
     ) {
       setError("Please fill in all required fields");
-      setSaving(false);
       return;
     }
 
-    try {
-      const response = await fetch("/api/profile/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          jobTitle: formData.jobTitle.trim(),
-          phone: formData.phone.trim(),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to update profile");
-      }
-
-      toast.success("Profile updated successfully");
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      const message =
-        error instanceof Error ? error.message : "Failed to update profile";
-      setError(message);
-    } finally {
-      setSaving(false);
-    }
+    updateProfile.mutate({
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      jobTitle: formData.jobTitle.trim(),
+      phone: formData.phone.trim(),
+    });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -244,8 +205,8 @@ export default function ProfilePage() {
                 </Alert>
               )}
 
-              <Button type="submit" className="w-full" disabled={saving}>
-                {saving ? (
+              <Button type="submit" className="w-full" disabled={updateProfile.isPending}>
+                {updateProfile.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Saving...

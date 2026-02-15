@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api/client";
+import { useCreateProject } from "@/hooks/useProjectMutations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,6 +54,7 @@ export function ReviewStep({
   onBack,
 }: ReviewStepProps) {
   const { user } = useAuth();
+  const createProject = useCreateProject();
   const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(
     new Map(),
   );
@@ -60,7 +62,6 @@ export function ReviewStep({
     title: string;
     buyer: string;
   } | null>(null);
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (selectedCapabilities.length > 0) {
@@ -121,37 +122,31 @@ export function ReviewStep({
     }
 
     try {
-      setCreating(true);
-
-      const result = await api.createProject({
+      const project = await createProject.mutateAsync({
         name: projectName,
         description: projectDescription || undefined,
         target_tender_id: selectedTenderId,
-        company_id: leadCompanyId,
+        lead_company_id: leadCompanyId,
       });
-
-      const project = result.project as { id: string };
 
       // Add selected companies as members
       for (const company of selectedCompanies) {
         try {
-          await api.addProjectMember(project.id, company.id);
+          await api.addProjectMember(project.id as string, company.id);
         } catch (memberError) {
           console.error("Error adding member:", memberError);
         }
       }
 
       toast.success("Project created successfully!");
-      onProjectCreated(project.id);
+      onProjectCreated(project.id as string);
     } catch (error) {
-      console.error("Error creating project:", error);
+      console.error("Error createProject.isPending project:", error);
       const message =
         error instanceof Error
           ? error.message
           : "Failed to create project. Please try again.";
       toast.error(message);
-    } finally {
-      setCreating(false);
     }
   };
 
@@ -270,16 +265,16 @@ export function ReviewStep({
 
       {/* Action Buttons */}
       <div className="flex justify-between gap-2 pt-4 border-t">
-        <Button variant="outline" onClick={onBack} disabled={creating}>
+        <Button variant="outline" onClick={onBack} disabled={createProject.isPending}>
           <ChevronLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
         <Button
           onClick={handleCreateProject}
-          disabled={creating || !projectName.trim()}
+          disabled={createProject.isPending || !projectName.trim()}
           size="lg"
         >
-          {creating ? (
+          {createProject.isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Creating...

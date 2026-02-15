@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyCompanies } from "@/hooks/useMyCompanies";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,44 +62,34 @@ export default function TendersPage() {
     showApplied: "all",
   });
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
 
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
-  // Fetch user companies and auto-select the first one
+  // Fetch user companies via React Query
+  const { data: rawCompanies } = useMyCompanies(user?.id ?? null);
+
+  // Deduplicate and sort companies
+  const companies = (() => {
+    if (!rawCompanies) return [];
+    const data = rawCompanies as unknown as Company[];
+    return Array.from(
+      new Map(data.map((c) => [c.id, c])).values()
+    ).sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+    );
+  })();
+
+  // Auto-select first company when companies load
   useEffect(() => {
-    if (!user) return;
-
-    const fetchCompanies = async () => {
-      try {
-        const result = await api.getMyCompanies();
-        const data = result.companies as unknown as Company[];
-
-        // Deduplicate and sort by created_at descending
-        const uniqueCompanies = Array.from(
-          new Map(data.map((c) => [c.id, c])).values()
-        ).sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime()
-        );
-
-        setCompanies(uniqueCompanies);
-
-        if (uniqueCompanies.length > 0 && !selectedCompany) {
-          setSelectedCompany(uniqueCompanies[0]);
-        }
-      } catch (error) {
-        console.error("Error fetching companies:", error);
-      }
-    };
-
-    fetchCompanies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    if (companies.length > 0 && !selectedCompany) {
+      setSelectedCompany(companies[0]);
+    }
+  }, [companies, selectedCompany]);
 
   const handleFiltersChange = (newFilters: TenderFiltersState) => {
     setFilters(newFilters);

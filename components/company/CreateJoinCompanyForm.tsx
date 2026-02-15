@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ export function CreateJoinCompanyForm({
 }: CreateJoinCompanyFormProps) {
   const _router = useRouter();
   void _router;
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"create" | "join">("create");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -260,6 +262,8 @@ export function CreateJoinCompanyForm({
         description: `Your request to join "${foundExistingCompany.company_name}" has been sent.`,
       });
 
+      queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
+
       onSuccess?.({
         action: "join",
         companyId: foundExistingCompany.id,
@@ -312,6 +316,8 @@ export function CreateJoinCompanyForm({
         description: `"${createForm.companyName}" has been registered and is pending approval.`,
       });
 
+      queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
+
       onSuccess?.({
         action: "create",
         companyId: data.companyId,
@@ -359,6 +365,8 @@ export function CreateJoinCompanyForm({
       toast.success("Request submitted!", {
         description: `Your request to join "${joinForm.selectedCompany.company_name}" has been sent.`,
       });
+
+      queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
 
       onSuccess?.({
         action: "join",

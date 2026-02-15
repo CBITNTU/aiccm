@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMatchingResults } from "@/hooks/useMatchingResults";
+import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AlertCircle, Target, Loader2, X } from "lucide-react";
@@ -72,10 +75,15 @@ export function TenderMatching({
   analyzing: externalAnalyzing,
 }: TenderMatchingProps) {
   const { user } = useAuth();
-  const [matchingResults, setMatchingResults] = useState<MatchingResult[]>([]);
-  const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const {
+    data: matchingData,
+    isLoading: loading,
+    refetch: refetchMatchingResults,
+  } = useMatchingResults(companyId);
+  const matchingResults = (matchingData?.results as unknown as MatchingResult[]) ?? [];
+  const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
   const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -106,24 +114,6 @@ export function TenderMatching({
     filters.showApplied,
     filters.quickFilter,
   ]);
-
-  const fetchMatchingResultsMemo = useCallback(async () => {
-    setLoading(true);
-    try {
-      if (!companyId) {
-        setMatchingResults([]);
-        return;
-      }
-
-      const data = await api.getMatchingResults({ companyId });
-      setMatchingResults((data.results as unknown as MatchingResult[]) || []);
-    } catch (error) {
-      console.error("Error fetching matching results:", error);
-      toast.error("Failed to fetch matching results");
-    } finally {
-      setLoading(false);
-    }
-  }, [companyId]);
 
   const cancelMatching = useCallback(
     async (batchId: string) => {
@@ -178,10 +168,10 @@ export function TenderMatching({
 
       // Refresh results after a delay to show completed jobs
       setTimeout(() => {
-        fetchMatchingResultsMemo();
+        refetchMatchingResults();
       }, 2000);
     },
-    [companyId, fetchMatchingResultsMemo],
+    [companyId, refetchMatchingResults],
   );
 
   const checkMatchingProgress = useCallback(
@@ -254,7 +244,7 @@ export function TenderMatching({
             localStorage.removeItem(`matching_batch_${companyId}`);
           }
           setMatchingProgress(null); // Clear progress state
-          await fetchMatchingResultsMemo();
+          await refetchMatchingResults();
           if (data.status === "completed") {
             toast.success(
               `Matching completed: ${data.completed_jobs} tenders analyzed`,
@@ -303,14 +293,12 @@ export function TenderMatching({
         // Don't clear progress on network errors - might be temporary
       }
     },
-    [companyId, fetchMatchingResultsMemo],
+    [companyId, refetchMatchingResults],
   );
 
   // Check for in-progress matching batch on mount
   useEffect(() => {
     if (user && companyId) {
-      fetchMatchingResultsMemo();
-
       // Check for in-progress batch from localStorage
       const storedBatchId = localStorage.getItem(`matching_batch_${companyId}`);
       if (storedBatchId) {
@@ -320,7 +308,7 @@ export function TenderMatching({
         // Note: checkMatchingProgress will auto-clear if batch is 404 or completed
       }
     }
-  }, [user, companyId, checkMatchingProgress, fetchMatchingResultsMemo]);
+  }, [user, companyId, checkMatchingProgress]);
 
   // Poll for progress and refetch results while matching is in progress (progressive results)
   useEffect(() => {
@@ -332,12 +320,12 @@ export function TenderMatching({
       if (matchingProgress.batchId) {
         checkMatchingProgress(matchingProgress.batchId);
         // Refetch results so new matches appear as they complete (progressive result delivery)
-        fetchMatchingResultsMemo();
+        refetchMatchingResults();
       }
     }, 5000); // Poll every 5 seconds for progress and incremental results
 
     return () => clearInterval(interval);
-  }, [matchingProgress, checkMatchingProgress, fetchMatchingResultsMemo]);
+  }, [matchingProgress, checkMatchingProgress, refetchMatchingResults]);
 
   // Memoize filtered results to avoid infinite loops
   useEffect(() => {
@@ -345,8 +333,7 @@ export function TenderMatching({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchingResults, filtersKey]);
 
-  // Alias for backward compatibility
-  const fetchMatchingResults = fetchMatchingResultsMemo;
+  const fetchMatchingResults = refetchMatchingResults;
 
   const applyFiltersAndSorting = () => {
     let filtered = [...matchingResults];
@@ -596,11 +583,11 @@ export function TenderMatching({
     setDeleting(resultId);
     try {
       await api.deleteMatchingResult(resultId);
-
-      setMatchingResults((prev) =>
-        prev.filter((result) => result.id !== resultId),
-      );
       toast.success("Match result deleted successfully");
+      if (companyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchingResults(companyId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.savedTenders(companyId) });
+      }
     } catch (error) {
       console.error("Error deleting result:", error);
       toast.error("Failed to delete match result");
@@ -612,17 +599,13 @@ export function TenderMatching({
   const toggleBookmark = async (resultId: string, currentStatus: boolean) => {
     try {
       await api.toggleBookmark(resultId, !currentStatus);
-
-      setMatchingResults((prev) =>
-        prev.map((result) =>
-          result.id === resultId
-            ? { ...result, is_bookmarked: !currentStatus }
-            : result,
-        ),
-      );
       toast.success(
         currentStatus ? "Removed from saved tenders" : "Added to saved tenders",
       );
+      if (companyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchingResults(companyId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.savedTenders(companyId) });
+      }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
       toast.error("Failed to update bookmark");

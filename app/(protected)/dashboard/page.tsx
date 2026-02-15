@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useDashboard } from "@/hooks/useDashboard";
+import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
+import { api } from "@/lib/api/client";
 import type { Database } from "@/lib/supabase/types";
 import {
   Card,
@@ -37,7 +40,6 @@ import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { BusinessChatbot } from "@/components/BusinessChatbot";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 import { MatchingTrigger } from "@/components/matching/MatchingTrigger";
-import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -108,23 +110,32 @@ interface CompanyAnalysis {
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalTenders: 0,
-    matchingResults: 0,
-    companies: 0,
-    projects: 0,
-    recentMatches: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [userCompanies, setUserCompanies] = useState<Company[]>([]);
+  const { data: dashboardData, isLoading: loading } = useDashboard(user?.id ?? null);
+  const analyzeCompanyMutation = useAnalyzeCompany();
+
+  const userCompanies = (dashboardData?.companies as unknown as Company[]) ?? [];
+  const stats: DashboardStats = {
+    totalTenders: dashboardData?.stats.totalTenders ?? 0,
+    matchingResults: dashboardData?.stats.matchingResults ?? 0,
+    companies: dashboardData?.stats.companies ?? 0,
+    projects: dashboardData?.stats.projects ?? 0,
+    recentMatches: (dashboardData?.recentMatches as unknown as MatchingResult[]) ?? [],
+  };
+
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companyAnalysis, setCompanyAnalysis] =
     useState<CompanyAnalysis | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchingResult | null>(
     null,
   );
+
+  // Auto-select first company when dashboard data loads
+  useEffect(() => {
+    if (userCompanies.length > 0 && !selectedCompany) {
+      setSelectedCompany(userCompanies[0]);
+    }
+  }, [userCompanies, selectedCompany]);
 
   // Load stored analysis when company is selected
   useEffect(() => {
@@ -137,12 +148,13 @@ export default function DashboardPage() {
     }
   }, [selectedCompany?.id, selectedCompany?.ai_analysis]);
 
+  const isAnalyzing = analyzeCompanyMutation.isPending;
+
   // Fetch company analysis
   const fetchCompanyAnalysis = async () => {
     if (!selectedCompany?.id) return;
-    setIsAnalyzing(true);
     try {
-      const data = await api.analyzeCompany(selectedCompany.id);
+      const data = await analyzeCompanyMutation.mutateAsync(selectedCompany.id);
 
       if (data?.success && data?.analysis) {
         const analysis = data.analysis as CompanyAnalysis;
@@ -154,12 +166,7 @@ export default function DashboardPage() {
           const updatedCompany = companyData.company as unknown as Company;
 
           if (updatedCompany) {
-            setUserCompanies((prev) =>
-              prev.map((c) => (c.id === updatedCompany.id ? updatedCompany : c)),
-            );
-            if (selectedCompany?.id === updatedCompany.id) {
-              setSelectedCompany(updatedCompany);
-            }
+            setSelectedCompany(updatedCompany);
           }
         } catch (fetchError) {
           console.error("Error fetching updated company data:", fetchError);
@@ -167,43 +174,8 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching company analysis:", error);
-    } finally {
-      setIsAnalyzing(false);
     }
   };
-
-  // Fetch dashboard data
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchDashboardData = async () => {
-      try {
-        const data = await api.getDashboard();
-
-        const companies = (data.companies as unknown as Company[]) || [];
-
-        if (companies.length > 0) {
-          setUserCompanies(companies);
-          setSelectedCompany(companies[0]);
-        }
-
-        setStats({
-          totalTenders: data.stats.totalTenders,
-          matchingResults: data.stats.matchingResults,
-          companies: data.stats.companies,
-          projects: data.stats.projects,
-          recentMatches:
-            (data.recentMatches as unknown as MatchingResult[]) || [],
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [user]);
 
   // Prepare radar chart data
   const radarData = companyAnalysis?.performanceBenchmark

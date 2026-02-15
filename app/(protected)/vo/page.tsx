@@ -51,6 +51,12 @@ import { InvitationManager } from "@/components/consulting/InvitationManager";
 import { CompanySelector } from "@/components/consulting/CompanySelector";
 import { TenderViewDialog } from "@/components/tenders/TenderViewDialog";
 import { api } from "@/lib/api/client";
+import {
+  useAddTeamMember,
+  useRemoveTeamMember,
+  useDeleteProject,
+  useUpdateProjectStatus,
+} from "@/hooks/useProjectMutations";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -154,6 +160,11 @@ export default function ConsultingPage() {
     "active" | "completed" | "archived"
   >("active");
   const [tenderDialogOpen, setTenderDialogOpen] = useState(false);
+
+  const addTeamMemberMutation = useAddTeamMember();
+  const removeTeamMemberMutation = useRemoveTeamMember();
+  const deleteProjectMutation = useDeleteProject();
+  const updateProjectStatusMutation = useUpdateProjectStatus();
 
   // Get tender ID and company ID from query params
   const tenderId = searchParams.get("tenderId");
@@ -485,7 +496,10 @@ export default function ConsultingPage() {
     if (!selectedProject) return;
 
     try {
-      await api.addProjectMember(selectedProject.id, partnerId);
+      await addTeamMemberMutation.mutateAsync({
+        projectId: selectedProject.id,
+        companyId: partnerId,
+      });
       toast.success("Partner added to team");
       await loadProjectData(selectedProject.id);
     } catch (error) {
@@ -503,7 +517,10 @@ export default function ConsultingPage() {
     if (!selectedProject) return;
 
     try {
-      await api.removeProjectMember(selectedProject.id, memberId);
+      await removeTeamMemberMutation.mutateAsync({
+        memberId,
+        projectId: selectedProject.id,
+      });
       await loadProjectData(selectedProject.id);
       toast.success("Partner removed from team");
     } catch (error) {
@@ -612,11 +629,14 @@ export default function ConsultingPage() {
     try {
       if (newStatus === "delete") {
         toast.info("Deleting project...");
-        await api.deleteProject(selectedProject.id);
+        await deleteProjectMutation.mutateAsync({ projectId: selectedProject.id });
         toast.success("Project deleted successfully");
       } else {
         toast.info(`Moving project to ${newStatus}...`);
-        await api.updateProject(selectedProject.id, { status: newStatus });
+        await updateProjectStatusMutation.mutateAsync({
+          projectId: selectedProject.id,
+          status: newStatus,
+        });
         toast.success(
           `Project ${
             newStatus === "completed" ? "marked as completed" : "archived"

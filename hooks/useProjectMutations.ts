@@ -391,6 +391,8 @@ export function useDeleteProject() {
 
 // Send invitations mutation
 export function useSendInvitations() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({
       projectId,
@@ -407,6 +409,12 @@ export function useSendInvitations() {
         partnerIds,
       );
       return result;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["projectDetails", variables.projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }

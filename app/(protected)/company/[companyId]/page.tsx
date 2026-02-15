@@ -55,6 +55,10 @@ import { TenderMatching } from "@/components/tenders/TenderMatching";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 import { PendingInvitationsCard } from "@/components/company/PendingInvitationsCard";
 import { api } from "@/lib/api/client";
+import {
+  useUpdateCompany,
+  useAnalyzeCompany,
+} from "@/hooks/useCompanyMutations";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -89,12 +93,15 @@ export default function CompanyDetailPage() {
 
   const [companyData, setCompanyData] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(
     null,
   );
   const [isOwner, setIsOwner] = useState(false);
   const [inviteRefreshTrigger, setInviteRefreshTrigger] = useState(0);
+
+  const updateCompanyMutation = useUpdateCompany();
+  const analyzeCompanyMutation = useAnalyzeCompany();
+  const isAnalyzing = analyzeCompanyMutation.isPending;
 
   // Edit states
   const [isEditingOverview, setIsEditingOverview] = useState(false);
@@ -103,7 +110,6 @@ export default function CompanyDetailPage() {
     useState(false);
   const [isEditingCertifications, setIsEditingCertifications] = useState(false);
   const [isEditingProjects, setIsEditingProjects] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [, setCompanyCapabilities] = useState<
     Array<{ id: string; name: string; category: string }>
   >([]);
@@ -151,14 +157,18 @@ export default function CompanyDetailPage() {
     fetchCompanyData();
   }, [user, companyId, router]);
 
+  const isSaving = updateCompanyMutation.isPending;
+
   const handleSaveOverview = async () => {
     if (!companyData) return;
 
-    setIsSaving(true);
     try {
-      const result = await api.updateCompany(companyData.id, {
-        description: editedDescription,
-        key_capabilities: editedCapabilities,
+      const result = await updateCompanyMutation.mutateAsync({
+        companyId: companyData.id,
+        updates: {
+          description: editedDescription,
+          key_capabilities: editedCapabilities,
+        },
       });
       setCompanyData(result.company as unknown as Company);
       toast.success("Overview updated successfully");
@@ -166,22 +176,22 @@ export default function CompanyDetailPage() {
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Failed to save changes");
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const handleSaveBasicInfo = async () => {
     if (!companyData) return;
 
-    setIsSaving(true);
     try {
-      const result = await api.updateCompany(companyData.id, {
-        company_name: editedCompanyName.trim(),
-        postcode: editedLocation.trim(),
-        contact_email: editedEmail.trim(),
-        website_url: editedWebsite.trim(),
-        contact_phone: editedPhone.trim(),
+      const result = await updateCompanyMutation.mutateAsync({
+        companyId: companyData.id,
+        updates: {
+          company_name: editedCompanyName.trim(),
+          postcode: editedLocation.trim(),
+          contact_email: editedEmail.trim(),
+          website_url: editedWebsite.trim(),
+          contact_phone: editedPhone.trim(),
+        },
       });
       setCompanyData(result.company as unknown as Company);
       toast.success("Company information updated successfully");
@@ -189,18 +199,18 @@ export default function CompanyDetailPage() {
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Failed to save changes");
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const handleSaveOperationLocations = async () => {
     if (!companyData) return;
 
-    setIsSaving(true);
     try {
-      const result = await api.updateCompany(companyData.id, {
-        operation_locations: editedOperationLocations,
+      const result = await updateCompanyMutation.mutateAsync({
+        companyId: companyData.id,
+        updates: {
+          operation_locations: editedOperationLocations,
+        },
       });
       setCompanyData(result.company as unknown as Company);
       toast.success("Operation locations updated");
@@ -208,18 +218,18 @@ export default function CompanyDetailPage() {
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Failed to save changes");
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const handleSaveCertifications = async () => {
     if (!companyData) return;
 
-    setIsSaving(true);
     try {
-      const result = await api.updateCompany(companyData.id, {
-        certifications: JSON.stringify(editedCertifications),
+      const result = await updateCompanyMutation.mutateAsync({
+        companyId: companyData.id,
+        updates: {
+          certifications: JSON.stringify(editedCertifications),
+        },
       });
       setCompanyData(result.company as unknown as Company);
       toast.success("Certifications updated successfully");
@@ -227,18 +237,18 @@ export default function CompanyDetailPage() {
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Failed to save changes");
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const handleSaveProjects = async () => {
     if (!companyData) return;
 
-    setIsSaving(true);
     try {
-      const result = await api.updateCompany(companyData.id, {
-        past_projects: JSON.stringify(editedProjects),
+      const result = await updateCompanyMutation.mutateAsync({
+        companyId: companyData.id,
+        updates: {
+          past_projects: JSON.stringify(editedProjects),
+        },
       });
       setCompanyData(result.company as unknown as Company);
       toast.success("Projects updated successfully");
@@ -246,17 +256,14 @@ export default function CompanyDetailPage() {
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Failed to save changes");
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const handleRefreshAnalysis = async () => {
     if (!companyData) return;
 
-    setIsAnalyzing(true);
     try {
-      const data = await api.analyzeCompany(companyData.id);
+      const data = await analyzeCompanyMutation.mutateAsync(companyData.id);
 
       if (data?.success && data?.analysis) {
         setAnalysis(data.analysis as Record<string, unknown>);
@@ -275,8 +282,6 @@ export default function CompanyDetailPage() {
       toast.error(
         error instanceof Error ? error.message : "Failed to analyze profile",
       );
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 

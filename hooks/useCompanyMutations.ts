@@ -21,6 +21,7 @@ export function useUpdateCompany() {
       });
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
       queryClient.invalidateQueries({ queryKey: ["directory"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

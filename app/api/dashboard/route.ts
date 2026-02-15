@@ -30,26 +30,15 @@ export async function GET(request: NextRequest) {
       .from("tenders")
       .select("*", { count: "exact", head: true });
 
-    // Fetch matching results for user's companies
-    let recentMatches: Record<string, unknown>[] = [];
+    // Fetch matching results count for user's companies
     let matchingResultsCount = 0;
 
     if (companyIds.length > 0) {
-      const { data: matchData, count } = await supabase
+      const { count } = await supabase
         .from("matching_results")
-        .select(
-          `
-          *,
-          tenders(title, buyer, deadline, description, location, budget_min, budget_max),
-          companies(company_name)
-        `,
-          { count: "exact" },
-        )
-        .in("company_id", companyIds)
-        .order("created_at", { ascending: false })
-        .limit(5);
+        .select("*", { count: "exact", head: true })
+        .in("company_id", companyIds);
 
-      recentMatches = matchData || [];
       matchingResultsCount = count || 0;
     }
 
@@ -71,7 +60,6 @@ export async function GET(request: NextRequest) {
         companies: companies.length,
         projects: projectsCount,
       },
-      recentMatches,
     });
   } catch (error) {
     return handleApiError(error);

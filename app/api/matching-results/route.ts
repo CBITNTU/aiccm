@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
           deadline,
           budget_min,
           budget_max
+        ),
+        companies (
+          company_name
         )
       `,
       )

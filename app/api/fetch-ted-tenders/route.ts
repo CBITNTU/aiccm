@@ -245,7 +245,6 @@ async function fetchFromTEDAPI(
   if (process.env.TED_API_KEY) {
     headers["Authorization"] = `Bearer ${process.env.TED_API_KEY}`;
   }
-
   const response = await fetch(url, {
     method: "POST",
     headers,
@@ -478,6 +477,10 @@ export async function POST(request: NextRequest) {
         isAdmin,
         source: "ted_api",
         duplicatesSkipped: duplicatesCount,
+        ...(notices.length === 0 && {
+          message:
+            "TED returned no notices for this date range. Try a wider range or add TED_API_KEY to .env.local (optional; see https://docs.ted.europa.eu/api/latest/).",
+        }),
       });
     }
 
@@ -491,6 +494,10 @@ export async function POST(request: NextRequest) {
       isAdmin,
       source: "ted_api",
       duplicatesSkipped: 0,
+      ...(notices.length === 0 && {
+        message:
+          "TED returned no notices for this date range. Try a wider range or add TED_API_KEY to .env.local (optional; see https://docs.ted.europa.eu/api/latest/).",
+      }),
     });
   } catch (error) {
     console.error("Error in fetch-ted-tenders:", error);

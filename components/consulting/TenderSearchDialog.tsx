@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import {
   Dialog,
   DialogContent,
@@ -43,31 +43,10 @@ interface TenderSearchDialogProps {
 }
 
 async function searchTenders(query: string): Promise<Tender[]> {
-  const supabase = createClient();
-
-  let queryBuilder = supabase
-    .from("tenders")
-    .select(
-      "id, title, buyer, deadline, status, location, budget_max, description",
-    )
-    .in("status", ["open", "closing_soon"])
-    .order("deadline", { ascending: true })
-    .limit(50);
-
-  if (query.trim()) {
-    // Search in title, buyer, and description
-    queryBuilder = queryBuilder.or(
-      `title.ilike.%${query}%,buyer.ilike.%${query}%,description.ilike.%${query}%`,
-    );
-  }
-
-  const { data, error } = await queryBuilder;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data || [];
+  const result = await api.getAvailableTendersSearch(
+    query.trim() ? { search: query } : undefined,
+  );
+  return (result.tenders as unknown as Tender[]) || [];
 }
 
 export function TenderSearchDialog({

@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { useMyCompanies } from "@/hooks/useMyCompanies";
 import type { Database } from "@/lib/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ import {
   DollarSign,
   Clock,
 } from "lucide-react";
-import { toast } from "sonner";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -48,137 +46,16 @@ interface CompanyWithMembership extends Company {
 export default function MyCompaniesPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
-  const [companies, setCompanies] = useState<CompanyWithMembership[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rawCompanies, isLoading: loading, isError } = useMyCompanies(user?.id ?? null);
+  const companies = (rawCompanies as unknown as CompanyWithMembership[]) ?? [];
 
-  // Initialize supabase client
+  // Redirect to new company page if no companies or on error
   useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-      setLoading(false);
+    if (loading) return;
+    if (isError || (!loading && companies.length === 0)) {
+      router.push("/my-companies/new");
     }
-  }, []);
-
-  // Fetch company data
-  useEffect(() => {
-    if (!supabase || !user) return;
-
-    const fetchCompanyData = async () => {
-      console.log("MyCompanies: Checking companies for user:", user.id);
-
-      try {
-        // First check if user owns any companies
-        const { data: ownedCompanies, error: ownedError } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (ownedError) throw ownedError;
-
-        const ownedIds = new Set((ownedCompanies || []).map((c) => c.id));
-
-        // Check if user is an approved member of any company
-        const { data: memberships } = await supabase
-          .from("company_members")
-          .select("company_id")
-          .eq("user_id", user.id)
-          .eq("status", "approved");
-
-        // Fetch companies the user is a member of (but doesn't own)
-        let memberCompanies: Company[] = [];
-        if (memberships && memberships.length > 0) {
-          const memberCompanyIds = memberships
-            .map((m) => m.company_id)
-            .filter((id) => !ownedIds.has(id));
-
-          if (memberCompanyIds.length > 0) {
-            const { data: memberCompaniesData } = await supabase
-              .from("companies")
-              .select("*")
-              .in("id", memberCompanyIds);
-            memberCompanies = memberCompaniesData || [];
-          }
-        }
-
-        // Check for pending join requests
-        const { data: pendingJoinRequests } = await supabase
-          .from("company_join_requests")
-          .select("company_id, status, companies(*)")
-          .eq("user_id", user.id)
-          .in("status", ["pending", "approved_by_admin"]);
-
-        // Get companies from pending join requests (excluding owned and member companies)
-        const memberIds = new Set(memberCompanies.map((c) => c.id));
-        const pendingCompanies: CompanyWithMembership[] = [];
-
-        if (pendingJoinRequests) {
-          for (const request of pendingJoinRequests) {
-            const companyData = request.companies as unknown as Company;
-            if (
-              companyData &&
-              !ownedIds.has(companyData.id) &&
-              !memberIds.has(companyData.id)
-            ) {
-              pendingCompanies.push({
-                ...companyData,
-                membershipStatus: "pending_join",
-                joinRequestStatus: request.status,
-              });
-            }
-          }
-        }
-
-        // Combine all companies with membership status
-        const allCompanies: CompanyWithMembership[] = [
-          ...(ownedCompanies || []).map((c) => ({
-            ...c,
-            membershipStatus: "owner" as const,
-          })),
-          ...memberCompanies.map((c) => ({
-            ...c,
-            membershipStatus: "member" as const,
-          })),
-          ...pendingCompanies,
-        ];
-
-        console.log("MyCompanies: Found companies:", allCompanies.length, {
-          owned: ownedCompanies?.length || 0,
-          member: memberCompanies.length,
-          pending: pendingCompanies.length,
-        });
-
-        if (allCompanies.length === 0) {
-          // No companies found, redirect to add new company page
-          console.log(
-            "MyCompanies: No companies found, redirecting to new company page",
-          );
-          router.push("/my-companies/new");
-          return;
-        }
-
-        console.log("MyCompanies: User has companies, showing list");
-        setCompanies(allCompanies);
-      } catch (error) {
-        console.error("Error fetching company data:", error);
-        toast.error("Error", {
-          description: "Failed to load company data",
-        });
-        // If there's an error, redirect to new company page as fallback
-        router.push("/my-companies/new");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCompanyData();
-  }, [supabase, user, router]);
+  }, [loading, isError, companies.length, router]);
 
   const handleCompanyClick = (company: CompanyWithMembership) => {
     // Don't navigate if pending join, pending membership review, or company pending review

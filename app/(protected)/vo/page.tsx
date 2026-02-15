@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -53,6 +51,12 @@ import { InvitationManager } from "@/components/consulting/InvitationManager";
 import { CompanySelector } from "@/components/consulting/CompanySelector";
 import { TenderViewDialog } from "@/components/tenders/TenderViewDialog";
 import { api } from "@/lib/api/client";
+import {
+  useAddTeamMember,
+  useRemoveTeamMember,
+  useDeleteProject,
+  useUpdateProjectStatus,
+} from "@/hooks/useProjectMutations";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -139,9 +143,6 @@ export default function ConsultingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
 
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -160,39 +161,27 @@ export default function ConsultingPage() {
   >("active");
   const [tenderDialogOpen, setTenderDialogOpen] = useState(false);
 
+  const addTeamMemberMutation = useAddTeamMember();
+  const removeTeamMemberMutation = useRemoveTeamMember();
+  const deleteProjectMutation = useDeleteProject();
+  const updateProjectStatusMutation = useUpdateProjectStatus();
+
   // Get tender ID and company ID from query params
   const tenderId = searchParams.get("tenderId");
   const routeCompanyId = searchParams.get("companyId");
 
-  // Initialize supabase client
-  useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
   // Load company from route state if provided
   useEffect(() => {
     const loadCompanyFromRoute = async () => {
-      if (!user || !routeCompanyId || !supabase) return;
+      if (!user || !routeCompanyId) return;
 
       // Only load if we don't already have this company selected
       if (ownerCompany?.id === routeCompanyId) return;
 
       try {
-        // RLS policy allows access for both owners and approved team members
-      const { data: company, error } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("id", routeCompanyId)
-          .single();
-
-        if (error) {
-          console.error("Error loading company from route:", error);
-          return;
-        }
-
-        if (company) {
-          setOwnerCompany(company);
+        const data = await api.getCompany(routeCompanyId);
+        if (data.company) {
+          setOwnerCompany(data.company as unknown as Company);
         }
       } catch (error) {
         console.error("Error loading company:", error);
@@ -200,29 +189,29 @@ export default function ConsultingPage() {
     };
 
     loadCompanyFromRoute();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when route/user/supabase change
-  }, [user?.id, routeCompanyId, supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when route/user change
+  }, [user?.id, routeCompanyId]);
 
   useEffect(() => {
-    if (!user || !supabase) return;
+    if (!user) return;
 
     if (ownerCompany) {
       loadUserProjects(projectFilter);
     } else {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when ownerCompany/user/supabase change
-  }, [user?.id, projectFilter, ownerCompany?.id, supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when ownerCompany/user change
+  }, [user?.id, projectFilter, ownerCompany?.id]);
 
   useEffect(() => {
-    if (selectedProject && supabase) {
+    if (selectedProject) {
       loadProjectData(selectedProject.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when selectedProject/supabase change
-  }, [selectedProject?.id, supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when selectedProject change
+  }, [selectedProject?.id]);
 
   const loadUserProjects = async (statusFilter: string = "active") => {
-    if (!supabase || !ownerCompany) {
+    if (!ownerCompany) {
       setLoading(false);
       return;
     }
@@ -230,38 +219,20 @@ export default function ConsultingPage() {
     try {
       setLoading(true);
 
-      const statusesToQuery =
-        statusFilter === "active" ? ["draft", "active"] : [statusFilter];
+      const data = await api.getProjects({
+        companyId: ownerCompany.id,
+        status: statusFilter,
+      });
 
-      const { data, error } = await supabase
-        .from("virtual_organizations")
-        .select(
-          `
-          *,
-          tenders:target_tender_id (
-            id,
-            title,
-            buyer,
-            deadline
-          )
-        `,
-        )
-        .eq("lead_company_id", ownerCompany.id)
-        .in("status", statusesToQuery)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.warn("Could not load projects:", error);
-        setProjects([]);
-      } else {
-        setProjects((data as unknown as Project[]) || []);
-        if (data && data.length > 0) {
-          setSelectedProject(data[0] as unknown as Project);
-        }
+      const projectList = (data.projects as unknown as Project[]) || [];
+      setProjects(projectList);
+      if (projectList.length > 0) {
+        setSelectedProject(projectList[0]);
       }
     } catch (error) {
       console.error("Error loading projects:", error);
       toast.error("Failed to load projects");
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -269,24 +240,12 @@ export default function ConsultingPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for post-creation callback
   const handleProjectCreated = async (projectId: string) => {
-    if (!supabase) return;
-
     try {
       setLoading(true);
       await loadUserProjects(projectFilter);
 
-      const { data: newProject, error } = await supabase
-        .from("virtual_organizations")
-        .select("*")
-        .eq("id", projectId)
-        .single();
-
-      if (error) {
-        console.error("Failed to load new project:", error);
-        throw error;
-      }
-
-      setSelectedProject(newProject as unknown as Project);
+      const data = await api.getProjectDetails(projectId);
+      setSelectedProject(data.project as unknown as Project);
       await loadProjectData(projectId);
     } catch (error) {
       console.error("Error loading new project:", error);
@@ -311,23 +270,17 @@ export default function ConsultingPage() {
   };
 
   const loadProjectData = async (voId: string) => {
-    if (!supabase) return;
-
     try {
       setGapAnalysis(null);
       setTeamAnalysis(null);
       setRecommendedPartners([]);
 
-      const { data: projectDetails } = await supabase
-        .from("virtual_organizations")
-        .select("*")
-        .eq("id", voId)
-        .maybeSingle();
+      const data = await api.getProjectDetails(voId);
+      const project = data.project as unknown as Project;
 
       if (
-        projectDetails &&
         ownerCompany &&
-        projectDetails.lead_company_id !== ownerCompany.id
+        project.lead_company_id !== ownerCompany.id
       ) {
         toast.error(
           "Project does not belong to the selected company. Please select the correct company.",
@@ -335,51 +288,27 @@ export default function ConsultingPage() {
         return;
       }
 
-      const projectData = projectDetails as unknown as {
-        gap_analysis?: GapAnalysis;
-        team_analysis?: TeamAnalysis;
-        recommended_partners?: RecommendedPartner[];
-        target_tender_id?: string;
-      };
-
-      if (projectData?.gap_analysis) {
-        setGapAnalysis(projectData.gap_analysis);
+      if (project.gap_analysis) {
+        setGapAnalysis(project.gap_analysis);
       }
-      if (projectData?.team_analysis) {
-        setTeamAnalysis(projectData.team_analysis);
+      if (project.team_analysis) {
+        setTeamAnalysis(project.team_analysis);
       }
-      if (projectData?.recommended_partners) {
-        setRecommendedPartners(projectData.recommended_partners || []);
+      if (project.recommended_partners) {
+        setRecommendedPartners(project.recommended_partners || []);
       }
 
-      // Load team members
-      const { data: members, error: membersError } = await supabase
-        .from("vo_members")
-        .select(
-          `
-          *,
-          companies:company_id (*)
-        `,
-        )
-        .eq("vo_id", voId);
-
-      if (membersError) {
-        console.warn("Could not load team members:", membersError);
-        setTeamMembers([]);
-      } else {
-        setTeamMembers((members as unknown as TeamMember[]) || []);
-      }
+      setTeamMembers((data.teamMembers as unknown as TeamMember[]) || []);
 
       // Load tender if associated
-      const project = projects.find((p) => p.id === voId) || selectedProject;
-      if (project?.target_tender_id) {
-        const { data: tenderData } = await supabase
-          .from("tenders")
-          .select("*")
-          .eq("id", project.target_tender_id)
-          .maybeSingle();
-
-        setTender(tenderData as unknown as Tender);
+      const currentProject = projects.find((p) => p.id === voId) || selectedProject;
+      if (currentProject?.target_tender_id) {
+        try {
+          const tenderData = await api.getTender(currentProject.target_tender_id);
+          setTender(tenderData.tender as unknown as Tender);
+        } catch {
+          setTender(null);
+        }
       } else {
         setTender(null);
       }
@@ -393,8 +322,6 @@ export default function ConsultingPage() {
     company: Company,
     tenderData: Tender,
   ) => {
-    if (!supabase) return;
-
     try {
       setAnalyzing(true);
       toast.info("Starting gap analysis...");
@@ -412,51 +339,57 @@ export default function ConsultingPage() {
       let recommendations: RecommendedPartner[] = [];
 
       if (missingComps.length > 0) {
-        const { data: companies } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("status", "active")
-          .neq("id", company.id)
-          .limit(100);
+        const dirData = await api.getDirectory({ limit: 100 });
+        const companies = (dirData.companies || []) as unknown as {
+          id: string;
+          company_name: string;
+          key_capabilities?: string | null;
+          certifications?: string | null;
+          past_projects?: string | null;
+          description?: string | null;
+          postcode?: string | null;
+        }[];
 
-        if (companies && companies.length > 0) {
-          const scored = companies.map((c) => {
-            const capText = (c.key_capabilities || "").toLowerCase();
-            const certText = (c.certifications || "").toLowerCase();
-            const projText = (c.past_projects || "").toLowerCase();
-            const descText = (c.description || "").toLowerCase();
-            const allText = `${capText} ${certText} ${projText} ${descText}`;
+        if (companies.length > 0) {
+          const scored = companies
+            .filter((c) => c.id !== company.id)
+            .map((c) => {
+              const capText = (c.key_capabilities || "").toLowerCase();
+              const certText = (c.certifications || "").toLowerCase();
+              const projText = (c.past_projects || "").toLowerCase();
+              const descText = (c.description || "").toLowerCase();
+              const allText = `${capText} ${certText} ${projText} ${descText}`;
 
-            const matchingComps: string[] = [];
+              const matchingComps: string[] = [];
 
-            missingComps.forEach((comp: string) => {
-              const compLower = comp.toLowerCase();
-              const compWords = compLower.split(/\s+/);
+              missingComps.forEach((comp: string) => {
+                const compLower = comp.toLowerCase();
+                const compWords = compLower.split(/\s+/);
 
-              const hasMatch = compWords.some(
-                (word: string) => word.length > 3 && allText.includes(word),
-              );
+                const hasMatch = compWords.some(
+                  (word: string) => word.length > 3 && allText.includes(word),
+                );
 
-              if (hasMatch || allText.includes(compLower)) {
-                matchingComps.push(comp);
-              }
+                if (hasMatch || allText.includes(compLower)) {
+                  matchingComps.push(comp);
+                }
+              });
+
+              const relevanceScore =
+                missingComps.length > 0
+                  ? Math.round((matchingComps.length / missingComps.length) * 100)
+                  : 0;
+
+              return {
+                id: c.id,
+                company_name: c.company_name,
+                key_capabilities: c.key_capabilities || "Not specified",
+                certifications: c.certifications || "Not specified",
+                location: c.postcode || "Not specified",
+                relevanceScore,
+                matchingCompetencies: matchingComps,
+              };
             });
-
-            const relevanceScore =
-              missingComps.length > 0
-                ? Math.round((matchingComps.length / missingComps.length) * 100)
-                : 0;
-
-            return {
-              id: c.id,
-              company_name: c.company_name,
-              key_capabilities: c.key_capabilities || "Not specified",
-              certifications: c.certifications || "Not specified",
-              location: c.postcode || "Not specified",
-              relevanceScore,
-              matchingCompetencies: matchingComps,
-            };
-          });
 
           recommendations = scored
             .filter((c) => c.relevanceScore >= 20)
@@ -474,16 +407,11 @@ export default function ConsultingPage() {
       setGapAnalysis(gapAnalysisData);
       setRecommendedPartners(recommendations);
 
-      // Save gap analysis to database
-      await supabase
-        .from("virtual_organizations")
-        .update({
-          gap_analysis:
-            gapAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
-          recommended_partners:
-            recommendations as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["recommended_partners"],
-        })
-        .eq("id", voId);
+      // Save gap analysis to database via API
+      await api.updateProject(voId, {
+        gap_analysis: gapAnalysisData,
+        recommended_partners: recommendations,
+      });
 
       const partnerCount = recommendations.length;
       const gaps = analysis.missingCompetencies?.length || 0;
@@ -512,7 +440,6 @@ export default function ConsultingPage() {
       setAnalyzing(true);
       toast.info("Starting team analysis...");
 
-      // Use the proper analyze-team endpoint (server-side prompt, Zod validation)
       const result = await api.analyzeTeam({
         projectId: voId,
         company: {
@@ -566,55 +493,35 @@ export default function ConsultingPage() {
   };
 
   const handleAddPartner = async (partnerId: string) => {
-    if (!selectedProject || !supabase) return;
+    if (!selectedProject) return;
 
     try {
-      const { data: existing } = await supabase
-        .from("vo_members")
-        .select("id")
-        .eq("vo_id", selectedProject.id)
-        .eq("company_id", partnerId)
-        .maybeSingle();
-
-      if (existing) {
-        toast.error("Company is already a team member");
-        return;
-      }
-
-      const { error } = await supabase.from("vo_members").insert({
-        vo_id: selectedProject.id,
-        company_id: partnerId,
-        role: "invited",
+      await addTeamMemberMutation.mutateAsync({
+        projectId: selectedProject.id,
+        companyId: partnerId,
       });
-
-      if (error) {
-        console.warn("RLS policy issue when adding member:", error);
-        toast.info("Partner added to team (database may have sync issues)");
-      } else {
-        toast.success("Partner added to team");
-      }
-
+      toast.success("Partner added to team");
       await loadProjectData(selectedProject.id);
     } catch (error) {
       console.error("Error adding partner:", error);
-      toast.error("Failed to add partner");
+      const message = error instanceof Error ? error.message : "Failed to add partner";
+      if (message.includes("duplicate") || message.includes("already")) {
+        toast.error("Company is already a team member");
+      } else {
+        toast.error("Failed to add partner");
+      }
     }
   };
 
   const handleRemovePartner = async (memberId: string) => {
-    if (!supabase) return;
+    if (!selectedProject) return;
 
     try {
-      const { error } = await supabase
-        .from("vo_members")
-        .delete()
-        .eq("id", memberId);
-
-      if (error) throw error;
-
-      if (selectedProject) {
-        await loadProjectData(selectedProject.id);
-      }
+      await removeTeamMemberMutation.mutateAsync({
+        memberId,
+        projectId: selectedProject.id,
+      });
+      await loadProjectData(selectedProject.id);
       toast.success("Partner removed from team");
     } catch (error) {
       console.error("Error removing partner:", error);
@@ -623,7 +530,7 @@ export default function ConsultingPage() {
   };
 
   const handleRunGapAnalysis = async () => {
-    if (!selectedProject || !ownerCompany || !tender || !supabase) {
+    if (!selectedProject || !ownerCompany || !tender) {
       toast.error("Missing project, company, or tender information");
       return;
     }
@@ -635,22 +542,21 @@ export default function ConsultingPage() {
       return;
     }
 
-    const { data: leadCompany, error: companyError } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("id", selectedProject.lead_company_id)
-      .single();
-
-    if (companyError || !leadCompany) {
+    try {
+      const data = await api.getCompany(selectedProject.lead_company_id);
+      const leadCompany = data.company as unknown as Company;
+      if (!leadCompany) {
+        toast.error("Failed to load company information");
+        return;
+      }
+      await runGapAnalysis(selectedProject.id, leadCompany, tender);
+    } catch {
       toast.error("Failed to load company information");
-      return;
     }
-
-    await runGapAnalysis(selectedProject.id, leadCompany, tender);
   };
 
   const handleRunTeamAnalysis = async () => {
-    if (!selectedProject || !ownerCompany || !tender || !supabase) {
+    if (!selectedProject || !ownerCompany || !tender) {
       toast.error("Missing project, company, or tender information");
       return;
     }
@@ -666,18 +572,17 @@ export default function ConsultingPage() {
       return;
     }
 
-    const { data: leadCompany, error: companyError } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("id", selectedProject.lead_company_id)
-      .single();
-
-    if (companyError || !leadCompany) {
+    try {
+      const data = await api.getCompany(selectedProject.lead_company_id);
+      const leadCompany = data.company as unknown as Company;
+      if (!leadCompany) {
+        toast.error("Failed to load company information");
+        return;
+      }
+      await runTeamAnalysis(selectedProject.id, leadCompany, tender, teamMembers);
+    } catch {
       toast.error("Failed to load company information");
-      return;
     }
-
-    await runTeamAnalysis(selectedProject.id, leadCompany, tender, teamMembers);
   };
 
   const handleSendInvitations = async (selectedPartnerIds: string[]) => {
@@ -702,7 +607,7 @@ export default function ConsultingPage() {
   const handleMoveProject = async (
     newStatus: "delete" | "archived" | "completed",
   ) => {
-    if (!selectedProject || !supabase) {
+    if (!selectedProject) {
       toast.error("No project selected");
       return;
     }
@@ -724,38 +629,14 @@ export default function ConsultingPage() {
     try {
       if (newStatus === "delete") {
         toast.info("Deleting project...");
-
-        await supabase
-          .from("vo_members")
-          .delete()
-          .eq("vo_id", selectedProject.id);
-
-        const { error: deleteError } = await supabase
-          .from("virtual_organizations")
-          .delete()
-          .eq("id", selectedProject.id);
-
-        if (deleteError) {
-          throw new Error("Failed to delete project: " + deleteError.message);
-        }
-
+        await deleteProjectMutation.mutateAsync({ projectId: selectedProject.id });
         toast.success("Project deleted successfully");
       } else {
         toast.info(`Moving project to ${newStatus}...`);
-        const { error: updateError } = await supabase.rpc(
-          "update_project_status",
-          {
-            project_id: selectedProject.id,
-            new_status: newStatus,
-          },
-        );
-
-        if (updateError) {
-          throw new Error(
-            "Failed to update project status: " + updateError.message,
-          );
-        }
-
+        await updateProjectStatusMutation.mutateAsync({
+          projectId: selectedProject.id,
+          status: newStatus,
+        });
         toast.success(
           `Project ${
             newStatus === "completed" ? "marked as completed" : "archived"

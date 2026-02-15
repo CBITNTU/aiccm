@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/queryKeys";
 
 export interface Taxonomy {
   id: string;
@@ -15,43 +13,19 @@ export interface Taxonomy {
 }
 
 export function useTaxonomies() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
-  const [taxonomies, setTaxonomies] = useState<Taxonomy[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Initialize supabase client
-  useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
-  // Fetch taxonomies
-  useEffect(() => {
-    if (!supabase) return;
-
-    const fetchTaxonomies = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("taxonomies")
-          .select("*")
-          .order("level", { ascending: true })
-          .order("name", { ascending: true });
-
-        if (error) throw error;
-        setTaxonomies(data || []);
-      } catch (error: unknown) {
-        console.error("Error fetching taxonomies:", error);
-        toast.error("Failed to load categories");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTaxonomies();
-  }, [supabase]);
+  const {
+    data: taxonomies = [],
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.taxonomies(),
+    queryFn: async () => {
+      const data = await api.getTaxonomies();
+      return data.taxonomies as Taxonomy[];
+    },
+    staleTime: 30 * 60 * 1000, // 30 min
+    gcTime: 60 * 60 * 1000, // 60 min
+  });
 
   const getLevel1 = () => taxonomies.filter((t) => t.level === 1);
 
@@ -63,27 +37,6 @@ export function useTaxonomies() {
 
   const getTaxonomyById = (id: string | null) =>
     taxonomies.find((t) => t.id === id);
-
-  const refetch = async () => {
-    if (!supabase) return;
-
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("taxonomies")
-        .select("*")
-        .order("level", { ascending: true })
-        .order("name", { ascending: true });
-
-      if (error) throw error;
-      setTaxonomies(data || []);
-    } catch (error: unknown) {
-      console.error("Error fetching taxonomies:", error);
-      toast.error("Failed to load categories");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return {
     taxonomies,

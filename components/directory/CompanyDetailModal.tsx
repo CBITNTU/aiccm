@@ -33,12 +33,10 @@ import {
   PolarRadiusAxis,
   ResponsiveContainer,
 } from "recharts";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { api } from "@/lib/api/client";
+import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
@@ -106,17 +104,9 @@ export function CompanyDetailModal({
   readOnly = false,
 }: CompanyDetailModalProps) {
   const { user } = useAuth();
-  const [_supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [analysis, setAnalysis] = useState<CompanyAnalysis | null>(null);
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-
-  // Initialize supabase client
-  useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
+  const analyzeMutation = useAnalyzeCompany();
+  const loadingAnalysis = analyzeMutation.isPending;
 
   // Check if the current user owns this company
   const isOwner = user?.id === company?.user_id;
@@ -132,20 +122,15 @@ export function CompanyDetailModal({
   const fetchAnalysis = async () => {
     if (!company?.id || loadingAnalysis) return;
 
-    setLoadingAnalysis(true);
     try {
-      const data = await api.analyzeCompany(company.id);
+      const data = await analyzeMutation.mutateAsync(company.id);
 
       if (data?.success && data?.analysis) {
         setAnalysis(data.analysis as CompanyAnalysis);
-        // Force refresh the company data in parent component if needed
-        window.location.reload();
       }
     } catch (error) {
       console.error("Error fetching analysis:", error);
       toast.error("Failed to load company analysis");
-    } finally {
-      setLoadingAnalysis(false);
     }
   };
 

@@ -25,7 +25,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 
 interface MatchingResult {
   id: string;
@@ -86,38 +86,24 @@ export function TenderDetailDialog({
     const fetchTenderDetails = async () => {
       if (!result?.tender_id) return;
 
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("tenders")
-        .select(
-          "reference_number, documents, ai_summary, ai_capability_taxonomy",
-        )
-        .eq("id", result.tender_id)
-        .maybeSingle();
+      try {
+        const tenderResult = await api.getTender(result.tender_id);
+        const tender = tenderResult.tender as any;
+        if (tender) {
+          setTenderDetails({
+            reference_number: tender.reference_number || null,
+            documents: tender.documents || null,
+            ai_summary: tender.ai_summary || null,
+            ai_capability_taxonomy: tender.ai_capability_taxonomy || null,
+          });
+        }
 
-      if (!error && data) {
-        setTenderDetails(data as any);
-      }
-
-      // Fetch taxonomies
-      const { data: taxData } = await supabase
-        .from("tender_taxonomies")
-        .select("taxonomy_id, taxonomies(id, name)")
-        .eq("tender_id", result.tender_id);
-
-      if (taxData) {
-        setTaxonomies(
-          taxData
-            .map((tt) => ({
-              id:
-                (tt.taxonomies as { id: string; name: string } | null)?.id ||
-                "",
-              name:
-                (tt.taxonomies as { id: string; name: string } | null)?.name ||
-                "",
-            }))
-            .filter((t) => t.name),
-        );
+        // Taxonomies come with the tender response
+        if (tenderResult.taxonomies) {
+          setTaxonomies(tenderResult.taxonomies);
+        }
+      } catch (error) {
+        console.error("Error fetching tender details:", error);
       }
     };
 

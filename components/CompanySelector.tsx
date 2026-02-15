@@ -11,16 +11,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Building2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import type { Database } from "@/lib/supabase/types";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  status: string | null;
+  created_at: string;
+  [key: string]: unknown;
+}
 
 interface CompanySelectorProps {
   selectedCompanyId?: string | null;
-  onCompanySelect?: (company: Company | null) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onCompanySelect?: (company: any) => void;
   showAddButton?: boolean;
   className?: string;
 }
@@ -45,19 +51,9 @@ export function CompanySelector({
       }
 
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          console.error("Supabase error:", error);
-          throw error;
-        }
-
-        setCompanies(data || []);
+        const result = await api.getMyCompanies();
+        const data = (result.companies as unknown as Company[]) || [];
+        setCompanies(data);
       } catch (error) {
         console.error("Error fetching companies:", error);
         setCompanies([]);

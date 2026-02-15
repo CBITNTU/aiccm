@@ -8,6 +8,9 @@ import {
   useUpdateProjectStatus,
   useDeleteProject,
 } from "@/hooks/useProjectMutations";
+import type { Database } from "@/lib/supabase/types";
+
+type Company = Database["public"]["Tables"]["companies"]["Row"];
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -305,7 +308,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                     <GapAnalysisPanel
                       projectId={project.id}
                       tender={tender}
-                      company={leadCompany ?? null}
+                      company={(leadCompany as unknown as Company) ?? null}
                       teamMembers={teamMembers}
                       gapAnalysis={gapAnalysis}
                       recommendedPartners={recommendedPartners}
@@ -395,7 +398,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                     <TeamAnalysisPanel
                       projectId={project.id}
                       tender={tender}
-                      company={leadCompany ?? null}
+                      company={(leadCompany as unknown as Company) ?? null}
                       teamMembers={teamMembers}
                       teamAnalysis={teamAnalysis}
                     />

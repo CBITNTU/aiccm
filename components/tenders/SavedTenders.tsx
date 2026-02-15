@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api/client";
+import { useSavedTenders } from "@/hooks/useSavedTenders";
+import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bookmark, Loader2, Search, X } from "lucide-react";
@@ -45,19 +47,12 @@ export function SavedTenders({
   companyId,
   readOnly = false,
 }: SavedTendersProps) {
-  const { user } = useAuth();
   const router = useRouter();
-  const [savedResults, setSavedResults] = useState<MatchingResult[]>([]);
+  const queryClient = useQueryClient();
+  const { data: savedData, isLoading: loading } = useSavedTenders(companyId);
+  const savedResults = (savedData?.results as unknown as MatchingResult[]) ?? [];
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
-  const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
-
-  useEffect(() => {
-    if (user) {
-      fetchSavedResults();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when user/companyId change
-  }, [user, companyId]);
 
   // Apply keyword filter whenever savedResults or keyword changes
   useEffect(() => {
@@ -76,61 +71,14 @@ export function SavedTenders({
     }
   }, [savedResults, keyword]);
 
-  const fetchSavedResults = async () => {
-    setLoading(true);
-    try {
-      const supabase = createClient();
-      let query = supabase
-        .from("matching_results")
-        .select(
-          `
-          *,
-          tenders (
-            title,
-            buyer,
-            description,
-            location,
-            deadline,
-            budget_min,
-            budget_max
-          )
-        `,
-        )
-        .eq("is_bookmarked", true)
-        .order("created_at", { ascending: false });
-
-      // Filter by company if provided
-      if (companyId) {
-        query = query.eq("company_id", companyId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setSavedResults((data as unknown as MatchingResult[]) || []);
-      setFilteredResults((data as unknown as MatchingResult[]) || []);
-    } catch (error) {
-      console.error("Error fetching saved results:", error);
-      toast.error("Failed to fetch saved tenders");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const removeBookmark = async (resultId: string) => {
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("matching_results")
-        .update({ is_bookmarked: false })
-        .eq("id", resultId);
-
-      if (error) throw error;
-
-      setSavedResults((prev) =>
-        prev.filter((result) => result.id !== resultId),
-      );
+      await api.toggleBookmark(resultId, false);
       toast.success("Removed from saved tenders");
+      if (companyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.savedTenders(companyId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchingResults(companyId) });
+      }
     } catch (error) {
       console.error("Error removing bookmark:", error);
       toast.error("Failed to remove bookmark");

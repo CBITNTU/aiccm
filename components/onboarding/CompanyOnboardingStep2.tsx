@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import {
@@ -88,6 +89,7 @@ export function CompanyOnboardingStep2({
   onBack,
 }: CompanyOnboardingStep2Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize state from prefill data
@@ -315,6 +317,8 @@ export function CompanyOnboardingStep2({
         });
       }
 
+      queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       router.push("/dashboard");
     } catch (error) {
       console.error("Error saving company:", error);

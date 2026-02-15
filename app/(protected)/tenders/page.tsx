@@ -3,11 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
+import { useMyCompanies } from "@/hooks/useMyCompanies";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -28,7 +26,12 @@ import { SavedTenders } from "@/components/tenders/SavedTenders";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  created_at: string;
+  [key: string]: unknown;
+}
 
 interface TenderFiltersState {
   keyword?: string;
@@ -50,9 +53,6 @@ export default function TendersPage() {
   // Users are restricted if they're pending approval OR still onboarding
   const isRestrictedUser = isPendingApproval || isOnboarding;
   const searchParams = useSearchParams();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [filters, setFilters] = useState<TenderFiltersState>({});
   const [matchingFilters, setMatchingFilters] = useState<MatchingFiltersState>({
     sortBy: "overall_score",
@@ -62,84 +62,34 @@ export default function TendersPage() {
     showApplied: "all",
   });
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
 
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
-  // Initialize supabase client
+  // Fetch user companies via React Query
+  const { data: rawCompanies } = useMyCompanies(user?.id ?? null);
+
+  // Deduplicate and sort companies
+  const companies = (() => {
+    if (!rawCompanies) return [];
+    const data = rawCompanies as unknown as Company[];
+    return Array.from(
+      new Map(data.map((c) => [c.id, c])).values()
+    ).sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+    );
+  })();
+
+  // Auto-select first company when companies load
   useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
+    if (companies.length > 0 && !selectedCompany) {
+      setSelectedCompany(companies[0]);
     }
-  }, []);
-
-  // Fetch user companies and auto-select the first one
-  useEffect(() => {
-    if (!supabase || !user) return;
-
-    const fetchCompanies = async () => {
-      try {
-        // Fetch companies the user owns
-        const { data: ownedCompanies, error: ownedError } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("user_id", user.id);
-
-        if (ownedError) throw ownedError;
-
-        // Fetch companies the user is an approved team member of
-        const { data: memberships, error: memberError } = await supabase
-          .from("company_members")
-          .select("company_id")
-          .eq("user_id", user.id)
-          .eq("status", "approved");
-
-        if (memberError) throw memberError;
-
-        let memberCompanies: typeof ownedCompanies = [];
-        if (memberships && memberships.length > 0) {
-          const memberCompanyIds = memberships.map((m) => m.company_id);
-          const { data: memberData, error: memberCompaniesError } =
-            await supabase
-              .from("companies")
-              .select("*")
-              .in("id", memberCompanyIds);
-
-          if (memberCompaniesError) throw memberCompaniesError;
-          memberCompanies = memberData || [];
-        }
-
-        // Merge, deduplicate, and sort by created_at descending
-        const allCompanies = [...(ownedCompanies || []), ...memberCompanies];
-        const uniqueCompanies = Array.from(
-          new Map(allCompanies.map((c) => [c.id, c])).values()
-        ).sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime()
-        );
-
-        const data = uniqueCompanies;
-        setCompanies(data);
-
-        // Auto-select the first company if none is selected
-        if (data && data.length > 0 && !selectedCompany) {
-          setSelectedCompany(data[0]);
-        }
-      } catch (error) {
-        console.error("Error fetching companies:", error);
-      }
-    };
-
-    fetchCompanies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, user]); // intentionally excluding selectedCompany to only auto-select once
+  }, [companies, selectedCompany]);
 
   const handleFiltersChange = (newFilters: TenderFiltersState) => {
     setFilters(newFilters);
@@ -204,15 +154,6 @@ export default function TendersPage() {
       setAnalyzing(false);
     }
   };
-
-  if (!supabase) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -280,7 +221,6 @@ export default function TendersPage() {
               placeholder="Search by title, buyer, location, or description..."
             />
             <DatabaseTenderFeed
-              supabase={supabase}
               filters={filters}
               readOnly={isRestrictedUser}
               onCreateProject={

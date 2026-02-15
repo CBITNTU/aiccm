@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
+import { useCreateProject } from "@/hooks/useProjectMutations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +21,12 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  postcode?: string | null;
+  [key: string]: unknown;
+}
 
 interface ReviewStepProps {
   selectedTenderId: string | null;
@@ -49,7 +54,7 @@ export function ReviewStep({
   onBack,
 }: ReviewStepProps) {
   const { user } = useAuth();
-  const supabase = createClient();
+  const createProject = useCreateProject();
   const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(
     new Map(),
   );
@@ -57,7 +62,6 @@ export function ReviewStep({
     title: string;
     buyer: string;
   } | null>(null);
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (selectedCapabilities.length > 0) {
@@ -83,14 +87,9 @@ export function ReviewStep({
     if (!selectedTenderId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("tenders")
-        .select("title, buyer")
-        .eq("id", selectedTenderId)
-        .single();
-
-      if (error) throw error;
-      setTenderInfo(data ? { title: data.title, buyer: data.buyer } : null);
+      const result = await api.getTender(selectedTenderId);
+      const tender = result.tender as { title: string; buyer: string };
+      setTenderInfo({ title: tender.title, buyer: tender.buyer });
     } catch (error) {
       console.error("Error fetching tender info:", error);
     }
@@ -98,16 +97,12 @@ export function ReviewStep({
 
   const fetchCapabilityNames = async () => {
     try {
-      const { data, error } = await supabase
-        .from("company_capabilities_ref")
-        .select("id, name")
-        .in("id", selectedCapabilities);
-
-      if (error) throw error;
-
+      const result = await api.getCapabilities();
       const nameMap = new Map<string, string>();
-      data?.forEach((cap) => {
-        nameMap.set(cap.id, cap.name);
+      result.capabilities?.forEach((cap) => {
+        if (selectedCapabilities.includes(cap.id)) {
+          nameMap.set(cap.id, cap.name);
+        }
       });
       setCapabilityNames(nameMap);
     } catch (error) {
@@ -127,70 +122,31 @@ export function ReviewStep({
     }
 
     try {
-      setCreating(true);
-
-      // Create the virtual organization (project)
-      const { data: project, error: projectError } = await supabase
-        .from("virtual_organizations")
-        .insert({
-          name: projectName,
-          description: projectDescription || null,
-          lead_company_id: leadCompanyId,
-          target_tender_id: selectedTenderId,
-          status: "draft",
-          project_owner_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (projectError) {
-        console.error("Project creation error:", projectError);
-        throw new Error(projectError.message);
-      }
-
-      // Add the lead company as a member with 'lead' role
-      const { error: leadMemberError } = await supabase
-        .from("vo_members")
-        .insert({
-          vo_id: project.id,
-          company_id: leadCompanyId,
-          role: "lead",
-        });
-
-      if (leadMemberError) {
-        console.error("Lead member error:", leadMemberError);
-        // Continue even if this fails - the project is created
-      }
+      const project = await createProject.mutateAsync({
+        name: projectName,
+        description: projectDescription || undefined,
+        target_tender_id: selectedTenderId,
+        lead_company_id: leadCompanyId,
+      });
 
       // Add selected companies as members
-      if (selectedCompanies.length > 0) {
-        const memberInserts = selectedCompanies.map((company) => ({
-          vo_id: project.id,
-          company_id: company.id,
-          role: "member" as const,
-        }));
-
-        const { error: membersError } = await supabase
-          .from("vo_members")
-          .insert(memberInserts);
-
-        if (membersError) {
-          console.error("Members error:", membersError);
-          // Continue even if this fails - the project is created
+      for (const company of selectedCompanies) {
+        try {
+          await api.addProjectMember(project.id as string, company.id);
+        } catch (memberError) {
+          console.error("Error adding member:", memberError);
         }
       }
 
       toast.success("Project created successfully!");
-      onProjectCreated(project.id);
+      onProjectCreated(project.id as string);
     } catch (error) {
-      console.error("Error creating project:", error);
+      console.error("Error createProject.isPending project:", error);
       const message =
         error instanceof Error
           ? error.message
           : "Failed to create project. Please try again.";
       toast.error(message);
-    } finally {
-      setCreating(false);
     }
   };
 
@@ -309,16 +265,16 @@ export function ReviewStep({
 
       {/* Action Buttons */}
       <div className="flex justify-between gap-2 pt-4 border-t">
-        <Button variant="outline" onClick={onBack} disabled={creating}>
+        <Button variant="outline" onClick={onBack} disabled={createProject.isPending}>
           <ChevronLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
         <Button
           onClick={handleCreateProject}
-          disabled={creating || !projectName.trim()}
+          disabled={createProject.isPending || !projectName.trim()}
           size="lg"
         >
-          {creating ? (
+          {createProject.isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Creating...

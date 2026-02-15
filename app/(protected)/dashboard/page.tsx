@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { useDashboard } from "@/hooks/useDashboard";
+import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
+import { api } from "@/lib/api/client";
 import type { Database } from "@/lib/supabase/types";
 import {
   Card,
@@ -39,7 +40,6 @@ import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { BusinessChatbot } from "@/components/BusinessChatbot";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 import { MatchingTrigger } from "@/components/matching/MatchingTrigger";
-import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -110,37 +110,32 @@ interface CompanyAnalysis {
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
-  const [stats, setStats] = useState<DashboardStats>({
-    totalTenders: 0,
-    matchingResults: 0,
-    companies: 0,
-    projects: 0,
-    recentMatches: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [userCompanies, setUserCompanies] = useState<Company[]>([]);
+  const { data: dashboardData, isLoading: loading } = useDashboard(user?.id ?? null);
+  const analyzeCompanyMutation = useAnalyzeCompany();
+
+  const userCompanies = (dashboardData?.companies as unknown as Company[]) ?? [];
+  const stats: DashboardStats = {
+    totalTenders: dashboardData?.stats.totalTenders ?? 0,
+    matchingResults: dashboardData?.stats.matchingResults ?? 0,
+    companies: dashboardData?.stats.companies ?? 0,
+    projects: dashboardData?.stats.projects ?? 0,
+    recentMatches: (dashboardData?.recentMatches as unknown as MatchingResult[]) ?? [],
+  };
+
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companyAnalysis, setCompanyAnalysis] =
     useState<CompanyAnalysis | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchingResult | null>(
     null,
   );
 
-  // Initialize supabase client
+  // Auto-select first company when dashboard data loads
   useEffect(() => {
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-      setLoading(false);
+    if (userCompanies.length > 0 && !selectedCompany) {
+      setSelectedCompany(userCompanies[0]);
     }
-  }, []);
+  }, [userCompanies, selectedCompany]);
 
   // Load stored analysis when company is selected
   useEffect(() => {
@@ -151,162 +146,36 @@ export default function DashboardPage() {
     } else {
       setCompanyAnalysis(null);
     }
-  }, [selectedCompany?.id, selectedCompany?.ai_analysis]); // Only depend on ID and ai_analysis, not the whole object
+  }, [selectedCompany?.id, selectedCompany?.ai_analysis]);
+
+  const isAnalyzing = analyzeCompanyMutation.isPending;
 
   // Fetch company analysis
   const fetchCompanyAnalysis = async () => {
-    if (!selectedCompany?.id || !supabase) return;
-    setIsAnalyzing(true);
+    if (!selectedCompany?.id) return;
     try {
-      console.log(
-        "🔄 Fetching company analysis for:",
-        selectedCompany.company_name,
-      );
-      const data = await api.analyzeCompany(selectedCompany.id);
+      const data = await analyzeCompanyMutation.mutateAsync(selectedCompany.id);
 
       if (data?.success && data?.analysis) {
         const analysis = data.analysis as CompanyAnalysis;
-        console.log("✅ Analysis received:", {
-          overallScore: analysis?.performanceBenchmark?.overallScore,
-          hasRealData: !analysis?.executiveSummary?.includes(
-            "could not be completed",
-          ),
-        });
         setCompanyAnalysis(analysis);
 
         // Refresh company data to get updated ai_analysis field
-        const { data: updatedCompany, error: fetchError } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("id", selectedCompany.id)
-          .single();
+        try {
+          const companyData = await api.getCompany(selectedCompany.id);
+          const updatedCompany = companyData.company as unknown as Company;
 
-        if (fetchError) {
-          console.error("Error fetching updated company data:", fetchError);
-        } else if (updatedCompany) {
-          // Update companies list first
-          setUserCompanies((prev) =>
-            prev.map((c) => (c.id === updatedCompany.id ? updatedCompany : c)),
-          );
-          // Only update selectedCompany if it's the same company, to avoid infinite loops
-          if (selectedCompany?.id === updatedCompany.id) {
+          if (updatedCompany) {
             setSelectedCompany(updatedCompany);
           }
+        } catch (fetchError) {
+          console.error("Error fetching updated company data:", fetchError);
         }
       }
     } catch (error) {
       console.error("Error fetching company analysis:", error);
-    } finally {
-      setIsAnalyzing(false);
     }
   };
-
-  // Fetch dashboard data
-  useEffect(() => {
-    if (!supabase || !user) return;
-
-    const fetchDashboardData = async () => {
-      try {
-        // Fetch companies the user owns
-        const { data: ownedCompanies } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("user_id", user.id);
-
-        // Also fetch companies where user is an approved member
-        const { data: memberships } = await supabase
-          .from("company_members")
-          .select("company_id")
-          .eq("user_id", user.id)
-          .eq("status", "approved");
-
-        // Fetch member companies (excluding already owned ones)
-        let memberCompanies: Company[] = [];
-        if (memberships && memberships.length > 0) {
-          const ownedIds = new Set((ownedCompanies || []).map((c) => c.id));
-          const memberCompanyIds = memberships
-            .map((m) => m.company_id)
-            .filter((id) => !ownedIds.has(id));
-
-          if (memberCompanyIds.length > 0) {
-            const { data: memberCompaniesData } = await supabase
-              .from("companies")
-              .select("*")
-              .in("id", memberCompanyIds);
-            memberCompanies = memberCompaniesData || [];
-          }
-        }
-
-        // Combine owned and member companies
-        const userCompaniesData = [
-          ...(ownedCompanies || []),
-          ...memberCompanies,
-        ];
-
-        if (userCompaniesData.length > 0) {
-          setUserCompanies(userCompaniesData);
-          // Auto-select first company
-          setSelectedCompany(userCompaniesData[0]);
-        }
-
-        // Fetch total tenders
-        const { count: tenderCount } = await supabase
-          .from("tenders")
-          .select("*", { count: "exact", head: true });
-
-        // Fetch matching results for user's companies
-        let matchingResults: MatchingResult[] = [];
-        let matchCount = 0;
-
-        if (userCompaniesData && userCompaniesData.length > 0) {
-          const companyIds = userCompaniesData.map((c) => c.id);
-          const { data: matchData, count } = await supabase
-            .from("matching_results")
-            .select(
-              `
-              *,
-              tenders(title, buyer, deadline, description, location, budget_min, budget_max),
-              companies(company_name)
-            `,
-              { count: "exact" },
-            )
-            .in("company_id", companyIds)
-            .order("created_at", { ascending: false })
-            .limit(5);
-
-          matchingResults = (matchData as MatchingResult[]) || [];
-          matchCount = count || 0;
-        }
-
-        // Fetch projects count
-        let projectsCount = 0;
-        if (userCompaniesData && userCompaniesData.length > 0) {
-          const { data: projects } = await supabase
-            .from("virtual_organizations")
-            .select("id")
-            .in(
-              "lead_company_id",
-              userCompaniesData.map((c) => c.id),
-            );
-          projectsCount = projects?.length || 0;
-        }
-
-        setStats({
-          totalTenders: tenderCount || 0,
-          matchingResults: matchCount,
-          companies: userCompaniesData?.length || 0,
-          projects: projectsCount,
-          recentMatches: matchingResults,
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [supabase, user]);
 
   // Prepare radar chart data
   const radarData = companyAnalysis?.performanceBenchmark

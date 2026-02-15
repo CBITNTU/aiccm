@@ -2,9 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities -- company/query result types; copy uses quotes */
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +24,25 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  companies_house_number?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  postcode?: string | null;
+  address?: string | null;
+  description?: string | null;
+  website_url?: string | null;
+  key_capabilities?: string | null;
+  certifications?: string | null;
+  status?: string | null;
+  user_id?: string | null;
+  is_system_company?: boolean | null;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
 
 interface CompanySelectionStepProps {
   selectedCapabilityIds: string[];
@@ -43,9 +59,6 @@ export function CompanySelectionStep({
   selectedCompanies,
   onSelectionChange,
 }: CompanySelectionStepProps) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [companies, setCompanies] = useState<CompanyWithCapabilities[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,378 +67,26 @@ export function CompanySelectionStep({
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
-
-  useEffect(() => {
-    if (supabase && selectedCapabilityIds.length > 0) {
+    if (selectedCapabilityIds.length > 0) {
       fetchCompanies();
     } else {
       setCompanies([]);
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when supabase/capabilities change
-  }, [supabase, selectedCapabilityIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when capabilities change
+  }, [selectedCapabilityIds]);
 
   const fetchCompanies = async () => {
-    if (!supabase || selectedCapabilityIds.length === 0) return;
+    if (selectedCapabilityIds.length === 0) return;
 
     try {
       setLoading(true);
-
-      console.log(
-        `🔍 Fetching companies with ${selectedCapabilityIds.length} capability ID(s):`,
-        selectedCapabilityIds,
-      );
-
-      // First, check if this capability exists in company_capabilities_ref
-      const { data: capabilityCheck } = await supabase
-        .from("company_capabilities_ref")
-        .select("id, name, category")
-        .in("id", selectedCapabilityIds);
-
-      console.log(
-        `📋 Capability check - Found ${capabilityCheck?.length || 0} capability(ies) in ref table:`,
-        capabilityCheck?.map((c) => ({ id: c.id, name: c.name })),
-      );
-
-      // Check how many companies have capabilities assigned
-      const { count: totalCompanyCapabilities } = await supabase
-        .from("company_capabilities")
-        .select("*", { count: "exact", head: true });
-
-      console.log(
-        `📊 Total company-capability links in database: ${totalCompanyCapabilities || 0}`,
-      );
-
-      if ((totalCompanyCapabilities || 0) === 0) {
-        console.warn(
-          "⚠️ WARNING: The company_capabilities junction table is empty!",
-        );
-        console.warn(
-          "⚠️ Companies need to be processed by the AI service to populate capabilities.",
-        );
-        console.warn(
-          "⚠️ Please run 'Regenerate All Company Capabilities' in the admin panel.",
-        );
-      }
-
-      // First, check how many company_capabilities links exist for these capability IDs (without join)
-      const { count: linkCount, error: _countError } = await supabase
-        .from("company_capabilities")
-        .select("*", { count: "exact", head: true })
-        .in("capability_id", selectedCapabilityIds);
-
-      console.log(
-        `🔗 Found ${linkCount || 0} company-capability links for these capability IDs`,
-      );
-
-      // If no links exist for these capability IDs, they might be newly created capabilities
-      // that haven't been assigned to companies yet
-      if ((linkCount || 0) === 0) {
-        console.warn(
-          "⚠️ WARNING: No companies have these specific capabilities assigned!",
-        );
-        console.warn(
-          "⚠️ These capabilities may have been newly created by AI but companies haven't been processed yet.",
-        );
-        console.warn("⚠️ Capability IDs:", selectedCapabilityIds);
-
-        // Let's check if ANY companies have capabilities at all
-        const { count: totalLinks } = await supabase
-          .from("company_capabilities")
-          .select("*", { count: "exact", head: true });
-        console.log(
-          `📊 Total company-capability links in entire database: ${totalLinks || 0}`,
-        );
-      }
-
-      // Use a join query to avoid URL length issues with large company lists
-      // This directly joins company_capabilities with companies
-      const { data: companyCapabilitiesData, error: joinError } = await supabase
-        .from("company_capabilities")
-        .select(
-          `
-          company_id,
-          capability_id,
-          companies!inner(
-            id,
-            company_name,
-            companies_house_number,
-            contact_email,
-            contact_phone,
-            postcode,
-            address,
-            description,
-            website_url,
-            key_capabilities,
-            certifications,
-            status,
-            user_id,
-            is_system_company,
-            created_at,
-            updated_at
-          )
-        `,
-        )
-        .in("capability_id", selectedCapabilityIds);
-
-      if (joinError) {
-        console.error(
-          "❌ Error fetching companies by capabilities:",
-          joinError,
-        );
-        console.error(
-          "❌ Join error details:",
-          JSON.stringify(joinError, null, 2),
-        );
-        throw joinError;
-      }
-
-      console.log(
-        `📊 Found ${companyCapabilitiesData?.length || 0} company-capability matches after join`,
-      );
-
-      // If we have links but no results after join, RLS might be filtering companies
-      if (
-        (linkCount || 0) > 0 &&
-        (companyCapabilitiesData?.length || 0) === 0
-      ) {
-        console.warn(
-          "⚠️ WARNING: Company-capability links exist but join returned 0 results!",
-        );
-        console.warn(
-          "⚠️ This suggests RLS policies on 'companies' table are filtering out results.",
-        );
-      }
-
-      // FALLBACK: If no companies found by capability IDs, try STRICT text search
-      // Only search if the capability name contains specific industry terms, not generic words
-      if (
-        (companyCapabilitiesData?.length || 0) === 0 &&
-        capabilityCheck &&
-        capabilityCheck.length > 0
-      ) {
-        console.log(
-          "🔄 FALLBACK: No companies found by capability IDs, trying strict text search...",
-        );
-
-        // Extract meaningful keywords from capability names (avoid generic words)
-        const genericWords = new Set([
-          "services",
-          "service",
-          "solutions",
-          "solution",
-          "management",
-          "consulting",
-          "consultancy",
-          "design",
-          "development",
-          "installation",
-          "maintenance",
-          "support",
-        ]);
-
-        const searchKeywords = capabilityCheck
-          .map((c) => {
-            const words = c.name.toLowerCase().split(/\s+/);
-            // Get the most specific/unique words (not generic)
-            return words.filter((w) => w.length > 4 && !genericWords.has(w));
-          })
-          .flat()
-          .filter((term, index, arr) => arr.indexOf(term) === index) // Unique
-          .slice(0, 3); // Limit to 3 most specific keywords
-
-        // Only do fallback if we have meaningful keywords
-        if (searchKeywords.length === 0) {
-          console.log(
-            "⚠️ FALLBACK: No meaningful keywords extracted, skipping text search",
-          );
-        } else {
-          console.log(
-            `🔍 FALLBACK: Searching for specific keywords:`,
-            searchKeywords,
-          );
-
-          // Build OR query - require ALL keywords to appear (more strict)
-          // Search in description and key_capabilities only (not company name to avoid false matches)
-          const orConditions = searchKeywords
-            .map(
-              (keyword) =>
-                `description.ilike.%${keyword}%,key_capabilities.ilike.%${keyword}%`,
-            )
-            .join(",");
-
-          // Search companies by description/key_capabilities text
-          const { data: textSearchResults, error: textSearchError } =
-            await supabase
-              .from("companies")
-              .select(
-                "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, created_at, updated_at",
-              )
-              .eq("status", "active")
-              .or(orConditions)
-              .limit(50); // Lower limit for fallback
-
-          if (
-            !textSearchError &&
-            textSearchResults &&
-            textSearchResults.length > 0
-          ) {
-            console.log(
-              `✅ FALLBACK: Found ${textSearchResults.length} companies via text search`,
-            );
-
-            // FILTER: Only keep companies where the description/key_capabilities actually mentions the capability terms
-            // This prevents false matches (e.g., cutlery company matching "asbestos" because it has "as" in the name)
-            const filteredResults = textSearchResults.filter((company: any) => {
-              const desc = (company.description || "").toLowerCase();
-              const keyCaps = (company.key_capabilities || "").toLowerCase();
-              const combined = `${desc} ${keyCaps}`;
-
-              // Check if at least 2 of the search keywords appear in the description
-              // OR if the full capability name appears
-              const keywordMatches = searchKeywords.filter((keyword) =>
-                combined.includes(keyword),
-              ).length;
-              const fullNameMatches = capabilityCheck.some((cap) => {
-                const fullName = cap.name.toLowerCase();
-                return (
-                  combined.includes(fullName) ||
-                  combined.includes(fullName.replace(/\s+/g, " "))
-                );
-              });
-
-              // Require either: 2+ keyword matches OR full capability name match
-              return (
-                keywordMatches >= Math.min(2, searchKeywords.length) ||
-                fullNameMatches
-              );
-            });
-
-            console.log(
-              `🔍 FALLBACK: Filtered to ${filteredResults.length} relevant companies (after relevance check)`,
-            );
-
-            if (filteredResults.length > 0) {
-              // Convert to CompanyWithCapabilities format
-              const fallbackCompanies = filteredResults.map((company: any) => ({
-                ...company,
-                capabilities: capabilityCheck.map((c) => ({
-                  id: c.id,
-                  name: c.name,
-                })),
-              }));
-
-              // Deduplicate
-              const uniqueFallbackCompanies = new Map<
-                string,
-                CompanyWithCapabilities
-              >();
-              fallbackCompanies.forEach((company: any) => {
-                if (!uniqueFallbackCompanies.has(company.id)) {
-                  uniqueFallbackCompanies.set(company.id, company);
-                }
-              });
-
-              const companiesArray = Array.from(
-                uniqueFallbackCompanies.values(),
-              ).sort((a, b) => a.company_name.localeCompare(b.company_name));
-
-              // Fetch capabilities for each company (only the selected ones) if they exist
-              const companiesWithCapabilities = await Promise.all(
-                companiesArray.map(async (company) => {
-                  // Try to get actual capability links if they exist
-                  const { data: capabilities } = await supabase
-                    .from("company_capabilities")
-                    .select("capability_id, company_capabilities_ref(id, name)")
-                    .eq("company_id", company.id)
-                    .in("capability_id", selectedCapabilityIds);
-
-                  return {
-                    ...company,
-                    capabilities:
-                      capabilities?.map((c: any) => ({
-                        id: c.company_capabilities_ref.id,
-                        name: c.company_capabilities_ref.name,
-                      })) ||
-                      capabilityCheck.map((c) => ({ id: c.id, name: c.name })),
-                  };
-                }),
-              );
-
-              console.log(
-                `✅ Loaded ${companiesWithCapabilities.length} unique companies via strict text search fallback`,
-              );
-              setCompanies(companiesWithCapabilities);
-              setLoading(false);
-              return;
-            } else {
-              console.log(
-                "⚠️ FALLBACK: Text search found companies but none passed relevance filter",
-              );
-            }
-          } else {
-            if (textSearchError) {
-              console.error("⚠️ FALLBACK: Text search error:", textSearchError);
-            } else {
-              console.log("⚠️ FALLBACK: Text search also found 0 companies");
-            }
-          }
-        }
-      }
-
-      // Deduplicate companies (a company may have multiple matching capabilities)
-      // and filter by status
-      const uniqueCompanies = new Map<string, CompanyWithCapabilities>();
-
-      (companyCapabilitiesData || []).forEach((item: any) => {
-        const company = item.companies;
-        if (
-          company &&
-          (company.status === "active" ||
-            company.status === "pending_review") &&
-          !uniqueCompanies.has(company.id)
-        ) {
-          uniqueCompanies.set(company.id, {
-            ...company,
-            capabilities: [],
-          });
-        }
+      const result = await api.getCompaniesByCapabilities({
+        capabilityIds: selectedCapabilityIds,
       });
-
-      // Convert map to array and sort
-      const companiesArray = Array.from(uniqueCompanies.values()).sort((a, b) =>
-        a.company_name.localeCompare(b.company_name),
-      );
-
-      // Fetch capabilities for each company (only the selected ones)
-      const companiesWithCapabilities = await Promise.all(
-        companiesArray.map(async (company) => {
-          const { data: capabilities } = await supabase
-            .from("company_capabilities")
-            .select("capability_id, company_capabilities_ref(id, name)")
-            .eq("company_id", company.id)
-            .in("capability_id", selectedCapabilityIds);
-
-          return {
-            ...company,
-            capabilities:
-              capabilities?.map((c: any) => ({
-                id: c.company_capabilities_ref.id,
-                name: c.company_capabilities_ref.name,
-              })) || [],
-          };
-        }),
-      );
-
-      console.log(
-        `✅ Loaded ${companiesWithCapabilities.length} unique companies with matching capabilities`,
-      );
-      setCompanies(companiesWithCapabilities);
+      setCompanies((result.companies as unknown as CompanyWithCapabilities[]) || []);
     } catch (error) {
-      console.error("❌ Error fetching companies:", error);
+      console.error("Error fetching companies:", error);
       toast.error(
         "Failed to load companies. Make sure companies have been processed and have capabilities assigned.",
       );

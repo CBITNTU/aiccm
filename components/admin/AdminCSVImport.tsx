@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable react/no-unescaped-entities -- CSV row types; copy uses apostrophes */
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,9 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 import {
   Upload,
@@ -114,9 +112,6 @@ const matchCapability = (
 };
 
 export function AdminCSVImport() {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -127,11 +122,6 @@ export function AdminCSVImport() {
   const [preview, setPreview] = useState<CSVRow[]>([]);
   const [updateExisting, setUpdateExisting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
 
   // Improved CSV parser that handles quoted fields and commas within fields
   const parseCSVLine = (line: string): string[] => {
@@ -295,7 +285,7 @@ export function AdminCSVImport() {
   };
 
   const handleImport = async () => {
-    if (!file || !supabase) return;
+    if (!file) return;
 
     setIsImporting(true);
     setProgress(0);
@@ -313,18 +303,19 @@ export function AdminCSVImport() {
       const errorList: string[] = [];
 
       // Fetch all reference capabilities once for matching
-      const { data: refCapabilities, error: refError } = await supabase
-        .from("company_capabilities_ref")
-        .select("id, name");
-
-      if (refError) {
+      let capabilitiesRef: Array<{ id: string; name: string }> = [];
+      try {
+        const { capabilities } = await api.adminListCapabilities();
+        capabilitiesRef = capabilities.map((c) => ({
+          id: c.id as string,
+          name: c.name as string,
+        }));
+      } catch (refError) {
         console.warn("Failed to fetch reference capabilities:", refError);
         toast.warning(
           "Capability matching disabled - failed to load reference list",
         );
       }
-
-      const capabilitiesRef = refCapabilities || [];
 
       for (let i = 0; i < total; i++) {
         const company = companies[i];
@@ -336,52 +327,49 @@ export function AdminCSVImport() {
         setErrors(errorList);
 
         try {
-          // Check if company already exists (by name or companies house number)
-          let existing = null;
-
-          if (company.company_name) {
-            const { data: byName } = await supabase
-              .from("companies")
-              .select("id")
-              .eq("company_name", company.company_name)
-              .maybeSingle();
-
-            existing = byName;
+          // Extract postcode from full address if not already set
+          let postcode = company.postcode;
+          if (!postcode && company.full_address) {
+            postcode = extractPostcode(company.full_address);
           }
 
-          if (!existing && company.companies_house_number) {
-            const { data: byChNumber } = await supabase
-              .from("companies")
-              .select("id")
-              .eq("companies_house_number", company.companies_house_number)
-              .maybeSingle();
-
-            existing = byChNumber;
+          // Build description with SIC codes if available
+          let description = company.description || "";
+          if (company.sic_codes) {
+            if (description) {
+              description += `\n\nSIC Codes: ${company.sic_codes}`;
+            } else {
+              description = `SIC Codes: ${company.sic_codes}`;
+            }
           }
 
-          if (existing) {
+          // Build company data for import
+          const companyData: Record<string, unknown> = {
+            company_name: company.company_name,
+            companies_house_number: company.companies_house_number || null,
+            contact_email: company.contact_email || null,
+            contact_phone: company.contact_phone || null,
+            postcode: postcode || null,
+            address: company.full_address || null,
+            description: description || null,
+            website_url: company.website_url || null,
+            key_capabilities: company.key_capabilities || null,
+            certifications: company.certifications || null,
+            user_id: null,
+            is_system_company: true,
+            status: "active",
+          };
+
+          // Try to import the company (the API handles dedup by name)
+          const { company: importedCompany, alreadyExists } =
+            await api.adminImportCompany(companyData);
+
+          const companyId = importedCompany.id as string;
+
+          if (alreadyExists) {
             if (updateExisting) {
-              // Update existing company's capabilities
-              // Extract postcode from full address if not already set
-              let postcode = company.postcode;
-              if (!postcode && company.full_address) {
-                postcode = extractPostcode(company.full_address);
-              }
-
-              // Build description with SIC codes if available
-              let description = company.description || "";
-              if (company.sic_codes) {
-                if (description) {
-                  description += `\n\nSIC Codes: ${company.sic_codes}`;
-                } else {
-                  description = `SIC Codes: ${company.sic_codes}`;
-                }
-              }
-
-              // Update company fields (optional - only update if CSV has new data)
-              const updateData: Partial<
-                Database["public"]["Tables"]["companies"]["Update"]
-              > = {};
+              // Update existing company fields
+              const updateData: Record<string, unknown> = {};
               if (company.contact_email)
                 updateData.contact_email = company.contact_email;
               if (company.contact_phone)
@@ -396,12 +384,9 @@ export function AdminCSVImport() {
                 updateData.key_capabilities = company.key_capabilities;
 
               if (Object.keys(updateData).length > 0) {
-                const { error: updateError } = await supabase
-                  .from("companies")
-                  .update(updateData)
-                  .eq("id", existing.id);
-
-                if (updateError) {
+                try {
+                  await api.adminUpdateCompany(companyId, updateData);
+                } catch (updateError) {
                   console.warn(
                     `Failed to update company ${company.company_name}:`,
                     updateError,
@@ -409,20 +394,7 @@ export function AdminCSVImport() {
                 }
               }
 
-              // Delete existing capability links
-              const { error: deleteError } = await supabase
-                .from("company_capabilities")
-                .delete()
-                .eq("company_id", existing.id);
-
-              if (deleteError) {
-                console.warn(
-                  `Failed to delete existing capabilities for ${company.company_name}:`,
-                  deleteError,
-                );
-              }
-
-              // Smart mapping: Parse and link new capabilities
+              // Smart mapping: Parse and sync capabilities
               if (company.key_capabilities && capabilitiesRef.length > 0) {
                 const csvCapabilities = parseCapabilities(
                   company.key_capabilities,
@@ -436,20 +408,13 @@ export function AdminCSVImport() {
                   }
                 }
 
-                // Insert matched capabilities into junction table
+                // Sync capabilities (replaces delete + insert)
                 if (matchedCapabilityIds.length > 0) {
-                  const capabilityLinks = matchedCapabilityIds.map((capId) => ({
-                    company_id: existing.id,
-                    capability_id: capId,
-                  }));
-
-                  const { error: linkError } = await supabase
-                    .from("company_capabilities")
-                    .insert(capabilityLinks);
-
-                  if (linkError) {
+                  try {
+                    await api.syncCapabilities(companyId, matchedCapabilityIds);
+                  } catch (linkError) {
                     console.warn(
-                      `Failed to link capabilities for ${company.company_name}:`,
+                      `Failed to sync capabilities for ${company.company_name}:`,
                       linkError,
                     );
                   }
@@ -463,7 +428,7 @@ export function AdminCSVImport() {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    companyId: existing.id,
+                    companyId,
                     jobTypes: ["company_summary", "company_taxonomy"],
                     fullRegeneration: true, // Flag for full regeneration mode
                   }),
@@ -488,7 +453,7 @@ export function AdminCSVImport() {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    companyId: existing.id,
+                    companyId,
                     jobTypes: ["company_taxonomy"],
                     fullRegeneration: true, // Flag for full regeneration mode
                   }),
@@ -510,53 +475,8 @@ export function AdminCSVImport() {
             continue;
           }
 
-          // Extract postcode from full address if not already set
-          let postcode = company.postcode;
-          if (!postcode && company.full_address) {
-            postcode = extractPostcode(company.full_address);
-          }
-
-          // Build description with SIC codes if available
-          let description = company.description || "";
-          if (company.sic_codes) {
-            if (description) {
-              description += `\n\nSIC Codes: ${company.sic_codes}`;
-            } else {
-              description = `SIC Codes: ${company.sic_codes}`;
-            }
-          }
-
-          // Insert new company as system company
-          // user_id is null for system companies (made nullable in migration)
-          const { data: insertedCompany, error: insertError } = await supabase
-            .from("companies")
-            .insert({
-              company_name: company.company_name,
-              companies_house_number: company.companies_house_number || null,
-              contact_email: company.contact_email || null,
-              contact_phone: company.contact_phone || null,
-              postcode: postcode || null,
-              address: company.full_address || null, // Store full address if available
-              description: description || null,
-              website_url: company.website_url || null,
-              key_capabilities: company.key_capabilities || null, // Keep raw text for reference
-              certifications: company.certifications || null,
-              user_id: null, // NULL for system companies (not empty string)
-              is_system_company: true,
-              status: "active",
-            } as Database["public"]["Tables"]["companies"]["Insert"])
-            .select("id")
-            .single();
-
-          if (insertError || !insertedCompany) {
-            errorList.push(
-              `${company.company_name}: ${insertError?.message || "Failed to insert company"}`,
-            );
-            setErrorCount(errorList.length);
-            continue;
-          }
-
-          // Smart mapping: Parse and link capabilities
+          // New company was inserted successfully
+          // Smart mapping: Parse and sync capabilities
           if (company.key_capabilities && capabilitiesRef.length > 0) {
             const csvCapabilities = parseCapabilities(company.key_capabilities);
             const matchedCapabilityIds: string[] = [];
@@ -568,18 +488,11 @@ export function AdminCSVImport() {
               }
             }
 
-            // Insert matched capabilities into junction table
+            // Sync capabilities
             if (matchedCapabilityIds.length > 0) {
-              const capabilityLinks = matchedCapabilityIds.map((capId) => ({
-                company_id: insertedCompany.id,
-                capability_id: capId,
-              }));
-
-              const { error: linkError } = await supabase
-                .from("company_capabilities")
-                .insert(capabilityLinks);
-
-              if (linkError) {
+              try {
+                await api.syncCapabilities(companyId, matchedCapabilityIds);
+              } catch (linkError) {
                 console.warn(
                   `Failed to link capabilities for ${company.company_name}:`,
                   linkError,
@@ -590,13 +503,13 @@ export function AdminCSVImport() {
           }
 
           // Queue AI processing jobs for new company
-          if (insertedCompany?.id) {
+          if (companyId) {
             try {
               const response = await fetch("/api/queue/company-ai", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  companyId: insertedCompany.id,
+                  companyId,
                   jobTypes: ["company_summary", "company_taxonomy"],
                 }),
               });
@@ -779,7 +692,6 @@ export function AdminCSVImport() {
           <Button
             onClick={handleImport}
             className="w-full"
-            disabled={!supabase}
           >
             <Upload className="w-4 h-4 mr-2" />
             Import Companies

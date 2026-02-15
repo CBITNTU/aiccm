@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface MatchingStatus {
   total: number;
@@ -14,63 +17,33 @@ interface MatchingStatus {
   }>;
 }
 
+async function fetchMatchingStatus(): Promise<MatchingStatus> {
+  const response = await fetch(`/api/match-tenders/status`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch matching status");
+  }
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || "Failed to fetch status");
+  }
+  return data;
+}
+
 export function useMatchingProgress(companyId: string | null, enabled = true) {
-  const [status, setStatus] = useState<MatchingStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: queryKeys.matchingProgress(companyId!),
+    queryFn: fetchMatchingStatus,
+    enabled: !!companyId && enabled,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data && data.pending === 0 && data.processing === 0) return false;
+      return 2500;
+    },
+  });
 
-  useEffect(() => {
-    if (!companyId || !enabled) {
-      setStatus(null);
-      return;
-    }
-
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const fetchStatus = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/match-tenders/status`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch matching status");
-        }
-
-        const data = await response.json();
-        if (data.success) {
-          setStatus(data);
-          setError(null);
-
-          // Stop polling if all jobs are complete or failed
-          if (data.pending === 0 && data.processing === 0) {
-            if (intervalId) {
-              clearInterval(intervalId);
-              intervalId = null;
-            }
-          }
-        } else {
-          throw new Error(data.error || "Failed to fetch status");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Initial fetch
-    fetchStatus();
-
-    // Poll every 2-3 seconds while processing
-    if (enabled) {
-      intervalId = setInterval(fetchStatus, 2500);
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [companyId, enabled]);
-
-  return { status, isLoading, error };
+  return {
+    status: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error?.message ?? null,
+  };
 }

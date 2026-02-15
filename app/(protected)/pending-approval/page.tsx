@@ -21,6 +21,7 @@ import {
   Building2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 
 interface PendingInfo {
@@ -43,43 +44,22 @@ export default function PendingApprovalPage() {
 
   const fetchPendingInfo = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const result = await api.getApprovalStatus();
 
-      if (!user) {
-        router.push("/auth");
-        return;
-      }
-
-      // Get profile info
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("approval_status, signup_type")
-        .eq("user_id", user.id)
-        .single();
-
-      if (profile?.approval_status === "approved") {
+      if (result.approvalStatus === "approved") {
         router.push("/dashboard");
         return;
       }
 
-      // Check for join request if applicable
-      const { data: joinRequest } = await supabase
-        .from("company_join_requests")
-        .select("status, company_name_requested")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
       setPendingInfo({
-        signupType: profile?.signup_type || null,
-        companyName: joinRequest?.company_name_requested || null,
-        joinRequestStatus: joinRequest?.status || null,
+        signupType: result.signupType as PendingInfo["signupType"],
+        companyName: result.companyName,
+        joinRequestStatus: result.joinRequestStatus,
       });
     } catch (error) {
       console.error("Error fetching pending info:", error);
+      // If API fails (e.g., not authenticated), redirect to auth
+      router.push("/auth");
     } finally {
       setLoading(false);
     }
@@ -93,25 +73,12 @@ export default function PendingApprovalPage() {
   const handleCheckStatus = async () => {
     setChecking(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const result = await api.getApprovalStatus();
 
-      if (!user) {
-        router.push("/auth");
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("approval_status")
-        .eq("user_id", user.id)
-        .single();
-
-      if (profile?.approval_status === "approved") {
+      if (result.approvalStatus === "approved") {
         toast.success("Your account has been approved!");
         router.push("/dashboard");
-      } else if (profile?.approval_status === "rejected") {
+      } else if (result.approvalStatus === "rejected") {
         toast.error("Your account application was not approved.");
         await supabase.auth.signOut();
         router.push("/auth?rejected=true");

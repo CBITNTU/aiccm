@@ -17,10 +17,13 @@ import { CompanySelectionStep } from "./CompanySelectionStep";
 import { ProjectSummaryStep } from "./ProjectSummaryStep";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+interface Company {
+  id: string;
+  company_name: string;
+  postcode?: string | null;
+  [key: string]: unknown;
+}
 
 interface ProjectWizardProps {
   onClose: () => void;
@@ -88,17 +91,6 @@ export function ProjectWizard({
 
       // Only fetch if we don't have any selected capabilities yet (first time)
       if (selectedCapabilities.length > 0) return;
-
-      // Check if user is authenticated
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        console.warn("User not authenticated, skipping AI suggestions");
-        return;
-      }
 
       setIsLoadingCapabilities(true);
       try {

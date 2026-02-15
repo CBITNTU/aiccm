@@ -11,8 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Mail, Award, Tag } from "lucide-react";
 import type { Database } from "@/lib/supabase/types";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { api } from "@/lib/api/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
@@ -44,46 +43,21 @@ interface CompanyCardProps {
 }
 
 export function CompanyCard({ company, onClick }: CompanyCardProps) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [taxonomies, setTaxonomies] = useState<
     Array<{ id: string; name: string }>
   >([]);
 
-  // Initialize supabase client
   useEffect(() => {
-    const client = createClient();
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- init client once on mount
-    setSupabase(client);
-  }, []);
-
-  useEffect(() => {
-    if (!supabase) return;
-
     const fetchTaxonomies = async () => {
-      const { data } = await supabase
-        .from("company_taxonomies")
-        .select("taxonomy_id, taxonomies(id, name)")
-        .eq("company_id", company.id);
-
-      if (data) {
-        setTaxonomies(
-          data
-            .map((ct) => ({
-              id:
-                (ct.taxonomies as { id: string; name: string } | null)?.id ||
-                "",
-              name:
-                (ct.taxonomies as { id: string; name: string } | null)?.name ||
-                "",
-            }))
-            .filter((t) => t.name),
-        );
+      try {
+        const result = await api.getCompanyTaxonomies(company.id);
+        setTaxonomies(result.taxonomies || []);
+      } catch {
+        // Silently fail - taxonomies are optional display data
       }
     };
     fetchTaxonomies();
-  }, [supabase, company.id]);
+  }, [company.id]);
 
   // Type guard to check if company has all fields (is full Company type)
   const isFullCompany = (comp: PublicCompany | Company): comp is Company => {

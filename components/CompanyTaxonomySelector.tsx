@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
 import {
@@ -55,14 +55,8 @@ export function CompanyTaxonomySelector({
   const fetchCompanyTaxonomies = async () => {
     try {
       setLoading(true);
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("company_taxonomies")
-        .select("taxonomy_id")
-        .eq("company_id", companyId);
-
-      if (error) throw error;
-      setSelectedTaxonomies(data?.map((ct) => ct.taxonomy_id) || []);
+      const result = await api.getCompanyTaxonomies(companyId);
+      setSelectedTaxonomies(result.taxonomies?.map((t) => t.id) || []);
     } catch (error) {
       console.error("Error fetching company taxonomies:", error);
       toast.error("Failed to load your categories");
@@ -82,14 +76,10 @@ export function CompanyTaxonomySelector({
 
     try {
       setSaving(true);
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("company_taxonomies")
-        .insert({ company_id: companyId, taxonomy_id: taxonomyToAdd });
+      const newTaxonomies = [...selectedTaxonomies, taxonomyToAdd];
+      await api.syncCompanyTaxonomies(companyId, newTaxonomies);
 
-      if (error) throw error;
-
-      setSelectedTaxonomies([...selectedTaxonomies, taxonomyToAdd]);
+      setSelectedTaxonomies(newTaxonomies);
       setLevel1(null);
       setLevel2(null);
       setLevel3(null);
@@ -106,18 +96,10 @@ export function CompanyTaxonomySelector({
   const removeTaxonomy = async (taxonomyId: string) => {
     try {
       setSaving(true);
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("company_taxonomies")
-        .delete()
-        .eq("company_id", companyId)
-        .eq("taxonomy_id", taxonomyId);
+      const newTaxonomies = selectedTaxonomies.filter((id) => id !== taxonomyId);
+      await api.syncCompanyTaxonomies(companyId, newTaxonomies);
 
-      if (error) throw error;
-
-      setSelectedTaxonomies(
-        selectedTaxonomies.filter((id) => id !== taxonomyId),
-      );
+      setSelectedTaxonomies(newTaxonomies);
 
       toast.success("Category removed");
     } catch (error) {

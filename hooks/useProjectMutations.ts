@@ -1,22 +1,29 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { api } from "@/lib/api/client";
-import type { Database } from "@/lib/supabase/types";
+import { queryKeys } from "@/lib/queryKeys";
 import type {
   GapAnalysis,
   TeamAnalysis,
   RecommendedPartner,
 } from "./useProjects";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
-
 interface CreateProjectInput {
   name: string;
   description?: string;
   target_tender_id?: string | null;
   lead_company_id: string;
+}
+
+interface CompanyLike {
+  id: string;
+  company_name: string;
+  key_capabilities?: string | null;
+  certifications?: string | null;
+  past_projects?: string | null;
+  description?: string | null;
+  postcode?: string | null;
 }
 
 interface Tender {
@@ -40,27 +47,18 @@ interface TeamMember {
 // Create project mutation
 export function useCreateProject() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async (input: CreateProjectInput) => {
-      const { data, error } = await supabase
-        .from("virtual_organizations")
-        .insert({
-          name: input.name,
-          description: input.description || null,
-          lead_company_id: input.lead_company_id,
-          target_tender_id: input.target_tender_id || null,
-          status: "draft",
-        })
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
-      return data;
+      const result = await api.createProject({
+        name: input.name,
+        description: input.description,
+        target_tender_id: input.target_tender_id,
+        company_id: input.lead_company_id,
+      });
+      return result.project as Record<string, unknown>;
     },
     onSuccess: (_, variables) => {
-      // Invalidate projects list
       queryClient.invalidateQueries({
         queryKey: ["projects", variables.lead_company_id],
       });
@@ -71,7 +69,6 @@ export function useCreateProject() {
 // Add team member mutation
 export function useAddTeamMember() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({
@@ -81,23 +78,8 @@ export function useAddTeamMember() {
       projectId: string;
       companyId: string;
     }) => {
-      const { data, error } = await supabase
-        .from("vo_members")
-        .insert({
-          vo_id: projectId,
-          company_id: companyId,
-          role: "invited",
-        })
-        .select(
-          `
-          *,
-          companies:company_id (*)
-        `,
-        )
-        .single();
-
-      if (error) throw new Error(error.message);
-      return data;
+      const result = await api.addProjectMember(projectId, companyId);
+      return result.member;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -110,24 +92,16 @@ export function useAddTeamMember() {
 // Remove team member mutation
 export function useRemoveTeamMember() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({
       memberId,
-      projectId: _projectId,
+      projectId,
     }: {
       memberId: string;
       projectId: string;
     }) => {
-      // projectId is passed through variables for cache invalidation in onSuccess
-      void _projectId;
-      const { error } = await supabase
-        .from("vo_members")
-        .delete()
-        .eq("id", memberId);
-
-      if (error) throw new Error(error.message);
+      await api.removeProjectMember(projectId, memberId);
       return { memberId };
     },
     onSuccess: (_, variables) => {
@@ -141,7 +115,6 @@ export function useRemoveTeamMember() {
 // Run gap analysis mutation
 export function useRunGapAnalysis() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({
@@ -150,7 +123,7 @@ export function useRunGapAnalysis() {
       tenderId,
     }: {
       projectId: string;
-      company: Company;
+      company: CompanyLike;
       tenderId: string;
     }) => {
       // Call server-side API which handles prompt construction and AI call
@@ -166,51 +139,52 @@ export function useRunGapAnalysis() {
       let recommendations: RecommendedPartner[] = [];
 
       if (missingComps.length > 0) {
-        const { data: companies } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("status", "active")
-          .neq("id", company.id)
-          .limit(100);
+        // Fetch active companies from directory for partner matching
+        const dirData = await api.getDirectory({ limit: 100 });
+        const companies = (dirData.companies || []) as unknown as CompanyLike[];
 
-        if (companies && companies.length > 0) {
-          const scored = companies.map((c) => {
-            const capText = (c.key_capabilities || "").toLowerCase();
-            const certText = (c.certifications || "").toLowerCase();
-            const projText = (c.past_projects || "").toLowerCase();
-            const descText = (c.description || "").toLowerCase();
-            const allText = `${capText} ${certText} ${projText} ${descText}`;
+        if (companies.length > 0) {
+          const scored = companies
+            .filter((c) => c.id !== company.id)
+            .map((c) => {
+              const capText = (c.key_capabilities || "").toLowerCase();
+              const certText = (c.certifications || "").toLowerCase();
+              const projText = (c.past_projects || "").toLowerCase();
+              const descText = (c.description || "").toLowerCase();
+              const allText = `${capText} ${certText} ${projText} ${descText}`;
 
-            const matchingComps: string[] = [];
+              const matchingComps: string[] = [];
 
-            missingComps.forEach((comp: string) => {
-              const compLower = comp.toLowerCase();
-              const compWords = compLower.split(/\s+/);
+              missingComps.forEach((comp: string) => {
+                const compLower = comp.toLowerCase();
+                const compWords = compLower.split(/\s+/);
 
-              const hasMatch = compWords.some(
-                (word: string) => word.length > 3 && allText.includes(word),
-              );
+                const hasMatch = compWords.some(
+                  (word: string) => word.length > 3 && allText.includes(word),
+                );
 
-              if (hasMatch || allText.includes(compLower)) {
-                matchingComps.push(comp);
-              }
+                if (hasMatch || allText.includes(compLower)) {
+                  matchingComps.push(comp);
+                }
+              });
+
+              const relevanceScore =
+                missingComps.length > 0
+                  ? Math.round(
+                      (matchingComps.length / missingComps.length) * 100,
+                    )
+                  : 0;
+
+              return {
+                id: c.id,
+                company_name: c.company_name,
+                key_capabilities: c.key_capabilities || "Not specified",
+                certifications: c.certifications || "Not specified",
+                location: c.postcode || "Not specified",
+                relevanceScore,
+                matchingCompetencies: matchingComps,
+              };
             });
-
-            const relevanceScore =
-              missingComps.length > 0
-                ? Math.round((matchingComps.length / missingComps.length) * 100)
-                : 0;
-
-            return {
-              id: c.id,
-              company_name: c.company_name,
-              key_capabilities: c.key_capabilities || "Not specified",
-              certifications: c.certifications || "Not specified",
-              location: c.postcode || "Not specified",
-              relevanceScore,
-              matchingCompetencies: matchingComps,
-            };
-          });
 
           recommendations = scored
             .filter((c) => c.relevanceScore >= 20)
@@ -229,18 +203,11 @@ export function useRunGapAnalysis() {
         analyzedAt: new Date().toISOString(),
       };
 
-      // Save gap analysis to database
-      const { error } = await supabase
-        .from("virtual_organizations")
-        .update({
-          gap_analysis:
-            gapAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
-          recommended_partners:
-            recommendations as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["recommended_partners"],
-        })
-        .eq("id", projectId);
-
-      if (error) throw new Error(error.message);
+      // Save gap analysis to database via API
+      await api.updateProject(projectId, {
+        gap_analysis: gapAnalysisData,
+        recommended_partners: recommendations,
+      });
 
       return {
         gapAnalysis: gapAnalysisData,
@@ -270,15 +237,10 @@ export function useRunTeamAnalysis() {
       teamMembers,
     }: {
       projectId: string;
-      company: Company;
+      company: CompanyLike;
       tender: Tender;
       teamMembers: TeamMember[];
     }) => {
-      // Call the server-side API endpoint which handles:
-      // - Prompt construction
-      // - AI call with Vercel AI SDK
-      // - Zod schema validation
-      // - Database persistence
       const result = await api.analyzeTeam({
         projectId,
         company: {
@@ -306,10 +268,9 @@ export function useRunTeamAnalysis() {
   });
 }
 
-// Update gap analysis (human overrides: move competencies ↔ missing)
+// Update gap analysis (human overrides: move competencies <-> missing)
 export function useUpdateGapAnalysis() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({
@@ -325,13 +286,10 @@ export function useUpdateGapAnalysis() {
       const coveragePercentage =
         total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
 
-      const { data: vo } = await supabase
-        .from("virtual_organizations")
-        .select("gap_analysis")
-        .eq("id", projectId)
-        .single();
-
-      const existing = (vo?.gap_analysis as Record<string, unknown>) || {};
+      // Fetch current gap_analysis to merge
+      const details = await api.getProjectDetails(projectId);
+      const existing =
+        (details.project.gap_analysis as Record<string, unknown>) || {};
       const updated: Record<string, unknown> = {
         ...existing,
         companyCompetencies,
@@ -339,15 +297,8 @@ export function useUpdateGapAnalysis() {
         coveragePercentage,
       };
 
-      const { error } = await supabase
-        .from("virtual_organizations")
-        .update({
-          gap_analysis:
-            updated as Database["public"]["Tables"]["virtual_organizations"]["Update"]["gap_analysis"],
-        })
-        .eq("id", projectId);
+      await api.updateProject(projectId, { gap_analysis: updated });
 
-      if (error) throw new Error(error.message);
       return { projectId, gapAnalysis: updated };
     },
     onSuccess: (_, variables) => {
@@ -359,10 +310,9 @@ export function useUpdateGapAnalysis() {
   });
 }
 
-// Update team analysis (human overrides: move competencies ↔ missing)
+// Update team analysis (human overrides: move competencies <-> missing)
 export function useUpdateTeamAnalysis() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({
@@ -378,13 +328,10 @@ export function useUpdateTeamAnalysis() {
       const coveragePercentage =
         total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
 
-      const { data: vo } = await supabase
-        .from("virtual_organizations")
-        .select("team_analysis")
-        .eq("id", projectId)
-        .single();
-
-      const existing = (vo?.team_analysis as Record<string, unknown>) || {};
+      // Fetch current team_analysis to merge
+      const details = await api.getProjectDetails(projectId);
+      const existing =
+        (details.project.team_analysis as Record<string, unknown>) || {};
       const updated: Record<string, unknown> = {
         ...existing,
         companyCompetencies,
@@ -392,15 +339,8 @@ export function useUpdateTeamAnalysis() {
         coveragePercentage,
       };
 
-      const { error } = await supabase
-        .from("virtual_organizations")
-        .update({
-          team_analysis:
-            updated as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
-        })
-        .eq("id", projectId);
+      await api.updateProject(projectId, { team_analysis: updated });
 
-      if (error) throw new Error(error.message);
       return { projectId, teamAnalysis: updated };
     },
     onSuccess: (_, variables) => {
@@ -415,7 +355,6 @@ export function useUpdateTeamAnalysis() {
 // Update project status mutation
 export function useUpdateProjectStatus() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({
@@ -425,12 +364,7 @@ export function useUpdateProjectStatus() {
       projectId: string;
       status: string;
     }) => {
-      const { error } = await supabase
-        .from("virtual_organizations")
-        .update({ status })
-        .eq("id", projectId);
-
-      if (error) throw new Error(error.message);
+      await api.updateProject(projectId, { status });
       return { projectId, status };
     },
     onSuccess: () => {
@@ -443,20 +377,10 @@ export function useUpdateProjectStatus() {
 // Delete project mutation
 export function useDeleteProject() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({ projectId }: { projectId: string }) => {
-      // First delete team members
-      await supabase.from("vo_members").delete().eq("vo_id", projectId);
-
-      // Then delete project
-      const { error } = await supabase
-        .from("virtual_organizations")
-        .delete()
-        .eq("id", projectId);
-
-      if (error) throw new Error(error.message);
+      await api.deleteProject(projectId);
       return { projectId };
     },
     onSuccess: () => {
@@ -467,6 +391,8 @@ export function useDeleteProject() {
 
 // Send invitations mutation
 export function useSendInvitations() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({
       projectId,
@@ -484,13 +410,18 @@ export function useSendInvitations() {
       );
       return result;
     },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["projectDetails", variables.projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
   });
 }
 
 // Update project tender mutation
 export function useUpdateProjectTender() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   return useMutation({
     mutationFn: async ({
@@ -500,18 +431,13 @@ export function useUpdateProjectTender() {
       projectId: string;
       tenderId: string | null;
     }) => {
-      const { error } = await supabase
-        .from("virtual_organizations")
-        .update({
-          target_tender_id: tenderId,
-          // Clear analysis when tender changes since it's no longer valid
-          gap_analysis: null,
-          team_analysis: null,
-          recommended_partners: null,
-        })
-        .eq("id", projectId);
-
-      if (error) throw new Error(error.message);
+      await api.updateProject(projectId, {
+        target_tender_id: tenderId,
+        // Clear analysis when tender changes since it's no longer valid
+        gap_analysis: null,
+        team_analysis: null,
+        recommended_partners: null,
+      });
       return { projectId, tenderId };
     },
     onSuccess: (_, variables) => {

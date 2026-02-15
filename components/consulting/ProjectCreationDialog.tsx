@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { api } from "@/lib/api/client";
 import {
   Dialog,
   DialogContent,
@@ -48,9 +46,6 @@ export function ProjectCreationDialog({
   onProjectCreated,
   companyId,
 }: ProjectCreationDialogProps) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
   const [loading, setLoading] = useState(false);
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
@@ -58,12 +53,6 @@ export function ProjectCreationDialog({
     name: "",
     description: "",
   });
-
-  // Initialize supabase client
-  useEffect(() => {
-    const client = createClient();
-    setSupabase(client);
-  }, []);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -96,31 +85,17 @@ export function ProjectCreationDialog({
       return;
     }
 
-    if (!supabase) {
-      toast.error("Database connection not available");
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Create project directly - RLS policies now use security definer functions
-      const { data: project, error: projectError } = await supabase
-        .from("virtual_organizations")
-        .insert({
-          name: formData.name,
-          description: formData.description || null,
-          lead_company_id: companyId,
-          target_tender_id: selectedTender?.id || null,
-          status: "draft",
-        })
-        .select()
-        .single();
+      const result = await api.createProject({
+        name: formData.name,
+        description: formData.description || undefined,
+        target_tender_id: selectedTender?.id || null,
+        company_id: companyId,
+      });
 
-      if (projectError) {
-        console.error("Project creation error:", projectError);
-        throw new Error(projectError.message);
-      }
+      const project = result.project as { id: string };
 
       toast.success("Project created!");
       onProjectCreated(project.id);

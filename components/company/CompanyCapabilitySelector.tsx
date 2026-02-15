@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- capability row types */
+ 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";

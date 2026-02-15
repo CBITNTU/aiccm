@@ -172,10 +172,8 @@ async function fetchFromTEDAPI(
   const url = `${TED_API_BASE}/notices/search`;
 
   // Build query string for date filtering
-  // TED API expert query syntax requires dates in YYYYMMDD format (8 digits, no dashes)
-  // Pattern: [0-9]{8} or today([+-]?[0-9]*)
-  // Field names use hyphens: publication-date
-  // Try using "*" first to get all active notices, then we can filter by date if needed
+  // TED API expert query syntax: dates in YYYYMMDD, field names use hyphens (e.g. publication-date).
+  // Bare "*" is invalid; use a date range or other TERM expression.
 
   // Helper function to convert date to YYYYMMDD format
   const formatDateForTED = (dateStr: string): string => {
@@ -186,43 +184,20 @@ async function fetchFromTEDAPI(
     return `${year}${month}${day}`;
   };
 
-  // Start with "*" to get all active notices (scope: ACTIVE will filter them)
-  // If user provides dates, we can try to add date filters, but "*" should work
-  let query = "*";
-
-  // Try date filtering if provided, but if it doesn't work, fall back to "*"
-  // Note: Date filtering might need different field names or syntax
+  // TED expert query does NOT accept bare "*". Must use a TERM e.g. date range (YYYYMMDD).
+  const DEFAULT_FROM = "19900101";
+  let builtQuery = `publication-date >= ${DEFAULT_FROM}`;
   if (dateFrom || dateTo) {
     try {
-      const dateParts: string[] = [];
-      if (dateFrom) {
-        const dateFromStr = formatDateForTED(dateFrom);
-        dateParts.push(`publication-date >= ${dateFromStr}`);
-      }
-      if (dateTo) {
-        const dateToStr = formatDateForTED(dateTo);
-        dateParts.push(`publication-date <= ${dateToStr}`);
-      }
-      if (dateParts.length > 0) {
-        // Try the date query, but we'll fall back to "*" if it returns 0 results
-        query = dateParts.join(" AND ");
-      }
-    } catch (error) {
-      console.warn("Error building date query, using '*':", error);
-      query = "*";
+      const parts: string[] = [];
+      if (dateFrom) parts.push(`publication-date >= ${formatDateForTED(dateFrom)}`);
+      if (dateTo) parts.push(`publication-date <= ${formatDateForTED(dateTo)}`);
+      if (parts.length > 0) builtQuery = parts.join(" AND ");
+    } catch {
+      // keep builtQuery as default
     }
   }
 
-  // For now, let's use "*" to get all active notices
-  // The scope: "ACTIVE" parameter should handle filtering
-  // We can add date filtering later once we confirm the API works
-  query = "*";
-
-  console.log("TED Query (using '*' to get all active notices):", query);
-
-  // Build request body according to Swagger documentation
-  // The 'fields' array is REQUIRED and must not be empty
-  // Include essential fields we need for tender data
   const fields = [
     "notice-identifier",
     "notice-title",
@@ -239,11 +214,14 @@ async function fetchFromTEDAPI(
     "buyer-contact-point",
   ];
 
+  if (builtQuery === "*" || (builtQuery && builtQuery.trim() === "*")) {
+    builtQuery = `publication-date >= ${DEFAULT_FROM}`;
+  }
   const requestBody: Record<string, unknown> = {
-    query: query || "*", // Use "*" to get all if query is empty
-    fields: fields, // REQUIRED: must not be empty
+    query: builtQuery,
+    fields,
     page: page,
-    limit: Math.min(limit, 100), // Max 100 per TED API
+    limit: Math.min(limit, 250), // Max 250 per TED Search API (Swagger)
     scope: "ACTIVE", // ACTIVE, ARCHIVED, or ALL
     checkQuerySyntax: true, // Enable syntax checking to get better errors
     paginationMode: iterationNextToken ? "ITERATION" : "PAGE_NUMBER",
@@ -256,20 +234,21 @@ async function fetchFromTEDAPI(
     requestBody.paginationMode = "ITERATION";
   }
 
-  console.log(
-    "Fetching from TED API:",
-    url,
-    `(Admin: ${isAdmin}, Page: ${page})`,
-  );
+  console.log("[TED] query=", builtQuery, "| never * | Admin:", isAdmin, "Page:", page);
   console.log("TED API Request Body:", JSON.stringify(requestBody, null, 2));
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": "TenderMatchingService/1.0",
+  };
+  if (process.env.TED_API_KEY) {
+    headers["Authorization"] = `Bearer ${process.env.TED_API_KEY}`;
+  }
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "User-Agent": "TenderMatchingService/1.0",
-    },
+    headers,
     body: JSON.stringify(requestBody),
   });
 
@@ -287,9 +266,9 @@ async function fetchFromTEDAPI(
       const errorJson = JSON.parse(errorText);
       if (errorJson.type === "QUERY_SYNTAX_ERROR") {
         const location = errorJson.location || {};
-        errorMessage = `Query syntax error at line ${location.beginLine || "?"}, column ${location.beginColumn || "?"}. Query: "${query}". Full error: ${JSON.stringify(errorJson)}`;
+        errorMessage = `Query syntax error at line ${location.beginLine || "?"}, column ${location.beginColumn || "?"}. Query: "${builtQuery}". Full error: ${JSON.stringify(errorJson)}`;
         console.error("TED Query Syntax Error:", errorJson);
-        console.error("Query used:", query);
+        console.error("Query used:", builtQuery);
       } else if (errorJson.message) {
         errorMessage = errorJson.message;
       } else {
@@ -303,7 +282,7 @@ async function fetchFromTEDAPI(
       status: response.status,
       statusText: response.statusText,
       errorText,
-      query,
+      query: builtQuery,
     });
     throw new Error(errorMessage);
   }
@@ -336,21 +315,33 @@ async function fetchFromTEDAPI(
   };
 }
 
+const TENDER_SYNC_SECRET = process.env.TENDER_SYNC_SECRET || process.env.CRON_SECRET;
+
+function isTenderSyncRequest(request: NextRequest): boolean {
+  const secret = request.headers.get("X-Tender-Sync-Secret");
+  return !!TENDER_SYNC_SECRET && secret === TENDER_SYNC_SECRET;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user
-    const { user, error: authError } = await getAuthenticatedUser(request);
+    const syncBySecret = isTenderSyncRequest(request);
+    let user: { id: string; email?: string | null } | null = null;
+    let isAdmin = false;
 
-    if (authError || !user) {
-      return apiError("Authentication required", 401);
-    }
-
-    console.log("Authenticated user:", user.id);
-
-    // Check if user is admin
-    const isAdmin = await checkSuperadminRole(user.id);
-    if (!isAdmin) {
-      return apiError("Superadmin access required", 403);
+    if (syncBySecret) {
+      isAdmin = true;
+      console.log("Tender sync: authenticated via X-Tender-Sync-Secret");
+    } else {
+      const { user: authUser, error: authError } = await getAuthenticatedUser(request);
+      user = authUser;
+      if (authError || !user) {
+        return apiError("Authentication required", 401);
+      }
+      console.log("Authenticated user:", user.id);
+      isAdmin = await checkSuperadminRole(user.id);
+      if (!isAdmin) {
+        return apiError("Superadmin access required", 403);
+      }
     }
 
     const {
@@ -431,8 +422,8 @@ export async function POST(request: NextRequest) {
           // Log tender import event
           await logApiEvent(request, {
             actionType: "admin_tender_imported",
-            userId: user.id,
-            userEmail: user.email || undefined,
+            userId: user?.id ?? null,
+            userEmail: user?.email ?? undefined,
             details: {
               source: "ted_api",
               importedCount: newTenders.length,
@@ -457,7 +448,7 @@ export async function POST(request: NextRequest) {
             }));
 
             try {
-              await enqueueBatch(jobs, "tender_ai_regeneration", user.id);
+              await enqueueBatch(jobs, "tender_ai_regeneration", user?.id ?? undefined);
               console.log(
                 `Queued ${jobs.length} AI processing jobs for ${tenderIds.length} new tenders`,
               );

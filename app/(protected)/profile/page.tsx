@@ -35,6 +35,7 @@ export default function ProfilePage() {
   // Seed form once from server data
   useEffect(() => {
     if (profileData && !formSeeded) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- seed form from profile once
       setFormData({
         firstName: profileData.firstName || "",
         lastName: profileData.lastName || "",

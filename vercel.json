@@ -1,8 +1,6 @@
 {
   "crons": [
-    {
-      "path": "/api/queue/cron",
-      "schedule": "* * * * *"
-    }
+    { "path": "/api/queue/cron", "schedule": "* * * * *" },
+    { "path": "/api/admin/tender-sync", "schedule": "0 2 * * *" }
   ]
 }

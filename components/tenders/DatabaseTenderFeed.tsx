@@ -53,6 +53,7 @@ export function DatabaseTenderFeed({
 
   // Reset to page 1 when filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when filters change
     setCurrentPage(1);
   }, [filters]);
 

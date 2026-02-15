@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch taxonomies for returned tenders
     const tenderIds = (data || []).map((t) => t.id);
-    let taxonomies: Record<string, { id: string; name: string }[]> = {};
+    const taxonomies: Record<string, { id: string; name: string }[]> = {};
 
     if (tenderIds.length > 0) {
       const { data: taxData } = await supabase

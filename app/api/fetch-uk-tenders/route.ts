@@ -222,19 +222,32 @@ async function fetchFromFindTenderAPI(
   return data;
 }
 
+const TENDER_SYNC_SECRET = process.env.TENDER_SYNC_SECRET || process.env.CRON_SECRET;
+
+function isTenderSyncRequest(request: NextRequest): boolean {
+  const secret = request.headers.get("X-Tender-Sync-Secret");
+  return !!TENDER_SYNC_SECRET && secret === TENDER_SYNC_SECRET;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user
-    const { user } = await getAuthenticatedUser(request);
-    if (!user) {
-      console.error("No authorization header provided");
-      return apiError("Authorization required", 401);
+    const syncBySecret = isTenderSyncRequest(request);
+    let user: { id: string; email?: string | null } | null = null;
+    let isAdmin = false;
+
+    if (syncBySecret) {
+      isAdmin = true;
+      console.log("Tender sync: authenticated via X-Tender-Sync-Secret");
+    } else {
+      const auth = await getAuthenticatedUser(request);
+      user = auth.user;
+      if (!user) {
+        console.error("No authorization header provided");
+        return apiError("Authorization required", 401);
+      }
+      console.log("Authenticated user:", user.id);
+      isAdmin = await checkSuperadminRole(user.id);
     }
-
-    console.log("Authenticated user:", user.id);
-
-    // Check if user has superadmin role
-    const isAdmin = await checkSuperadminRole(user.id);
 
     const {
       searchTerm,
@@ -244,7 +257,6 @@ export async function POST(request: NextRequest) {
       filters,
     } = await request.json();
 
-    // If this is an admin import request, check admin permissions
     if (adminImport && !isAdmin) {
       return apiError("Superadmin access required to import tenders", 403);
     }
@@ -366,8 +378,8 @@ export async function POST(request: NextRequest) {
           // Log tender import event
           await logApiEvent(request, {
             actionType: "admin_tender_imported",
-            userId: user.id,
-            userEmail: user.email || undefined,
+            userId: user?.id ?? null,
+            userEmail: user?.email ?? undefined,
             details: {
               source: "find_tender_api",
               importedCount: newTenders.length,
@@ -397,7 +409,7 @@ export async function POST(request: NextRequest) {
             }));
 
             try {
-              await enqueueBatch(jobs, "tender_ai_regeneration", user.id);
+              await enqueueBatch(jobs, "tender_ai_regeneration", user?.id ?? undefined);
               console.log(
                 `Queued ${jobs.length} AI processing jobs for ${tenderIds.length} new tenders`,
               );

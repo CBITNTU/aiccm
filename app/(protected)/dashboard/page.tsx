@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboard } from "@/hooks/useDashboard";
@@ -113,7 +113,10 @@ export default function DashboardPage() {
   const { data: dashboardData, isLoading: loading } = useDashboard(user?.id ?? null);
   const analyzeCompanyMutation = useAnalyzeCompany();
 
-  const userCompanies = (dashboardData?.companies as unknown as Company[]) ?? [];
+  const userCompanies = useMemo(
+    () => (dashboardData?.companies as unknown as Company[]) ?? [],
+    [dashboardData?.companies],
+  );
   const stats: DashboardStats = {
     totalTenders: dashboardData?.stats.totalTenders ?? 0,
     matchingResults: dashboardData?.stats.matchingResults ?? 0,
@@ -133,6 +136,7 @@ export default function DashboardPage() {
   // Auto-select first company when dashboard data loads
   useEffect(() => {
     if (userCompanies.length > 0 && !selectedCompany) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selected company from dashboard data
       setSelectedCompany(userCompanies[0]);
     }
   }, [userCompanies, selectedCompany]);
@@ -140,6 +144,7 @@ export default function DashboardPage() {
   // Load stored analysis when company is selected
   useEffect(() => {
     if (selectedCompany?.ai_analysis) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync analysis from selected company
       setCompanyAnalysis(
         selectedCompany.ai_analysis as unknown as CompanyAnalysis,
       );

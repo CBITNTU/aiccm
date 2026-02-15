@@ -207,6 +207,24 @@ export const api = {
       body: options || {},
     }),
 
+  // Tender sync schedule (admin)
+  getTenderSyncStatus: () =>
+    apiCall<{
+      lastSyncFinishedAt: string | null;
+      nextSyncScheduledAt: string | null;
+    }>("admin/tender-sync-status", { method: "GET" }),
+
+  triggerTenderSync: () =>
+    apiCall<{
+      ran: boolean;
+      lastSyncFinishedAt?: string;
+      nextSyncScheduledAt?: string;
+      message?: string;
+    }>("admin/tender-sync", {
+      method: "POST",
+      body: { triggerNow: true },
+    }),
+
   // Fetch TED tenders
   fetchTEDTenders: (options?: {
     page?: number;

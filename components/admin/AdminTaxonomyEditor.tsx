@@ -91,7 +91,7 @@ const AdminTaxonomyEditor = () => {
 
   useEffect(() => {
     fetchCapabilities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount
+     
   }, []);
 
   // Refresh capabilities when regeneration completes

@@ -20,6 +20,7 @@ import {
   Plus,
 } from "lucide-react";
 import { formatCpvCode } from "@/lib/cpvCodes";
+import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 
 interface Tender {
   id: string;
@@ -100,7 +101,7 @@ export function TenderViewDialog({
               {tender.deadline && isDeadlineSoon(tender.deadline) && (
                 <Badge variant="destructive">Deadline Soon</Badge>
               )}
-              <Badge variant="secondary">{tender.status}</Badge>
+              <TenderStatusBadge status={tender.status} />
             </div>
           </div>
         </DialogHeader>

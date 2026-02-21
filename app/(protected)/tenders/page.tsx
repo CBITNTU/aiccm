@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { FileText, Bookmark, Target, Plus, Loader2 } from "lucide-react";
+import { FileText, Bookmark, Target, Plus } from "lucide-react";
 import { DatabaseTenderFeed } from "@/components/tenders/DatabaseTenderFeed";
 import { TenderSearchBar } from "@/components/tenders/TenderSearchBar";
 import {
@@ -23,8 +23,6 @@ import {
   MatchingFiltersState,
 } from "@/components/tenders/TenderMatching";
 import { SavedTenders } from "@/components/tenders/SavedTenders";
-import { api } from "@/lib/api/client";
-import { toast } from "sonner";
 
 interface Company {
   id: string;
@@ -63,7 +61,6 @@ export default function TendersPage() {
     showApplied: "all",
   });
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
 
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
@@ -124,40 +121,6 @@ export default function TendersPage() {
       maxScore: 100,
       showApplied: "all",
     });
-  };
-
-  const runAnalysis = async () => {
-    if (!selectedCompany) {
-      toast.error("Please select a company to analyze");
-      return;
-    }
-
-    // Prevent multiple simultaneous analyses
-    if (analyzing) {
-      return;
-    }
-
-    setAnalyzing(true);
-    try {
-      const data = await api.matchTenders(selectedCompany.id);
-
-      if (data.up_to_date) {
-        toast.success("All tenders are up to date - no new analysis needed");
-      } else {
-        toast.success(
-          `Analysis complete! Found ${data.analyzed_count || 0} new matches.`,
-        );
-      }
-    } catch (error: unknown) {
-      console.error("Error running analysis:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to run tender analysis. Please try again.";
-      toast.error(errorMessage);
-    } finally {
-      setAnalyzing(false);
-    }
   };
 
   return (
@@ -273,27 +236,6 @@ export default function TendersPage() {
                   </span>
                 )}
               </div>
-              <Button
-                onClick={runAnalysis}
-                disabled={analyzing || !selectedCompany || isRestrictedUser}
-                title={
-                  isRestrictedUser
-                    ? "Action restricted for pending accounts"
-                    : undefined
-                }
-              >
-                {analyzing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Target className="w-4 h-4 mr-2" />
-                    Run Analysis
-                  </>
-                )}
-              </Button>
             </div>
 
             <TenderSearchBar
@@ -308,8 +250,6 @@ export default function TendersPage() {
               companyId={selectedCompany?.id}
               filters={matchingFilters}
               readOnly={isRestrictedUser}
-              analyzing={analyzing}
-              onAnalyze={runAnalysis}
               onCreateProject={
                 isRestrictedUser
                   ? undefined

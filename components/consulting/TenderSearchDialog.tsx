@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Search,
@@ -23,6 +22,7 @@ import {
   Banknote,
   FileText,
 } from "lucide-react";
+import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 
 interface Tender {
   id: string;
@@ -192,18 +192,7 @@ export function TenderSearchDialog({
                       )}
                     </div>
 
-                    <Badge
-                      variant={
-                        tender.status === "closing_soon"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                      className="shrink-0"
-                    >
-                      {tender.status === "closing_soon"
-                        ? "Closing Soon"
-                        : "Open"}
-                    </Badge>
+                    <TenderStatusBadge status={tender.status} />
                   </div>
                 </div>
               ))}

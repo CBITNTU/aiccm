@@ -19,4 +19,6 @@ export const queryKeys = {
   userCompanies: (userId: string) => ["userCompanies", userId] as const,
   profile: (userId: string) => ["profile", userId] as const,
   tenderSyncStatus: () => ["tenderSyncStatus"] as const,
+  projectInvitations: (userId: string) =>
+    ["projectInvitations", userId] as const,
 };

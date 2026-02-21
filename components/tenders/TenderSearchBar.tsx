@@ -510,6 +510,8 @@ function DatabaseFilterContent({
             <SelectItem value="open">Open</SelectItem>
             <SelectItem value="closing_soon">Closing Soon</SelectItem>
             <SelectItem value="framework">Framework</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
+            <SelectItem value="awarded">Awarded</SelectItem>
           </SelectContent>
         </Select>
       </div>

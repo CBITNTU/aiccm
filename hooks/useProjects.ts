@@ -27,6 +27,7 @@ export interface Project {
   team_analysis: TeamAnalysis | null;
   recommended_partners: RecommendedPartner[] | null;
   tenders: Tender | null;
+  userRole?: "owner" | "member";
 }
 
 export interface GapAnalysis {

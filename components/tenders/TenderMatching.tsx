@@ -54,6 +54,7 @@ interface MatchingResult {
     deadline: string;
     budget_min: number;
     budget_max: number;
+    status: string;
   };
 }
 
@@ -62,8 +63,6 @@ interface TenderMatchingProps {
   filters?: MatchingFiltersState;
   onCreateProject?: (tenderId: string) => void;
   readOnly?: boolean;
-  onAnalyze?: () => void;
-  analyzing?: boolean;
 }
 
 export function TenderMatching({
@@ -71,8 +70,6 @@ export function TenderMatching({
   filters: filtersProp,
   onCreateProject: _onCreateProject,
   readOnly = false,
-  onAnalyze,
-  analyzing: externalAnalyzing,
 }: TenderMatchingProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -97,9 +94,7 @@ export function TenderMatching({
     progressPercent: number;
   } | null>(null);
 
-  const analyzing =
-    externalAnalyzing ??
-    (internalAnalyzing || matchingProgress?.status === "processing");
+  const analyzing = internalAnalyzing || matchingProgress?.status === "processing";
 
   // Use stable filter reference to prevent infinite re-renders
   const filters = filtersProp ?? DEFAULT_FILTERS;
@@ -333,8 +328,6 @@ export function TenderMatching({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchingResults, filtersKey]);
 
-  const fetchMatchingResults = refetchMatchingResults;
-
   const applyFiltersAndSorting = () => {
     let filtered = [...matchingResults];
 
@@ -446,17 +439,6 @@ export function TenderMatching({
       toast.info(
         "Matching already in progress. Click 'Clear & Restart' to cancel.",
       );
-      return;
-    }
-
-    if (onAnalyze) {
-      try {
-        await onAnalyze();
-        // Refresh results after external analysis
-        await fetchMatchingResults();
-      } catch (error) {
-        console.error("Error in external analysis handler:", error);
-      }
       return;
     }
 
@@ -639,8 +621,7 @@ export function TenderMatching({
             )}{" "}
             matches
           </p>
-          {!onAnalyze && (
-            <Button
+          <Button
               onClick={runAnalysis}
               disabled={analyzing || loading || readOnly}
               size="sm"
@@ -656,11 +637,10 @@ export function TenderMatching({
               ) : (
                 <>
                   <Target className="w-4 h-4 mr-2" />
-                  Run Analysis
+                  Re-run Analysis
                 </>
               )}
             </Button>
-          )}
         </div>
       )}
 

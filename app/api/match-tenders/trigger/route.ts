@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/lib/api";
+import { getAuthenticatedUser, createAdminClient } from "@/lib/api";
 import { batchScoreTendersForCompany } from "@/lib/services/tenderMatchingService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { getUserCompanyIds } from "@/lib/api/validation";
@@ -29,10 +29,34 @@ export async function POST(request: NextRequest) {
 
     const companyId = companyIds[0];
 
+    // Determine which tender IDs to use — filter by deadline >= today
+    let filteredTenderIds: string[] | undefined;
+    if (tenderIds && Array.isArray(tenderIds)) {
+      filteredTenderIds = tenderIds;
+    } else {
+      // Fetch open tenders with deadline >= today (same filter as main endpoint)
+      const today = new Date().toISOString().split("T")[0];
+      const supabase = createAdminClient();
+      const { data: openTenders, error: tendersError } = await supabase
+        .from("tenders")
+        .select("id")
+        .in("status", ["open", "closing_soon", "framework"])
+        .gte("deadline", today);
+
+      if (tendersError) {
+        return NextResponse.json(
+          { success: false, error: `Failed to fetch tenders: ${tendersError.message}` },
+          { status: 500 },
+        );
+      }
+
+      filteredTenderIds = (openTenders || []).map((t: { id: string }) => t.id);
+    }
+
     // Queue matching jobs
     const { jobCount, batchId } = await batchScoreTendersForCompany(
       companyId,
-      tenderIds && Array.isArray(tenderIds) ? tenderIds : undefined,
+      filteredTenderIds,
     );
 
     // Log matching trigger event

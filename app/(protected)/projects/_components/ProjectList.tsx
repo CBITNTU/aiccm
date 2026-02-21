@@ -189,7 +189,14 @@ function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
     >
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-medium truncate flex-1 pr-2">{project.name}</h3>
-        {statusBadge()}
+        <div className="flex items-center gap-1.5">
+          {project.userRole === "member" && (
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-200">
+              Member
+            </Badge>
+          )}
+          {statusBadge()}
+        </div>
       </div>
 
       {project.tenders && (

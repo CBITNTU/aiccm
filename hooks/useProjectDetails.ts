@@ -32,6 +32,10 @@ export interface TeamMember {
   role: string;
   created_at: string;
   joined_at: string | null;
+  invitation_status?: string | null;
+  invitation_sent_at?: string | null;
+  invitation_responded_at?: string | null;
+  invitation_message?: string | null;
   companies: {
     id: string;
     company_name: string;
@@ -39,6 +43,7 @@ export interface TeamMember {
     postcode?: string | null;
     location?: string | null;
     contact_email?: string | null;
+    contact_phone?: string | null;
     certifications?: string | null;
     past_projects?: string | null;
     description?: string | null;
@@ -66,6 +71,7 @@ export interface ProjectDetails {
   recommendedPartners: RecommendedPartner[];
   /** When team is only lead (no partners), gap is derived from this tender match. */
   tenderMatchResult: TenderMatchResult | null;
+  isOwner: boolean;
 }
 
 async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
@@ -76,6 +82,7 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
   const teamMembers = (data.teamMembers as unknown as TeamMember[]) || [];
   const tenderMatchResult =
     (data.tenderMatchResult as unknown as TenderMatchResult) || null;
+  const isOwner = data.isOwner !== false; // default true for backwards compat
 
   return {
     project,
@@ -85,6 +92,7 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
     teamAnalysis: project.team_analysis || null,
     recommendedPartners: project.recommended_partners || [],
     tenderMatchResult,
+    isOwner,
   };
 }
 

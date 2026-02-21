@@ -147,10 +147,13 @@ export const api = {
     tenderTitle: string,
     partnerIds: string[],
   ) =>
-    apiCall<{ success: boolean; invitationsSent: number }>(
-      "send-project-invitations",
-      { body: { projectId, tenderTitle, partnerIds } },
-    ),
+    apiCall<{
+      success: boolean;
+      invitationsSent: number;
+      unregisteredCompanies: string[];
+    }>("send-project-invitations", {
+      body: { projectId, tenderTitle, partnerIds },
+    }),
 
   // Analyze project
   analyzeProject: (projectId: string) =>
@@ -474,6 +477,7 @@ export const api = {
       project: Record<string, unknown>;
       teamMembers: Record<string, unknown>[];
       tenderMatchResult: Record<string, unknown> | null;
+      isOwner: boolean;
     }>(`projects/${projectId}`, { method: "GET" }),
 
   updateProject: (projectId: string, updates: Record<string, unknown>) =>
@@ -498,6 +502,65 @@ export const api = {
       `projects/${projectId}/members/${memberId}`,
       { method: "DELETE" },
     ),
+
+  // Project invitations
+  getProjectInvitations: () =>
+    apiCall<{
+      invitations: {
+        id: string;
+        vo_id: string;
+        company_id: string;
+        invitation_status: string;
+        invitation_sent_at: string | null;
+        project: {
+          id: string;
+          name: string;
+          description: string | null;
+          status: string;
+        };
+        leadCompany: {
+          id: string;
+          name: string;
+          contactEmail: string | null;
+          contactPhone: string | null;
+        } | null;
+        tender: {
+          id: string;
+          title: string;
+          buyer: string;
+          deadline: string | null;
+          budget_max: number | null;
+        } | null;
+      }[];
+    }>("projects/invitations", { method: "GET" }),
+
+  respondToProjectInvitation: (
+    invitationId: string,
+    action: "accept" | "reject",
+    message?: string,
+  ) =>
+    apiCall<{ success: boolean; action: string; projectId: string }>(
+      `projects/invitations/${invitationId}/respond`,
+      { body: { action, message } },
+    ),
+
+  getInvitationByToken: (token: string) =>
+    apiCall<{
+      invitation: {
+        id: string;
+        vo_id: string;
+        company_id: string;
+        invitation_status: string;
+        projectName: string;
+        projectDescription: string | null;
+        leadCompanyName: string;
+        leadCompanyContact: string | null;
+        tenderTitle: string | null;
+      };
+    }>("projects/invitations/by-token", {
+      method: "GET",
+      params: { token },
+    }),
 
   getAvailableTenders: () =>
     apiCall<{

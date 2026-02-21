@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ExternalLink,
@@ -10,6 +9,7 @@ import {
   PoundSterling,
   Building2,
 } from "lucide-react";
+import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 
 interface ProjectSummaryProps {
   tender: {
@@ -22,6 +22,7 @@ interface ProjectSummaryProps {
     budget_max?: number;
     external_id?: string;
     reference_number?: string;
+    status?: string | null;
   };
   ownerCompany: {
     company_name: string;
@@ -63,9 +64,7 @@ export function ProjectSummary({
               )}
             </div>
           </div>
-          <Badge variant="outline" className="text-base">
-            Draft
-          </Badge>
+          <TenderStatusBadge status={tender.status} />
         </div>
       </CardHeader>
       <CardContent>

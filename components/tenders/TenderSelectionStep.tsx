@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import {
@@ -16,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 
 interface Tender {
   id: string;
@@ -182,17 +182,7 @@ export function TenderSelectionStep({
                                 </p>
                               )}
                             </div>
-                            <Badge
-                              variant={
-                                tender.status === "closing_soon"
-                                  ? "destructive"
-                                  : "default"
-                              }
-                            >
-                              {tender.status === "closing_soon"
-                                ? "Closing Soon"
-                                : "Open"}
-                            </Badge>
+                            <TenderStatusBadge status={tender.status} />
                           </div>
 
                           <div className="grid grid-cols-2 gap-4 text-sm">

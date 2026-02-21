@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
           location,
           deadline,
           budget_min,
-          budget_max
+          budget_max,
+          status
         )
       `,
       )

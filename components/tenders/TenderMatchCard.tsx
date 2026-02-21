@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertCircle,
   Calendar,
   MapPin,
   PoundSterling,
@@ -12,6 +13,7 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
+import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 
 interface MatchingResult {
   id: string;
@@ -36,6 +38,7 @@ interface MatchingResult {
     deadline: string;
     budget_min: number;
     budget_max: number;
+    status: string;
   };
 }
 
@@ -132,6 +135,7 @@ export function TenderMatchCard({
               Saved
             </Badge>
           )}
+          <TenderStatusBadge status={result.tenders.status} size="sm" />
           <Badge
             variant={getScoreBadgeVariant(result.overall_score)}
             className="text-sm px-2.5 py-1 gap-1"
@@ -141,6 +145,14 @@ export function TenderMatchCard({
           </Badge>
         </div>
       </div>
+
+      {/* Closed tender banner */}
+      {result.tenders.status === "closed" && (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-muted/50 rounded-md text-xs text-muted-foreground border border-muted">
+          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+          This tender has closed
+        </div>
+      )}
 
       {/* Score breakdown - compact inline with explanations */}
       <div className="mb-3">

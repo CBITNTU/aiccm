@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { after } from "next/server";
 import {
   createAdminClient,
   createApiClient,
@@ -49,11 +50,13 @@ export async function GET(request: NextRequest) {
       // Optional auth
     }
 
-    await logApiEvent(request, {
-      actionType: "platform_stats_viewed",
-      userId: userId || undefined,
-      details: { ...stats } as Record<string, unknown>,
-    }).catch(() => {});
+    after(() =>
+      logApiEvent(request, {
+        actionType: "platform_stats_viewed",
+        userId: userId || undefined,
+        details: { ...stats } as Record<string, unknown>,
+      }).catch(() => {}),
+    );
 
     return apiResponse(stats);
   } catch (error) {

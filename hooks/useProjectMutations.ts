@@ -187,7 +187,7 @@ export function useRunGapAnalysis() {
 
           recommendations = scored
             .filter((c) => c.relevanceScore >= 20)
-            .sort((a, b) => b.relevanceScore - a.relevanceScore)
+            .toSorted((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 10);
         }
       }

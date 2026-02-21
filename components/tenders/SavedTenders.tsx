@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -55,25 +55,18 @@ export function SavedTenders({
     () => (savedData?.results as unknown as MatchingResult[]) ?? [],
     [savedData?.results],
   );
-  const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
   const [keyword, setKeyword] = useState("");
 
-  // Apply keyword filter whenever savedResults or keyword changes
-  useEffect(() => {
-    if (!keyword.trim()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- derive filtered list from savedResults and keyword
-      setFilteredResults(savedResults);
-    } else {
-      const lowerKeyword = keyword.toLowerCase().trim();
-      const filtered = savedResults.filter(
-        (result) =>
-          result.tenders.title.toLowerCase().includes(lowerKeyword) ||
-          result.tenders.description?.toLowerCase().includes(lowerKeyword) ||
-          result.tenders.buyer.toLowerCase().includes(lowerKeyword) ||
-          result.tenders.location?.toLowerCase().includes(lowerKeyword),
-      );
-      setFilteredResults(filtered);
-    }
+  const filteredResults = useMemo(() => {
+    if (!keyword.trim()) return savedResults;
+    const lowerKeyword = keyword.toLowerCase().trim();
+    return savedResults.filter(
+      (result) =>
+        result.tenders.title.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.description?.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.buyer.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.location?.toLowerCase().includes(lowerKeyword),
+    );
   }, [savedResults, keyword]);
 
   const removeBookmark = async (resultId: string) => {
@@ -157,7 +150,8 @@ export function SavedTenders({
       ) : (
         <div className="space-y-3">
           {filteredResults.map((result) => (
-            <TenderMatchCard
+            <div key={result.id} className="list-item-deferred">
+              <TenderMatchCard
               key={result.id}
               result={result}
               onViewDetails={() => {
@@ -167,6 +161,7 @@ export function SavedTenders({
               onDelete={() => removeBookmark(result.id)}
               readOnly={readOnly}
             />
+            </div>
           ))}
         </div>
       )}

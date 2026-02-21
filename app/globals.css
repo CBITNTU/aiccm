@@ -318,3 +318,9 @@
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+/* Defer off-screen rendering for long lists */
+.list-item-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 120px;
+}

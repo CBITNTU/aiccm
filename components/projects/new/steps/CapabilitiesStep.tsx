@@ -84,7 +84,7 @@ export function CapabilitiesStep({
         category: category === "Uncategorized" ? null : category,
         capabilities: caps,
       }))
-      .sort((a, b) => {
+      .toSorted((a, b) => {
         if (a.category === null) return 1;
         if (b.category === null) return -1;
         return (a.category || "").localeCompare(b.category || "");

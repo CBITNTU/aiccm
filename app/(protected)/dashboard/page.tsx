@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { useState, useEffect, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboard } from "@/hooks/useDashboard";
@@ -37,8 +38,13 @@ import {
 } from "recharts";
 import { CompanySelector } from "@/components/CompanySelector";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
-import { BusinessChatbot } from "@/components/BusinessChatbot";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
+
+const BusinessChatbot = dynamic(
+  () =>
+    import("@/components/BusinessChatbot").then((m) => ({ default: m.BusinessChatbot })),
+  { ssr: false },
+);
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -78,6 +84,42 @@ interface MatchingResult {
     company_name: string;
   };
 }
+
+const PerformanceChart = memo(function PerformanceChart({
+  data,
+}: {
+  data: { subject: string; A: number; fullMark: number }[];
+}) {
+  if (data.length === 0) return null;
+  return (
+    <ResponsiveContainer width="100%" height={250}>
+      <RadarChart data={data}>
+        <PolarGrid />
+        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
+        <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10 }} />
+        <Tooltip
+          contentStyle={{
+            backgroundColor: "hsl(var(--card))",
+            border: "1px solid hsl(var(--border))",
+            borderRadius: "8px",
+            color: "hsl(var(--foreground))",
+            fontSize: "12px",
+          }}
+          labelStyle={{ color: "hsl(var(--foreground))" }}
+          formatter={(value) => [`${value}/100`, "Score"]}
+        />
+        <Radar
+          name="Performance Score"
+          dataKey="A"
+          stroke="hsl(var(--primary))"
+          fill="hsl(var(--primary))"
+          fillOpacity={0.2}
+          strokeWidth={2}
+        />
+      </RadarChart>
+    </ResponsiveContainer>
+  );
+});
 
 interface CompanyAnalysis {
   performanceBenchmark: {
@@ -132,23 +174,23 @@ export default function DashboardPage() {
     null,
   );
 
-  // Auto-select first company when dashboard data loads
+  // Auto-select first company when dashboard data loads (async to satisfy set-state-in-effect)
   useEffect(() => {
     if (userCompanies.length > 0 && !selectedCompany) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selected company from dashboard data
-      setSelectedCompany(userCompanies[0]);
+      queueMicrotask(() => setSelectedCompany(userCompanies[0]));
     }
   }, [userCompanies, selectedCompany]);
 
-  // Load stored analysis when company is selected
+  // Load stored analysis when company is selected (async to satisfy set-state-in-effect)
   useEffect(() => {
     if (selectedCompany?.ai_analysis) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync analysis from selected company
-      setCompanyAnalysis(
-        selectedCompany.ai_analysis as unknown as CompanyAnalysis,
+      queueMicrotask(() =>
+        setCompanyAnalysis(
+          selectedCompany.ai_analysis as unknown as CompanyAnalysis,
+        ),
       );
     } else {
-      setCompanyAnalysis(null);
+      queueMicrotask(() => setCompanyAnalysis(null));
     }
   }, [selectedCompany?.id, selectedCompany?.ai_analysis]);
 
@@ -377,39 +419,7 @@ export default function DashboardPage() {
             <CardContent>
               {companyAnalysis ? (
                 <div className="space-y-4">
-                  <ResponsiveContainer width="100%" height={250}>
-                    <RadarChart data={radarData}>
-                      <PolarGrid />
-                      <PolarAngleAxis
-                        dataKey="subject"
-                        tick={{ fontSize: 12 }}
-                      />
-                      <PolarRadiusAxis
-                        angle={90}
-                        domain={[0, 100]}
-                        tick={{ fontSize: 10 }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                          fontSize: "12px",
-                        }}
-                        labelStyle={{ color: "hsl(var(--foreground))" }}
-                        formatter={(value) => [`${value}/100`, "Score"]}
-                      />
-                      <Radar
-                        name="Performance Score"
-                        dataKey="A"
-                        stroke="hsl(var(--primary))"
-                        fill="hsl(var(--primary))"
-                        fillOpacity={0.2}
-                        strokeWidth={2}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
+                  <PerformanceChart data={radarData} />
                   <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg border border-border">
                     <strong className="text-foreground">
                       Executive Summary:

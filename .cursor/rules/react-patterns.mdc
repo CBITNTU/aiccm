@@ -1,0 +1,28 @@
+---
+description: React and UI patterns - components, hooks, data fetching
+globs: "**/*.tsx"
+alwaysApply: false
+---
+
+# React Patterns
+
+## Components
+
+- Use functional components only.
+- Colocate UI in `components/` by feature (e.g. `tenders/`, `company/`, `admin/`).
+- Use shadcn/ui components from `components/ui/`; extend with `cn()` for conditional classes.
+
+## Data & Hooks
+
+- Server state: TanStack Query. Use hooks from `hooks/` (e.g. `useDashboard`, `useTenders`, `useProfile`).
+- API calls: Prefer `lib/api/client.ts` and existing hooks; invalidate queries in `onSuccess` for mutations.
+- Auth: `useAuth()` from context; check `hydrated` before redirecting.
+
+## New Pages
+
+- Protected pages live under `app/(protected)/...`.
+- Add nav in `components/layout/Header.tsx` when adding a new main section.
+
+## Forms
+
+- Prefer react-hook-form with Zod resolvers where forms are non-trivial; keep validation in sync with API schemas.

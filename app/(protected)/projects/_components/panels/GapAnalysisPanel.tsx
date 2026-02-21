@@ -300,6 +300,7 @@ export function GapAnalysisPanel({
                     className="h-7 w-7 opacity-70 hover:opacity-100"
                     onClick={() => moveToMissing(idx)}
                     title="Move to Missing"
+                    aria-label="Move to Missing"
                   >
                     <Minus className="h-3.5 w-3.5" />
                   </Button>
@@ -330,6 +331,7 @@ export function GapAnalysisPanel({
                     className="h-7 w-7 opacity-70 hover:opacity-100 shrink-0"
                     onClick={() => moveToCompetencies(idx)}
                     title="Move to Your Competencies"
+                    aria-label="Move to Your Competencies"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </Button>

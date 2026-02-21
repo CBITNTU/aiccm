@@ -1,0 +1,35 @@
+---
+description: TypeScript and error-handling standards
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# TypeScript Standards
+
+## General
+
+- Prefer `async/await` over raw Promises.
+- Avoid `any`; use `unknown` and narrow, or proper types from `@/lib/supabase/types` and `@/lib/api`.
+- Use typed errors: `AuthError`, `ValidationError` from `@/lib/api/validation` where applicable.
+
+## Error Handling
+
+```typescript
+// BAD - swallow errors
+try {
+  await doSomething();
+} catch (e) {}
+
+// GOOD - log and rethrow or return apiError
+try {
+  await doSomething();
+} catch (error) {
+  console.error("Context:", error);
+  return apiError("User-friendly message", 500);
+}
+```
+
+## Supabase
+
+- Use `createApiClient()` or `createAdminClient()` from `@/lib/api`.
+- Type results from Supabase with `Database["public"]["Tables"]["table_name"]` when needed; avoid untyped `.select("*")` in new code when you need specific columns.

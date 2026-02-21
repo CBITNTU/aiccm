@@ -41,7 +41,7 @@ export function CompanySelector({
             company to get started with projects.
           </p>
           <Button asChild className="w-full">
-            <Link href="/my-companies/new">
+            <Link href="/my-company/new">
               <Plus className="w-4 h-4 mr-2" />
               Create Your First Company
             </Link>

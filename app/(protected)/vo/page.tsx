@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Database } from "@/lib/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
 import {
   Card,
   CardContent,
@@ -48,7 +49,6 @@ import { CoverageMap } from "@/components/consulting/CoverageMap";
 import { RecommendedPartners } from "@/components/consulting/RecommendedPartners";
 import { TeamBuilder } from "@/components/consulting/TeamBuilder";
 import { InvitationManager } from "@/components/consulting/InvitationManager";
-import { CompanySelector } from "@/components/consulting/CompanySelector";
 import { TenderViewDialog } from "@/components/tenders/TenderViewDialog";
 import { api } from "@/lib/api/client";
 import {
@@ -143,13 +143,13 @@ export default function ConsultingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { selectedOrg, setSelectedOrg } = useOrg();
 
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [tender, setTender] = useState<Tender | null>(null);
-  const [ownerCompany, setOwnerCompany] = useState<Company | null>(null);
   const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
   const [teamAnalysis, setTeamAnalysis] = useState<TeamAnalysis | null>(null);
   const [recommendedPartners, setRecommendedPartners] = useState<
@@ -170,27 +170,16 @@ export default function ConsultingPage() {
   const tenderId = searchParams.get("tenderId");
   const routeCompanyId = searchParams.get("companyId");
 
-  // Load company from route state if provided
+  // Sync URL companyId param to global org context on mount
   useEffect(() => {
-    const loadCompanyFromRoute = async () => {
-      if (!user || !routeCompanyId) return;
+    if (routeCompanyId && routeCompanyId !== selectedOrg?.id) {
+      setSelectedOrg(routeCompanyId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on mount/route change
+  }, [routeCompanyId]);
 
-      // Only load if we don't already have this company selected
-      if (ownerCompany?.id === routeCompanyId) return;
-
-      try {
-        const data = await api.getCompany(routeCompanyId);
-        if (data.company) {
-          setOwnerCompany(data.company as unknown as Company);
-        }
-      } catch (error) {
-        console.error("Error loading company:", error);
-      }
-    };
-
-    loadCompanyFromRoute();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when route/user change
-  }, [user?.id, routeCompanyId]);
+  // Use selectedOrg as the owner company
+  const ownerCompany = selectedOrg;
 
   useEffect(() => {
     if (!user) return;
@@ -209,6 +198,16 @@ export default function ConsultingPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when selectedProject change
   }, [selectedProject?.id]);
+
+  // Reset project state when org changes
+  useEffect(() => {
+    setProjects([]);
+    setSelectedProject(null);
+    setGapAnalysis(null);
+    setTeamAnalysis(null);
+    setRecommendedPartners([]);
+    setTeamMembers([]);
+  }, [ownerCompany?.id]);
 
   const loadUserProjects = async (statusFilter: string = "active") => {
     if (!ownerCompany) {
@@ -252,20 +251,6 @@ export default function ConsultingPage() {
       toast.error("Project created but failed to load");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCompanySelect = (company: Company | null) => {
-    const companyChanged = ownerCompany?.id !== company?.id;
-    setOwnerCompany(company);
-
-    if (company && companyChanged) {
-      setProjects([]);
-      setSelectedProject(null);
-      setGapAnalysis(null);
-      setTeamAnalysis(null);
-      setRecommendedPartners([]);
-      setTeamMembers([]);
     }
   };
 
@@ -694,26 +679,19 @@ export default function ConsultingPage() {
               </p>
             </div>
 
-            {/* Company Selector */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Select Lead Company
-                </CardTitle>
-                <CardDescription>
-                  Choose which company will be the lead for your consulting
-                  projects
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CompanySelector
-                  selectedCompanyId={ownerCompany?.id}
-                  onCompanySelect={handleCompanySelect}
-                  showAddButton={true}
-                />
-              </CardContent>
-            </Card>
+            {!ownerCompany && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    No Organization Selected
+                  </CardTitle>
+                  <CardDescription>
+                    Select an organization from the sidebar to manage your consulting projects
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
 
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -722,7 +700,7 @@ export default function ConsultingPage() {
                 <p className="text-muted-foreground text-center mb-6 max-w-md">
                   {ownerCompany
                     ? "Start by creating a consulting project. You can link it to a tender and build your team."
-                    : "Please select a company above to start creating projects."}
+                    : "Please select a company from the sidebar to start creating projects."}
                 </p>
                 <div className="flex gap-3">
                   <Button
@@ -779,27 +757,6 @@ export default function ConsultingPage() {
               </Button>
             )}
           </div>
-
-          {/* Company Selector */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Select Lead Company
-              </CardTitle>
-              <CardDescription>
-                Choose which company will be the lead for your consulting
-                projects
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CompanySelector
-                selectedCompanyId={ownerCompany?.id}
-                onCompanySelect={handleCompanySelect}
-                showAddButton={true}
-              />
-            </CardContent>
-          </Card>
 
           {/* Project Filter Tabs */}
           {!tenderId && (

@@ -28,6 +28,7 @@ import {
   FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 
 interface SidenavProps {
   mobileOpen: boolean;
@@ -68,8 +69,8 @@ const navigationItems: NavigationItem[] = [
     hideForPending: true,
   },
   {
-    name: "My Companies",
-    href: "/my-companies",
+    name: "My Company",
+    href: "/my-company",
     icon: Building2,
     hideForPending: true,
   },
@@ -157,6 +158,9 @@ function SidebarContent({
           </Button>
         )}
       </div>
+
+      {/* Org Switcher */}
+      <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
 
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">

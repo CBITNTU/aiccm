@@ -52,6 +52,7 @@ export async function updateSession(request: NextRequest) {
     "/company",
     "/vo",
     "/projects",
+    "/my-company",
     "/my-companies",
     "/admin",
     "/pending-approval",

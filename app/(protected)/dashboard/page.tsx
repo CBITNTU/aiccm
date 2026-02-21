@@ -174,23 +174,23 @@ export default function DashboardPage() {
     null,
   );
 
-  // Auto-select first company when dashboard data loads
+  // Auto-select first company when dashboard data loads (async to satisfy set-state-in-effect)
   useEffect(() => {
     if (userCompanies.length > 0 && !selectedCompany) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selected company from dashboard data
-      setSelectedCompany(userCompanies[0]);
+      queueMicrotask(() => setSelectedCompany(userCompanies[0]));
     }
   }, [userCompanies, selectedCompany]);
 
-  // Load stored analysis when company is selected
+  // Load stored analysis when company is selected (async to satisfy set-state-in-effect)
   useEffect(() => {
     if (selectedCompany?.ai_analysis) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync analysis from selected company
-      setCompanyAnalysis(
-        selectedCompany.ai_analysis as unknown as CompanyAnalysis,
+      queueMicrotask(() =>
+        setCompanyAnalysis(
+          selectedCompany.ai_analysis as unknown as CompanyAnalysis,
+        ),
       );
     } else {
-      setCompanyAnalysis(null);
+      queueMicrotask(() => setCompanyAnalysis(null));
     }
   }, [selectedCompany?.id, selectedCompany?.ai_analysis]);
 

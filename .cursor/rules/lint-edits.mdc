@@ -1,0 +1,10 @@
+---
+description: Always run lint after editing code
+alwaysApply: true
+---
+
+# Lint After Edits
+
+- Run `npm run lint` after modifying .ts, .tsx, .js, .jsx files.
+- Fix any reported lint errors before completing the task.
+- Use `ReadLints` on edited files to surface diagnostics.

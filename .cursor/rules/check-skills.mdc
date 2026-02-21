@@ -1,0 +1,12 @@
+---
+description: Check installed skills before answering
+alwaysApply: true
+---
+
+# Check Skills Before Answering
+
+- Before answering a prompt, review the available skills (in agent_skills or .cursor/skills, .agents/skills).
+- If a skill's description matches the task, read and apply it.
+- Use vercel-react-best-practices for React/Next.js performance, bundle, re-render, or server-side work.
+- Use vercel-composition-patterns for compound components, boolean prop proliferation, or composition.
+- Use web-design-guidelines for UI review, accessibility, or design audits.

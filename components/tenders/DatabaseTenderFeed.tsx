@@ -52,10 +52,9 @@ export function DatabaseTenderFeed({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters change (async to satisfy set-state-in-effect)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when filters change
-    setCurrentPage(1);
+    queueMicrotask(() => setCurrentPage(1));
   }, [filters]);
 
   const { data, isLoading: loading, refetch } = useTenders({

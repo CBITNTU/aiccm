@@ -39,7 +39,6 @@ import { CompanySelector } from "@/components/CompanySelector";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { BusinessChatbot } from "@/components/BusinessChatbot";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
-import { MatchingTrigger } from "@/components/matching/MatchingTrigger";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -576,7 +575,13 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <MatchingTrigger />
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/tenders?tab=matches")}
+                >
+                  <Target className="mr-2 h-4 w-4" />
+                  Run Analysis
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => router.push("/tenders")}

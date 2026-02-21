@@ -3,6 +3,10 @@
     {
       "path": "/api/queue/cron",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/tenders/close-expired",
+      "schedule": "0 0 * * *"
     }
   ]
 }

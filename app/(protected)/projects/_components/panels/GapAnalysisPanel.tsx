@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   useRunGapAnalysis,
@@ -19,8 +20,19 @@ import {
   Minus,
   Plus,
   Save,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { GapAnalysis, RecommendedPartner } from "@/hooks/useProjects";
 import type { Tender, TeamMember } from "@/hooks/useProjectDetails";
 import type { Database } from "@/lib/supabase/types";
@@ -61,6 +73,7 @@ export function GapAnalysisPanel({
   const [companyCompetencies, setCompanyCompetencies] = useState<string[]>([]);
   const [missingCompetencies, setMissingCompetencies] = useState<string[]>([]);
   const [hasEdits, setHasEdits] = useState(false);
+  const [showEditHintDialog, setShowEditHintDialog] = useState(false);
 
   useEffect(() => {
     if (gapAnalysis) {
@@ -76,6 +89,7 @@ export function GapAnalysisPanel({
     setCompanyCompetencies((prev) => prev.filter((_, i) => i !== index));
     setMissingCompetencies((prev) => [...prev, item]);
     setHasEdits(true);
+    setShowEditHintDialog(true);
   };
 
   const moveToCompetencies = (index: number) => {
@@ -83,6 +97,7 @@ export function GapAnalysisPanel({
     setMissingCompetencies((prev) => prev.filter((_, i) => i !== index));
     setCompanyCompetencies((prev) => [...prev, item]);
     setHasEdits(true);
+    setShowEditHintDialog(true);
   };
 
   const editedCoverage =
@@ -379,6 +394,34 @@ export function GapAnalysisPanel({
             </ul>
           </motion.div>
         )}
+
+      {/* Edit hint dialog - shown when user clicks +/- */}
+      {company && (
+        <AlertDialog open={showEditHintDialog} onOpenChange={setShowEditHintDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Save your edits permanently</AlertDialogTitle>
+              <AlertDialogDescription>
+                To save these competency changes, edit the capabilities on{" "}
+                <strong>{company.company_name}</strong>&apos;s profile. Otherwise,
+                edits will be lost when you re-run analysis or switch projects.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Got it</AlertDialogCancel>
+              <AlertDialogAction asChild>
+                <Link
+                  href={`/company/${company.id}`}
+                  className="inline-flex items-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Go to {company.company_name}
+                </Link>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       {/* Recommended Partners Count */}
       {recommendedPartners.length > 0 && (

@@ -32,19 +32,18 @@ export default function ProfilePage() {
     email: "",
   });
 
-  // Seed form once from server data (async to satisfy set-state-in-effect)
+  // Seed form once from server data
   useEffect(() => {
     if (profileData && !formSeeded) {
-      queueMicrotask(() => {
-        setFormData({
-          firstName: profileData.firstName || "",
-          lastName: profileData.lastName || "",
-          jobTitle: profileData.jobTitle || "",
-          phone: profileData.phone || "",
-          email: profileData.email || user?.email || "",
-        });
-        setFormSeeded(true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- seed form from profile once
+      setFormData({
+        firstName: profileData.firstName || "",
+        lastName: profileData.lastName || "",
+        jobTitle: profileData.jobTitle || "",
+        phone: profileData.phone || "",
+        email: profileData.email || user?.email || "",
       });
+      setFormSeeded(true);
     }
   }, [profileData, formSeeded, user?.email]);
 

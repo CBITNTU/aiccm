@@ -98,9 +98,10 @@ export default function DirectoryPage() {
     refetch();
   };
 
-  // Reset to page 1 when filters change (async to satisfy set-state-in-effect)
+  // Reset to page 1 when filters change
   useEffect(() => {
-    queueMicrotask(() => setCurrentPage(1));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when filters change
+    setCurrentPage(1);
   }, [filters]);
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);

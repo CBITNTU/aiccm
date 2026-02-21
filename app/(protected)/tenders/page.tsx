@@ -35,6 +35,7 @@ interface TenderFiltersState {
   keyword?: string;
   location?: string;
   status?: string;
+  source?: string;
   budgetMin?: number;
   budgetMax?: number;
   dateFrom?: string;
@@ -103,7 +104,11 @@ export default function TendersPage() {
   );
 
   const resetFilters = () => {
-    setFilters({ selectedTaxonomies: [], sortBy: "deadline", sortDirection: "desc" });
+    setFilters({
+      selectedTaxonomies: [],
+      sortBy: "deadline",
+      sortDirection: "desc",
+    });
   };
 
   const resetMatchingFilters = () => {

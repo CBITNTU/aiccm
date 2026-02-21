@@ -12,6 +12,7 @@ interface TenderFilters {
   keyword?: string;
   location?: string;
   status?: string;
+  source?: string;
   budgetMin?: number;
   budgetMax?: number;
   dateFrom?: string;
@@ -51,15 +52,17 @@ export function DatabaseTenderFeed({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  // Reset to page 1 when filters change (async to satisfy set-state-in-effect)
+  // Reset to page 1 when filters change
   useEffect(() => {
-    queueMicrotask(() => setCurrentPage(1));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when filters change
+    setCurrentPage(1);
   }, [filters]);
 
   const { data, isLoading: loading, refetch } = useTenders({
     keyword: filters.keyword,
     location: filters.location,
     status: filters.status,
+    source: filters.source,
     budgetMin: filters.budgetMin,
     budgetMax: filters.budgetMax,
     dateFrom: filters.dateFrom,
@@ -121,7 +124,6 @@ export function DatabaseTenderFeed({
             {tenders.map((tender) => (
               <div key={tender.id} className="list-item-deferred">
                 <TenderCard
-                key={tender.id}
                 tender={tender}
                 taxonomies={tenderTaxonomies[tender.id]}
                 onClick={() => router.push(`/tenders/${tender.id}`)}

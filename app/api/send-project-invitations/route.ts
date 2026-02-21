@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     for (const partner of partners) {
       // Update vo_members invitation status
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       await supabase
         .from("vo_members")
         .update({

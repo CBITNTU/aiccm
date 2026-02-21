@@ -56,7 +56,7 @@ export async function POST(
     const now = new Date().toISOString();
 
     if (action === "accept") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await supabase
         .from("vo_members")
         .update({
@@ -70,7 +70,7 @@ export async function POST(
 
       if (updateError) throw updateError;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await supabase
         .from("vo_members")
         .update({

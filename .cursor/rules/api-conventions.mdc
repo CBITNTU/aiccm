@@ -1,0 +1,48 @@
+---
+description: API route conventions - auth, validation, responses, event logging
+globs: app/api/**/*.ts
+alwaysApply: false
+---
+
+# API Route Conventions
+
+Use these patterns in every `app/api/**/route.ts` file.
+
+## Auth
+
+- Use `getAuthenticatedUser(request)` when you need to allow optional auth.
+- Use `requireAuth(request)` when the route must be authenticated (throws if not).
+
+```typescript
+import { getAuthenticatedUser, apiError, apiResponse } from "@/lib/api";
+import { requireAuth, validateBody, handleApiError } from "@/lib/api/validation";
+import { logApiEvent } from "@/lib/services/eventLogger";
+
+export async function POST(request: NextRequest) {
+  try {
+    const { user } = await requireAuth(request);
+    const body = await validateBody(request, myZodSchema);
+    // ... logic
+    await logApiEvent(request, { actionType: "my_action", userId: user.id, entityType: "…", entityId: "…", details: {} });
+    return apiResponse({ success: true });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+```
+
+## Validation
+
+- Validate all POST/PUT bodies with Zod and `validateBody(request, schema)`.
+- For URLs from the client use `validateUrl(url)` (SSRF-safe).
+- Use `sanitizeTextInput(text, maxLength)` for free-text inputs.
+
+## Responses
+
+- Success: `return apiResponse(data, 200)`.
+- Errors: `return apiError(message, statusCode, details?)`. Do not return stack traces or internal details.
+
+## Event Logging
+
+- Call `logApiEvent(request, { actionType, userId, userEmail?, entityType?, entityId?, details? })` for actions that change state or are security-relevant (create, update, delete, approve, etc.).
+- Use existing `EventActionType` values from `lib/services/eventLogger.ts` where possible.

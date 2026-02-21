@@ -14,6 +14,16 @@ interface Taxonomy {
   name: string;
 }
 
+function getTenderSourceLabel(documents: unknown): string | null {
+  const doc = documents as { specification_url?: string; application_url?: string } | null;
+  const url = doc?.specification_url || doc?.application_url || "";
+  if (!url) return null;
+  if (url.includes("ted.europa.eu")) return "TED (EU)";
+  if (url.includes("find-tender.service.gov.uk")) return "Find a Tender (UK)";
+  if (url.includes("contracts-finder.service.gov.uk")) return "Contracts Finder (UK)";
+  return null;
+}
+
 interface TenderCardProps {
   tender: {
     id: string;
@@ -28,6 +38,7 @@ interface TenderCardProps {
     budget_max: number;
     reference_number: string;
     cpv_codes?: string[];
+    documents?: unknown;
   };
   taxonomies?: Taxonomy[];
   onClick?: () => void;
@@ -35,6 +46,7 @@ interface TenderCardProps {
 
 export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const sourceLabel = getTenderSourceLabel(tender.documents);
 
   const formatBudget = (min?: number, max?: number) => {
     if (!min && !max) return "Not disclosed";
@@ -96,7 +108,12 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
         <h3 className="font-semibold text-base text-foreground line-clamp-2 group-hover:text-primary transition-colors">
           {tender.title}
         </h3>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          {sourceLabel && (
+            <Badge variant="secondary" className="text-xs font-normal">
+              {sourceLabel}
+            </Badge>
+          )}
           {tender.deadline && isDeadlineSoon(tender.deadline) && (
             <Badge variant="destructive" className="text-xs">
               Closing Soon

@@ -5,13 +5,12 @@
  */
 const url = "https://api.ted.europa.eu/v3/notices/search";
 const body = {
-  query: "publication-date >= 19900101",
+  query: "publication-date >= 20240101",
   fields: ["notice-identifier", "notice-title"],
-  page: 1,
-  limit: 2,
-  scope: "ACTIVE",
-  checkQuerySyntax: true,
-  paginationMode: "PAGE_NUMBER",
+  limit: 5,
+  scope: "ALL",
+  checkQuerySyntax: false, // TED API returns 0 notices when true
+  paginationMode: "ITERATION",
   onlyLatestVersions: true,
 };
 

@@ -43,11 +43,20 @@ const DATABASE_SORT_OPTIONS = [
   { value: "title:asc", label: "Title (A-Z)" },
 ] as const;
 
+// Tender source filter values (match documents URL)
+const TENDER_SOURCE_OPTIONS = [
+  { value: "all", label: "All Sources" },
+  { value: "ted", label: "TED (EU)" },
+  { value: "find-tender", label: "Find a Tender (UK)" },
+  { value: "contracts-finder", label: "Contracts Finder (UK)" },
+] as const;
+
 // Database filters interface
 interface TenderFiltersState {
   keyword?: string;
   location?: string;
   status?: string;
+  source?: string;
   budgetMin?: number;
   budgetMax?: number;
   dateFrom?: string;
@@ -123,6 +132,7 @@ export function TenderSearchBar({
       let count = 0;
       if (databaseFilters.location) count++;
       if (databaseFilters.status) count++;
+      if (databaseFilters.source) count++;
       if (databaseFilters.budgetMin) count++;
       if (databaseFilters.budgetMax) count++;
       if (databaseFilters.dateFrom) count++;
@@ -165,6 +175,14 @@ export function TenderSearchBar({
           label: "Status",
           value: databaseFilters.status,
         });
+      if (databaseFilters.source) {
+        const opt = TENDER_SOURCE_OPTIONS.find((o) => o.value === databaseFilters.source);
+        pills.push({
+          key: "source",
+          label: "Source",
+          value: opt?.label || databaseFilters.source,
+        });
+      }
       if (databaseFilters.budgetMin)
         pills.push({
           key: "budgetMin",
@@ -233,6 +251,7 @@ export function TenderSearchBar({
       const newFilters = { ...databaseFilters };
       if (key === "location") newFilters.location = undefined;
       if (key === "status") newFilters.status = undefined;
+      if (key === "source") newFilters.source = undefined;
       if (key === "budgetMin") newFilters.budgetMin = undefined;
       if (key === "budgetMax") newFilters.budgetMax = undefined;
       if (key === "dateFrom") newFilters.dateFrom = undefined;
@@ -491,6 +510,28 @@ function DatabaseFilterContent({
             <SelectItem value="open">Open</SelectItem>
             <SelectItem value="closing_soon">Closing Soon</SelectItem>
             <SelectItem value="framework">Framework</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Source */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Source</Label>
+        <Select
+          value={filters.source || "all"}
+          onValueChange={(value) =>
+            handleChange("source", value === "all" ? null : value)
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All sources" />
+          </SelectTrigger>
+          <SelectContent>
+            {TENDER_SOURCE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

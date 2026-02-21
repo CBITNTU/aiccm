@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const dateFrom = url.searchParams.get("dateFrom") || "";
     const dateTo = url.searchParams.get("dateTo") || "";
     const taxonomyIds = url.searchParams.get("taxonomyIds");
+    const source = url.searchParams.get("source") || "";
     const sortBy = url.searchParams.get("sortBy") || "deadline";
     const sortDirection = url.searchParams.get("sortDirection") || "desc";
     const page = parseInt(url.searchParams.get("page") || "1");
@@ -86,6 +87,25 @@ export async function GET(request: NextRequest) {
 
     if (dateTo.trim()) {
       query = query.lte("publication_date", dateTo);
+    }
+
+    // Filter by source (derived from documents URL)
+    if (source.trim()) {
+      const domain =
+        source === "ted"
+          ? "ted.europa.eu"
+          : source === "find-tender"
+            ? "find-tender.service.gov.uk"
+            : source === "contracts-finder"
+              ? "contracts-finder.service.gov.uk"
+              : null;
+      if (domain) {
+        // Match documents.specification_url OR documents.application_url (PostgREST uses * for wildcard)
+        const pattern = `*${domain}*`;
+        query = query.or(
+          `documents->>specification_url.ilike.${pattern},documents->>application_url.ilike.${pattern}`,
+        );
+      }
     }
 
     query = query

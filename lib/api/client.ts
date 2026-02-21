@@ -407,6 +407,7 @@ export const api = {
     keyword?: string;
     location?: string;
     status?: string;
+    source?: string;
     budgetMin?: number;
     budgetMax?: number;
     dateFrom?: string;
@@ -427,6 +428,7 @@ export const api = {
         ...(params.keyword && { keyword: params.keyword }),
         ...(params.location && { location: params.location }),
         ...(params.status && { status: params.status }),
+        ...(params.source && { source: params.source }),
         ...(params.budgetMin && { budgetMin: params.budgetMin }),
         ...(params.budgetMax && { budgetMax: params.budgetMax }),
         ...(params.dateFrom && { dateFrom: params.dateFrom }),

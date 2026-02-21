@@ -42,7 +42,7 @@ interface TenderData {
   cpv_codes: string[] | null;
   ai_summary: string | null;
   ai_capability_taxonomy: string[] | null;
-  documents: { application_url?: string } | null;
+  documents: { application_url?: string; specification_url?: string } | null;
 }
 
 interface MatchData {
@@ -181,6 +181,19 @@ export default function TenderDetailPage() {
     return "destructive";
   };
 
+  const sourceLabel =
+    (() => {
+      const url =
+        tender.documents?.specification_url ||
+        tender.documents?.application_url ||
+        "";
+      if (url.includes("ted.europa.eu")) return "TED (EU)";
+      if (url.includes("find-tender.service.gov.uk")) return "Find a Tender (UK)";
+      if (url.includes("contracts-finder.service.gov.uk"))
+        return "Contracts Finder (UK)";
+      return null;
+    })();
+
   const handleViewExternal = () => {
     const applicationUrl = (tender.documents as any)?.application_url;
     const externalUrl =
@@ -248,7 +261,12 @@ export default function TenderDetailPage() {
                 )}
               </div>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex gap-2 shrink-0 flex-wrap">
+              {sourceLabel && (
+                <Badge variant="outline" className="font-normal">
+                  {sourceLabel}
+                </Badge>
+              )}
               {tender.deadline && isDeadlineSoon(tender.deadline) && (
                 <Badge variant="destructive">Deadline Soon</Badge>
               )}

@@ -12,6 +12,7 @@ interface TenderFilters {
   keyword?: string;
   location?: string;
   status?: string;
+  source?: string;
   budgetMin?: number;
   budgetMax?: number;
   dateFrom?: string;
@@ -61,6 +62,7 @@ export function DatabaseTenderFeed({
     keyword: filters.keyword,
     location: filters.location,
     status: filters.status,
+    source: filters.source,
     budgetMin: filters.budgetMin,
     budgetMax: filters.budgetMax,
     dateFrom: filters.dateFrom,

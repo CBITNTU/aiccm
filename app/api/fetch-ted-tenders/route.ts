@@ -32,6 +32,20 @@ interface TenderData {
   source?: string;
 }
 
+// TED API may return fields as arrays or strings; normalize to string/array safely
+function toStringOrJoin(value: unknown, separator = ""): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.join(separator);
+  return String(value);
+}
+
+function toArray(value: unknown): string[] {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map(String);
+  return [String(value)];
+}
+
 // Transform TED notice data to our tender format
 // TED uses eForms structure with field names like "BT-01-notice", "notice-title", etc.
 function transformTEDToTender(notice: Record<string, unknown>): TenderData {
@@ -41,53 +55,51 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
     (notice["BT-01-notice"] as string) ||
     "";
 
-  // Extract title - can be in multiple fields
-  const titleObj = notice["notice-title"] as { lang?: string } | undefined;
+  // Extract title (TED may use { lang: string | string[] } or plain string)
+  const titleObj = notice["notice-title"] as
+    | { lang?: string | string[] }
+    | string
+    | undefined;
   const title =
-    typeof titleObj === "object" && titleObj !== null && "lang" in titleObj
-      ? (titleObj.lang as string) || ""
-      : (notice["BT-01-notice"] as string) || "Untitled Tender";
+    typeof titleObj === "object" && titleObj !== null && titleObj.lang != null
+      ? toStringOrJoin(titleObj.lang, " ") || ""
+      : typeof titleObj === "string"
+        ? titleObj
+        : (notice["BT-01-notice"] as string) || "Untitled Tender";
 
-  // Extract description
+  // Extract description (TED may use { lang: string[] } or { lang: string })
   const descriptionObj = notice["description-glo"] as
-    | { lang?: string[] }
+    | { lang?: string | string[] }
     | undefined;
   const description =
     typeof descriptionObj === "object" &&
     descriptionObj !== null &&
-    "lang" in descriptionObj
-      ? (descriptionObj.lang as string[])?.join(" ") || ""
+    descriptionObj.lang != null
+      ? toStringOrJoin(descriptionObj.lang, " ") || ""
       : "";
 
-  // Extract buyer information
-  const buyerNameObj = notice["buyer-name"] as { lang?: string[] } | undefined;
+  // Extract buyer information (TED may use { lang: string[] } or { lang: string })
+  const buyerNameObj = notice["buyer-name"] as
+    | { lang?: string | string[] }
+    | undefined;
   const buyer =
     typeof buyerNameObj === "object" &&
     buyerNameObj !== null &&
-    "lang" in buyerNameObj
-      ? (buyerNameObj.lang as string[])?.join(", ") || "Unknown Buyer"
+    buyerNameObj.lang != null
+      ? toStringOrJoin(buyerNameObj.lang, ", ") || "Unknown Buyer"
       : "Unknown Buyer";
 
-  // Extract location - try multiple fields
-  const placeOfPerformance = notice["place-of-performance-country-lot"] as
-    | string[]
-    | undefined;
+  // Extract location - try multiple fields (TED may return array or string)
   const location =
-    placeOfPerformance?.join(", ") ||
-    (notice["buyer-country"] as string[])?.join(", ") ||
+    toStringOrJoin(notice["place-of-performance-country-lot"], ", ") ||
+    toStringOrJoin(notice["buyer-country"], ", ") ||
     "EU";
 
-  // Extract CPV codes
-  const cpvCodes: string[] = [];
-  const mainCpv = notice["main-classification-lot"] as string[] | undefined;
-  if (mainCpv) cpvCodes.push(...mainCpv);
-
-  const additionalCpv = notice["additional-classification-lot"] as
-    | string[]
-    | undefined;
-  if (additionalCpv) {
-    cpvCodes.push(...additionalCpv);
-  }
+  // Extract CPV codes (TED may return array or single value)
+  const cpvCodes: string[] = [
+    ...toArray(notice["main-classification-lot"]),
+    ...toArray(notice["additional-classification-lot"]),
+  ];
 
   // Extract budget - TED uses estimated-value-lot
   const estimatedValue = notice["estimated-value-lot"] as number[] | undefined;
@@ -98,21 +110,18 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
     ? Math.floor(estimatedValue[1] * 100)
     : null;
 
-  // Extract dates
+  // Extract dates (TED may return array or string)
   const publicationDate =
-    (notice["publication-date"] as string[])?.join("") ||
-    new Date().toISOString();
-  const deadlineDate =
-    (notice["deadline-date-lot"] as string[])?.join("") || undefined;
+    toStringOrJoin(notice["publication-date"], "") || new Date().toISOString();
+  const deadlineDate = toStringOrJoin(notice["deadline-date-lot"], "") || undefined;
 
   // Extract status - TED uses scope (ACTIVE, ARCHIVED)
   const status = "active"; // All results from ACTIVE scope
 
-  // Extract contact info
-  const buyerEmail =
-    (notice["buyer-email"] as string[])?.join(", ") || undefined;
+  // Extract contact info (TED may return array or string)
+  const buyerEmail = toStringOrJoin(notice["buyer-email"], ", ") || undefined;
   const buyerContact =
-    (notice["buyer-contact-point"] as string[])?.join(", ") || undefined;
+    toStringOrJoin(notice["buyer-contact-point"], ", ") || undefined;
 
   const contactInfo = {
     email: buyerEmail,
@@ -222,7 +231,7 @@ async function fetchFromTEDAPI(
     fields,
     limit: Math.min(limit, 250), // Max 250 per TED Search API (Swagger)
     scope: "ALL", // ALL to maximise results (ACTIVE often returns 0)
-    checkQuerySyntax: true, // Enable syntax checking to get better errors
+    checkQuerySyntax: false, // Must be false: when true, TED API returns 0 notices despite valid query
     paginationMode: "ITERATION", // Use iteration for consistent cursor-based paging
     onlyLatestVersions: true, // Only get latest versions
   };

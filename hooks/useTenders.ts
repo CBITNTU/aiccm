@@ -8,6 +8,7 @@ interface TenderSearchParams {
   keyword?: string;
   location?: string;
   status?: string;
+  source?: string;
   budgetMin?: number;
   budgetMax?: number;
   dateFrom?: string;

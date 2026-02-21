@@ -11,6 +11,7 @@ import { ProjectList } from "./_components/ProjectList";
 import { ProjectWorkspace } from "./_components/ProjectWorkspace";
 import { ProjectListSkeleton } from "./_components/skeletons/ProjectListSkeleton";
 import { WorkspaceSkeleton } from "./_components/skeletons/WorkspaceSkeleton";
+import { InvitationsBanner } from "@/components/consulting/InvitationsBanner";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -125,6 +126,8 @@ export default function ProjectsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <ProjectsHeader companyId={selectedCompany?.id} />
+
+      <InvitationsBanner userId={user?.id ?? null} />
 
       <CompanySelector
         companies={companies}

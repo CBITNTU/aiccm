@@ -403,12 +403,11 @@ export function useSendInvitations() {
       tenderTitle: string;
       partnerIds: string[];
     }) => {
-      const result = await api.sendProjectInvitations(
+      return await api.sendProjectInvitations(
         projectId,
         tenderTitle,
         partnerIds,
       );
-      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

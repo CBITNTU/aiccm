@@ -3,6 +3,7 @@ import { apiResponse, createAdminClient } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
+  getUserCompanyIds,
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
@@ -31,10 +32,25 @@ export async function GET(
     if (projectError) throw projectError;
     if (!project) throw new AuthError("Project not found");
 
-    // Verify access
-    const hasAccess = await isCompanyMember(user.id, project.lead_company_id);
-    if (!hasAccess) {
-      throw new AuthError("No access to this project");
+    // Check if user is owner (member of lead company)
+    const isOwner = await isCompanyMember(user.id, project.lead_company_id);
+
+    // If not owner, check if user's company is a member with sent/accepted status
+    if (!isOwner) {
+      const userCompanyIds = await getUserCompanyIds(user.id);
+
+      const { data: membership } = await supabase
+        .from("vo_members")
+        .select("id")
+        .eq("vo_id", projectId)
+        .in("company_id", userCompanyIds)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .in("invitation_status" as any, ["sent", "accepted"])
+        .limit(1);
+
+      if (!membership || membership.length === 0) {
+        throw new AuthError("No access to this project");
+      }
     }
 
     // Fetch team members
@@ -71,6 +87,7 @@ export async function GET(
       project,
       teamMembers: members || [],
       tenderMatchResult,
+      isOwner,
     });
   } catch (error) {
     return handleApiError(error);

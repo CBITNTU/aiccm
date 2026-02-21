@@ -56,6 +56,7 @@ import { GapAnalysisPanel } from "./panels/GapAnalysisPanel";
 import { TeamBuilderPanel } from "./panels/TeamBuilderPanel";
 import { TeamAnalysisPanel } from "./panels/TeamAnalysisPanel";
 import { InvitationsPanel } from "./panels/InvitationsPanel";
+import { TeamContactsCard } from "@/components/consulting/TeamContactsCard";
 import { WorkspaceSkeleton } from "./skeletons/WorkspaceSkeleton";
 
 interface ProjectWorkspaceProps {
@@ -120,6 +121,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     teamAnalysis,
     recommendedPartners,
     tenderMatchResult,
+    isOwner,
   } = details;
 
   const handleStatusChange = async (status: string) => {
@@ -176,7 +178,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     <>
       <Card className={isFetching ? "opacity-60 transition-opacity" : ""}>
         <CardHeader>
-          <div className="flex items-start justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <CardTitle className="flex items-center gap-2">
                 {project.name}
@@ -189,52 +191,61 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              {project.status !== "completed" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleStatusChange("completed")}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Complete Project
-                </Button>
-              )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {project.status !== "archived" && (
-                    <DropdownMenuItem
-                      onClick={() => handleStatusChange("archived")}
-                    >
-                      <Archive className="h-4 w-4 mr-2" />
-                      Archive Project
-                    </DropdownMenuItem>
-                  )}
-                  {(project.status === "completed" ||
-                    project.status === "archived") && (
-                    <DropdownMenuItem
-                      onClick={() => handleStatusChange("active")}
-                    >
-                      <Target className="h-4 w-4 mr-2" />
-                      Reactivate
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setDeleteDialogOpen(true)}
-                    className="text-destructive focus:text-destructive"
+            {isOwner ? (
+              <div className="flex items-center gap-2">
+                {project.status !== "completed" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStatusChange("completed")}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Project
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Complete Project
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {project.status !== "archived" && (
+                      <DropdownMenuItem
+                        onClick={() => handleStatusChange("archived")}
+                      >
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive Project
+                      </DropdownMenuItem>
+                    )}
+                    {(project.status === "completed" ||
+                      project.status === "archived") && (
+                      <DropdownMenuItem
+                        onClick={() => handleStatusChange("active")}
+                      >
+                        <Target className="h-4 w-4 mr-2" />
+                        Reactivate
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Project
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) : (
+              <Badge
+                variant="outline"
+                className="bg-blue-500/10 text-blue-600 border-blue-200"
+              >
+                Member
+              </Badge>
+            )}
           </div>
         </CardHeader>
 
@@ -319,49 +330,51 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Team Builder Panel */}
-            <AccordionItem
-              value="team-builder"
-              className="border rounded-lg px-4"
-            >
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>Team Builder</span>
-                </div>
-                <div className="flex items-center gap-2 ml-auto mr-2">
-                  {tender && (
-                    <Badge
-                      variant="secondary"
-                      className="font-normal max-w-[180px] truncate"
-                      title={tender.title}
-                    >
-                      {tender.title.length > 25
-                        ? tender.title.slice(0, 25) + "…"
-                        : tender.title}
+            {/* Team Builder Panel (owner only) */}
+            {isOwner && (
+              <AccordionItem
+                value="team-builder"
+                className="border rounded-lg px-4"
+              >
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span>Team Builder</span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-auto mr-2">
+                    {tender && (
+                      <Badge
+                        variant="secondary"
+                        className="font-normal max-w-[180px] truncate"
+                        title={tender.title}
+                      >
+                        {tender.title.length > 25
+                          ? tender.title.slice(0, 25) + "…"
+                          : tender.title}
+                      </Badge>
+                    )}
+                    <Badge variant="outline">
+                      {teamCount} {teamCount === 1 ? "member" : "members"}
                     </Badge>
-                  )}
-                  <Badge variant="outline">
-                    {teamCount} {teamCount === 1 ? "member" : "members"}
-                  </Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                  >
-                    <TeamBuilderPanel
-                      projectId={project.id}
-                      teamMembers={teamMembers}
-                      recommendedPartners={recommendedPartners}
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </AccordionContent>
-            </AccordionItem>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                    >
+                      <TeamBuilderPanel
+                        projectId={project.id}
+                        teamMembers={teamMembers}
+                        recommendedPartners={recommendedPartners}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
             {/* Team Analysis Panel */}
             <AccordionItem
@@ -407,44 +420,53 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Invitations Panel */}
-            <AccordionItem
-              value="invitations"
-              className="border rounded-lg px-4"
-            >
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span>Invitations</span>
-                </div>
-                {invitableCount > 0 ? (
-                  <Badge variant="outline" className="ml-auto mr-2">
-                    {invitableCount} to invite
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="ml-auto mr-2">
-                    No partners yet
-                  </Badge>
-                )}
-              </AccordionTrigger>
-              <AccordionContent>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                  >
-                    <InvitationsPanel
-                      projectId={project.id}
-                      projectName={project.name}
-                      teamMembers={teamMembers}
-                      tenderTitle={tender?.title}
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </AccordionContent>
-            </AccordionItem>
+            {/* Invitations Panel (owner only) */}
+            {isOwner && (
+              <AccordionItem
+                value="invitations"
+                className="border rounded-lg px-4"
+              >
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span>Invitations</span>
+                  </div>
+                  {invitableCount > 0 ? (
+                    <Badge variant="outline" className="ml-auto mr-2">
+                      {invitableCount} to invite
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="ml-auto mr-2">
+                      No partners yet
+                    </Badge>
+                  )}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                    >
+                      <InvitationsPanel
+                        projectId={project.id}
+                        projectName={project.name}
+                        teamMembers={teamMembers}
+                        tenderTitle={tender?.title}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                </AccordionContent>
+              </AccordionItem>
+            )}
           </Accordion>
+
+          {/* Team contacts for member users */}
+          {!isOwner && (
+            <div className="mt-4">
+              <TeamContactsCard teamMembers={teamMembers} />
+            </div>
+          )}
         </CardContent>
       </Card>
 

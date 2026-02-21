@@ -118,3 +118,4 @@ export * from "./templates/admin-notification";
 export * from "./templates/company-join-request";
 export * from "./templates/approval-notification";
 export * from "./templates/team-invitation";
+export * from "./templates/project-invitation";

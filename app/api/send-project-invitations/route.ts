@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         .update({
           invitation_status: "sent",
           invitation_sent_at: new Date().toISOString(),
-        } as any)
+        } as Record<string, unknown>)
         .eq("vo_id", projectId)
         .eq("company_id", partner.id);
 

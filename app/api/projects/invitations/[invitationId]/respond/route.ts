@@ -65,7 +65,7 @@ export async function POST(
           invitation_responded_at: now,
           invitation_message: message || null,
           joined_at: now,
-        } as any)
+        } as Record<string, unknown>)
         .eq("id", invitationId);
 
       if (updateError) throw updateError;
@@ -77,7 +77,7 @@ export async function POST(
           invitation_status: "rejected",
           invitation_responded_at: now,
           invitation_message: message || null,
-        } as any)
+        } as Record<string, unknown>)
         .eq("id", invitationId);
 
       if (updateError) throw updateError;

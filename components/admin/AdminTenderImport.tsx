@@ -30,6 +30,7 @@ export function AdminTenderImport() {
     () => new Date().toISOString().split("T")[0],
   );
   const [error, setError] = useState<string | null>(null);
+  const [tedZeroMessage, setTedZeroMessage] = useState<string | null>(null);
 
   const handleFindTenderImport = async () => {
     setIsImporting(true);
@@ -187,6 +188,7 @@ export function AdminTenderImport() {
     setTotalFetched(0);
     setDuplicatesSkipped(0);
     setError(null);
+    setTedZeroMessage(null);
 
     try {
       let currentPage = 1;
@@ -258,6 +260,10 @@ export function AdminTenderImport() {
 
         if (!data.isAdmin) {
           throw new Error("Superadmin access required to import tenders");
+        }
+
+        if (batchCount === 0 && (data.totalFetched || 0) === 0 && (data as { message?: string }).message) {
+          setTedZeroMessage((data as { message?: string }).message ?? null);
         }
 
         // When adminImport is true, the API saves to DB and returns actual counts
@@ -517,6 +523,14 @@ export function AdminTenderImport() {
                   Duplicates skipped: {duplicatesSkipped}
                 </p>
               </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {tedZeroMessage && (
+          <Alert>
+            <AlertDescription>
+              <p className="text-sm">{tedZeroMessage}</p>
             </AlertDescription>
           </Alert>
         )}

@@ -35,6 +35,7 @@ interface TenderFiltersState {
   keyword?: string;
   location?: string;
   status?: string;
+  source?: string;
   budgetMin?: number;
   budgetMax?: number;
   dateFrom?: string;
@@ -81,10 +82,10 @@ export default function TendersPage() {
     );
   })();
 
-  // Auto-select first company when companies load
+  // Auto-select first company when companies load (async to satisfy set-state-in-effect)
   useEffect(() => {
     if (companies.length > 0 && !selectedCompany) {
-      setSelectedCompany(companies[0]);
+      queueMicrotask(() => setSelectedCompany(companies[0]));
     }
   }, [companies, selectedCompany]);
 
@@ -105,7 +106,11 @@ export default function TendersPage() {
   );
 
   const resetFilters = () => {
-    setFilters({ selectedTaxonomies: [], sortBy: "deadline", sortDirection: "desc" });
+    setFilters({
+      selectedTaxonomies: [],
+      sortBy: "deadline",
+      sortDirection: "desc",
+    });
   };
 
   const resetMatchingFilters = () => {

@@ -56,7 +56,7 @@ export async function POST(
     const now = new Date().toISOString();
 
     if (action === "accept") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await supabase
         .from("vo_members")
         .update({
@@ -65,19 +65,19 @@ export async function POST(
           invitation_responded_at: now,
           invitation_message: message || null,
           joined_at: now,
-        } as any)
+        } as Record<string, unknown>)
         .eq("id", invitationId);
 
       if (updateError) throw updateError;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { error: updateError } = await supabase
         .from("vo_members")
         .update({
           invitation_status: "rejected",
           invitation_responded_at: now,
           invitation_message: message || null,
-        } as any)
+        } as Record<string, unknown>)
         .eq("id", invitationId);
 
       if (updateError) throw updateError;

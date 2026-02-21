@@ -12,6 +12,7 @@ interface TenderFilters {
   keyword?: string;
   location?: string;
   status?: string;
+  source?: string;
   budgetMin?: number;
   budgetMax?: number;
   dateFrom?: string;
@@ -53,6 +54,7 @@ export function DatabaseTenderFeed({
 
   // Reset to page 1 when filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when filters change
     setCurrentPage(1);
   }, [filters]);
 
@@ -60,6 +62,7 @@ export function DatabaseTenderFeed({
     keyword: filters.keyword,
     location: filters.location,
     status: filters.status,
+    source: filters.source,
     budgetMin: filters.budgetMin,
     budgetMax: filters.budgetMax,
     dateFrom: filters.dateFrom,

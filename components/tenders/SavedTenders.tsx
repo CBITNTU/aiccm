@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -51,13 +51,17 @@ export function SavedTenders({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: savedData, isLoading: loading } = useSavedTenders(companyId);
-  const savedResults = (savedData?.results as unknown as MatchingResult[]) ?? [];
+  const savedResults = useMemo(
+    () => (savedData?.results as unknown as MatchingResult[]) ?? [],
+    [savedData?.results],
+  );
   const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
   const [keyword, setKeyword] = useState("");
 
   // Apply keyword filter whenever savedResults or keyword changes
   useEffect(() => {
     if (!keyword.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- derive filtered list from savedResults and keyword
       setFilteredResults(savedResults);
     } else {
       const lowerKeyword = keyword.toLowerCase().trim();

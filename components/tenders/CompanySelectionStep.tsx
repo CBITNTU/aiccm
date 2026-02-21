@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities -- company/query result types; copy uses quotes */
+/* eslint-disable react/no-unescaped-entities -- company/query result types; copy uses quotes */
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -51,25 +51,22 @@ export function SavedTenders({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: savedData, isLoading: loading } = useSavedTenders(companyId);
-  const savedResults = (savedData?.results as unknown as MatchingResult[]) ?? [];
-  const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
+  const savedResults = useMemo(
+    () => (savedData?.results as unknown as MatchingResult[]) ?? [],
+    [savedData?.results],
+  );
   const [keyword, setKeyword] = useState("");
 
-  // Apply keyword filter whenever savedResults or keyword changes
-  useEffect(() => {
-    if (!keyword.trim()) {
-      setFilteredResults(savedResults);
-    } else {
-      const lowerKeyword = keyword.toLowerCase().trim();
-      const filtered = savedResults.filter(
-        (result) =>
-          result.tenders.title.toLowerCase().includes(lowerKeyword) ||
-          result.tenders.description?.toLowerCase().includes(lowerKeyword) ||
-          result.tenders.buyer.toLowerCase().includes(lowerKeyword) ||
-          result.tenders.location?.toLowerCase().includes(lowerKeyword),
-      );
-      setFilteredResults(filtered);
-    }
+  const filteredResults = useMemo(() => {
+    if (!keyword.trim()) return savedResults;
+    const lowerKeyword = keyword.toLowerCase().trim();
+    return savedResults.filter(
+      (result) =>
+        result.tenders.title.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.description?.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.buyer.toLowerCase().includes(lowerKeyword) ||
+        result.tenders.location?.toLowerCase().includes(lowerKeyword),
+    );
   }, [savedResults, keyword]);
 
   const removeBookmark = async (resultId: string) => {
@@ -153,7 +150,8 @@ export function SavedTenders({
       ) : (
         <div className="space-y-3">
           {filteredResults.map((result) => (
-            <TenderMatchCard
+            <div key={result.id} className="list-item-deferred">
+              <TenderMatchCard
               key={result.id}
               result={result}
               onViewDetails={() => {
@@ -163,6 +161,7 @@ export function SavedTenders({
               onDelete={() => removeBookmark(result.id)}
               readOnly={readOnly}
             />
+            </div>
           ))}
         </div>
       )}

@@ -380,8 +380,8 @@ export function TenderMatching({
       );
     }
 
-    // Apply sorting
-    filtered.sort((a, b) => {
+    // Apply sorting (use toSorted to avoid mutating)
+    const sorted = filtered.toSorted((a, b) => {
       let aValue: number, bValue: number;
 
       switch (filters.sortBy) {
@@ -419,7 +419,7 @@ export function TenderMatching({
         : aValue - bValue;
     });
 
-    setFilteredResults(filtered);
+    setFilteredResults(sorted);
   };
 
   const runAnalysis = async () => {

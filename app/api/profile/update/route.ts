@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
@@ -41,28 +42,32 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error("Profile update error:", updateError);
-      await logApiEvent(request, {
-        actionType: "profile_updated",
-        userId: user.id,
-        userEmail: user.email || undefined,
-        status: "error",
-        errorMessage: updateError.message,
-      });
+      after(() =>
+        logApiEvent(request, {
+          actionType: "profile_updated",
+          userId: user.id,
+          userEmail: user.email || undefined,
+          status: "error",
+          errorMessage: updateError.message,
+        }).catch(() => {}),
+      );
       return NextResponse.json(
         { error: "Failed to update profile" },
         { status: 500 },
       );
     }
 
-    // Log successful profile update
-    await logApiEvent(request, {
-      actionType: "profile_updated",
-      userId: user.id,
-      userEmail: user.email || undefined,
-      details: {
-        fieldsUpdated: { firstName, lastName, jobTitle, phone: !!phone },
-      },
-    });
+    // Log successful profile update (non-blocking)
+    after(() =>
+      logApiEvent(request, {
+        actionType: "profile_updated",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        details: {
+          fieldsUpdated: { firstName, lastName, jobTitle, phone: !!phone },
+        },
+      }).catch(() => {}),
+    );
 
     return NextResponse.json({
       success: true,

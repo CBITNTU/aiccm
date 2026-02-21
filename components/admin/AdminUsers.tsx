@@ -60,7 +60,7 @@ export default function AdminUsers() {
     if (isAdmin) {
       fetchUsers();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when isAdmin changes
+     
   }, [isAdmin]);
 
   const checkAdminStatus = async () => {

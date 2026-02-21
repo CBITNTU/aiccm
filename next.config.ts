@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: false,
   },
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
 };
 
 export default nextConfig;

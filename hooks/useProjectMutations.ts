@@ -2,7 +2,6 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
-import { queryKeys } from "@/lib/queryKeys";
 import type {
   GapAnalysis,
   TeamAnalysis,
@@ -188,7 +187,7 @@ export function useRunGapAnalysis() {
 
           recommendations = scored
             .filter((c) => c.relevanceScore >= 20)
-            .sort((a, b) => b.relevanceScore - a.relevanceScore)
+            .toSorted((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 10);
         }
       }

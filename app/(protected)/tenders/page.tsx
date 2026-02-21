@@ -72,19 +72,17 @@ export default function TendersPage() {
   const companies = (() => {
     if (!rawCompanies) return [];
     const data = rawCompanies as unknown as Company[];
-    return Array.from(
-      new Map(data.map((c) => [c.id, c])).values()
-    ).sort(
+    return Array.from(new Map(data.map((c) => [c.id, c])).values()).toSorted(
       (a, b) =>
         new Date(b.created_at).getTime() -
-        new Date(a.created_at).getTime()
+        new Date(a.created_at).getTime(),
     );
   })();
 
-  // Auto-select first company when companies load
+  // Auto-select first company when companies load (async to satisfy set-state-in-effect)
   useEffect(() => {
     if (companies.length > 0 && !selectedCompany) {
-      setSelectedCompany(companies[0]);
+      queueMicrotask(() => setSelectedCompany(companies[0]));
     }
   }, [companies, selectedCompany]);
 

@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
+import { after } from "next/server";
 import {
   createAdminClient,
   createApiClient,
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { sanitizeLikeParam } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export interface CompanySearchResult {
@@ -30,7 +32,8 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("q");
 
     // Require at least 2 characters for search
-    if (!query || query.length < 2) {
+    const safeQuery = sanitizeLikeParam(query || "");
+    if (safeQuery.length < 2) {
       return apiResponse({ companies: [] });
     }
 
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
     const { data: companies, error } = await supabase
       .from("companies")
       .select("id, company_name")
-      .ilike("company_name", `%${query}%`)
+      .ilike("company_name", `%${safeQuery}%`)
       .eq("status", "active")
       .order("company_name")
       .limit(10);
@@ -70,11 +73,13 @@ export async function GET(request: NextRequest) {
       }),
     );
 
-    await logApiEvent(request, {
-      actionType: "company_searched",
-      userId: userId || undefined,
-      details: { query, count: companiesWithAdminStatus.length },
-    }).catch(() => {});
+    after(() =>
+      logApiEvent(request, {
+        actionType: "company_searched",
+        userId: userId || undefined,
+        details: { query: safeQuery, count: companiesWithAdminStatus.length },
+      }).catch(() => {}),
+    );
 
     return apiResponse({ companies: companiesWithAdminStatus });
   } catch (error) {

@@ -91,7 +91,7 @@ const AdminTaxonomyEditor = () => {
 
   useEffect(() => {
     fetchCapabilities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount
+     
   }, []);
 
   // Refresh capabilities when regeneration completes
@@ -164,7 +164,7 @@ const AdminTaxonomyEditor = () => {
   // Get unique categories
   const categories = Array.from(
     new Set(capabilities.map((c) => c.category)),
-  ).sort();
+  ).toSorted();
 
   // Get capabilities by category
   const getCapabilitiesByCategory = (category: string) => {

@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- company/query result types */
+ 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";

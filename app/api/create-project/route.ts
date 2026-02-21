@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { after } from "next/server";
 import {
   getAuthenticatedUser,
   createAdminClient,
@@ -58,32 +59,34 @@ export async function POST(request: NextRequest) {
 
     console.log("Project created successfully:", project.id);
 
-    // Log project creation
-    await logApiEvent(request, {
-      actionType: "project_created",
-      userId: user.id,
-      userEmail: user.email || undefined,
-      entityType: "project",
-      entityId: project.id,
-      details: {
-        projectName: name,
-        companyId: company_id,
-        targetTenderId: target_tender_id,
-      },
-    });
+    after(() =>
+      logApiEvent(request, {
+        actionType: "project_created",
+        userId: user.id,
+        userEmail: user.email || undefined,
+        entityType: "project",
+        entityId: project.id,
+        details: {
+          projectName: name,
+          companyId: company_id,
+          targetTenderId: target_tender_id,
+        },
+      }).catch(() => {}),
+    );
 
     return apiResponse({ project });
   } catch (error) {
     console.error("Unexpected error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
 
-    // Log error
-    await logApiEvent(request, {
-      actionType: "project_created",
-      userId: undefined,
-      status: "error",
-      errorMessage: message,
-    }).catch(() => {}); // Don't fail if logging fails
+    after(() =>
+      logApiEvent(request, {
+        actionType: "project_created",
+        userId: undefined,
+        status: "error",
+        errorMessage: message,
+      }).catch(() => {}),
+    );
 
     return apiError(message, 500);
   }

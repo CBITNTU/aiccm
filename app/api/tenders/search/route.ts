@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { apiResponse, createAdminClient } from "@/lib/api";
-import { requireAuth, handleApiError } from "@/lib/api/validation";
+import {
+  requireAuth,
+  handleApiError,
+  sanitizeLikeParam,
+} from "@/lib/api/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,14 +66,16 @@ export async function GET(request: NextRequest) {
       query = query.in("id", filteredTenderIds);
     }
 
-    if (keyword.trim()) {
+    const safeKeyword = sanitizeLikeParam(keyword);
+    if (safeKeyword) {
       query = query.or(
-        `title.ilike.%${keyword}%,description.ilike.%${keyword}%,buyer.ilike.%${keyword}%,location.ilike.%${keyword}%`,
+        `title.ilike.%${safeKeyword}%,description.ilike.%${safeKeyword}%,buyer.ilike.%${safeKeyword}%,location.ilike.%${safeKeyword}%`,
       );
     }
 
-    if (location.trim()) {
-      query = query.ilike("location", `%${location}%`);
+    const safeLocation = sanitizeLikeParam(location);
+    if (safeLocation) {
+      query = query.ilike("location", `%${safeLocation}%`);
     }
 
     if (budgetMin) {
@@ -99,7 +105,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch taxonomies for returned tenders
     const tenderIds = (data || []).map((t) => t.id);
-    let taxonomies: Record<string, { id: string; name: string }[]> = {};
+    const taxonomies: Record<string, { id: string; name: string }[]> = {};
 
     if (tenderIds.length > 0) {
       const { data: taxData } = await supabase

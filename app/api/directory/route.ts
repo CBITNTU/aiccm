@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { apiResponse, createAdminClient } from "@/lib/api";
-import { requireAuth, handleApiError } from "@/lib/api/validation";
+import {
+  requireAuth,
+  handleApiError,
+  sanitizeLikeParam,
+} from "@/lib/api/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -57,18 +61,21 @@ export async function GET(request: NextRequest) {
       query = query.in("id", filteredCompanyIds);
     }
 
-    if (search.trim()) {
+    const safeSearch = sanitizeLikeParam(search);
+    if (safeSearch) {
       query = query.or(
-        `company_name.ilike.%${search}%,description.ilike.%${search}%`,
+        `company_name.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`,
       );
     }
 
-    if (location.trim()) {
-      query = query.ilike("postcode", `%${location}%`);
+    const safeLocation = sanitizeLikeParam(location);
+    if (safeLocation) {
+      query = query.ilike("postcode", `%${safeLocation}%`);
     }
 
-    if (capability.trim()) {
-      query = query.ilike("key_capabilities", `%${capability}%`);
+    const safeCapability = sanitizeLikeParam(capability);
+    if (safeCapability) {
+      query = query.ilike("key_capabilities", `%${safeCapability}%`);
     }
 
     query = query.order("company_name").range(startIndex, endIndex);

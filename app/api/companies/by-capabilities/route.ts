@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { apiResponse, createAdminClient } from "@/lib/api";
-import { requireAuth, handleApiError } from "@/lib/api/validation";
+import {
+  requireAuth,
+  handleApiError,
+  sanitizeLikeParam,
+} from "@/lib/api/validation";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- supabase join types */
 
@@ -88,10 +92,10 @@ export async function POST(request: NextRequest) {
 
       if (searchKeywords.length > 0) {
         const orConditions = searchKeywords
-          .map(
-            (keyword) =>
-              `description.ilike.%${keyword}%,key_capabilities.ilike.%${keyword}%`,
-          )
+          .map((keyword) => {
+            const safe = sanitizeLikeParam(keyword);
+            return `description.ilike.%${safe}%,key_capabilities.ilike.%${safe}%`;
+          })
           .join(",");
 
         const { data: textSearchResults, error: textSearchError } =
@@ -142,7 +146,7 @@ export async function POST(request: NextRequest) {
               }
             });
 
-            const companiesArray = Array.from(uniqueMap.values()).sort(
+            const companiesArray = Array.from(uniqueMap.values()).toSorted(
               (a, b) => a.company_name.localeCompare(b.company_name),
             );
 
@@ -190,8 +194,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const companiesArray = Array.from(uniqueCompanies.values()).sort((a, b) =>
-      a.company_name.localeCompare(b.company_name),
+    const companiesArray = Array.from(uniqueCompanies.values()).toSorted(
+      (a, b) => a.company_name.localeCompare(b.company_name),
     );
 
     // Fetch capabilities for each company

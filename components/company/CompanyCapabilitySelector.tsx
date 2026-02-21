@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- capability row types */
+ 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -104,7 +104,7 @@ export function CompanyCapabilitySelector({
       }
       groups.get(category)!.push(cap);
     });
-    return Array.from(groups.entries()).sort((a, b) => {
+    return Array.from(groups.entries()).toSorted((a, b) => {
       if (a[0] === "Uncategorized") return 1;
       if (b[0] === "Uncategorized") return -1;
       return (a[0] || "").localeCompare(b[0] || "");

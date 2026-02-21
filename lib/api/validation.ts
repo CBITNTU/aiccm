@@ -47,6 +47,18 @@ export function sanitizeTextInput(text: string, maxLength: number): string {
 }
 
 /**
+ * Escape LIKE/ILIKE special chars (%, _, \) so user input is treated as literal.
+ * Use before interpolating into Supabase .or() or .ilike() to prevent injection.
+ */
+export function sanitizeLikeParam(text: string, maxLength = 200): string {
+  const trimmed = text.trim().slice(0, maxLength);
+  return trimmed
+    .replace(/\\/g, "\\\\")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_");
+}
+
+/**
  * Validate a URL: must be HTTPS, must not point to private/internal IPs.
  * Returns the validated URL string or throws.
  */

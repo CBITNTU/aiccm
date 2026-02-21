@@ -98,9 +98,9 @@ export default function DirectoryPage() {
     refetch();
   };
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters change (async to satisfy set-state-in-effect)
   useEffect(() => {
-    setCurrentPage(1);
+    queueMicrotask(() => setCurrentPage(1));
   }, [filters]);
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -175,12 +175,13 @@ export default function DirectoryPage() {
           <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {companies.map((company) => (
-                <CompanyCardNew
-                  key={company.id}
-                  company={company}
-                  onClick={handleCompanyClick}
-                  taxonomies={taxonomiesByCompany[company.id]}
-                />
+                <div key={company.id} className="list-item-deferred">
+                  <CompanyCardNew
+                    company={company}
+                    onClick={handleCompanyClick}
+                    taxonomies={taxonomiesByCompany[company.id]}
+                  />
+                </div>
               ))}
             </div>
 

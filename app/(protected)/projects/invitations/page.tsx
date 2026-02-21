@@ -7,7 +7,6 @@ import { useProjectInvitations } from "@/hooks/useProjectInvitations";
 import { api } from "@/lib/api/client";
 import { ProjectInvitationCard } from "@/components/consulting/ProjectInvitationCard";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Mail,
@@ -24,7 +23,6 @@ import Link from "next/link";
 
 export default function InvitationsPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { user } = useAuth();
   const token = searchParams.get("token");
 

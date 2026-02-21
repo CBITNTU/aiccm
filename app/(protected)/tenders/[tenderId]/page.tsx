@@ -26,6 +26,7 @@ import {
   Users,
 } from "lucide-react";
 import { formatCpvCode } from "@/lib/cpvCodes";
+import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 
 interface TenderData {
   id: string;
@@ -253,7 +254,7 @@ export default function TenderDetailPage() {
                 <Badge variant="destructive">Deadline Soon</Badge>
               )}
               {tender.status && (
-                <Badge variant="secondary">{tender.status}</Badge>
+                <TenderStatusBadge status={tender.status} />
               )}
               {matchData && (
                 <Badge

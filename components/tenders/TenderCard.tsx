@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, PoundSterling, ChevronDown } from "lucide-react";
+import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -64,28 +65,6 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
     return daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
   };
 
-  const getStatusVariant = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "open":
-        return "default";
-      case "closing_soon":
-        return "destructive";
-      case "framework":
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "closing_soon":
-        return "Closing Soon";
-      default:
-        return status?.charAt(0).toUpperCase() + status?.slice(1) || "Unknown";
-    }
-  };
-
   return (
     <div
       className="group border rounded-lg p-5 hover:shadow-md transition-all cursor-pointer bg-card"
@@ -102,12 +81,7 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
               Closing Soon
             </Badge>
           )}
-          <Badge
-            variant={getStatusVariant(tender.status)}
-            className="text-xs capitalize"
-          >
-            {getStatusLabel(tender.status)}
-          </Badge>
+          <TenderStatusBadge status={tender.status} size="sm" />
         </div>
       </div>
 

@@ -54,6 +54,7 @@ interface MatchingResult {
     deadline: string;
     budget_min: number;
     budget_max: number;
+    status: string;
   };
 }
 

@@ -33,6 +33,21 @@ export async function POST(
     const body = await request.json();
     const { companyId } = body as { companyId: string };
 
+    if (!companyId || typeof companyId !== "string") {
+      throw new AuthError("companyId is required");
+    }
+
+    // Verify the company exists
+    const { data: company } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("id", companyId)
+      .single();
+
+    if (!company) {
+      throw new AuthError("Company not found");
+    }
+
     const { data, error } = await supabase
       .from("vo_members")
       .insert({

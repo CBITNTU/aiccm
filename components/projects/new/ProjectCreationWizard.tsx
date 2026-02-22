@@ -393,6 +393,7 @@ export function ProjectCreationWizard({
                     onProjectNameChange={setProjectName}
                     onProjectDescriptionChange={setProjectDescription}
                     leadCompanyId={leadCompanyId}
+                    leadCompanyName={userCompanies.find(c => c.id === leadCompanyId)?.company_name || "Your Company"}
                     onProjectCreated={handleProjectCreated}
                     onBack={handleBack}
                   />

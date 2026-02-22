@@ -28,7 +28,16 @@ export async function POST(request: NextRequest) {
     const { name, description, target_tender_id, company_id } =
       (await request.json()) as ProjectRequest;
 
-    console.log("Creating project:", { name, company_id, user_id: user.id });
+    // Validate and sanitize project name
+    const trimmedName = name?.trim();
+    if (!trimmedName || trimmedName.length === 0) {
+      return apiError("Project name is required", 400);
+    }
+    if (trimmedName.length > 200) {
+      return apiError("Project name must be 200 characters or less", 400);
+    }
+
+    console.log("Creating project:", { name: trimmedName, company_id, user_id: user.id });
 
     // Use admin client to bypass RLS
     const supabaseAdmin = createAdminClient();
@@ -43,7 +52,7 @@ export async function POST(request: NextRequest) {
     const { data: project, error: projectError } = await supabaseAdmin
       .from("virtual_organizations")
       .insert({
-        name: name,
+        name: trimmedName,
         description: description || "",
         lead_company_id: company_id,
         target_tender_id: target_tender_id || null,
@@ -54,10 +63,29 @@ export async function POST(request: NextRequest) {
 
     if (projectError) {
       console.error("Project creation error:", projectError);
-      return apiError(projectError.message, 500);
+      return apiError("Failed to create project", 500);
     }
 
     console.log("Project created successfully:", project.id);
+
+    // Add lead company as a team member
+    const { error: memberError } = await supabaseAdmin
+      .from("vo_members")
+      .insert({
+        vo_id: project.id,
+        company_id: company_id,
+        role: "lead",
+      });
+
+    if (memberError) {
+      console.error("Error adding lead company as member:", memberError);
+      // Project was created but lead member insert failed — clean up
+      await supabaseAdmin
+        .from("virtual_organizations")
+        .delete()
+        .eq("id", project.id);
+      return apiError("Failed to create project", 500);
+    }
 
     after(() =>
       logApiEvent(request, {
@@ -67,7 +95,7 @@ export async function POST(request: NextRequest) {
         entityType: "project",
         entityId: project.id,
         details: {
-          projectName: name,
+          projectName: trimmedName,
           companyId: company_id,
           targetTenderId: target_tender_id,
         },
@@ -88,6 +116,6 @@ export async function POST(request: NextRequest) {
       }).catch(() => {}),
     );
 
-    return apiError(message, 500);
+    return apiError("An unexpected error occurred", 500);
   }
 }

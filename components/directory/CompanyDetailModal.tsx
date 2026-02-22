@@ -203,12 +203,12 @@ export function CompanyDetailModal({
                 </Badge>
               )}
               {company.user_id ? (
-                <Badge className="gap-1 border-0 bg-green-600 text-white dark:bg-green-600 dark:text-white">
+                <Badge className="gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
                   <BadgeCheck className="h-3 w-3" />
                   Verified
                 </Badge>
               ) : company.is_system_company ? (
-                <Badge className="gap-1 border-0 bg-primary text-white dark:bg-primary dark:text-white">
+                <Badge className="gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
                   <Sparkles className="h-3 w-3" />
                   AI Generated
                 </Badge>
@@ -370,9 +370,9 @@ export function CompanyDetailModal({
                     <label className="text-sm font-medium text-foreground block">
                       Safety Rating
                     </label>
-                    <p className="text-sm text-green-700 dark:text-green-300 font-medium leading-relaxed break-words">
+                    <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                       {company.safety_rating}
-                    </p>
+                    </Badge>
                   </div>
                 </div>
               )}
@@ -383,9 +383,9 @@ export function CompanyDetailModal({
                     <label className="text-sm font-medium text-foreground block">
                       Digital Maturity
                     </label>
-                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium leading-relaxed break-words">
+                    <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                       {company.digital_maturity}
-                    </p>
+                    </Badge>
                   </div>
                 </div>
               )}
@@ -396,9 +396,9 @@ export function CompanyDetailModal({
                     <label className="text-sm font-medium text-foreground block">
                       Market Position
                     </label>
-                    <p className="text-sm text-muted-foreground leading-relaxed break-words">
+                    <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                       {company.market_position}
-                    </p>
+                    </Badge>
                   </div>
                 </div>
               )}
@@ -415,16 +415,16 @@ export function CompanyDetailModal({
                       </p>
                     </div>
                     <div className="flex-shrink-0">
-                      <div
-                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
+                      <Badge
+                        className={
                           company.status === "active"
-                            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                            : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                        }`}
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                            : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100"
+                        }
                       >
                         {company.status.charAt(0).toUpperCase() +
                           company.status.slice(1)}
-                      </div>
+                      </Badge>
                     </div>
                   </div>
                 </div>

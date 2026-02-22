@@ -22,6 +22,7 @@ import {
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Check, ChevronsUpDown, Clock, Plus } from "lucide-react";
@@ -32,8 +33,18 @@ interface OrgSwitcherProps {
   isMobile?: boolean;
 }
 
-export function OrgSwitcher({ isCollapsed, isMobile = false }: OrgSwitcherProps) {
-  const { selectedOrg, companies, pendingCompanies, setSelectedOrg, isLoading, hasNoOrgs } = useOrg();
+export function OrgSwitcher({
+  isCollapsed,
+  isMobile = false,
+}: OrgSwitcherProps) {
+  const {
+    selectedOrg,
+    companies,
+    pendingCompanies,
+    setSelectedOrg,
+    isLoading,
+    hasNoOrgs,
+  } = useOrg();
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
@@ -42,10 +53,12 @@ export function OrgSwitcher({ isCollapsed, isMobile = false }: OrgSwitcherProps)
   if (isLoading) {
     return (
       <div className={cn("px-3 py-2", !showExpanded && "px-2")}>
-        <div className={cn(
-          "h-10 bg-muted rounded-md animate-pulse",
-          !showExpanded && "h-8 w-8 mx-auto",
-        )} />
+        <div
+          className={cn(
+            "h-10 bg-muted rounded-md animate-pulse",
+            !showExpanded && "h-8 w-8 mx-auto",
+          )}
+        />
       </div>
     );
   }
@@ -77,31 +90,36 @@ export function OrgSwitcher({ isCollapsed, isMobile = false }: OrgSwitcherProps)
       <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
     </Button>
   ) : (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-8 h-8 p-0 mx-auto flex items-center justify-center"
-        >
-          <span className="text-xs font-semibold">
-            {selectedOrg?.company_name?.charAt(0)?.toUpperCase() || "?"}
-          </span>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right" sideOffset={10}>
-        {selectedOrg?.company_name || "No organization"}
-      </TooltipContent>
-    </Tooltip>
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-8 h-8 p-0 mx-auto flex items-center justify-center"
+          >
+            <span className="text-xs font-semibold">
+              {selectedOrg?.company_name?.charAt(0)?.toUpperCase() || "?"}
+            </span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={10}>
+          {selectedOrg?.company_name || "No organization"}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 
   return (
-    <div className={cn("px-3 py-2 border-b border-border", !showExpanded && "px-2")}>
+    <div
+      className={cn(
+        "px-3 py-2 border-b border-border",
+        !showExpanded && "px-2",
+      )}
+    >
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          {triggerContent}
-        </PopoverTrigger>
+        <PopoverTrigger asChild>{triggerContent}</PopoverTrigger>
         <PopoverContent
           className="w-[240px] p-0"
           side={isMobile ? "bottom" : "right"}
@@ -130,12 +148,16 @@ export function OrgSwitcher({ isCollapsed, isMobile = false }: OrgSwitcherProps)
                             {company.company_name?.charAt(0)?.toUpperCase()}
                           </span>
                         </div>
-                        <span className="truncate text-sm">{company.company_name}</span>
+                        <span className="truncate text-sm">
+                          {company.company_name}
+                        </span>
                       </div>
                       <Check
                         className={cn(
                           "ml-auto h-4 w-4 flex-shrink-0",
-                          selectedOrg?.id === company.id ? "opacity-100" : "opacity-0",
+                          selectedOrg?.id === company.id
+                            ? "opacity-100"
+                            : "opacity-0",
                         )}
                       />
                     </CommandItem>
@@ -158,9 +180,14 @@ export function OrgSwitcher({ isCollapsed, isMobile = false }: OrgSwitcherProps)
                             {company.company_name?.charAt(0)?.toUpperCase()}
                           </span>
                         </div>
-                        <span className="truncate text-sm">{company.company_name}</span>
+                        <span className="truncate text-sm">
+                          {company.company_name}
+                        </span>
                       </div>
-                      <Badge variant="secondary" className="ml-auto text-[10px] h-5 px-1.5">
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto text-[10px] h-5 px-1.5"
+                      >
                         <Clock className="w-3 h-3 mr-0.5" />
                         Pending
                       </Badge>

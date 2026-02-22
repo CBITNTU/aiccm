@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useEffect, useMemo, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
 import { api } from "@/lib/api/client";
@@ -36,7 +37,6 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { CompanySelector } from "@/components/CompanySelector";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 
@@ -150,14 +150,11 @@ interface CompanyAnalysis {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { selectedOrg } = useOrg();
   const router = useRouter();
   const { data: dashboardData, isLoading: loading } = useDashboard(user?.id ?? null);
   const analyzeCompanyMutation = useAnalyzeCompany();
 
-  const userCompanies = useMemo(
-    () => (dashboardData?.companies as unknown as Company[]) ?? [],
-    [dashboardData?.companies],
-  );
   const stats: DashboardStats = {
     totalTenders: dashboardData?.stats.totalTenders ?? 0,
     matchingResults: dashboardData?.stats.matchingResults ?? 0,
@@ -166,53 +163,56 @@ export default function DashboardPage() {
     recentMatches: (dashboardData?.recentMatches as unknown as MatchingResult[]) ?? [],
   };
 
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companyAnalysis, setCompanyAnalysis] =
     useState<CompanyAnalysis | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchingResult | null>(
     null,
   );
+  // Track a local copy of the company for refreshing after analysis
+  const [enrichedCompany, setEnrichedCompany] = useState<Company | null>(null);
 
-  // Auto-select first company when dashboard data loads (async to satisfy set-state-in-effect)
+  // Keep enrichedCompany in sync with selectedOrg
   useEffect(() => {
-    if (userCompanies.length > 0 && !selectedCompany) {
-      queueMicrotask(() => setSelectedCompany(userCompanies[0]));
+    if (selectedOrg) {
+      queueMicrotask(() => setEnrichedCompany(selectedOrg));
+    } else {
+      queueMicrotask(() => {
+        setEnrichedCompany(null);
+        setCompanyAnalysis(null);
+      });
     }
-  }, [userCompanies, selectedCompany]);
+  }, [selectedOrg?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load stored analysis when company is selected (async to satisfy set-state-in-effect)
+  // Load stored analysis when company changes
   useEffect(() => {
-    if (selectedCompany?.ai_analysis) {
+    if (enrichedCompany?.ai_analysis) {
       queueMicrotask(() =>
         setCompanyAnalysis(
-          selectedCompany.ai_analysis as unknown as CompanyAnalysis,
+          enrichedCompany.ai_analysis as unknown as CompanyAnalysis,
         ),
       );
     } else {
       queueMicrotask(() => setCompanyAnalysis(null));
     }
-  }, [selectedCompany?.id, selectedCompany?.ai_analysis]);
+  }, [enrichedCompany?.id, enrichedCompany?.ai_analysis]);
 
   const isAnalyzing = analyzeCompanyMutation.isPending;
 
-  // Fetch company analysis
   const fetchCompanyAnalysis = async () => {
-    if (!selectedCompany?.id) return;
+    if (!selectedOrg?.id) return;
     try {
-      const data = await analyzeCompanyMutation.mutateAsync(selectedCompany.id);
+      const data = await analyzeCompanyMutation.mutateAsync(selectedOrg.id);
 
       if (data?.success && data?.analysis) {
         const analysis = data.analysis as CompanyAnalysis;
         setCompanyAnalysis(analysis);
 
-        // Refresh company data to get updated ai_analysis field
         try {
-          const companyData = await api.getCompany(selectedCompany.id);
+          const companyData = await api.getCompany(selectedOrg.id);
           const updatedCompany = companyData.company as unknown as Company;
-
           if (updatedCompany) {
-            setSelectedCompany(updatedCompany);
+            setEnrichedCompany(updatedCompany);
           }
         } catch (fetchError) {
           console.error("Error fetching updated company data:", fetchError);
@@ -223,7 +223,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Prepare radar chart data
   const radarData = companyAnalysis?.performanceBenchmark
     ? [
         {
@@ -259,10 +258,13 @@ export default function DashboardPage() {
       ]
     : [];
 
-  // Filter matches by selected company
-  const filteredMatches = selectedCompany
+  // Use enrichedCompany for display (has latest ai_analysis), selectedOrg for ID
+  const displayCompany = enrichedCompany ?? selectedOrg;
+
+  // Filter matches by selected org
+  const filteredMatches = selectedOrg
     ? stats.recentMatches.filter(
-        (match) => match.company_id === selectedCompany.id,
+        (match) => match.company_id === selectedOrg.id,
       )
     : stats.recentMatches;
 
@@ -329,10 +331,10 @@ export default function DashboardPage() {
 
         <Card
           className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => router.push("/profile")}
+          onClick={() => router.push("/my-company")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Companies</CardTitle>
+            <CardTitle className="text-sm font-medium">My Company</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -358,29 +360,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Company Selector */}
-      {userCompanies.length > 0 && (
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Select Company for Analysis
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <CompanySelector
-              selectedCompanyId={selectedCompany?.id}
-              onCompanySelect={setSelectedCompany}
-              showAddButton={true}
-            />
-          </CardContent>
-        </Card>
-      )}
-
       {/* Performance Benchmark and Company Overview */}
-      {selectedCompany && (
+      {displayCompany && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Performance Benchmark Card */}
           <Card>
@@ -392,7 +373,7 @@ export default function DashboardPage() {
                     Company Performance Benchmark
                   </CardTitle>
                   <CardDescription>
-                    AI-powered assessment of {selectedCompany.company_name}
+                    AI-powered assessment of {displayCompany.company_name}
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
@@ -461,35 +442,35 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                   <span className="text-sm font-medium">Company Name</span>
                   <span className="text-sm">
-                    {selectedCompany.company_name}
+                    {displayCompany.company_name}
                   </span>
                 </div>
 
-                {selectedCompany.safety_rating && (
+                {displayCompany.safety_rating && (
                   <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                     <span className="text-sm font-medium">Safety Rating</span>
                     <Badge
                       variant="default"
                       className="bg-green-600 hover:bg-green-700"
                     >
-                      {selectedCompany.safety_rating}
+                      {displayCompany.safety_rating}
                     </Badge>
                   </div>
                 )}
 
-                {selectedCompany.market_position && (
+                {displayCompany.market_position && (
                   <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                     <span className="text-sm font-medium">Market Position</span>
                     <span className="text-sm">
-                      {selectedCompany.market_position}
+                      {displayCompany.market_position}
                     </span>
                   </div>
                 )}
 
                 {/* Financial Data */}
-                {selectedCompany.financial_data &&
+                {displayCompany.financial_data &&
                   Object.keys(
-                    selectedCompany.financial_data as Record<string, unknown>,
+                    displayCompany.financial_data as Record<string, unknown>,
                   ).length > 0 && (
                     <>
                       <Separator className="my-2" />
@@ -498,7 +479,7 @@ export default function DashboardPage() {
                           Financial Information
                         </h4>
                         {Object.entries(
-                          selectedCompany.financial_data as Record<
+                          displayCompany.financial_data as Record<
                             string,
                             { value: number | string }
                           >,
@@ -527,19 +508,19 @@ export default function DashboardPage() {
                   <span className="text-sm font-medium">Status</span>
                   <Badge
                     variant={
-                      selectedCompany.status === "active"
+                      displayCompany.status === "active"
                         ? "default"
                         : "secondary"
                     }
                     className={
-                      selectedCompany.status === "active"
+                      displayCompany.status === "active"
                         ? "bg-emerald-600 hover:bg-emerald-700"
                         : "bg-orange-600 hover:bg-orange-700"
                     }
                   >
-                    {selectedCompany.status
-                      ? selectedCompany.status.charAt(0).toUpperCase() +
-                        selectedCompany.status.slice(1)
+                    {displayCompany.status
+                      ? displayCompany.status.charAt(0).toUpperCase() +
+                        displayCompany.status.slice(1)
                       : "Active"}
                   </Badge>
                 </div>
@@ -567,9 +548,9 @@ export default function DashboardPage() {
       )}
 
       {/* Team Members Section */}
-      {selectedCompany && (
+      {selectedOrg && (
         <div className="mb-8">
-          <TeamMembersCard companyId={selectedCompany.id} variant="compact" />
+          <TeamMembersCard companyId={selectedOrg.id} variant="compact" />
         </div>
       )}
 
@@ -584,8 +565,8 @@ export default function DashboardPage() {
                   Recent Matches
                 </CardTitle>
                 <CardDescription>
-                  {selectedCompany
-                    ? `Latest matches for ${selectedCompany.company_name}`
+                  {selectedOrg
+                    ? `Latest matches for ${selectedOrg.company_name}`
                     : "Your latest tender matching opportunities"}
                 </CardDescription>
               </div>
@@ -712,27 +693,27 @@ export default function DashboardPage() {
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           result={selectedMatch}
-          companyId={selectedCompany?.id}
+          companyId={selectedOrg?.id}
         />
       )}
 
       {/* Business Chatbot */}
       <BusinessChatbot
         companyData={
-          selectedCompany
+          selectedOrg
             ? {
-                company_name: selectedCompany.company_name || undefined,
-                description: selectedCompany.description || undefined,
+                company_name: selectedOrg.company_name || undefined,
+                description: selectedOrg.description || undefined,
                 key_capabilities: Array.isArray(
-                  selectedCompany.key_capabilities,
+                  selectedOrg.key_capabilities,
                 )
-                  ? selectedCompany.key_capabilities.join(", ")
+                  ? selectedOrg.key_capabilities.join(", ")
                   : undefined,
-                certifications: Array.isArray(selectedCompany.certifications)
-                  ? selectedCompany.certifications.join(", ")
+                certifications: Array.isArray(selectedOrg.certifications)
+                  ? selectedOrg.certifications.join(", ")
                   : undefined,
-                equipment: Array.isArray(selectedCompany.equipment)
-                  ? selectedCompany.equipment.join(", ")
+                equipment: Array.isArray(selectedOrg.equipment)
+                  ? selectedOrg.equipment.join(", ")
                   : undefined,
               }
             : undefined

@@ -8,6 +8,7 @@ import { Header } from "@/components/layout/Header";
 import { Sidenav } from "@/components/layout/Sidenav";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { EmailVerifiedToast } from "@/components/EmailVerifiedToast";
+import { OrgProvider } from "@/hooks/useOrg";
 
 function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -40,34 +41,36 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Suspense fallback={null}>
-        <EmailVerifiedToast />
-      </Suspense>
+    <OrgProvider>
+      <div className="min-h-screen bg-background">
+        <Suspense fallback={null}>
+          <EmailVerifiedToast />
+        </Suspense>
 
-      {/* Mobile Header */}
-      <div className="md:hidden">
-        <Header
-          variant="app"
-          onMobileMenuToggle={() => setMobileMenuOpen(true)}
-        />
-      </div>
+        {/* Mobile Header */}
+        <div className="md:hidden">
+          <Header
+            variant="app"
+            onMobileMenuToggle={() => setMobileMenuOpen(true)}
+          />
+        </div>
 
-      {/* Main Layout */}
-      <div className="flex min-h-screen">
-        {/* Sidenav - handles both desktop and mobile */}
-        <Sidenav
-          mobileOpen={mobileMenuOpen}
-          onMobileOpenChange={setMobileMenuOpen}
-        />
+        {/* Main Layout */}
+        <div className="flex min-h-screen">
+          {/* Sidenav - handles both desktop and mobile */}
+          <Sidenav
+            mobileOpen={mobileMenuOpen}
+            onMobileOpenChange={setMobileMenuOpen}
+          />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-h-screen">
-          <EmailVerificationBanner />
-          <main className="flex-1">{children}</main>
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-h-screen">
+            <EmailVerificationBanner />
+            <main className="flex-1">{children}</main>
+          </div>
         </div>
       </div>
-    </div>
+    </OrgProvider>
   );
 }
 

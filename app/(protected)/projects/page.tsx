@@ -1,59 +1,43 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserCompanies, type ProjectStatus } from "@/hooks/useProjects";
-import type { Database } from "@/lib/supabase/types";
+import { useOrg } from "@/hooks/useOrg";
+import { type ProjectStatus } from "@/hooks/useProjects";
 import { ProjectsHeader } from "./_components/ProjectsHeader";
-import { CompanySelector } from "./_components/CompanySelector";
 import { ProjectList } from "./_components/ProjectList";
 import { ProjectWorkspace } from "./_components/ProjectWorkspace";
 import { ProjectListSkeleton } from "./_components/skeletons/ProjectListSkeleton";
 import { WorkspaceSkeleton } from "./_components/skeletons/WorkspaceSkeleton";
 import { InvitationsBanner } from "@/components/consulting/InvitationsBanner";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Building2, Plus } from "lucide-react";
+import Link from "next/link";
 
 export default function ProjectsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { selectedOrg, setSelectedOrg, isLoading: orgLoading } = useOrg();
 
   // Read from URL params
   const routeCompanyId = searchParams.get("companyId");
   const routeProjectId = searchParams.get("projectId");
 
-  // Track user's manual selection (null means "use default")
-  const [manualCompanyId, setManualCompanyId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     routeProjectId,
   );
   const [projectFilter, setProjectFilter] = useState<ProjectStatus>("active");
 
-  const { data: companies, isLoading: loadingCompanies } = useUserCompanies(
-    user?.id ?? null,
-  );
-
-  // Derive selected company from available data (no setState in effect)
-  const selectedCompany = useMemo<Company | null>(() => {
-    if (!companies || companies.length === 0) return null;
-
-    // Priority 1: User's manual selection
-    if (manualCompanyId) {
-      const manual = companies.find((c) => c.id === manualCompanyId);
-      if (manual) return manual;
+  // Sync URL companyId param to global org context on mount
+  useEffect(() => {
+    if (routeCompanyId && routeCompanyId !== selectedOrg?.id) {
+      setSelectedOrg(routeCompanyId);
     }
-
-    // Priority 2: Route parameter
-    if (routeCompanyId) {
-      const fromRoute = companies.find((c) => c.id === routeCompanyId);
-      if (fromRoute) return fromRoute;
-    }
-
-    // Priority 3: First company (default)
-    return companies[0];
-  }, [companies, manualCompanyId, routeCompanyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on mount/route change
+  }, [routeCompanyId]);
 
   // Update URL when selection changes
   const updateUrl = useCallback(
@@ -65,7 +49,6 @@ export default function ProjectsPage() {
       const queryString = params.toString();
       const newUrl = queryString ? `/projects?${queryString}` : "/projects";
 
-      // Use replace to avoid adding to browser history on every selection
       router.replace(newUrl, { scroll: false });
     },
     [router],
@@ -73,28 +56,22 @@ export default function ProjectsPage() {
 
   // Sync URL when selections change
   useEffect(() => {
-    // Only update URL after initial load
-    if (!loadingCompanies && selectedCompany) {
-      updateUrl(selectedCompany.id, selectedProjectId);
+    if (!orgLoading && selectedOrg) {
+      updateUrl(selectedOrg.id, selectedProjectId);
     }
-  }, [selectedCompany, selectedProjectId, loadingCompanies, updateUrl]);
+  }, [selectedOrg, selectedProjectId, orgLoading, updateUrl]);
 
-  const handleCompanyChange = useCallback(
-    (company: Company | null) => {
-      if (company?.id !== selectedCompany?.id) {
-        setManualCompanyId(company?.id ?? null);
-        setSelectedProjectId(null);
-      }
-    },
-    [selectedCompany?.id],
-  );
+  // Reset project selection when org changes
+  useEffect(() => {
+    setSelectedProjectId(null);
+  }, [selectedOrg?.id]);
 
   const handleProjectSelect = useCallback((projectId: string | null) => {
     setSelectedProjectId(projectId);
   }, []);
 
-  // Show loading state while fetching companies
-  if (loadingCompanies) {
+  // Show loading state while fetching org context
+  if (orgLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <ProjectsHeader companyId={null} />
@@ -110,35 +87,43 @@ export default function ProjectsPage() {
   }
 
   // Show empty state if no companies
-  if (!companies || companies.length === 0) {
+  if (!selectedOrg) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <ProjectsHeader companyId={null} />
-        <CompanySelector
-          companies={[]}
-          selectedCompany={null}
-          onCompanyChange={handleCompanyChange}
-        />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              No Organization Selected
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Select an organization from the sidebar to manage your projects, or create your first company to get started.
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/my-company/new">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Your First Company
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      <ProjectsHeader companyId={selectedCompany?.id} />
+      <ProjectsHeader companyId={selectedOrg.id} />
 
       <InvitationsBanner userId={user?.id ?? null} />
-
-      <CompanySelector
-        companies={companies}
-        selectedCompany={selectedCompany}
-        onCompanyChange={handleCompanyChange}
-      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Project List */}
         <ProjectList
-          companyId={selectedCompany?.id ?? null}
+          companyId={selectedOrg.id}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleProjectSelect}
           filter={projectFilter}

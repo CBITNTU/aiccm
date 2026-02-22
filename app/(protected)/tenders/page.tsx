@@ -1,19 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyCompanies } from "@/hooks/useMyCompanies";
+import { useOrg } from "@/hooks/useOrg";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { FileText, Bookmark, Target, Plus } from "lucide-react";
 import { DatabaseTenderFeed } from "@/components/tenders/DatabaseTenderFeed";
@@ -23,13 +16,6 @@ import {
   MatchingFiltersState,
 } from "@/components/tenders/TenderMatching";
 import { SavedTenders } from "@/components/tenders/SavedTenders";
-
-interface Company {
-  id: string;
-  company_name: string;
-  created_at: string;
-  [key: string]: unknown;
-}
 
 interface TenderFiltersState {
   keyword?: string;
@@ -46,10 +32,10 @@ interface TenderFiltersState {
 }
 
 export default function TendersPage() {
-  const { user, isPendingApproval, isOnboarding } = useAuth();
+  const { isPendingApproval, isOnboarding } = useAuth();
+  const { selectedOrg } = useOrg();
   const router = useRouter();
 
-  // Users are restricted if they're pending approval OR still onboarding
   const isRestrictedUser = isPendingApproval || isOnboarding;
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<TenderFiltersState>({});
@@ -60,32 +46,10 @@ export default function TendersPage() {
     maxScore: 100,
     showApplied: "all",
   });
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   // Get tab from URL query parameter, default to "tenders"
   const tabFromUrl = searchParams.get("tab") || "tenders";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
-
-  // Fetch user companies via React Query
-  const { data: rawCompanies } = useMyCompanies(user?.id ?? null);
-
-  // Deduplicate and sort companies
-  const companies = (() => {
-    if (!rawCompanies) return [];
-    const data = rawCompanies as unknown as Company[];
-    return Array.from(new Map(data.map((c) => [c.id, c])).values()).toSorted(
-      (a, b) =>
-        new Date(b.created_at).getTime() -
-        new Date(a.created_at).getTime(),
-    );
-  })();
-
-  // Auto-select first company when companies load (async to satisfy set-state-in-effect)
-  useEffect(() => {
-    if (companies.length > 0 && !selectedCompany) {
-      queueMicrotask(() => setSelectedCompany(companies[0]));
-    }
-  }, [companies, selectedCompany]);
 
   const handleFiltersChange = (newFilters: TenderFiltersState) => {
     setFilters(newFilters);
@@ -94,14 +58,6 @@ export default function TendersPage() {
   const handleMatchingFiltersChange = (newFilters: MatchingFiltersState) => {
     setMatchingFilters(newFilters);
   };
-
-  const handleCompanySelect = useCallback(
-    (companyId: string) => {
-      const company = companies.find((c) => c.id === companyId);
-      setSelectedCompany(company || null);
-    },
-    [companies],
-  );
 
   const resetFilters = () => {
     setFilters({
@@ -136,11 +92,11 @@ export default function TendersPage() {
               Discover tenders matching your business capabilities
             </p>
           </div>
-          {selectedCompany && !isRestrictedUser && (
+          {selectedOrg && !isRestrictedUser && (
             <Button
               onClick={() => {
                 const params = new URLSearchParams();
-                params.set("companyId", selectedCompany.id);
+                params.set("companyId", selectedOrg.id);
                 router.push(`/projects/new?${params.toString()}`);
               }}
               className="flex items-center gap-2"
@@ -193,9 +149,9 @@ export default function TendersPage() {
                 isRestrictedUser
                   ? undefined
                   : (tenderId) => {
-                      if (selectedCompany) {
+                      if (selectedOrg) {
                         const params = new URLSearchParams();
-                        params.set("companyId", selectedCompany.id);
+                        params.set("companyId", selectedOrg.id);
                         params.set("tenderId", tenderId);
                         router.push(`/projects/new?${params.toString()}`);
                       }
@@ -206,35 +162,22 @@ export default function TendersPage() {
 
           {/* Your Matches Tab */}
           <TabsContent value="matches" className="space-y-4">
-            {/* Company selector + Run Analysis header */}
-            <div className="flex items-center justify-between gap-4 pb-2">
-              <div className="flex items-center gap-3">
+            {/* Company info header */}
+            {selectedOrg && (
+              <div className="flex items-center gap-3 pb-2">
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
                   Matching for:
                 </span>
-                {companies.length > 0 ? (
-                  <Select
-                    value={selectedCompany?.id || ""}
-                    onValueChange={handleCompanySelect}
-                  >
-                    <SelectTrigger className="w-[220px] h-9">
-                      <SelectValue placeholder="Select company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.company_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    No companies found
-                  </span>
-                )}
+                <span className="text-sm font-medium">{selectedOrg.company_name}</span>
               </div>
-            </div>
+            )}
+            {!selectedOrg && (
+              <div className="flex items-center gap-3 pb-2">
+                <span className="text-sm text-muted-foreground">
+                  No company selected. Select an organization from the sidebar.
+                </span>
+              </div>
+            )}
 
             <TenderSearchBar
               filterType="matching"
@@ -245,7 +188,7 @@ export default function TendersPage() {
             />
 
             <TenderMatching
-              companyId={selectedCompany?.id}
+              companyId={selectedOrg?.id}
               filters={matchingFilters}
               readOnly={isRestrictedUser}
               onCreateProject={
@@ -253,8 +196,8 @@ export default function TendersPage() {
                   ? undefined
                   : (tenderId) => {
                       const params = new URLSearchParams();
-                      if (selectedCompany) {
-                        params.set("companyId", selectedCompany.id);
+                      if (selectedOrg) {
+                        params.set("companyId", selectedOrg.id);
                       }
                       params.set("tenderId", tenderId);
                       router.push(`/projects/new?${params.toString()}`);
@@ -266,7 +209,7 @@ export default function TendersPage() {
           {/* Saved Tenders Tab */}
           <TabsContent value="saved" className="space-y-4">
             <SavedTenders
-              companyId={selectedCompany?.id}
+              companyId={selectedOrg?.id}
               readOnly={isRestrictedUser}
             />
           </TabsContent>

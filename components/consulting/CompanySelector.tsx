@@ -84,7 +84,7 @@ export function CompanySelector({
   };
 
   const handleAddCompany = () => {
-    router.push("/my-companies/new");
+    router.push("/my-company/new");
   };
 
   if (loading) {

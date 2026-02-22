@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 /**
  * Client component that handles the ?mode=create query parameter
  * on the root page. If user is authenticated and approved,
- * redirects to /my-companies/new to create a new company.
+ * redirects to /my-company/new to create a new company.
  */
 export function ModeRedirect() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export function ModeRedirect() {
 
         if (user) {
           // User is authenticated, redirect to new company page
-          router.replace("/my-companies/new");
+          router.replace("/my-company/new");
         } else {
           // User is not authenticated, redirect to auth page
           // After auth, they can manually navigate to add company

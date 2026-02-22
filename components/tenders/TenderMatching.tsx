@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -79,8 +79,11 @@ export function TenderMatching({
     isLoading: loading,
     refetch: refetchMatchingResults,
   } = useMatchingResults(companyId);
-  const matchingResults = (matchingData?.results as unknown as MatchingResult[]) ?? [];
-  const [filteredResults, setFilteredResults] = useState<MatchingResult[]>([]);
+  const matchingResults = useMemo(
+    () => (matchingData?.results as unknown as MatchingResult[]) ?? [],
+    [matchingData],
+  );
+
   const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -94,7 +97,8 @@ export function TenderMatching({
     progressPercent: number;
   } | null>(null);
 
-  const analyzing = internalAnalyzing || matchingProgress?.status === "processing";
+  const analyzing =
+    internalAnalyzing || matchingProgress?.status === "processing";
 
   // Use stable filter reference to prevent infinite re-renders
   const filters = filtersProp ?? DEFAULT_FILTERS;
@@ -305,30 +309,24 @@ export function TenderMatching({
     }
   }, [user, companyId, checkMatchingProgress]);
 
+  // Extract primitives so the polling effect does not re-run on every object identity change
+  const batchId = matchingProgress?.batchId ?? null;
+  const isProcessing = matchingProgress?.status === "processing";
+
   // Poll for progress and refetch results while matching is in progress (progressive results)
   useEffect(() => {
-    if (!matchingProgress || matchingProgress.status !== "processing") {
-      return;
-    }
+    if (!isProcessing || !batchId) return;
 
     const interval = setInterval(() => {
-      if (matchingProgress.batchId) {
-        checkMatchingProgress(matchingProgress.batchId);
-        // Refetch results so new matches appear as they complete (progressive result delivery)
-        refetchMatchingResults();
-      }
+      checkMatchingProgress(batchId);
+      // Refetch results so new matches appear as they complete (progressive result delivery)
+      refetchMatchingResults();
     }, 5000); // Poll every 5 seconds for progress and incremental results
 
     return () => clearInterval(interval);
-  }, [matchingProgress, checkMatchingProgress, refetchMatchingResults]);
+  }, [isProcessing, batchId, checkMatchingProgress, refetchMatchingResults]);
 
-  // Memoize filtered results to avoid infinite loops
-  useEffect(() => {
-    applyFiltersAndSorting();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchingResults, filtersKey]);
-
-  const applyFiltersAndSorting = () => {
+  const filteredResults = useMemo(() => {
     let filtered = [...matchingResults];
 
     // Apply keyword filter
@@ -381,7 +379,7 @@ export function TenderMatching({
     }
 
     // Apply sorting (use toSorted to avoid mutating)
-    const sorted = filtered.toSorted((a, b) => {
+    return filtered.toSorted((a, b) => {
       let aValue: number, bValue: number;
 
       switch (filters.sortBy) {
@@ -418,9 +416,9 @@ export function TenderMatching({
         ? bValue - aValue
         : aValue - bValue;
     });
-
-    setFilteredResults(sorted);
-  };
+    // filtersKey is a stable JSON-serialised string representing all filter values
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchingResults, filtersKey]);
 
   const runAnalysis = async () => {
     if (!companyId) {
@@ -567,8 +565,12 @@ export function TenderMatching({
       await api.deleteMatchingResult(resultId);
       toast.success("Match result deleted successfully");
       if (companyId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.matchingResults(companyId) });
-        queryClient.invalidateQueries({ queryKey: queryKeys.savedTenders(companyId) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.matchingResults(companyId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.savedTenders(companyId),
+        });
       }
     } catch (error) {
       console.error("Error deleting result:", error);
@@ -585,8 +587,12 @@ export function TenderMatching({
         currentStatus ? "Removed from saved tenders" : "Added to saved tenders",
       );
       if (companyId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.matchingResults(companyId) });
-        queryClient.invalidateQueries({ queryKey: queryKeys.savedTenders(companyId) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.matchingResults(companyId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.savedTenders(companyId),
+        });
       }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
@@ -622,25 +628,25 @@ export function TenderMatching({
             matches
           </p>
           <Button
-              onClick={runAnalysis}
-              disabled={analyzing || loading || readOnly}
-              size="sm"
-              title={
-                readOnly ? "Action restricted for pending accounts" : undefined
-              }
-            >
-              {analyzing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Target className="w-4 h-4 mr-2" />
-                  Re-run Analysis
-                </>
-              )}
-            </Button>
+            onClick={runAnalysis}
+            disabled={analyzing || loading || readOnly}
+            size="sm"
+            title={
+              readOnly ? "Action restricted for pending accounts" : undefined
+            }
+          >
+            {analyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Target className="w-4 h-4 mr-2" />
+                Re-run Analysis
+              </>
+            )}
+          </Button>
         </div>
       )}
 
@@ -710,7 +716,9 @@ export function TenderMatching({
               key={result.id}
               result={result}
               onViewDetails={() => {
-                router.push(`/tenders/${result.tender_id}?companyId=${companyId}`);
+                router.push(
+                  `/tenders/${result.tender_id}?companyId=${companyId}`,
+                );
               }}
               onBookmark={() => toggleBookmark(result.id, result.is_bookmarked)}
               onDelete={() => deleteResult(result.id)}
@@ -720,7 +728,6 @@ export function TenderMatching({
           ))}
         </div>
       )}
-
     </div>
   );
 }

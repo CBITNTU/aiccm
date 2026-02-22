@@ -30,10 +30,24 @@ export async function DELETE(
       throw new AuthError("No access to this project");
     }
 
+    // Prevent deleting the lead company
+    const { data: member } = await supabase
+      .from("vo_members")
+      .select("role")
+      .eq("id", memberId)
+      .eq("vo_id", projectId)
+      .single();
+
+    if (!member) throw new AuthError("Member not found in this project");
+    if (member.role === "lead") {
+      throw new AuthError("Cannot remove the lead company from the project");
+    }
+
     const { error } = await supabase
       .from("vo_members")
       .delete()
-      .eq("id", memberId);
+      .eq("id", memberId)
+      .eq("vo_id", projectId);
 
     if (error) throw error;
 

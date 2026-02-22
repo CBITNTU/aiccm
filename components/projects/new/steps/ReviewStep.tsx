@@ -37,6 +37,7 @@ interface ReviewStepProps {
   onProjectNameChange: (name: string) => void;
   onProjectDescriptionChange: (description: string) => void;
   leadCompanyId: string;
+  leadCompanyName: string;
   onProjectCreated: (projectId: string) => void;
   onBack: () => void;
 }
@@ -50,6 +51,7 @@ export function ReviewStep({
   onProjectNameChange,
   onProjectDescriptionChange,
   leadCompanyId,
+  leadCompanyName,
   onProjectCreated,
   onBack,
 }: ReviewStepProps) {
@@ -130,15 +132,23 @@ export function ReviewStep({
       });
 
       // Add selected companies as members
+      const failedMembers: string[] = [];
       for (const company of selectedCompanies) {
         try {
           await api.addProjectMember(project.id as string, company.id);
         } catch (memberError) {
           console.error("Error adding member:", memberError);
+          failedMembers.push(company.company_name);
         }
       }
 
-      toast.success("Project created successfully!");
+      if (failedMembers.length > 0) {
+        toast.warning(
+          `Project created, but failed to add: ${failedMembers.join(", ")}. You can add them later from the project page.`,
+        );
+      } else {
+        toast.success("Project created successfully!");
+      }
       onProjectCreated(project.id as string);
     } catch (error) {
       console.error("Error createProject.isPending project:", error);
@@ -231,35 +241,38 @@ export function ReviewStep({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="w-4 h-4" />
-            Project Team ({selectedCompanies.length} companies)
+            Project Team ({selectedCompanies.length + 1} companies)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {selectedCompanies.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No companies selected
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {selectedCompanies.map((company) => (
-                <div
-                  key={company.id}
-                  className="flex items-center gap-3 p-3 border rounded-lg"
-                >
-                  <Building2 className="w-5 h-5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="font-medium">{company.company_name}</p>
-                    {company.postcode && (
-                      <p className="text-sm text-muted-foreground">
-                        {company.postcode}
-                      </p>
-                    )}
-                  </div>
-                  <CheckCircle2 className="w-5 h-5 text-primary" />
-                </div>
-              ))}
+          <div className="space-y-3">
+            {/* Lead company (always shown) */}
+            <div className="flex items-center gap-3 p-3 border rounded-lg bg-primary/5">
+              <Building2 className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="font-medium">{leadCompanyName}</p>
+              </div>
+              <Badge variant="default" className="text-xs">Lead</Badge>
             </div>
-          )}
+            {/* Partner companies */}
+            {selectedCompanies.map((company) => (
+              <div
+                key={company.id}
+                className="flex items-center gap-3 p-3 border rounded-lg"
+              >
+                <Building2 className="w-5 h-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <p className="font-medium">{company.company_name}</p>
+                  {company.postcode && (
+                    <p className="text-sm text-muted-foreground">
+                      {company.postcode}
+                    </p>
+                  )}
+                </div>
+                <CheckCircle2 className="w-5 h-5 text-primary" />
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

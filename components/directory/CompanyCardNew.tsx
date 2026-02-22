@@ -91,12 +91,12 @@ export function CompanyCardNew({
           {company.company_name}
         </h3>
         {company.user_id ? (
-          <Badge className="shrink-0 gap-1 border-0 bg-green-600 text-white dark:bg-green-600 dark:text-white">
+          <Badge className="shrink-0 gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
             <BadgeCheck className="h-3 w-3" />
             Verified
           </Badge>
         ) : company.is_system_company ? (
-          <Badge className="shrink-0 gap-1 border-0 bg-primary text-white dark:bg-primary dark:text-white">
+          <Badge className="shrink-0 gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
             <Sparkles className="h-3 w-3" />
             AI Generated
           </Badge>

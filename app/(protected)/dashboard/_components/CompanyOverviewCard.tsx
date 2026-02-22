@@ -40,10 +40,7 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
           {company.safety_rating && (
             <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
               <span className="text-sm font-medium">Safety Rating</span>
-              <Badge
-                variant="default"
-                className="bg-green-600 hover:bg-green-700"
-              >
+              <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                 {company.safety_rating}
               </Badge>
             </div>
@@ -98,15 +95,10 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
           <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
             <span className="text-sm font-medium">Status</span>
             <Badge
-              variant={
-                company.status === "active"
-                  ? "default"
-                  : "secondary"
-              }
               className={
                 company.status === "active"
-                  ? "bg-emerald-600 hover:bg-emerald-700"
-                  : "bg-orange-600 hover:bg-orange-700"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                  : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100"
               }
             >
               {company.status

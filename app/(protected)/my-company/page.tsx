@@ -94,7 +94,7 @@ export default function MyCompanyPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{company.company_name}</CardTitle>
-                  <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+                  <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">
                     <Clock className="w-3 h-3 mr-1" />
                     Pending
                   </Badge>
@@ -165,14 +165,14 @@ export default function MyCompanyPage() {
                 <Badge
                   className={
                     company.status === "active"
-                      ? "bg-green-600 text-white hover:bg-green-600"
-                      : "bg-gray-500 text-white hover:bg-gray-500"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                      : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100"
                   }
                 >
                   {formatCompanyStatus(company.status)}
                 </Badge>
                 {company.is_system_company && (
-                  <Badge variant="outline">Verified</Badge>
+                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">Verified</Badge>
                 )}
               </div>
             </div>
@@ -216,7 +216,7 @@ export default function MyCompanyPage() {
                 <Separator />
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Safety Rating</span>
-                  <Badge className="bg-green-600 hover:bg-green-700">
+                  <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                     {company.safety_rating}
                   </Badge>
                 </div>
@@ -226,7 +226,7 @@ export default function MyCompanyPage() {
             {company.market_position && (
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Market Position</span>
-                <span className="text-sm">{company.market_position}</span>
+                <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">{company.market_position}</Badge>
               </div>
             )}
           </CardContent>
@@ -330,7 +330,7 @@ export default function MyCompanyPage() {
                     <Building2 className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium">{pending.company_name}</span>
                   </div>
-                  <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+                  <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">
                     <Clock className="w-3 h-3 mr-1" />
                     Pending
                   </Badge>

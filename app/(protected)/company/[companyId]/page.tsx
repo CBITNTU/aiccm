@@ -774,7 +774,7 @@ export default function CompanyDetailPage() {
                       <span className="text-sm font-medium">
                         Market Position
                       </span>
-                      <Badge variant="secondary">
+                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                         {companyData.market_position}
                       </Badge>
                     </div>
@@ -782,7 +782,7 @@ export default function CompanyDetailPage() {
                   {companyData.safety_rating && (
                     <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                       <span className="text-sm font-medium">Safety Rating</span>
-                      <Badge variant="default" className="bg-green-600">
+                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                         {companyData.safety_rating}
                       </Badge>
                     </div>
@@ -792,7 +792,7 @@ export default function CompanyDetailPage() {
                       <span className="text-sm font-medium">
                         Digital Maturity
                       </span>
-                      <Badge variant="secondary">
+                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                         {companyData.digital_maturity}
                       </Badge>
                     </div>

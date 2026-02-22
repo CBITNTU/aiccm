@@ -92,6 +92,7 @@ const navigationItems: NavigationItem[] = [
 interface SidebarContentProps {
   isMobile?: boolean;
   isCollapsed: boolean;
+  isRestrictedUser: boolean;
   toggleCollapsed: () => void;
   filteredNavItems: NavigationItem[];
   isActiveRoute: (href: string) => boolean;
@@ -105,6 +106,7 @@ interface SidebarContentProps {
 function SidebarContent({
   isMobile = false,
   isCollapsed,
+  isRestrictedUser,
   toggleCollapsed,
   filteredNavItems,
   isActiveRoute,
@@ -159,8 +161,10 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Org Switcher */}
-      <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
+      {/* Org Switcher — hidden for onboarding/pending-approval users */}
+      {!isRestrictedUser && (
+        <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
+      )}
 
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
@@ -326,6 +330,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   // Shared props for SidebarContent
   const sidebarProps = {
     isCollapsed,
+    isRestrictedUser,
     toggleCollapsed,
     filteredNavItems,
     isActiveRoute,

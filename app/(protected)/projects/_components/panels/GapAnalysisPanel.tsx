@@ -197,54 +197,46 @@ export function GapAnalysisPanel({
     );
   }
 
-  // Show analysis results (solo = read-only, no edits; with partners = full editing)
+  // Show analysis results
   return (
     <div className="py-4 space-y-6">
-      {isSolo && (
-        <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-          Add a partner to make edits and re-run gap analysis.
-        </div>
-      )}
-
-      {/* Action buttons: only when with partners */}
-      {!isSolo && (
-        <div className="flex justify-end gap-2">
-          {hasEdits && (
-            <Button
-              size="sm"
-              onClick={handleSaveEdits}
-              disabled={updateGapAnalysis.isPending}
-            >
-              {updateGapAnalysis.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save changes
-                </>
-              )}
-            </Button>
-          )}
+      {/* Action buttons */}
+      <div className="flex justify-end gap-2">
+        {hasEdits && (
           <Button
-            variant="outline"
             size="sm"
-            onClick={handleRunAnalysis}
-            disabled={runAnalysis.isPending || !company}
+            onClick={handleSaveEdits}
+            disabled={updateGapAnalysis.isPending}
           >
-            {runAnalysis.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Re-analyzing...
-              </>
+            {updateGapAnalysis.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Re-run Analysis
+                <Save className="h-4 w-4 mr-2" />
+                Save changes
               </>
             )}
           </Button>
-        </div>
-      )}
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRunAnalysis}
+          disabled={runAnalysis.isPending || !company}
+        >
+          {runAnalysis.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Re-analyzing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Re-run Analysis
+            </>
+          )}
+        </Button>
+      </div>
 
       {/* Coverage Score */}
       <motion.div
@@ -265,7 +257,7 @@ export function GapAnalysisPanel({
         </div>
       </motion.div>
 
-      {/* Competencies Grid: with +/- only when with partners */}
+      {/* Competencies Grid */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -278,28 +270,24 @@ export function GapAnalysisPanel({
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             Your Competencies ({companyCompetencies.length})
           </h4>
-          {!isSolo && (
-            <p className="text-xs text-muted-foreground mb-2">
-              Use minus to move to Missing
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mb-2">
+            Use minus to move to Missing
+          </p>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {companyCompetencies.map((comp, idx) => (
               <div key={`c-${idx}`} className="flex items-center gap-2 group">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
                 <span className="text-sm flex-1">{comp}</span>
-                {!isSolo && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 opacity-70 hover:opacity-100"
-                    onClick={() => moveToMissing(idx)}
-                    title="Move to Missing"
-                    aria-label="Move to Missing"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 opacity-70 hover:opacity-100"
+                  onClick={() => moveToMissing(idx)}
+                  title="Move to Missing"
+                  aria-label="Move to Missing"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </Button>
               </div>
             ))}
           </div>
@@ -311,26 +299,22 @@ export function GapAnalysisPanel({
             <XCircle className="h-4 w-4 text-red-600" />
             Missing ({missingCompetencies.length})
           </h4>
-          {!isSolo && (
-            <p className="text-xs text-muted-foreground mb-2">
-              Use plus to move to Your Competencies
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mb-2">
+            Use plus to move to Your Competencies
+          </p>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {missingCompetencies.map((comp, idx) => (
               <div key={`m-${idx}`} className="flex items-center gap-2 group">
-                {!isSolo && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 opacity-70 hover:opacity-100 shrink-0"
-                    onClick={() => moveToCompetencies(idx)}
-                    title="Move to Your Competencies"
-                    aria-label="Move to Your Competencies"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 opacity-70 hover:opacity-100 shrink-0"
+                  onClick={() => moveToCompetencies(idx)}
+                  title="Move to Your Competencies"
+                  aria-label="Move to Your Competencies"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
                 <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                 <span className="text-sm flex-1">{comp}</span>
               </div>

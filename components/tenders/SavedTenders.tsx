@@ -75,7 +75,7 @@ export function SavedTenders({
       toast.success("Removed from saved tenders");
       if (companyId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.savedTenders(companyId) });
-        queryClient.invalidateQueries({ queryKey: queryKeys.matchingResults(companyId) });
+        queryClient.invalidateQueries({ queryKey: ["matchingResults", companyId] });
       }
     } catch (error) {
       console.error("Error removing bookmark:", error);

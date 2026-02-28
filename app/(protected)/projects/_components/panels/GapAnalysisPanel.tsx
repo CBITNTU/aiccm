@@ -36,6 +36,7 @@ import {
 import type { GapAnalysis, RecommendedPartner } from "@/hooks/useProjects";
 import type { Tender, TeamMember } from "@/hooks/useProjectDetails";
 import type { Database } from "@/lib/supabase/types";
+import { deriveCoverage } from "@/lib/utils";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -100,14 +101,11 @@ export function GapAnalysisPanel({
     setShowEditHintDialog(true);
   };
 
-  const editedCoverage =
-    companyCompetencies.length + missingCompetencies.length > 0
-      ? Math.round(
-          (companyCompetencies.length /
-            (companyCompetencies.length + missingCompetencies.length)) *
-            100,
-        )
-      : (gapAnalysis?.coveragePercentage ?? 0);
+  const editedCoverage = deriveCoverage(
+    companyCompetencies,
+    missingCompetencies,
+    gapAnalysis?.coveragePercentage ?? 0,
+  );
 
   const handleSaveEdits = async () => {
     try {
@@ -260,9 +258,6 @@ export function GapAnalysisPanel({
         </div>
         <Progress value={editedCoverage} className="h-2" />
         <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-          <span>
-            Readiness Score: {Math.round(gapAnalysis.readinessScore)}/100
-          </span>
           <span>
             Analyzed:{" "}
             {new Date(gapAnalysis.analyzedAt).toLocaleDateString("en-GB")}

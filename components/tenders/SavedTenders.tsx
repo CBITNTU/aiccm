@@ -58,15 +58,28 @@ export function SavedTenders({
   const [keyword, setKeyword] = useState("");
 
   const filteredResults = useMemo(() => {
-    if (!keyword.trim()) return savedResults;
     const lowerKeyword = keyword.toLowerCase().trim();
-    return savedResults.filter(
-      (result) =>
-        result.tenders.title.toLowerCase().includes(lowerKeyword) ||
-        result.tenders.description?.toLowerCase().includes(lowerKeyword) ||
-        result.tenders.buyer.toLowerCase().includes(lowerKeyword) ||
-        result.tenders.location?.toLowerCase().includes(lowerKeyword),
-    );
+    const keywordFiltered = !lowerKeyword
+      ? savedResults
+      : savedResults.filter(
+          (result) =>
+            result.tenders.title.toLowerCase().includes(lowerKeyword) ||
+            result.tenders.description?.toLowerCase().includes(lowerKeyword) ||
+            result.tenders.buyer.toLowerCase().includes(lowerKeyword) ||
+            result.tenders.location?.toLowerCase().includes(lowerKeyword),
+        );
+
+    return keywordFiltered
+      .map((result, index) => ({ result, index }))
+      .sort((a, b) => {
+        const aClosed = (a.result.tenders.status ?? "").toLowerCase() === "closed";
+        const bClosed = (b.result.tenders.status ?? "").toLowerCase() === "closed";
+        if (aClosed === bClosed) {
+          return a.index - b.index;
+        }
+        return aClosed ? 1 : -1;
+      })
+      .map(({ result }) => result);
   }, [savedResults, keyword]);
 
   const removeBookmark = async (resultId: string) => {

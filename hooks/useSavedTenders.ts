@@ -8,7 +8,7 @@ export function useSavedTenders(companyId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.savedTenders(companyId!),
     queryFn: () =>
-      api.getMatchingResults({ companyId, bookmarked: true }),
+      api.getMatchingResults({ companyId, bookmarked: true, tenderStatus: "all" }),
     enabled: !!companyId,
     staleTime: 30 * 1000, // 30s
     gcTime: 5 * 60 * 1000, // 5 min

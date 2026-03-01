@@ -199,7 +199,9 @@ export function CompanyDetailView({
           </div>
         </div>
         {company.description && (
-          <p className="text-muted-foreground text-base">{company.description}</p>
+          <p className="text-muted-foreground text-base">
+            {company.description}
+          </p>
         )}
 
         {/* Key Capabilities */}
@@ -249,12 +251,6 @@ export function CompanyDetailView({
               ));
             })()}
           </div>
-          {!analysis && company.key_capabilities && (
-            <p className="text-xs text-muted-foreground mt-2">
-              <span className="text-yellow-600">*</span> Click &quot;Analyze
-              Company&quot; to get AI-powered capability insights
-            </p>
-          )}
         </div>
       </div>
 
@@ -440,10 +436,7 @@ export function CompanyDetailView({
                 <ResponsiveContainer width="100%" height={280}>
                   <RadarChart data={radarData}>
                     <PolarGrid />
-                    <PolarAngleAxis
-                      dataKey="subject"
-                      tick={{ fontSize: 11 }}
-                    />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
                     <PolarRadiusAxis
                       angle={90}
                       domain={[0, 100]}

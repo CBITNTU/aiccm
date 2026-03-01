@@ -38,15 +38,11 @@ type PublicCompany = Pick<
 
 interface DirectoryFilters {
   searchTerm: string;
-  location: string;
-  capability: string;
   selectedTaxonomies: string[];
 }
 
 const defaultFilters: DirectoryFilters = {
   searchTerm: "",
-  location: "all",
-  capability: "all",
   selectedTaxonomies: [],
 };
 
@@ -59,8 +55,6 @@ export default function DirectoryPage() {
 
   const { data: directoryData, isLoading: loading, refetch } = useDirectory({
     search: filters.searchTerm.trim() || undefined,
-    location: filters.location !== "all" ? filters.location : undefined,
-    capability: filters.capability !== "all" ? filters.capability : undefined,
     taxonomyIds:
       filters.selectedTaxonomies.length > 0
         ? filters.selectedTaxonomies
@@ -72,8 +66,6 @@ export default function DirectoryPage() {
   const companies = (directoryData?.companies as unknown as PublicCompany[]) ?? [];
   const taxonomiesByCompany = directoryData?.taxonomiesByCompany ?? {};
   const totalCount = directoryData?.totalCount ?? 0;
-  const uniqueLocations = directoryData?.uniqueLocations ?? [];
-  const uniqueCapabilities = directoryData?.uniqueCapabilities ?? [];
 
   const handleCompanyClick = (company: PublicCompany) => {
     router.push(`/directory/${company.id}`);
@@ -123,8 +115,6 @@ export default function DirectoryPage() {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           onReset={handleResetFilters}
-          uniqueLocations={uniqueLocations}
-          uniqueCapabilities={uniqueCapabilities}
         />
 
         {!loading && totalCount > 0 && (
@@ -154,8 +144,6 @@ export default function DirectoryPage() {
               Try adjusting your search or filter criteria
             </p>
             {(filters.searchTerm ||
-              filters.location !== "all" ||
-              filters.capability !== "all" ||
               filters.selectedTaxonomies.length > 0) && (
               <Button variant="outline" onClick={handleResetFilters}>
                 Clear all filters

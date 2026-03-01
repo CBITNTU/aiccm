@@ -13,8 +13,6 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const search = url.searchParams.get("search") || "";
-    const location = url.searchParams.get("location") || "";
-    const capability = url.searchParams.get("capability") || "";
     const taxonomyIds = url.searchParams.get("taxonomyIds");
     const page = parseInt(url.searchParams.get("page") || "1");
     const limit = parseInt(url.searchParams.get("limit") || "25");
@@ -68,16 +66,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const safeLocation = sanitizeLikeParam(location);
-    if (safeLocation) {
-      query = query.ilike("postcode", `%${safeLocation}%`);
-    }
-
-    const safeCapability = sanitizeLikeParam(capability);
-    if (safeCapability) {
-      query = query.ilike("key_capabilities", `%${safeCapability}%`);
-    }
-
     query = query.order("company_name").range(startIndex, endIndex);
 
     const { data, error, count } = await query;
@@ -112,45 +100,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch filter options (locations and capabilities)
-    const { data: filterData } = await supabase
-      .from("companies")
-      .select("postcode, key_capabilities")
-      .eq("status", "active")
-      .limit(5000);
-
-    let uniqueLocations: string[] = [];
-    let uniqueCapabilities: string[] = [];
-
-    if (filterData) {
-      uniqueLocations = [
-        ...new Set(
-          filterData
-            .map((c) => c.postcode)
-            .filter((p): p is string => !!p && p.trim() !== ""),
-        ),
-      ];
-      uniqueCapabilities = [
-        ...new Set(
-          filterData
-            .flatMap((c) =>
-              c.key_capabilities
-                ? c.key_capabilities.split(",").map((cap) => cap.trim())
-                : [],
-            )
-            .filter((cap): cap is string => !!cap && cap.trim() !== ""),
-        ),
-      ];
-    }
-
     return apiResponse({
       companies: data || [],
       taxonomiesByCompany,
       totalCount,
       page,
       totalPages,
-      uniqueLocations,
-      uniqueCapabilities,
     });
   } catch (error) {
     return handleApiError(error);

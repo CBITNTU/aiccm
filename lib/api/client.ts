@@ -385,8 +385,6 @@ export const api = {
   // Directory
   getDirectory: (params: {
     search?: string;
-    location?: string;
-    capability?: string;
     taxonomyIds?: string[];
     page?: number;
     limit?: number;
@@ -397,14 +395,10 @@ export const api = {
       totalCount: number;
       page: number;
       totalPages: number;
-      uniqueLocations: string[];
-      uniqueCapabilities: string[];
     }>("directory", {
       method: "GET",
       params: {
         ...(params.search && { search: params.search }),
-        ...(params.location && { location: params.location }),
-        ...(params.capability && { capability: params.capability }),
         ...(params.taxonomyIds?.length && {
           taxonomyIds: params.taxonomyIds.join(","),
         }),

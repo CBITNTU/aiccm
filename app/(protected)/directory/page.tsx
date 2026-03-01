@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { Database } from "@/lib/supabase/types";
-import { useAuth } from "@/hooks/useAuth";
 import { useDirectory } from "@/hooks/useDirectory";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompanyCardNew } from "@/components/directory/CompanyCardNew";
-import { CompanyDetailModal } from "@/components/directory/CompanyDetailModal";
 import { DirectorySearchBar } from "@/components/directory/DirectorySearchBar";
 import { DirectoryResultsHeader } from "@/components/directory/DirectoryResultsHeader";
 
@@ -52,14 +51,9 @@ const defaultFilters: DirectoryFilters = {
 };
 
 export default function DirectoryPage() {
-  const { isPendingApproval, isOnboarding } = useAuth();
+  const router = useRouter();
 
-  const isRestrictedUser = isPendingApproval || isOnboarding;
   const [filters, setFilters] = useState<DirectoryFilters>(defaultFilters);
-  const [selectedCompany, setSelectedCompany] = useState<PublicCompany | null>(
-    null,
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
@@ -82,8 +76,7 @@ export default function DirectoryPage() {
   const uniqueCapabilities = directoryData?.uniqueCapabilities ?? [];
 
   const handleCompanyClick = (company: PublicCompany) => {
-    setSelectedCompany(company);
-    setIsModalOpen(true);
+    router.push(`/directory/${company.id}`);
   };
 
   const handleFiltersChange = (newFilters: DirectoryFilters) => {
@@ -250,12 +243,6 @@ export default function DirectoryPage() {
           </>
         )}
 
-        <CompanyDetailModal
-          company={selectedCompany}
-          open={isModalOpen}
-          onOpenChange={setIsModalOpen}
-          readOnly={isRestrictedUser}
-        />
       </main>
     </div>
   );

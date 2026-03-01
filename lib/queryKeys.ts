@@ -21,4 +21,5 @@ export const queryKeys = {
   tenderSyncStatus: () => ["tenderSyncStatus"] as const,
   projectInvitations: (userId: string) =>
     ["projectInvitations", userId] as const,
+  directoryCompany: (id: string) => ["directoryCompany", id] as const,
 };

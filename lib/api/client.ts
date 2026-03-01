@@ -374,6 +374,14 @@ export const api = {
       body: { capabilityIds },
     }),
 
+  // Directory - single company
+  getDirectoryCompany: (companyId: string) =>
+    apiCall<{
+      company: Record<string, unknown>;
+      isOwner: boolean;
+      taxonomies: { id: string; name: string }[];
+    }>(`directory/${companyId}`, { method: "GET" }),
+
   // Directory
   getDirectory: (params: {
     search?: string;

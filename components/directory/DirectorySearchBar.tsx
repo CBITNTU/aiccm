@@ -7,13 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -36,8 +29,6 @@ import { useTaxonomies } from "@/hooks/useTaxonomies";
 
 interface DirectoryFiltersState {
   searchTerm: string;
-  location: string;
-  capability: string;
   selectedTaxonomies: string[];
 }
 
@@ -45,8 +36,6 @@ interface DirectorySearchBarProps {
   filters: DirectoryFiltersState;
   onFiltersChange: (filters: DirectoryFiltersState) => void;
   onReset: () => void;
-  uniqueLocations: string[];
-  uniqueCapabilities: string[];
   placeholder?: string;
 }
 
@@ -54,8 +43,6 @@ export function DirectorySearchBar({
   filters,
   onFiltersChange,
   onReset,
-  uniqueLocations,
-  uniqueCapabilities,
   placeholder = "Search companies...",
 }: DirectorySearchBarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -70,31 +57,13 @@ export function DirectorySearchBar({
 
   // Count active filters (excluding search)
   const getActiveFilterCount = () => {
-    let count = 0;
-    if (filters.location && filters.location !== "all") count++;
-    if (filters.capability && filters.capability !== "all") count++;
-    if (filters.selectedTaxonomies.length > 0) count++;
-    return count;
+    return filters.selectedTaxonomies.length > 0 ? 1 : 0;
   };
 
   // Get active filter pills
   const getActiveFilterPills = () => {
     const pills: { key: string; label: string; value: string }[] = [];
 
-    if (filters.location && filters.location !== "all") {
-      pills.push({
-        key: "location",
-        label: "Location",
-        value: filters.location,
-      });
-    }
-    if (filters.capability && filters.capability !== "all") {
-      pills.push({
-        key: "capability",
-        label: "Capability",
-        value: filters.capability,
-      });
-    }
     if (filters.selectedTaxonomies.length > 0) {
       pills.push({
         key: "taxonomies",
@@ -109,8 +78,6 @@ export function DirectorySearchBar({
   // Remove individual filter
   const removeFilter = (key: string) => {
     const newFilters = { ...filters };
-    if (key === "location") newFilters.location = "all";
-    if (key === "capability") newFilters.capability = "all";
     if (key === "taxonomies") newFilters.selectedTaxonomies = [];
     onFiltersChange(newFilters);
   };
@@ -172,64 +139,6 @@ export function DirectorySearchBar({
             </SheetHeader>
 
             <div className="space-y-6 py-6">
-              {/* Location Filter */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Location</Label>
-                <Select
-                  value={filters.location}
-                  onValueChange={(value) =>
-                    onFiltersChange({ ...filters, location: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All locations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All locations</SelectItem>
-                    {uniqueLocations.map((location) => {
-                      const safeValue =
-                        location && location.trim()
-                          ? location.trim()
-                          : "unknown";
-                      return (
-                        <SelectItem key={location} value={safeValue}>
-                          {location}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Capability Filter */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Capability</Label>
-                <Select
-                  value={filters.capability}
-                  onValueChange={(value) =>
-                    onFiltersChange({ ...filters, capability: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All capabilities" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All capabilities</SelectItem>
-                    {uniqueCapabilities.map((capability) => {
-                      const safeValue =
-                        capability && capability.trim()
-                          ? capability.trim()
-                          : "unknown";
-                      return (
-                        <SelectItem key={capability} value={safeValue}>
-                          {capability}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Taxonomy Filter */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

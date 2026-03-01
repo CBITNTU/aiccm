@@ -6,8 +6,6 @@ import { queryKeys } from "@/lib/queryKeys";
 
 interface DirectoryParams {
   search?: string;
-  location?: string;
-  capability?: string;
   taxonomyIds?: string[];
   page?: number;
   limit?: number;
@@ -16,8 +14,6 @@ interface DirectoryParams {
 export function useDirectory(params: DirectoryParams) {
   const filterKey = {
     search: params.search,
-    location: params.location,
-    capability: params.capability,
     taxonomyIds: params.taxonomyIds,
     page: params.page,
     limit: params.limit,

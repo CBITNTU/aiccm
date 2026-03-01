@@ -13,11 +13,9 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const search = url.searchParams.get("search") || "";
-    const location = url.searchParams.get("location") || "";
-    const capability = url.searchParams.get("capability") || "";
     const taxonomyIds = url.searchParams.get("taxonomyIds");
-    const page = parseInt(url.searchParams.get("page") || "1");
-    const limit = parseInt(url.searchParams.get("limit") || "25");
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "25")));
 
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit - 1;
@@ -52,7 +50,7 @@ export async function GET(request: NextRequest) {
          certifications, equipment, past_projects, is_system_company,
          status, market_position, safety_rating, digital_maturity,
          ai_competencies, ai_capabilities, ai_analysis,
-         created_at, updated_at, user_id`,
+         created_at, updated_at`,
         { count: "exact" },
       )
       .eq("status", "active");
@@ -66,16 +64,6 @@ export async function GET(request: NextRequest) {
       query = query.or(
         `company_name.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`,
       );
-    }
-
-    const safeLocation = sanitizeLikeParam(location);
-    if (safeLocation) {
-      query = query.ilike("postcode", `%${safeLocation}%`);
-    }
-
-    const safeCapability = sanitizeLikeParam(capability);
-    if (safeCapability) {
-      query = query.ilike("key_capabilities", `%${safeCapability}%`);
     }
 
     query = query.order("company_name").range(startIndex, endIndex);
@@ -112,45 +100,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch filter options (locations and capabilities)
-    const { data: filterData } = await supabase
-      .from("companies")
-      .select("postcode, key_capabilities")
-      .eq("status", "active")
-      .limit(5000);
-
-    let uniqueLocations: string[] = [];
-    let uniqueCapabilities: string[] = [];
-
-    if (filterData) {
-      uniqueLocations = [
-        ...new Set(
-          filterData
-            .map((c) => c.postcode)
-            .filter((p): p is string => !!p && p.trim() !== ""),
-        ),
-      ];
-      uniqueCapabilities = [
-        ...new Set(
-          filterData
-            .flatMap((c) =>
-              c.key_capabilities
-                ? c.key_capabilities.split(",").map((cap) => cap.trim())
-                : [],
-            )
-            .filter((cap): cap is string => !!cap && cap.trim() !== ""),
-        ),
-      ];
-    }
-
     return apiResponse({
       companies: data || [],
       taxonomiesByCompany,
       totalCount,
       page,
       totalPages,
-      uniqueLocations,
-      uniqueCapabilities,
     });
   } catch (error) {
     return handleApiError(error);

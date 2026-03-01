@@ -374,11 +374,17 @@ export const api = {
       body: { capabilityIds },
     }),
 
+  // Directory - single company
+  getDirectoryCompany: (companyId: string) =>
+    apiCall<{
+      company: Record<string, unknown>;
+      isOwner: boolean;
+      taxonomies: { id: string; name: string }[];
+    }>(`directory/${companyId}`, { method: "GET" }),
+
   // Directory
   getDirectory: (params: {
     search?: string;
-    location?: string;
-    capability?: string;
     taxonomyIds?: string[];
     page?: number;
     limit?: number;
@@ -389,14 +395,10 @@ export const api = {
       totalCount: number;
       page: number;
       totalPages: number;
-      uniqueLocations: string[];
-      uniqueCapabilities: string[];
     }>("directory", {
       method: "GET",
       params: {
         ...(params.search && { search: params.search }),
-        ...(params.location && { location: params.location }),
-        ...(params.capability && { capability: params.capability }),
         ...(params.taxonomyIds?.length && {
           taxonomyIds: params.taxonomyIds.join(","),
         }),

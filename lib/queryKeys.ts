@@ -22,4 +22,5 @@ export const queryKeys = {
   projectInvitations: (userId: string) =>
     ["projectInvitations", userId] as const,
   directoryCompany: (id: string) => ["directoryCompany", id] as const,
+  publicCompany: (id: string) => ["publicCompany", id] as const,
 };

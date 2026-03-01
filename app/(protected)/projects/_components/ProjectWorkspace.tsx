@@ -333,6 +333,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                       teamMembers={teamMembers}
                       gapAnalysis={gapAnalysis}
                       recommendedPartners={recommendedPartners}
+                      teamAnalysis={teamAnalysis}
                       tenderMatchResult={tenderMatchResult}
                     />
                   </motion.div>

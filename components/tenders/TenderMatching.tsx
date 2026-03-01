@@ -6,12 +6,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchingResults } from "@/hooks/useMatchingResults";
-import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertCircle, Target, Loader2, X } from "lucide-react";
+import {
+  AlertCircle,
+  Target,
+  Loader2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { TenderMatchCard } from "./TenderMatchCard";
+import { ResultsHeader } from "./ResultsHeader";
 
 export interface MatchingFiltersState {
   keyword?: string;
@@ -21,6 +28,7 @@ export interface MatchingFiltersState {
   maxScore: number;
   showApplied: string;
   quickFilter?: string | null;
+  tenderStatus?: string;
 }
 
 const DEFAULT_FILTERS: MatchingFiltersState = {
@@ -29,6 +37,7 @@ const DEFAULT_FILTERS: MatchingFiltersState = {
   minScore: 0,
   maxScore: 100,
   showApplied: "all",
+  tenderStatus: "active",
 };
 
 interface MatchingResult {
@@ -74,20 +83,76 @@ export function TenderMatching({
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  const filters = filtersProp ?? DEFAULT_FILTERS;
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
+
+  // Reset to page 1 when filters change
+  const filtersKey = useMemo(
+    () =>
+      JSON.stringify([
+        filters.keyword,
+        filters.sortBy,
+        filters.sortDirection,
+        filters.minScore,
+        filters.maxScore,
+        filters.showApplied,
+        filters.quickFilter,
+        filters.tenderStatus,
+      ]),
+    [
+      filters.keyword,
+      filters.sortBy,
+      filters.sortDirection,
+      filters.minScore,
+      filters.maxScore,
+      filters.showApplied,
+      filters.quickFilter,
+      filters.tenderStatus,
+    ],
+  );
+
+  useEffect(() => {
+    queueMicrotask(() => setCurrentPage(1));
+  }, [filtersKey]);
+
   const {
     data: matchingData,
     isLoading: loading,
     refetch: refetchMatchingResults,
-  } = useMatchingResults(companyId);
+  } = useMatchingResults({
+    companyId,
+    tenderStatus: filters.tenderStatus || "active",
+    keyword: filters.keyword,
+    minScore: filters.minScore,
+    maxScore: filters.maxScore,
+    showApplied: filters.showApplied,
+    quickFilter: filters.quickFilter,
+    sortBy: filters.sortBy,
+    sortDirection: filters.sortDirection,
+    page: currentPage,
+    pageSize: itemsPerPage,
+  });
+
   const matchingResults = useMemo(
     () => (matchingData?.results as unknown as MatchingResult[]) ?? [],
     [matchingData],
   );
+  const totalCount = matchingData?.totalCount ?? 0;
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // Progress tracking state
   const [matchingProgress, setMatchingProgress] = useState<{
     batchId: string;
     totalJobs: number;
@@ -100,26 +165,19 @@ export function TenderMatching({
   const analyzing =
     internalAnalyzing || matchingProgress?.status === "processing";
 
-  // Use stable filter reference to prevent infinite re-renders
-  const filters = filtersProp ?? DEFAULT_FILTERS;
-
-  // Serialize filter values for stable dependency comparison
-  const filtersKey = JSON.stringify([
-    filters.keyword,
-    filters.sortBy,
-    filters.sortDirection,
-    filters.minScore,
-    filters.maxScore,
-    filters.showApplied,
-    filters.quickFilter,
-  ]);
+  const invalidateMatchingResults = useCallback(() => {
+    if (companyId) {
+      queryClient.invalidateQueries({
+        queryKey: ["matchingResults", companyId],
+      });
+    }
+  }, [companyId, queryClient]);
 
   const cancelMatching = useCallback(
     async (batchId: string) => {
       console.log(`🛑 Attempting to cancel batch ${batchId}...`);
 
       try {
-        // First, try to cancel the tracked batch
         const response = await fetch("/api/match-tenders/cancel", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -144,13 +202,10 @@ export function TenderMatching({
         console.error("Error calling cancel API:", error);
       }
 
-      // ALWAYS clear ALL batch-related state from localStorage
-      // (even if the API call failed - important for stuck/stale batches)
       if (companyId) {
         localStorage.removeItem(`matching_batch_${companyId}`);
         localStorage.removeItem(`stale_check_${batchId}`);
 
-        // Also clear any other stale_check entries
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && key.startsWith("stale_check_")) {
@@ -159,13 +214,11 @@ export function TenderMatching({
         }
       }
 
-      // Clear in-memory state
       setMatchingProgress(null);
 
       console.log(`✅ Cleared all local state for company ${companyId}`);
       toast.success("Cancelled - any running jobs will finish in background");
 
-      // Refresh results after a delay to show completed jobs
       setTimeout(() => {
         refetchMatchingResults();
       }, 2000);
@@ -180,7 +233,6 @@ export function TenderMatching({
           `/api/match-tenders/progress?batchId=${batchId}`,
         );
         if (!response.ok) {
-          // Batch not found or completed - clear from localStorage
           if (response.status === 404) {
             console.log(`Batch ${batchId} not found (404) - clearing progress`);
             if (companyId) {
@@ -199,14 +251,11 @@ export function TenderMatching({
 
         const data = await response.json();
 
-        // Validate response data
         if (!data.batch_id || data.total_jobs === undefined) {
           console.error("Invalid progress response:", data);
           return;
         }
 
-        // Check if this batch belongs to the current company
-        // (prevents showing progress for wrong company)
         if (companyId) {
           const storedBatchId = localStorage.getItem(
             `matching_batch_${companyId}`,
@@ -215,7 +264,6 @@ export function TenderMatching({
             console.warn(
               `Batch ${batchId} doesn't match stored batch ${storedBatchId} for company ${companyId}`,
             );
-            // Clear stale batch and stop polling
             localStorage.removeItem(`matching_batch_${companyId}`);
             setMatchingProgress(null);
             return;
@@ -236,14 +284,13 @@ export function TenderMatching({
         );
         setMatchingProgress(progressData);
 
-        // If completed or failed, clear and check for results
         if (data.status === "completed" || data.status === "failed") {
           console.log(`Batch ${batchId} finished with status: ${data.status}`);
           if (companyId) {
             localStorage.removeItem(`matching_batch_${companyId}`);
           }
-          setMatchingProgress(null); // Clear progress state
-          await refetchMatchingResults();
+          setMatchingProgress(null);
+          invalidateMatchingResults();
           if (data.status === "completed") {
             toast.success(
               `Matching completed: ${data.completed_jobs} tenders analyzed`,
@@ -253,7 +300,6 @@ export function TenderMatching({
           }
         }
 
-        // Auto-clear stale batches: if no progress after 60 seconds, clear it
         if (
           data.status === "processing" &&
           data.completed_jobs === 0 &&
@@ -263,12 +309,10 @@ export function TenderMatching({
           const firstCheckTime = localStorage.getItem(staleCheckKey);
 
           if (!firstCheckTime) {
-            // First time seeing this batch at 0 progress
             localStorage.setItem(staleCheckKey, Date.now().toString());
           } else {
             const elapsed = Date.now() - parseInt(firstCheckTime);
             if (elapsed > 60000) {
-              // 60 seconds with no progress
               console.warn(
                 `⚠️ Batch ${batchId} stuck at 0 progress for ${Math.round(elapsed / 1000)}s - auto-clearing`,
               );
@@ -284,141 +328,38 @@ export function TenderMatching({
             }
           }
         } else if (data.completed_jobs > 0 || data.failed_jobs > 0) {
-          // Clear stale check if we have progress
           localStorage.removeItem(`stale_check_${batchId}`);
         }
       } catch (error) {
         console.error("Error checking matching progress:", error);
-        // Don't clear progress on network errors - might be temporary
       }
     },
-    [companyId, refetchMatchingResults],
+    [companyId, invalidateMatchingResults],
   );
 
-  // Check for in-progress matching batch on mount
   useEffect(() => {
     if (user && companyId) {
-      // Check for in-progress batch from localStorage
       const storedBatchId = localStorage.getItem(`matching_batch_${companyId}`);
       if (storedBatchId) {
         console.log(`🔄 Restoring batch from localStorage: ${storedBatchId}`);
-        // Verify batch still exists and is active
         checkMatchingProgress(storedBatchId);
-        // Note: checkMatchingProgress will auto-clear if batch is 404 or completed
       }
     }
   }, [user, companyId, checkMatchingProgress]);
 
-  // Extract primitives so the polling effect does not re-run on every object identity change
   const batchId = matchingProgress?.batchId ?? null;
   const isProcessing = matchingProgress?.status === "processing";
 
-  // Poll for progress and refetch results while matching is in progress (progressive results)
   useEffect(() => {
     if (!isProcessing || !batchId) return;
 
     const interval = setInterval(() => {
       checkMatchingProgress(batchId);
-      // Refetch results so new matches appear as they complete (progressive result delivery)
-      refetchMatchingResults();
-    }, 5000); // Poll every 5 seconds for progress and incremental results
+      invalidateMatchingResults();
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [isProcessing, batchId, checkMatchingProgress, refetchMatchingResults]);
-
-  const filteredResults = useMemo(() => {
-    let filtered = [...matchingResults];
-
-    // Apply keyword filter
-    if (filters.keyword && filters.keyword.trim()) {
-      const keyword = filters.keyword.toLowerCase().trim();
-      filtered = filtered.filter(
-        (result) =>
-          result.tenders.title.toLowerCase().includes(keyword) ||
-          result.tenders.description?.toLowerCase().includes(keyword) ||
-          result.tenders.buyer.toLowerCase().includes(keyword) ||
-          result.tenders.location?.toLowerCase().includes(keyword),
-      );
-    }
-
-    // Apply score range filter
-    filtered = filtered.filter(
-      (result) =>
-        result.overall_score >= (filters.minScore || 0) &&
-        result.overall_score <= (filters.maxScore || 100),
-    );
-
-    // Apply status filter
-    if (filters.showApplied === "applied") {
-      filtered = filtered.filter((result) => result.is_applied);
-    } else if (filters.showApplied === "not_applied") {
-      filtered = filtered.filter((result) => !result.is_applied);
-    } else if (filters.showApplied === "bookmarked") {
-      filtered = filtered.filter((result) => result.is_bookmarked);
-    }
-
-    // Apply quick filters
-    if (filters.quickFilter === "high_score") {
-      filtered = filtered.filter((result) => result.overall_score >= 80);
-    } else if (filters.quickFilter === "urgent") {
-      filtered = filtered.filter((result) => {
-        if (!result.tenders.deadline) return false;
-        const deadline = new Date(result.tenders.deadline);
-        const today = new Date();
-        const daysDiff = Math.ceil(
-          (deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        return daysDiff <= 7 && daysDiff >= 0;
-      });
-    } else if (filters.quickFilter === "high_value") {
-      filtered = filtered.filter(
-        (result) =>
-          (result.tenders.budget_max || result.tenders.budget_min || 0) >=
-          1000000,
-      );
-    }
-
-    // Apply sorting (use toSorted to avoid mutating)
-    return filtered.toSorted((a, b) => {
-      let aValue: number, bValue: number;
-
-      switch (filters.sortBy) {
-        case "overall_score":
-        case "capability_score":
-        case "experience_score":
-        case "location_score":
-        case "certification_score":
-          aValue = (a[filters.sortBy as keyof MatchingResult] as number) || 0;
-          bValue = (b[filters.sortBy as keyof MatchingResult] as number) || 0;
-          break;
-        case "created_at":
-          aValue = new Date(a.created_at).getTime();
-          bValue = new Date(b.created_at).getTime();
-          break;
-        case "deadline":
-          aValue = a.tenders.deadline
-            ? new Date(a.tenders.deadline).getTime()
-            : 0;
-          bValue = b.tenders.deadline
-            ? new Date(b.tenders.deadline).getTime()
-            : 0;
-          break;
-        case "budget":
-          aValue = a.tenders.budget_max || a.tenders.budget_min || 0;
-          bValue = b.tenders.budget_max || b.tenders.budget_min || 0;
-          break;
-        default:
-          aValue = a.overall_score;
-          bValue = b.overall_score;
-      }
-
-      return filters.sortDirection === "desc"
-        ? bValue - aValue
-        : aValue - bValue;
-    });
-    // filtersKey is a stable JSON-serialised string representing all filter values
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchingResults, filtersKey]);
+  }, [isProcessing, batchId, checkMatchingProgress, invalidateMatchingResults]);
 
   const runAnalysis = async () => {
     if (!companyId) {
@@ -426,13 +367,11 @@ export function TenderMatching({
       return;
     }
 
-    // Prevent multiple simultaneous analyses
     if (analyzing) {
       toast.info("Analysis already in progress");
       return;
     }
 
-    // Prevent starting new batch if one is already processing
     if (matchingProgress && matchingProgress.status === "processing") {
       toast.info(
         "Matching already in progress. Click 'Clear & Restart' to cancel.",
@@ -442,7 +381,6 @@ export function TenderMatching({
 
     setInternalAnalyzing(true);
 
-    // Clear any stale batch state before starting new one
     if (companyId) {
       const oldBatchId = localStorage.getItem(`matching_batch_${companyId}`);
       if (oldBatchId) {
@@ -465,7 +403,6 @@ export function TenderMatching({
         const status = response.status;
         const statusText = response.statusText;
 
-        // Read response as text first (can only read body once)
         const responseText = await response.text();
         console.error("Matching API error - Raw response:", {
           status,
@@ -496,7 +433,6 @@ export function TenderMatching({
         throw new Error(errorMessage);
       }
 
-      // Read response as text first, then parse
       const responseText = await response.text();
       let data;
       try {
@@ -509,7 +445,6 @@ export function TenderMatching({
         throw new Error("Invalid response format from server");
       }
 
-      // Handle response - could be new batch or existing batch
       if (data.status === "already_running") {
         console.log(
           `ℹ️ Batch ${data.batch_id} already running for this company`,
@@ -522,7 +457,6 @@ export function TenderMatching({
         toast.success(`Matching started: ${data.total_tenders} tenders queued`);
       }
 
-      // Store batch ID in localStorage for persistence
       if (data.batch_id && companyId) {
         const existingBatchId = localStorage.getItem(
           `matching_batch_${companyId}`,
@@ -535,7 +469,6 @@ export function TenderMatching({
         localStorage.setItem(`matching_batch_${companyId}`, data.batch_id);
       }
 
-      // Set initial progress (will be updated by polling)
       setMatchingProgress({
         batchId: data.batch_id,
         totalJobs: data.total_tenders,
@@ -545,7 +478,6 @@ export function TenderMatching({
         progressPercent: 0,
       });
 
-      // Start polling for progress
       if (data.batch_id) {
         checkMatchingProgress(data.batch_id);
       }
@@ -564,12 +496,10 @@ export function TenderMatching({
     try {
       await api.deleteMatchingResult(resultId);
       toast.success("Match result deleted successfully");
+      invalidateMatchingResults();
       if (companyId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.matchingResults(companyId),
-        });
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.savedTenders(companyId),
+          queryKey: ["savedTenders", companyId],
         });
       }
     } catch (error) {
@@ -586,12 +516,10 @@ export function TenderMatching({
       toast.success(
         currentStatus ? "Removed from saved tenders" : "Added to saved tenders",
       );
+      invalidateMatchingResults();
       if (companyId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.matchingResults(companyId),
-        });
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.savedTenders(companyId),
+          queryKey: ["savedTenders", companyId],
         });
       }
     } catch (error) {
@@ -600,7 +528,6 @@ export function TenderMatching({
     }
   };
 
-  // If no company selected, show placeholder
   if (!companyId) {
     return (
       <div className="text-center py-16">
@@ -615,18 +542,17 @@ export function TenderMatching({
   return (
     <div className="space-y-4">
       {/* Results summary */}
-      {!loading && matchingResults.length > 0 && (
-        <div className="flex items-center justify-between py-3">
-          <p className="text-sm text-muted-foreground">
-            Showing{" "}
-            <span className="font-medium text-foreground">
-              {filteredResults.length}
-            </span>{" "}
-            {filteredResults.length !== matchingResults.length && (
-              <>of {matchingResults.length}</>
-            )}{" "}
-            matches
-          </p>
+      {!loading && totalCount > 0 && (
+        <div className="flex items-center justify-between">
+          <ResultsHeader
+            total={totalCount}
+            start={startIndex + 1}
+            end={endIndex}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            loading={loading}
+            onRefresh={() => refetchMatchingResults()}
+          />
           <Button
             onClick={runAnalysis}
             disabled={analyzing || loading || readOnly}
@@ -691,18 +617,18 @@ export function TenderMatching({
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">Loading matches...</span>
         </div>
-      ) : filteredResults.length === 0 ? (
+      ) : matchingResults.length === 0 ? (
         <div className="text-center py-16">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">
             No matching results found
           </h3>
           <p className="text-muted-foreground mb-4">
-            {matchingResults.length === 0
+            {totalCount === 0 && currentPage === 1
               ? "No tender matches found for this company yet. Click 'Run Analysis' to analyze available tenders."
-              : `${matchingResults.length} matches found but filtered out. Adjust your filters to see results.`}
+              : "No matches found with the current filters. Adjust your filters to see results."}
           </p>
-          {matchingResults.length === 0 && !readOnly && (
+          {totalCount === 0 && currentPage === 1 && !readOnly && (
             <Button onClick={runAnalysis} disabled={analyzing}>
               <Target className="w-4 h-4 mr-2" />
               {analyzing ? "Analyzing..." : "Start Analysis"}
@@ -710,23 +636,90 @@ export function TenderMatching({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredResults.map((result) => (
-            <TenderMatchCard
-              key={result.id}
-              result={result}
-              onViewDetails={() => {
-                router.push(
-                  `/tenders/${result.tender_id}?companyId=${companyId}`,
-                );
-              }}
-              onBookmark={() => toggleBookmark(result.id, result.is_bookmarked)}
-              onDelete={() => deleteResult(result.id)}
-              isDeleting={deleting === result.id}
-              readOnly={readOnly}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-3">
+            {matchingResults.map((result) => (
+              <TenderMatchCard
+                key={result.id}
+                result={result}
+                onViewDetails={() => {
+                  router.push(
+                    `/tenders/${result.tender_id}?companyId=${companyId}`,
+                  );
+                }}
+                onBookmark={() =>
+                  toggleBookmark(result.id, result.is_bookmarked)
+                }
+                onDelete={() => deleteResult(result.id)}
+                isDeleting={deleting === result.id}
+                readOnly={readOnly}
+              />
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1 || loading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => {
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          disabled={loading}
+                          className="min-w-[40px]"
+                        >
+                          {page}
+                        </Button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return (
+                        <span
+                          key={page}
+                          className="px-2 text-muted-foreground"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  },
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages || loading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

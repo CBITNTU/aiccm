@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 import { ProjectListSkeleton } from "./skeletons/ProjectListSkeleton";
+import { deriveCoverage } from "@/lib/utils";
 
 interface ProjectListProps {
   companyId: string | null;
@@ -170,7 +171,13 @@ function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
     }
   };
 
-  const gapCoverage = project.gap_analysis?.coveragePercentage;
+  const gapCoverage = project.gap_analysis
+    ? deriveCoverage(
+        project.gap_analysis.companyCompetencies ?? [],
+        project.gap_analysis.missingCompetencies ?? [],
+        project.gap_analysis.coveragePercentage,
+      )
+    : undefined;
   const teamCoverage = project.team_analysis?.coveragePercentage;
 
   return (

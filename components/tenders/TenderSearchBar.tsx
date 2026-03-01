@@ -75,6 +75,7 @@ interface MatchingFiltersState {
   maxScore: number;
   showApplied: string;
   quickFilter?: string | null;
+  tenderStatus?: string;
 }
 
 type FilterType = "database" | "matching";
@@ -143,7 +144,7 @@ export function TenderSearchBar({
       )
         count++;
       if (databaseFilters.sortBy && databaseFilters.sortBy !== "deadline") count++;
-      if (databaseFilters.sortDirection && databaseFilters.sortDirection !== "desc") count++;
+      if (databaseFilters.sortDirection && databaseFilters.sortDirection !== "asc") count++;
       return count;
     } else if (filterType === "matching" && matchingFilters) {
       let count = 0;
@@ -153,6 +154,7 @@ export function TenderSearchBar({
         count++;
       if (matchingFilters.showApplied !== "all") count++;
       if (matchingFilters.quickFilter) count++;
+      if (matchingFilters.tenderStatus && matchingFilters.tenderStatus !== "active") count++;
       return count;
     }
     return 0;
@@ -209,7 +211,7 @@ export function TenderSearchBar({
         });
       if (databaseFilters.sortBy && databaseFilters.sortBy !== "deadline") {
         const sortOption = DATABASE_SORT_OPTIONS.find(
-          (o) => o.value === `${databaseFilters.sortBy}:${databaseFilters.sortDirection || "desc"}`
+          (o) => o.value === `${databaseFilters.sortBy}:${databaseFilters.sortDirection || "asc"}`
         );
         pills.push({
           key: "sort",
@@ -218,6 +220,19 @@ export function TenderSearchBar({
         });
       }
     } else if (filterType === "matching" && matchingFilters) {
+      if (matchingFilters.tenderStatus && matchingFilters.tenderStatus !== "active") {
+        const statusLabels: Record<string, string> = {
+          all: "All Statuses",
+          open: "Open",
+          closed: "Closed",
+          awarded: "Awarded",
+        };
+        pills.push({
+          key: "tenderStatus",
+          label: "Status",
+          value: statusLabels[matchingFilters.tenderStatus] || matchingFilters.tenderStatus,
+        });
+      }
       if (matchingFilters.minScore > 0 || matchingFilters.maxScore < 100)
         pills.push({
           key: "scoreRange",
@@ -258,7 +273,7 @@ export function TenderSearchBar({
       if (key === "dateTo") newFilters.dateTo = undefined;
       if (key === "sort") {
         newFilters.sortBy = "deadline";
-        newFilters.sortDirection = "desc";
+        newFilters.sortDirection = "asc";
       }
       onDatabaseFiltersChange(newFilters);
     } else if (
@@ -273,6 +288,7 @@ export function TenderSearchBar({
       }
       if (key === "showApplied") newFilters.showApplied = "all";
       if (key === "quickFilter") newFilters.quickFilter = null;
+      if (key === "tenderStatus") newFilters.tenderStatus = "active";
       onMatchingFiltersChange(newFilters);
     }
   };
@@ -295,7 +311,7 @@ export function TenderSearchBar({
         </div>
         {filterType === "database" && databaseFilters && onDatabaseFiltersChange && (
           <Select
-            value={`${databaseFilters.sortBy || "deadline"}:${databaseFilters.sortDirection || "desc"}`}
+            value={`${databaseFilters.sortBy || "deadline"}:${databaseFilters.sortDirection || "asc"}`}
             onValueChange={(value) => {
               const [sortBy, sortDirection] = value.split(":");
               onDatabaseFiltersChange({ ...databaseFilters, sortBy, sortDirection });
@@ -640,6 +656,26 @@ function MatchingFilterContent({
             <SelectItem value="not_applied">Not Applied</SelectItem>
             <SelectItem value="applied">Applied</SelectItem>
             <SelectItem value="bookmarked">Bookmarked</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Tender Status */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Tender Status</Label>
+        <Select
+          value={filters.tenderStatus || "active"}
+          onValueChange={(value) => handleChange("tenderStatus", value)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active (excludes closed)</SelectItem>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
+            <SelectItem value="awarded">Awarded</SelectItem>
           </SelectContent>
         </Select>
       </div>

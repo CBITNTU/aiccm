@@ -1,15 +1,33 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
 
-export function useMatchingResults(companyId: string | undefined) {
+interface MatchingResultsParams {
+  companyId?: string;
+  bookmarked?: boolean;
+  tenderStatus?: string;
+  keyword?: string;
+  minScore?: number;
+  maxScore?: number;
+  showApplied?: string;
+  quickFilter?: string | null;
+  sortBy?: string;
+  sortDirection?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export function useMatchingResults(params: MatchingResultsParams) {
+  const filterKey = { ...params };
+
   return useQuery({
-    queryKey: queryKeys.matchingResults(companyId!),
-    queryFn: () => api.getMatchingResults({ companyId }),
-    enabled: !!companyId,
-    staleTime: 30 * 1000, // 30s
-    gcTime: 5 * 60 * 1000, // 5 min
+    queryKey: queryKeys.matchingResults(params.companyId!, filterKey),
+    queryFn: () => api.getMatchingResults(params),
+    enabled: !!params.companyId,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 }

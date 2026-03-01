@@ -462,14 +462,41 @@ export const api = {
   getMatchingResults: (params?: {
     companyId?: string;
     bookmarked?: boolean;
+    tenderStatus?: string;
+    keyword?: string;
+    minScore?: number;
+    maxScore?: number;
+    showApplied?: string;
+    quickFilter?: string | null;
+    sortBy?: string;
+    sortDirection?: string;
+    page?: number;
+    pageSize?: number;
   }) =>
-    apiCall<{ results: Record<string, unknown>[] }>("matching-results", {
-      method: "GET",
-      params: {
-        ...(params?.companyId && { companyId: params.companyId }),
-        ...(params?.bookmarked && { bookmarked: true }),
+    apiCall<{ results: Record<string, unknown>[]; totalCount: number }>(
+      "matching-results",
+      {
+        method: "GET",
+        params: {
+          ...(params?.companyId && { companyId: params.companyId }),
+          ...(params?.bookmarked && { bookmarked: true }),
+          ...(params?.tenderStatus && { tenderStatus: params.tenderStatus }),
+          ...(params?.keyword && { keyword: params.keyword }),
+          ...(params?.minScore && { minScore: params.minScore }),
+          ...(params?.maxScore !== undefined &&
+            params.maxScore < 100 && { maxScore: params.maxScore }),
+          ...(params?.showApplied &&
+            params.showApplied !== "all" && {
+              showApplied: params.showApplied,
+            }),
+          ...(params?.quickFilter && { quickFilter: params.quickFilter }),
+          ...(params?.sortBy && { sortBy: params.sortBy }),
+          ...(params?.sortDirection && { sortDirection: params.sortDirection }),
+          ...(params?.page && { page: params.page }),
+          ...(params?.pageSize && { pageSize: params.pageSize }),
+        },
       },
-    }),
+    ),
 
   deleteMatchingResult: (resultId: string) =>
     apiCall<{ success: boolean }>(`matching-results/${resultId}`, {

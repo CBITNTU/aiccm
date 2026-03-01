@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const taxonomyIds = url.searchParams.get("taxonomyIds");
     const source = url.searchParams.get("source") || "";
     const sortBy = url.searchParams.get("sortBy") || "deadline";
-    const sortDirection = url.searchParams.get("sortDirection") || "desc";
+    const sortDirection = url.searchParams.get("sortDirection") || "asc";
     const page = parseInt(url.searchParams.get("page") || "1");
     const pageSize = parseInt(url.searchParams.get("pageSize") || "25");
 

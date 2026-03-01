@@ -45,6 +45,7 @@ export default function TendersPage() {
     minScore: 0,
     maxScore: 100,
     showApplied: "all",
+    tenderStatus: "active",
   });
 
   // Get tab from URL query parameter, default to "tenders"
@@ -63,7 +64,7 @@ export default function TendersPage() {
     setFilters({
       selectedTaxonomies: [],
       sortBy: "deadline",
-      sortDirection: "desc",
+      sortDirection: "asc",
     });
   };
 
@@ -74,6 +75,7 @@ export default function TendersPage() {
       minScore: 0,
       maxScore: 100,
       showApplied: "all",
+      tenderStatus: "active",
     });
   };
 
@@ -168,7 +170,9 @@ export default function TendersPage() {
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
                   Matching for:
                 </span>
-                <span className="text-sm font-medium">{selectedOrg.company_name}</span>
+                <span className="text-sm font-medium">
+                  {selectedOrg.company_name}
+                </span>
               </div>
             )}
             {!selectedOrg && (

@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiResponse, createAdminClient } from "@/lib/api";
 import { handleApiError } from "@/lib/api/validation";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ companyId: string }> },
 ) {
   try {
     const { companyId } = await params;
+
+    if (!UUID_REGEX.test(companyId)) {
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+    }
+
     const supabase = createAdminClient();
 
     const { data, error } = await supabase
@@ -17,7 +25,7 @@ export async function GET(
          certifications, equipment, past_projects, is_system_company,
          status, market_position, safety_rating, digital_maturity,
          ai_competencies, ai_capabilities, ai_analysis,
-         created_at, updated_at, user_id, website_url`,
+         created_at, updated_at, website_url`,
       )
       .eq("id", companyId)
       .eq("status", "active")

@@ -98,10 +98,10 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect unauthenticated /directory/[companyId] visits to the public profile page
   if (!user && request.nextUrl.pathname.startsWith("/directory/")) {
-    const segments = request.nextUrl.pathname.split("/");
-    if (segments.length === 3 && segments[2]) {
+    const segments = request.nextUrl.pathname.replace(/\/$/, "").split("/").filter(Boolean);
+    if (segments.length === 2 && segments[1]) {
       const url = request.nextUrl.clone();
-      url.pathname = `/companies/${segments[2]}`;
+      url.pathname = `/companies/${segments[1]}`;
       return NextResponse.redirect(url);
     }
   }

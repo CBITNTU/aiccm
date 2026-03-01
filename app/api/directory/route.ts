@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const search = url.searchParams.get("search") || "";
     const taxonomyIds = url.searchParams.get("taxonomyIds");
-    const page = parseInt(url.searchParams.get("page") || "1");
-    const limit = parseInt(url.searchParams.get("limit") || "25");
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "25")));
 
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit - 1;
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
          certifications, equipment, past_projects, is_system_company,
          status, market_position, safety_rating, digital_maturity,
          ai_competencies, ai_capabilities, ai_analysis,
-         created_at, updated_at, user_id`,
+         created_at, updated_at`,
         { count: "exact" },
       )
       .eq("status", "active");

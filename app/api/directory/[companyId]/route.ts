@@ -22,6 +22,7 @@ export async function GET(
          created_at, updated_at, user_id, website_url`,
       )
       .eq("id", companyId)
+      .or(`status.eq.active,user_id.eq.${user.id}`)
       .single();
 
     if (error) throw error;
@@ -29,7 +30,8 @@ export async function GET(
     const isOwner = data.user_id === user.id;
 
     // Include contact fields only for the owner
-    let companyData: Record<string, unknown> = { ...data };
+    const { user_id: _uid, ...rest } = data;
+    let companyData: Record<string, unknown> = { ...rest };
     if (isOwner) {
       const { data: fullData, error: fullError } = await supabase
         .from("companies")

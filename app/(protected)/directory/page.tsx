@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { Database } from "@/lib/supabase/types";
 import { useDirectory } from "@/hooks/useDirectory";
+import { useDebounce } from "@/hooks/useDebounce";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -53,8 +54,10 @@ export default function DirectoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
+  const debouncedSearch = useDebounce(filters.searchTerm, 400);
+
   const { data: directoryData, isLoading: loading, refetch } = useDirectory({
-    search: filters.searchTerm.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     taxonomyIds:
       filters.selectedTaxonomies.length > 0
         ? filters.selectedTaxonomies
@@ -83,10 +86,10 @@ export default function DirectoryPage() {
     refetch();
   };
 
-  // Reset to page 1 when filters change (async to satisfy set-state-in-effect)
+  // Reset to page 1 when effective query changes (debounced search + taxonomies)
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
-  }, [filters]);
+  }, [debouncedSearch, filters.selectedTaxonomies]);
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;

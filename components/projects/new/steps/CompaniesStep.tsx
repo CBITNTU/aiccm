@@ -89,7 +89,7 @@ export function CompaniesStep({
     selectedOrg?.address || selectedOrg?.postcode || "",
   );
   const [radius, setRadius] = useState("any");
-  const { geocode, coords, isGeocoding } = useGeocode();
+  const { geocode, coords, isGeocoding, isEnabled } = useGeocode();
 
   // Geocode org location on mount
   useEffect(() => {
@@ -205,46 +205,48 @@ export function CompaniesStep({
           full company profiles and select multiple companies for your project.
         </p>
 
-        {/* Location filter */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Location (city, postcode...)"
-              value={locationInput}
-              onChange={(e) => setLocationInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleApplyLocation();
-              }}
-              className="pl-9 h-9 text-sm"
-            />
+        {/* Location filter — only shown when geocoding is configured */}
+        {isEnabled !== false && (
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Location (city, postcode...)"
+                value={locationInput}
+                onChange={(e) => setLocationInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleApplyLocation();
+                }}
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
+            <Select value={radius} onValueChange={setRadius}>
+              <SelectTrigger className="w-[110px] h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RADIUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 text-sm"
+              onClick={handleApplyLocation}
+              disabled={isGeocoding}
+            >
+              {isGeocoding ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Apply"
+              )}
+            </Button>
           </div>
-          <Select value={radius} onValueChange={setRadius}>
-            <SelectTrigger className="w-[110px] h-9 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RADIUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 text-sm"
-            onClick={handleApplyLocation}
-            disabled={isGeocoding}
-          >
-            {isGeocoding ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              "Apply"
-            )}
-          </Button>
-        </div>
+        )}
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />

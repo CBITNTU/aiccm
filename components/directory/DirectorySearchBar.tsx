@@ -236,36 +236,38 @@ export function DirectorySearchBar({
             </SheetHeader>
 
             <div className="space-y-6 py-6">
-              {/* Location Filter */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5" />
-                  Location
-                </Label>
-                <Input
-                  placeholder="Enter a city, postcode, or address..."
-                  value={tempLocationQuery}
-                  onChange={(e) => {
-                    setTempLocationQuery(e.target.value);
-                    setGeocodeError(null);
-                  }}
-                />
-                <Select value={tempRadius} onValueChange={setTempRadius}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Any distance" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RADIUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {geocodeError && (
-                  <p className="text-sm text-destructive">{geocodeError}</p>
-                )}
-              </div>
+              {/* Location Filter — only shown when geocoding is configured */}
+              {isEnabled !== false && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Location
+                  </Label>
+                  <Input
+                    placeholder="Enter a city, postcode, or address..."
+                    value={tempLocationQuery}
+                    onChange={(e) => {
+                      setTempLocationQuery(e.target.value);
+                      setGeocodeError(null);
+                    }}
+                  />
+                  <Select value={tempRadius} onValueChange={setTempRadius}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any distance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RADIUS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {geocodeError && (
+                    <p className="text-sm text-destructive">{geocodeError}</p>
+                  )}
+                </div>
+              )}
 
               {/* Taxonomy Filter */}
               <div className="space-y-3">

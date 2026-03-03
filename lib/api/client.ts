@@ -36,15 +36,24 @@ export async function apiCall<T>(
     if (qs) url += `?${qs}`;
   }
 
-  const response = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include", // Include cookies for authentication
-    ...(body && { body: JSON.stringify(body) }),
-    ...(signal && { signal }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      ...(body && { body: JSON.stringify(body) }),
+      ...(signal && { signal }),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError(
+      err instanceof Error ? err.message : "Network error",
+      0,
+    );
+  }
 
   const data = await response.json();
 
@@ -393,10 +402,14 @@ export const api = {
     taxonomyIds?: string[];
     page?: number;
     limit?: number;
+    lat?: number;
+    lng?: number;
+    radiusMiles?: number;
   }) =>
     apiCall<{
       companies: Record<string, unknown>[];
       taxonomiesByCompany: Record<string, { id: string; name: string }[]>;
+      distanceByCompany?: Record<string, number>;
       totalCount: number;
       page: number;
       totalPages: number;
@@ -409,6 +422,9 @@ export const api = {
         }),
         ...(params.page && { page: params.page }),
         ...(params.limit && { limit: params.limit }),
+        ...(params.lat != null && { lat: params.lat }),
+        ...(params.lng != null && { lng: params.lng }),
+        ...(params.radiusMiles != null && { radiusMiles: params.radiusMiles }),
       },
     }),
 
@@ -741,11 +757,14 @@ export const api = {
   getCompaniesByCapabilities: (data: {
     capabilityIds: string[];
     excludeCompanyIds?: string[];
+    lat?: number;
+    lng?: number;
+    radiusMiles?: number;
   }) =>
-    apiCall<{ companies: Record<string, unknown>[] }>(
-      "companies/by-capabilities",
-      { body: data },
-    ),
+    apiCall<{
+      companies: Record<string, unknown>[];
+      distanceByCompany?: Record<string, number>;
+    }>("companies/by-capabilities", { body: data }),
 
   // Company taxonomies
   getCompanyTaxonomies: (companyId: string) =>
@@ -790,4 +809,11 @@ export const api = {
       companyName: string | null;
       joinRequestStatus: string | null;
     }>("user/approval-status", { method: "GET" }),
+
+  // Geocoding
+  geocode: (query: string) =>
+    apiCall<{
+      enabled: boolean;
+      result: { lat: number; lng: number; displayName: string } | null;
+    }>("geocode", { method: "GET", params: { q: query } }),
 };

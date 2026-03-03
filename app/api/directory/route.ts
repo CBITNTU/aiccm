@@ -5,6 +5,7 @@ import {
   handleApiError,
   sanitizeLikeParam,
 } from "@/lib/api/validation";
+import { haversineDistanceMiles } from "@/lib/geocode";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,8 +18,13 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "25")));
 
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit - 1;
+    const latParam = url.searchParams.get("lat");
+    const lngParam = url.searchParams.get("lng");
+    const radiusParam = url.searchParams.get("radiusMiles");
+    const userLat = latParam ? parseFloat(latParam) : null;
+    const userLng = lngParam ? parseFloat(lngParam) : null;
+    const radiusMiles = radiusParam ? parseFloat(radiusParam) : null;
+    const hasLocation = userLat != null && userLng != null && !isNaN(userLat) && !isNaN(userLng);
 
     // Filter by taxonomy IDs if provided
     let filteredCompanyIds: string[] | null = null;
@@ -42,7 +48,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Build query
+    // Build query — include coordinates for distance calculation
     let query = supabase
       .from("companies")
       .select(
@@ -50,8 +56,9 @@ export async function GET(request: NextRequest) {
          certifications, equipment, past_projects, is_system_company,
          status, market_position, safety_rating, digital_maturity,
          ai_competencies, ai_capabilities, ai_analysis,
-         created_at, updated_at`,
-        { count: "exact" },
+         latitude, longitude,
+         created_at, updated_at, user_id`,
+        { count: hasLocation ? undefined : "exact" },
       )
       .eq("status", "active");
 
@@ -66,16 +73,74 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    query = query.order("company_name").range(startIndex, endIndex);
+    if (hasLocation) {
+      // Fetch all matching companies for JS-side distance calculation
+      query = query.order("company_name").limit(5000);
+    } else {
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit - 1;
+      query = query.order("company_name").range(startIndex, endIndex);
+    }
 
     const { data, error, count } = await query;
     if (error) throw error;
 
-    const totalCount = count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
+    let companies = data || [];
+    let totalCount: number;
+    let totalPages: number;
+    const distanceByCompany: Record<string, number> = {};
 
-    // Fetch taxonomies for all returned companies in one query
-    const companyIds = (data || []).map((c) => c.id);
+    if (hasLocation) {
+      // Compute distances
+      type CompanyRow = (typeof companies)[number];
+      const withDistance: { company: CompanyRow; distance: number | null }[] =
+        companies.map((c) => ({
+          company: c,
+          distance: haversineDistanceMiles(
+            c.latitude as number | null,
+            c.longitude as number | null,
+            userLat,
+            userLng,
+          ),
+        }));
+
+      // Filter by radius if set
+      let filtered = withDistance;
+      if (radiusMiles != null && !isNaN(radiusMiles)) {
+        filtered = withDistance.filter(
+          (item) => item.distance != null && item.distance <= radiusMiles,
+        );
+      }
+
+      // Sort: closest first, nulls (no coordinates) last
+      filtered.sort((a, b) => {
+        if (a.distance == null && b.distance == null) return 0;
+        if (a.distance == null) return 1;
+        if (b.distance == null) return -1;
+        return a.distance - b.distance;
+      });
+
+      totalCount = filtered.length;
+      totalPages = Math.ceil(totalCount / limit);
+
+      // Paginate in JS
+      const startIndex = (page - 1) * limit;
+      const pageSlice = filtered.slice(startIndex, startIndex + limit);
+
+      companies = pageSlice.map((item) => item.company);
+      for (const item of pageSlice) {
+        if (item.distance != null) {
+          distanceByCompany[item.company.id] =
+            Math.round(item.distance * 10) / 10;
+        }
+      }
+    } else {
+      totalCount = count || 0;
+      totalPages = Math.ceil(totalCount / limit);
+    }
+
+    // Fetch taxonomies for returned companies
+    const companyIds = companies.map((c) => c.id);
     let taxonomiesByCompany: Record<string, { id: string; name: string }[]> = {};
 
     if (companyIds.length > 0) {
@@ -101,8 +166,9 @@ export async function GET(request: NextRequest) {
     }
 
     return apiResponse({
-      companies: data || [],
+      companies,
       taxonomiesByCompany,
+      ...(hasLocation && { distanceByCompany }),
       totalCount,
       page,
       totalPages,

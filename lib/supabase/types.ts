@@ -41,6 +41,8 @@ export type Database = {
           id: string;
           is_system_company: boolean | null;
           key_capabilities: string | null;
+          latitude: number | null;
+          longitude: number | null;
           market_position: string | null;
           past_projects: string | null;
           postcode: string | null;
@@ -77,6 +79,8 @@ export type Database = {
           id?: string;
           is_system_company?: boolean | null;
           key_capabilities?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           market_position?: string | null;
           past_projects?: string | null;
           postcode?: string | null;
@@ -113,6 +117,8 @@ export type Database = {
           id?: string;
           is_system_company?: boolean | null;
           key_capabilities?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           market_position?: string | null;
           past_projects?: string | null;
           postcode?: string | null;

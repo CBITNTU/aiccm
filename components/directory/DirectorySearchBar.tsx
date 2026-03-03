@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +21,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetClose,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -24,12 +30,20 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronRight,
+  MapPin,
+  Loader2,
 } from "lucide-react";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
+import { useGeocode } from "@/hooks/useGeocode";
 
-interface DirectoryFiltersState {
+export interface DirectoryFiltersState {
   searchTerm: string;
   selectedTaxonomies: string[];
+  locationQuery?: string;
+  radiusMiles?: number;
+  lat?: number;
+  lng?: number;
+  locationDisplayName?: string;
 }
 
 interface DirectorySearchBarProps {
@@ -37,30 +51,56 @@ interface DirectorySearchBarProps {
   onFiltersChange: (filters: DirectoryFiltersState) => void;
   onReset: () => void;
   placeholder?: string;
+  defaultLocationQuery?: string;
 }
+
+const RADIUS_OPTIONS = [
+  { value: "any", label: "Any distance" },
+  { value: "25", label: "Within 25 miles" },
+  { value: "50", label: "Within 50 miles" },
+  { value: "100", label: "Within 100 miles" },
+  { value: "200", label: "Within 200 miles" },
+];
 
 export function DirectorySearchBar({
   filters,
   onFiltersChange,
   onReset,
   placeholder = "Search companies...",
+  defaultLocationQuery,
 }: DirectorySearchBarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tempTaxonomies, setTempTaxonomies] = useState<string[]>(
     filters.selectedTaxonomies,
   );
+  const [tempLocationQuery, setTempLocationQuery] = useState(
+    filters.locationQuery ?? "",
+  );
+  const [tempRadius, setTempRadius] = useState(
+    filters.radiusMiles?.toString() ?? "any",
+  );
+  const { geocode, isGeocoding, isEnabled } = useGeocode();
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
-  // Handle search term change
+  // Pre-fill default location on first mount
+  useEffect(() => {
+    if (defaultLocationQuery && !filters.locationQuery && !filters.lat) {
+      setTempLocationQuery(defaultLocationQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultLocationQuery]);
+
   const handleSearchChange = (value: string) => {
     onFiltersChange({ ...filters, searchTerm: value });
   };
 
-  // Count active filters (excluding search)
   const getActiveFilterCount = () => {
-    return filters.selectedTaxonomies.length > 0 ? 1 : 0;
+    let count = 0;
+    if (filters.selectedTaxonomies.length > 0) count++;
+    if (filters.lat != null && filters.lng != null) count++;
+    return count;
   };
 
-  // Get active filter pills
   const getActiveFilterPills = () => {
     const pills: { key: string; label: string; value: string }[] = [];
 
@@ -72,27 +112,85 @@ export function DirectorySearchBar({
       });
     }
 
+    if (filters.lat != null && filters.lng != null) {
+      const locationLabel = filters.locationDisplayName || filters.locationQuery || "Location";
+      const radiusLabel = filters.radiusMiles
+        ? `Within ${filters.radiusMiles}mi of`
+        : "Near";
+      pills.push({
+        key: "location",
+        label: radiusLabel,
+        value: locationLabel,
+      });
+    }
+
     return pills;
   };
 
-  // Remove individual filter
   const removeFilter = (key: string) => {
     const newFilters = { ...filters };
-    if (key === "taxonomies") newFilters.selectedTaxonomies = [];
+    if (key === "taxonomies") {
+      newFilters.selectedTaxonomies = [];
+    } else if (key === "location") {
+      newFilters.locationQuery = undefined;
+      newFilters.radiusMiles = undefined;
+      newFilters.lat = undefined;
+      newFilters.lng = undefined;
+      newFilters.locationDisplayName = undefined;
+    }
     onFiltersChange(newFilters);
   };
 
-  // Handle sheet open - sync temp taxonomies
   const handleSheetOpenChange = (open: boolean) => {
     if (open) {
       setTempTaxonomies(filters.selectedTaxonomies);
+      setTempLocationQuery(filters.locationQuery ?? defaultLocationQuery ?? "");
+      setTempRadius(filters.radiusMiles?.toString() ?? "any");
+      setGeocodeError(null);
     }
     setSheetOpen(open);
   };
 
-  // Apply filters from sheet
-  const handleApplyFilters = () => {
-    onFiltersChange({ ...filters, selectedTaxonomies: tempTaxonomies });
+  const handleApplyFilters = async () => {
+    let lat = filters.lat;
+    let lng = filters.lng;
+    let displayName = filters.locationDisplayName;
+    const locationQuery = tempLocationQuery.trim();
+    const radiusMiles = tempRadius && tempRadius !== "any" ? parseInt(tempRadius) : undefined;
+
+    if (locationQuery) {
+      const locationChanged = locationQuery !== filters.locationQuery;
+      if (locationChanged || lat == null || lng == null) {
+        setGeocodeError(null);
+        const result = await geocode(locationQuery);
+        if (result) {
+          lat = result.lat;
+          lng = result.lng;
+          displayName = result.displayName;
+        } else {
+          if (isEnabled === false) {
+            setGeocodeError("Location search is not configured on this server.");
+          } else {
+            setGeocodeError("Could not find that location. Try a different search.");
+          }
+          return;
+        }
+      }
+    } else {
+      lat = undefined;
+      lng = undefined;
+      displayName = undefined;
+    }
+
+    onFiltersChange({
+      ...filters,
+      selectedTaxonomies: tempTaxonomies,
+      locationQuery: locationQuery || undefined,
+      radiusMiles,
+      lat,
+      lng,
+      locationDisplayName: displayName,
+    });
     setSheetOpen(false);
   };
 
@@ -101,7 +199,6 @@ export function DirectorySearchBar({
 
   return (
     <div className="space-y-3 mb-6">
-      {/* Search + Filter Button */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -139,6 +236,37 @@ export function DirectorySearchBar({
             </SheetHeader>
 
             <div className="space-y-6 py-6">
+              {/* Location Filter */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Location
+                </Label>
+                <Input
+                  placeholder="Enter a city, postcode, or address..."
+                  value={tempLocationQuery}
+                  onChange={(e) => {
+                    setTempLocationQuery(e.target.value);
+                    setGeocodeError(null);
+                  }}
+                />
+                <Select value={tempRadius} onValueChange={setTempRadius}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Any distance" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RADIUS_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {geocodeError && (
+                  <p className="text-sm text-destructive">{geocodeError}</p>
+                )}
+              </div>
+
               {/* Taxonomy Filter */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -161,11 +289,14 @@ export function DirectorySearchBar({
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset
               </Button>
-              <SheetClose asChild>
-                <Button className="flex-1" onClick={handleApplyFilters}>
-                  Apply Filters
-                </Button>
-              </SheetClose>
+              <Button
+                className="flex-1"
+                onClick={handleApplyFilters}
+                disabled={isGeocoding}
+              >
+                {isGeocoding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Apply Filters
+              </Button>
             </SheetFooter>
           </SheetContent>
         </Sheet>
@@ -201,7 +332,6 @@ export function DirectorySearchBar({
   );
 }
 
-// Taxonomy Filter Content for Sheet
 function TaxonomyFilterContent({
   selectedTaxonomies,
   onTaxonomiesChange,

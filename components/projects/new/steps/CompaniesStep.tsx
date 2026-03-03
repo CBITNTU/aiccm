@@ -1,13 +1,19 @@
 "use client";
 
- 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -21,8 +27,11 @@ import {
   CheckCircle2,
   Loader2,
   Eye,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useGeocode } from "@/hooks/useGeocode";
+import { useOrg } from "@/hooks/useOrg";
 
 interface Company {
   id: string;
@@ -54,17 +63,76 @@ interface CompanyWithCapabilities extends Company {
   capabilities?: Array<{ id: string; name: string }>;
 }
 
+const RADIUS_OPTIONS = [
+  { value: "any", label: "Any distance" },
+  { value: "25", label: "25 mi" },
+  { value: "50", label: "50 mi" },
+  { value: "100", label: "100 mi" },
+  { value: "200", label: "200 mi" },
+];
+
 export function CompaniesStep({
   selectedCapabilityIds,
   selectedCompanies,
   onSelectionChange,
 }: CompaniesStepProps) {
   const [companies, setCompanies] = useState<CompanyWithCapabilities[]>([]);
+  const [distanceMap, setDistanceMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCompanyDetail, setSelectedCompanyDetail] =
     useState<CompanyWithCapabilities | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
+  const { selectedOrg } = useOrg();
+  const [locationInput, setLocationInput] = useState(
+    selectedOrg?.address || selectedOrg?.postcode || "",
+  );
+  const [radius, setRadius] = useState("any");
+  const { geocode, coords, isGeocoding } = useGeocode();
+
+  // Geocode org location on mount
+  useEffect(() => {
+    const defaultLoc = selectedOrg?.address || selectedOrg?.postcode;
+    if (defaultLoc) {
+      setLocationInput(defaultLoc);
+      geocode(defaultLoc);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchCompanies = useCallback(async () => {
+    if (selectedCapabilityIds.length === 0) return;
+
+    try {
+      setLoading(true);
+      const locationParams = coords
+        ? {
+            lat: coords.lat,
+            lng: coords.lng,
+            ...(radius !== "any" && { radiusMiles: parseInt(radius) }),
+          }
+        : {};
+
+      const result = await api.getCompaniesByCapabilities({
+        capabilityIds: selectedCapabilityIds,
+        ...locationParams,
+      });
+      setCompanies(
+        (result.companies as unknown as CompanyWithCapabilities[]) || [],
+      );
+      setDistanceMap(
+        (result.distanceByCompany as Record<string, number>) ?? {},
+      );
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      toast.error(
+        "Failed to load companies. Make sure companies have been processed and have capabilities assigned.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCapabilityIds, coords, radius]);
 
   useEffect(() => {
     if (selectedCapabilityIds.length > 0) {
@@ -73,25 +141,12 @@ export function CompaniesStep({
       setCompanies([]);
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCapabilityIds]);
+  }, [fetchCompanies, selectedCapabilityIds]);
 
-  const fetchCompanies = async () => {
-    if (selectedCapabilityIds.length === 0) return;
-
-    try {
-      setLoading(true);
-      const result = await api.getCompaniesByCapabilities({
-        capabilityIds: selectedCapabilityIds,
-      });
-      setCompanies((result.companies as unknown as CompanyWithCapabilities[]) || []);
-    } catch (error) {
-      console.error("Error fetching companies:", error);
-      toast.error(
-        "Failed to load companies. Make sure companies have been processed and have capabilities assigned.",
-      );
-    } finally {
-      setLoading(false);
+  const handleApplyLocation = async () => {
+    const trimmed = locationInput.trim();
+    if (trimmed) {
+      await geocode(trimmed);
     }
   };
 
@@ -149,6 +204,48 @@ export function CompaniesStep({
           Select companies that have the capabilities you need. You can view
           full company profiles and select multiple companies for your project.
         </p>
+
+        {/* Location filter */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Location (city, postcode...)"
+              value={locationInput}
+              onChange={(e) => setLocationInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleApplyLocation();
+              }}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+          <Select value={radius} onValueChange={setRadius}>
+            <SelectTrigger className="w-[110px] h-9 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RADIUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-sm"
+            onClick={handleApplyLocation}
+            disabled={isGeocoding}
+          >
+            {isGeocoding ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              "Apply"
+            )}
+          </Button>
+        </div>
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -209,6 +306,7 @@ export function CompaniesStep({
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
           {filteredCompanies.map((company) => {
             const isSelected = isCompanySelected(company.id);
+            const distance = distanceMap[company.id];
             return (
               <Card
                 key={company.id}
@@ -273,6 +371,13 @@ export function CompaniesStep({
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             {company.postcode && (
                               <span>{company.postcode}</span>
+                            )}
+                            {distance != null && (
+                              <span className="text-primary font-medium">
+                                {distance < 1
+                                  ? "< 1 mi"
+                                  : `${distance.toFixed(1)} mi`}
+                              </span>
                             )}
                             {company.contact_email && (
                               <span className="truncate max-w-[150px]">

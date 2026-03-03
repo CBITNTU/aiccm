@@ -5,6 +5,7 @@ import {
   handleApiError,
   sanitizeLikeParam,
 } from "@/lib/api/validation";
+import { haversineDistanceMiles } from "@/lib/geocode";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- supabase join types */
 
@@ -17,7 +18,18 @@ export async function POST(request: NextRequest) {
     const {
       capabilityIds,
       excludeCompanyIds = [],
-    }: { capabilityIds: string[]; excludeCompanyIds?: string[] } = body;
+      lat: userLat,
+      lng: userLng,
+      radiusMiles,
+    }: {
+      capabilityIds: string[];
+      excludeCompanyIds?: string[];
+      lat?: number;
+      lng?: number;
+      radiusMiles?: number;
+    } = body;
+    const hasLocation =
+      userLat != null && userLng != null && !isNaN(userLat) && !isNaN(userLng);
 
     if (!capabilityIds || capabilityIds.length === 0) {
       return apiResponse({ companies: [] });
@@ -51,6 +63,8 @@ export async function POST(request: NextRequest) {
           status,
           user_id,
           is_system_company,
+          latitude,
+          longitude,
           created_at,
           updated_at
         )
@@ -102,7 +116,7 @@ export async function POST(request: NextRequest) {
           await supabase
             .from("companies")
             .select(
-              "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, created_at, updated_at",
+              "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, latitude, longitude, created_at, updated_at",
             )
             .eq("status", "active")
             .or(orConditions)
@@ -173,6 +187,36 @@ export async function POST(request: NextRequest) {
               }),
             );
 
+            // Apply location filtering to fallback results too
+            if (hasLocation) {
+              const distanceByCompany: Record<string, number> = {};
+              const withDist = companiesWithCapabilities.map((c: any) => ({
+                company: c,
+                distance: haversineDistanceMiles(
+                  c.latitude ?? null, c.longitude ?? null,
+                  userLat!, userLng!,
+                ),
+              }));
+              let filt = withDist;
+              if (radiusMiles != null && !isNaN(radiusMiles)) {
+                filt = withDist.filter((i) => i.distance != null && i.distance <= radiusMiles);
+              }
+              filt.sort((a, b) => {
+                if (a.distance == null && b.distance == null) return 0;
+                if (a.distance == null) return 1;
+                if (b.distance == null) return -1;
+                return a.distance - b.distance;
+              });
+              for (const i of filt) {
+                if (i.distance != null) {
+                  distanceByCompany[i.company.id] = Math.round(i.distance * 10) / 10;
+                }
+              }
+              return apiResponse({
+                companies: filt.map((i) => i.company),
+                distanceByCompany,
+              });
+            }
             return apiResponse({ companies: companiesWithCapabilities });
           }
         }
@@ -217,6 +261,47 @@ export async function POST(request: NextRequest) {
         };
       }),
     );
+
+    // Apply location filtering and sorting if coordinates provided
+    if (hasLocation) {
+      const distanceByCompany: Record<string, number> = {};
+
+      const withDistance = companiesWithCapabilities.map((c: any) => ({
+        company: c,
+        distance: haversineDistanceMiles(
+          c.latitude ?? null,
+          c.longitude ?? null,
+          userLat!,
+          userLng!,
+        ),
+      }));
+
+      let filtered = withDistance;
+      if (radiusMiles != null && !isNaN(radiusMiles)) {
+        filtered = withDistance.filter(
+          (item) => item.distance != null && item.distance <= radiusMiles,
+        );
+      }
+
+      filtered.sort((a, b) => {
+        if (a.distance == null && b.distance == null) return 0;
+        if (a.distance == null) return 1;
+        if (b.distance == null) return -1;
+        return a.distance - b.distance;
+      });
+
+      for (const item of filtered) {
+        if (item.distance != null) {
+          distanceByCompany[item.company.id] =
+            Math.round(item.distance * 10) / 10;
+        }
+      }
+
+      return apiResponse({
+        companies: filtered.map((item) => item.company),
+        distanceByCompany,
+      });
+    }
 
     return apiResponse({ companies: companiesWithCapabilities });
   } catch (error) {

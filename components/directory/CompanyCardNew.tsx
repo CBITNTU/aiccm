@@ -41,12 +41,14 @@ interface CompanyCardNewProps {
   company: PublicCompany | Company;
   onClick: (company: PublicCompany | Company) => void;
   taxonomies?: Array<{ id: string; name: string }>;
+  distanceMiles?: number;
 }
 
 export function CompanyCardNew({
   company,
   onClick,
   taxonomies: propTaxonomies,
+  distanceMiles,
 }: CompanyCardNewProps) {
   const [showAllCategories, setShowAllCategories] = useState(false);
   const taxonomies = propTaxonomies || [];
@@ -116,6 +118,13 @@ export function CompanyCardNew({
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-muted rounded-md">
             <MapPin className="h-3 w-3" />
             {company.postcode}
+          </span>
+        )}
+        {distanceMiles != null && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary rounded-md font-medium">
+            {distanceMiles < 1
+              ? "< 1 mi"
+              : `${distanceMiles.toFixed(1)} mi`}
           </span>
         )}
       </div>

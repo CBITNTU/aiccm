@@ -48,7 +48,6 @@ export async function updateSession(request: NextRequest) {
     "/onboarding",
     "/tenders",
     "/directory",
-    "/companies",
     "/company",
     "/vo",
     "/projects",
@@ -74,7 +73,6 @@ export async function updateSession(request: NextRequest) {
   const approvalRequiredPaths = [
     "/dashboard",
     "/onboarding",
-    "/companies",
     "/company",
     "/vo",
     "/projects",
@@ -97,6 +95,16 @@ export async function updateSession(request: NextRequest) {
   const isApprovalRequiredPath = approvalRequiredPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path),
   );
+
+  // Redirect unauthenticated /directory/[companyId] visits to the public profile page
+  if (!user && request.nextUrl.pathname.startsWith("/directory/")) {
+    const segments = request.nextUrl.pathname.replace(/\/$/, "").split("/").filter(Boolean);
+    if (segments.length === 2 && segments[1]) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/companies/${segments[1]}`;
+      return NextResponse.redirect(url);
+    }
+  }
 
   // Redirect unauthenticated users from protected paths to /auth
   if (!user && isProtectedPath) {

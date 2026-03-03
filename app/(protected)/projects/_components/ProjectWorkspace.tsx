@@ -58,6 +58,7 @@ import { TeamAnalysisPanel } from "./panels/TeamAnalysisPanel";
 import { InvitationsPanel } from "./panels/InvitationsPanel";
 import { TeamContactsCard } from "@/components/consulting/TeamContactsCard";
 import { WorkspaceSkeleton } from "./skeletons/WorkspaceSkeleton";
+import { deriveCoverage } from "@/lib/utils";
 
 interface ProjectWorkspaceProps {
   projectId: string | null;
@@ -164,10 +165,19 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
   // Calculate summary stats for accordion headers
   // Solo: show gap analysis coverage if run, else tender match; with partners: gap analysis coverage
+  // Derive coverage from competency list counts (consistent with GapAnalysisPanel)
+  const derivedGapCoverage = gapAnalysis
+    ? deriveCoverage(
+        gapAnalysis.companyCompetencies,
+        gapAnalysis.missingCompetencies,
+        gapAnalysis.coveragePercentage,
+      )
+    : undefined;
+
   const gapScore =
     teamMembers.length <= 1
-      ? (gapAnalysis?.coveragePercentage ?? tenderMatchResult?.overall_score)
-      : gapAnalysis?.coveragePercentage;
+      ? (derivedGapCoverage ?? tenderMatchResult?.overall_score)
+      : derivedGapCoverage;
   const teamScore = teamAnalysis?.coveragePercentage;
   const teamCount = teamMembers.length;
   const invitableCount = teamMembers.filter(
@@ -323,6 +333,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                       teamMembers={teamMembers}
                       gapAnalysis={gapAnalysis}
                       recommendedPartners={recommendedPartners}
+                      teamAnalysis={teamAnalysis}
                       tenderMatchResult={tenderMatchResult}
                     />
                   </motion.div>

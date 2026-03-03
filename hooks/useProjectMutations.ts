@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { deriveCoverage } from "@/lib/utils";
 import type {
   GapAnalysis,
   TeamAnalysis,
@@ -192,11 +193,19 @@ export function useRunGapAnalysis() {
         }
       }
 
+      const compComps = analysis.companyCompetencies || [];
+      const missComps = analysis.missingCompetencies || [];
+      const derivedCoverage = deriveCoverage(
+        compComps,
+        missComps,
+        Math.round(analysis.coveragePercentage ?? 0),
+      );
+
       const gapAnalysisData: GapAnalysis = {
         ...analysis,
-        companyCompetencies: analysis.companyCompetencies || [],
-        missingCompetencies: analysis.missingCompetencies || [],
-        coveragePercentage: Math.round(analysis.coveragePercentage ?? 0),
+        companyCompetencies: compComps,
+        missingCompetencies: missComps,
+        coveragePercentage: derivedCoverage,
         readinessScore: Math.round(analysis.readinessScore ?? 0),
         type: "gap",
         analyzedAt: new Date().toISOString(),
@@ -281,9 +290,7 @@ export function useUpdateGapAnalysis() {
       companyCompetencies: string[];
       missingCompetencies: string[];
     }) => {
-      const total = companyCompetencies.length + missingCompetencies.length;
-      const coveragePercentage =
-        total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
+      const coveragePercentage = deriveCoverage(companyCompetencies, missingCompetencies);
 
       // Fetch current gap_analysis to merge
       const details = await api.getProjectDetails(projectId);
@@ -323,9 +330,7 @@ export function useUpdateTeamAnalysis() {
       companyCompetencies: string[];
       missingCompetencies: string[];
     }) => {
-      const total = companyCompetencies.length + missingCompetencies.length;
-      const coveragePercentage =
-        total > 0 ? Math.round((companyCompetencies.length / total) * 100) : 0;
+      const coveragePercentage = deriveCoverage(companyCompetencies, missingCompetencies);
 
       // Fetch current team_analysis to merge
       const details = await api.getProjectDetails(projectId);

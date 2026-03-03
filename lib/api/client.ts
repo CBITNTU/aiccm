@@ -379,11 +379,17 @@ export const api = {
       body: { capabilityIds },
     }),
 
+  // Directory - single company
+  getDirectoryCompany: (companyId: string) =>
+    apiCall<{
+      company: Record<string, unknown>;
+      isOwner: boolean;
+      taxonomies: { id: string; name: string }[];
+    }>(`directory/${companyId}`, { method: "GET" }),
+
   // Directory
   getDirectory: (params: {
     search?: string;
-    location?: string;
-    capability?: string;
     taxonomyIds?: string[];
     page?: number;
     limit?: number;
@@ -394,14 +400,10 @@ export const api = {
       totalCount: number;
       page: number;
       totalPages: number;
-      uniqueLocations: string[];
-      uniqueCapabilities: string[];
     }>("directory", {
       method: "GET",
       params: {
         ...(params.search && { search: params.search }),
-        ...(params.location && { location: params.location }),
-        ...(params.capability && { capability: params.capability }),
         ...(params.taxonomyIds?.length && {
           taxonomyIds: params.taxonomyIds.join(","),
         }),
@@ -467,14 +469,41 @@ export const api = {
   getMatchingResults: (params?: {
     companyId?: string;
     bookmarked?: boolean;
+    tenderStatus?: string;
+    keyword?: string;
+    minScore?: number;
+    maxScore?: number;
+    showApplied?: string;
+    quickFilter?: string | null;
+    sortBy?: string;
+    sortDirection?: string;
+    page?: number;
+    pageSize?: number;
   }) =>
-    apiCall<{ results: Record<string, unknown>[] }>("matching-results", {
-      method: "GET",
-      params: {
-        ...(params?.companyId && { companyId: params.companyId }),
-        ...(params?.bookmarked && { bookmarked: true }),
+    apiCall<{ results: Record<string, unknown>[]; totalCount: number }>(
+      "matching-results",
+      {
+        method: "GET",
+        params: {
+          ...(params?.companyId && { companyId: params.companyId }),
+          ...(params?.bookmarked && { bookmarked: true }),
+          ...(params?.tenderStatus && { tenderStatus: params.tenderStatus }),
+          ...(params?.keyword && { keyword: params.keyword }),
+          ...(params?.minScore && { minScore: params.minScore }),
+          ...(params?.maxScore !== undefined &&
+            params.maxScore < 100 && { maxScore: params.maxScore }),
+          ...(params?.showApplied &&
+            params.showApplied !== "all" && {
+              showApplied: params.showApplied,
+            }),
+          ...(params?.quickFilter && { quickFilter: params.quickFilter }),
+          ...(params?.sortBy && { sortBy: params.sortBy }),
+          ...(params?.sortDirection && { sortDirection: params.sortDirection }),
+          ...(params?.page && { page: params.page }),
+          ...(params?.pageSize && { pageSize: params.pageSize }),
+        },
       },
-    }),
+    ),
 
   deleteMatchingResult: (resultId: string) =>
     apiCall<{ success: boolean }>(`matching-results/${resultId}`, {

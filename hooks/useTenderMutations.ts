@@ -18,7 +18,7 @@ export function useToggleBookmark(companyId: string | undefined) {
     onSuccess: () => {
       if (companyId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.matchingResults(companyId),
+          queryKey: ["matchingResults", companyId],
         });
         queryClient.invalidateQueries({
           queryKey: queryKeys.savedTenders(companyId),
@@ -36,7 +36,7 @@ export function useDeleteMatchingResult(companyId: string | undefined) {
     onSuccess: () => {
       if (companyId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.matchingResults(companyId),
+          queryKey: ["matchingResults", companyId],
         });
         queryClient.invalidateQueries({
           queryKey: queryKeys.savedTenders(companyId),

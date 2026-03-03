@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import type { TeamAnalysis } from "@/hooks/useProjects";
 import type { Tender, TeamMember } from "@/hooks/useProjectDetails";
 import type { Database } from "@/lib/supabase/types";
+import { deriveCoverage } from "@/lib/utils";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -73,14 +74,11 @@ export function TeamAnalysisPanel({
     setHasEdits(true);
   };
 
-  const editedCoverage =
-    companyCompetencies.length + missingCompetencies.length > 0
-      ? Math.round(
-          (companyCompetencies.length /
-            (companyCompetencies.length + missingCompetencies.length)) *
-            100,
-        )
-      : (teamAnalysis?.coveragePercentage ?? 0);
+  const editedCoverage = deriveCoverage(
+    companyCompetencies,
+    missingCompetencies,
+    teamAnalysis?.coveragePercentage ?? 0,
+  );
 
   const handleSaveEdits = async () => {
     try {

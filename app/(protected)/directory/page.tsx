@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { Database } from "@/lib/supabase/types";
-import { useAuth } from "@/hooks/useAuth";
 import { useDirectory } from "@/hooks/useDirectory";
+import { useDebounce } from "@/hooks/useDebounce";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompanyCardNew } from "@/components/directory/CompanyCardNew";
-import { CompanyDetailModal } from "@/components/directory/CompanyDetailModal";
 import { DirectorySearchBar } from "@/components/directory/DirectorySearchBar";
 import { DirectoryResultsHeader } from "@/components/directory/DirectoryResultsHeader";
 
@@ -39,34 +39,25 @@ type PublicCompany = Pick<
 
 interface DirectoryFilters {
   searchTerm: string;
-  location: string;
-  capability: string;
   selectedTaxonomies: string[];
 }
 
 const defaultFilters: DirectoryFilters = {
   searchTerm: "",
-  location: "all",
-  capability: "all",
   selectedTaxonomies: [],
 };
 
 export default function DirectoryPage() {
-  const { isPendingApproval, isOnboarding } = useAuth();
+  const router = useRouter();
 
-  const isRestrictedUser = isPendingApproval || isOnboarding;
   const [filters, setFilters] = useState<DirectoryFilters>(defaultFilters);
-  const [selectedCompany, setSelectedCompany] = useState<PublicCompany | null>(
-    null,
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
+  const debouncedSearch = useDebounce(filters.searchTerm, 400);
+
   const { data: directoryData, isLoading: loading, refetch } = useDirectory({
-    search: filters.searchTerm.trim() || undefined,
-    location: filters.location !== "all" ? filters.location : undefined,
-    capability: filters.capability !== "all" ? filters.capability : undefined,
+    search: debouncedSearch.trim() || undefined,
     taxonomyIds:
       filters.selectedTaxonomies.length > 0
         ? filters.selectedTaxonomies
@@ -78,12 +69,9 @@ export default function DirectoryPage() {
   const companies = (directoryData?.companies as unknown as PublicCompany[]) ?? [];
   const taxonomiesByCompany = directoryData?.taxonomiesByCompany ?? {};
   const totalCount = directoryData?.totalCount ?? 0;
-  const uniqueLocations = directoryData?.uniqueLocations ?? [];
-  const uniqueCapabilities = directoryData?.uniqueCapabilities ?? [];
 
   const handleCompanyClick = (company: PublicCompany) => {
-    setSelectedCompany(company);
-    setIsModalOpen(true);
+    router.push(`/directory/${company.id}`);
   };
 
   const handleFiltersChange = (newFilters: DirectoryFilters) => {
@@ -98,10 +86,10 @@ export default function DirectoryPage() {
     refetch();
   };
 
-  // Reset to page 1 when filters change (async to satisfy set-state-in-effect)
+  // Reset to page 1 when effective query changes (debounced search + taxonomies)
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
-  }, [filters]);
+  }, [debouncedSearch, filters.selectedTaxonomies]);
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -130,8 +118,6 @@ export default function DirectoryPage() {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           onReset={handleResetFilters}
-          uniqueLocations={uniqueLocations}
-          uniqueCapabilities={uniqueCapabilities}
         />
 
         {!loading && totalCount > 0 && (
@@ -161,8 +147,6 @@ export default function DirectoryPage() {
               Try adjusting your search or filter criteria
             </p>
             {(filters.searchTerm ||
-              filters.location !== "all" ||
-              filters.capability !== "all" ||
               filters.selectedTaxonomies.length > 0) && (
               <Button variant="outline" onClick={handleResetFilters}>
                 Clear all filters
@@ -250,12 +234,6 @@ export default function DirectoryPage() {
           </>
         )}
 
-        <CompanyDetailModal
-          company={selectedCompany}
-          open={isModalOpen}
-          onOpenChange={setIsModalOpen}
-          readOnly={isRestrictedUser}
-        />
       </main>
     </div>
   );

@@ -10,22 +10,33 @@ export interface TenderSyncSchedule {
 }
 
 export async function getTenderSyncSchedule(): Promise<TenderSyncSchedule> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("platform_settings" as any)
-    .select("key, value")
-    .in("key", [KEY_LAST_FINISHED, KEY_NEXT_SCHEDULED]);
-
-  if (error) {
-    throw new Error(`Failed to read tender sync schedule: ${error.message}`);
-  }
-
-  const rows = (data ?? []) as unknown as { key: string; value: string }[];
-  const map = new Map(rows.map((r) => [r.key, r.value]));
-  return {
-    lastSyncFinishedAt: map.get(KEY_LAST_FINISHED) || null,
-    nextSyncScheduledAt: map.get(KEY_NEXT_SCHEDULED) || null,
+  const fallback: TenderSyncSchedule = {
+    lastSyncFinishedAt: null,
+    nextSyncScheduledAt: null,
   };
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("platform_settings" as any)
+      .select("key, value")
+      .in("key", [KEY_LAST_FINISHED, KEY_NEXT_SCHEDULED]);
+
+    if (error) {
+      // Table missing (42P01) or other DB error: return nulls so UI shows "Never" / "Not scheduled"
+      console.warn("getTenderSyncSchedule failed:", error.message);
+      return fallback;
+    }
+
+    const rows = (data ?? []) as unknown as { key: string; value: string }[];
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    return {
+      lastSyncFinishedAt: map.get(KEY_LAST_FINISHED) || null,
+      nextSyncScheduledAt: map.get(KEY_NEXT_SCHEDULED) || null,
+    };
+  } catch (e) {
+    console.warn("getTenderSyncSchedule error:", e);
+    return fallback;
+  }
 }
 
 export async function setTenderSyncSchedule(updates: {

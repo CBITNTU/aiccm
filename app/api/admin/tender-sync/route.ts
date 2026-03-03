@@ -29,7 +29,15 @@ function getOrigin(request: NextRequest): string {
   }
 }
 
-async function runTenderSync(origin: string, secret: string): Promise<void> {
+export type TenderSyncRunStats = {
+  findTender: { imported: number; fetched: number; duplicatesSkipped: number };
+  ted: { imported: number; fetched: number; duplicatesSkipped: number };
+};
+
+async function runTenderSync(
+  origin: string,
+  secret: string,
+): Promise<TenderSyncRunStats> {
   const dateTo = new Date();
   const dateFrom = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const dateFromISO = dateFrom.toISOString();
@@ -37,6 +45,11 @@ async function runTenderSync(origin: string, secret: string): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Tender-Sync-Secret": secret,
+  };
+
+  const stats: TenderSyncRunStats = {
+    findTender: { imported: 0, fetched: 0, duplicatesSkipped: 0 },
+    ted: { imported: 0, fetched: 0, duplicatesSkipped: 0 },
   };
 
   // Find a Tender: paginate with cursor
@@ -58,11 +71,17 @@ async function runTenderSync(origin: string, secret: string): Promise<void> {
       throw new Error(`Find a Tender sync failed: ${res.status} ${text}`);
     }
     const data = await res.json();
+    stats.findTender.imported += data.actuallyImported ?? 0;
+    stats.findTender.fetched += data.totalFetched ?? 0;
+    stats.findTender.duplicatesSkipped += data.duplicatesSkipped ?? 0;
     cursor = data.nextCursor ?? undefined;
     if (cursor) await new Promise((r) => setTimeout(r, 1000));
   } while (cursor);
 
   // TED: paginate with iterationNextToken / nextPage
+  // TED rate-limits at ~10 req/burst even with API key, so use max page size (250) and 3s delay
+  // Default to English; add more ISO 639-3 codes here to expand (e.g. "FRA", "DEU")
+  const tedLanguages = ["ENG"];
   let nextToken: string | undefined;
   let page = 1;
   let hasMore = true;
@@ -70,10 +89,11 @@ async function runTenderSync(origin: string, secret: string): Promise<void> {
     const body = {
       adminImport: true,
       page,
-      limit: 100,
+      limit: 250,
       iterationNextToken: nextToken,
       dateFrom: dateFromISO,
       dateTo: dateToISO,
+      languages: tedLanguages,
     };
     const res = await fetch(`${origin}/api/fetch-ted-tenders`, {
       method: "POST",
@@ -85,12 +105,27 @@ async function runTenderSync(origin: string, secret: string): Promise<void> {
       throw new Error(`TED sync failed: ${res.status} ${text}`);
     }
     const data = await res.json();
+    stats.ted.imported += data.actuallyImported ?? 0;
+    stats.ted.fetched += data.totalFetched ?? 0;
+    stats.ted.duplicatesSkipped += data.duplicatesSkipped ?? 0;
     hasMore = data.hasMore === true && (data.nextToken || data.nextPage);
     if (data.nextToken) nextToken = data.nextToken;
     else if (data.nextPage) page = data.nextPage;
     else hasMore = false;
-    if (hasMore) await new Promise((r) => setTimeout(r, 1000));
+    if (hasMore) await new Promise((r) => setTimeout(r, 3000));
   }
+
+  console.log(
+    `[Tender sync] Find a Tender (last 7 days): ${stats.findTender.imported} imported, ${stats.findTender.fetched} fetched, ${stats.findTender.duplicatesSkipped} duplicates skipped`,
+  );
+  console.log(
+    `[Tender sync] TED (last 7 days): ${stats.ted.imported} imported, ${stats.ted.fetched} fetched, ${stats.ted.duplicatesSkipped} duplicates skipped`,
+  );
+  console.log(
+    `[Tender sync] Total new this run: ${stats.findTender.imported + stats.ted.imported}`,
+  );
+
+  return stats;
 }
 
 export async function GET(request: NextRequest) {
@@ -146,24 +181,30 @@ async function handleRequest(
     }
 
     const origin = getOrigin(request);
+    let syncSucceeded = false;
     try {
       await runTenderSync(origin, TENDER_SYNC_SECRET);
+      syncSucceeded = true;
     } catch (err) {
       console.error("Tender sync error:", err);
-      // Still update schedule so next run is in 7 days
     }
 
-    const finishedAt = new Date().toISOString();
-    const nextAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const finishedAt = new Date();
+    const nextAt = new Date(finishedAt.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    // Only set lastSyncFinishedAt when sync actually succeeded; always set next run
     await setTenderSyncSchedule({
-      lastSyncFinishedAt: finishedAt,
+      ...(syncSucceeded && {
+        lastSyncFinishedAt: finishedAt.toISOString(),
+      }),
       nextSyncScheduledAt: nextAt,
     });
 
+    const updated = await getTenderSyncSchedule();
     return apiResponse({
       ran: true,
-      lastSyncFinishedAt: finishedAt,
-      nextSyncScheduledAt: nextAt,
+      syncSucceeded,
+      lastSyncFinishedAt: updated.lastSyncFinishedAt,
+      nextSyncScheduledAt: updated.nextSyncScheduledAt,
     });
   } catch (error) {
     console.error("Error in tender-sync:", error);

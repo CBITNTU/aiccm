@@ -19,9 +19,10 @@ export async function apiCall<T>(
     method?: "GET" | "POST" | "PUT" | "DELETE";
     body?: Record<string, unknown>;
     params?: Record<string, string | number | boolean | undefined>;
+    signal?: AbortSignal;
   } = {},
 ): Promise<T> {
-  const { method = "POST", body, params } = options;
+  const { method = "POST", body, params, signal } = options;
 
   let url = `/api/${endpoint}`;
   if (params) {
@@ -42,6 +43,7 @@ export async function apiCall<T>(
     },
     credentials: "include", // Include cookies for authentication
     ...(body && { body: JSON.stringify(body) }),
+    ...(signal && { signal }),
   });
 
   const data = await response.json();
@@ -217,15 +219,17 @@ export const api = {
       nextSyncScheduledAt: string | null;
     }>("admin/tender-sync-status", { method: "GET" }),
 
-  triggerTenderSync: () =>
+  triggerTenderSync: (options?: { signal?: AbortSignal }) =>
     apiCall<{
       ran: boolean;
-      lastSyncFinishedAt?: string;
-      nextSyncScheduledAt?: string;
+      syncSucceeded?: boolean;
+      lastSyncFinishedAt?: string | null;
+      nextSyncScheduledAt?: string | null;
       message?: string;
     }>("admin/tender-sync", {
       method: "POST",
       body: { triggerNow: true },
+      ...(options?.signal && { signal: options.signal }),
     }),
 
   // Fetch TED tenders
@@ -236,6 +240,7 @@ export const api = {
     adminImport?: boolean;
     dateFrom?: string;
     dateTo?: string;
+    languages?: string[];
   }) =>
     apiCall<{
       tenders: unknown[];

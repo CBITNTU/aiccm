@@ -58,28 +58,3 @@ export function buildCompanyGeoQuery(
   return null;
 }
 
-/**
- * Haversine distance between two points in miles.
- * Returns null if any coordinate is missing.
- */
-export function haversineDistanceMiles(
-  lat1: number | null,
-  lon1: number | null,
-  lat2: number | null,
-  lon2: number | null,
-): number | null {
-  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
-
-  const R = 3959;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function toRad(deg: number): number {
-  return (deg * Math.PI) / 180;
-}

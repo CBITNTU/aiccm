@@ -11,10 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Calendar, Globe, Building2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api/client";
+import { useAdminTenderSyncOptional } from "@/components/admin/AdminTenderSyncContext";
 
 type TenderSource = "find-tender" | "ted" | "contracts-finder";
 
 export function AdminTenderImport() {
+  const { isSyncInProgress } = useAdminTenderSyncOptional();
   const [source, setSource] = useState<TenderSource>("find-tender");
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -214,6 +216,7 @@ export function AdminTenderImport() {
             iterationNextToken: token,
             dateFrom: new Date(dateFrom).toISOString(),
             dateTo: new Date(dateTo).toISOString(),
+            languages: ["ENG"],
           });
         } catch (err: unknown) {
           // Check if it's a 429 rate limit error
@@ -374,7 +377,7 @@ export function AdminTenderImport() {
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    disabled={isImporting}
+                    disabled={isImporting || isSyncInProgress}
                   />
                 </div>
                 <div>
@@ -387,13 +390,22 @@ export function AdminTenderImport() {
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    disabled={isImporting}
+                    disabled={isImporting || isSyncInProgress}
                   />
                 </div>
               </div>
 
+              {isSyncInProgress && (
+                <p className="text-sm text-muted-foreground mb-2">
+                  Import is disabled while the weekly tender sync is running.
+                </p>
+              )}
               {!isImporting && (
-                <Button onClick={handleFindTenderImport} className="w-full">
+                <Button
+                  onClick={handleFindTenderImport}
+                  className="w-full"
+                  disabled={isSyncInProgress}
+                >
                   Import from Find a Tender
                 </Button>
               )}
@@ -450,7 +462,7 @@ export function AdminTenderImport() {
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    disabled={isImporting}
+                    disabled={isImporting || isSyncInProgress}
                   />
                 </div>
                 <div>
@@ -466,13 +478,17 @@ export function AdminTenderImport() {
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    disabled={isImporting}
+                    disabled={isImporting || isSyncInProgress}
                   />
                 </div>
               </div>
 
               {!isImporting && (
-                <Button onClick={handleTEDImport} className="w-full">
+                <Button
+                  onClick={handleTEDImport}
+                  className="w-full"
+                  disabled={isSyncInProgress}
+                >
                   Import from TED
                 </Button>
               )}

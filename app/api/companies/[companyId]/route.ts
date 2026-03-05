@@ -6,6 +6,11 @@ import {
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import {
+  geocodeLocation,
+  buildCompanyGeoQuery,
+  isGeocodingEnabled,
+} from "@/lib/geocode";
 
 export async function GET(
   request: NextRequest,
@@ -92,6 +97,21 @@ export async function PUT(
     for (const field of allowedFields) {
       if (field in body) {
         updates[field] = body[field];
+      }
+    }
+
+    // Auto-geocode when postcode or address changes
+    if (isGeocodingEnabled() && ("postcode" in body || "address" in body)) {
+      const geoQuery = buildCompanyGeoQuery(
+        (body.address as string) ?? null,
+        (body.postcode as string) ?? null,
+      );
+      if (geoQuery) {
+        const coords = await geocodeLocation(geoQuery);
+        if (coords) {
+          updates.latitude = coords.lat;
+          updates.longitude = coords.lng;
+        }
       }
     }
 

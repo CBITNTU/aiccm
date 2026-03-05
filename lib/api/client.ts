@@ -19,9 +19,10 @@ export async function apiCall<T>(
     method?: "GET" | "POST" | "PUT" | "DELETE";
     body?: Record<string, unknown>;
     params?: Record<string, string | number | boolean | undefined>;
+    signal?: AbortSignal;
   } = {},
 ): Promise<T> {
-  const { method = "POST", body, params } = options;
+  const { method = "POST", body, params, signal } = options;
 
   let url = `/api/${endpoint}`;
   if (params) {
@@ -35,14 +36,24 @@ export async function apiCall<T>(
     if (qs) url += `?${qs}`;
   }
 
-  const response = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include", // Include cookies for authentication
-    ...(body && { body: JSON.stringify(body) }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      ...(body && { body: JSON.stringify(body) }),
+      ...(signal && { signal }),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError(
+      err instanceof Error ? err.message : "Network error",
+      0,
+    );
+  }
 
   const data = await response.json();
 
@@ -217,15 +228,17 @@ export const api = {
       nextSyncScheduledAt: string | null;
     }>("admin/tender-sync-status", { method: "GET" }),
 
-  triggerTenderSync: () =>
+  triggerTenderSync: (options?: { signal?: AbortSignal }) =>
     apiCall<{
       ran: boolean;
-      lastSyncFinishedAt?: string;
-      nextSyncScheduledAt?: string;
+      syncSucceeded?: boolean;
+      lastSyncFinishedAt?: string | null;
+      nextSyncScheduledAt?: string | null;
       message?: string;
     }>("admin/tender-sync", {
       method: "POST",
       body: { triggerNow: true },
+      ...(options?.signal && { signal: options.signal }),
     }),
 
   // Fetch TED tenders
@@ -236,6 +249,7 @@ export const api = {
     adminImport?: boolean;
     dateFrom?: string;
     dateTo?: string;
+    languages?: string[];
   }) =>
     apiCall<{
       tenders: unknown[];
@@ -388,10 +402,14 @@ export const api = {
     taxonomyIds?: string[];
     page?: number;
     limit?: number;
+    lat?: number;
+    lng?: number;
+    radiusMiles?: number;
   }) =>
     apiCall<{
       companies: Record<string, unknown>[];
       taxonomiesByCompany: Record<string, { id: string; name: string }[]>;
+      distanceByCompany?: Record<string, number>;
       totalCount: number;
       page: number;
       totalPages: number;
@@ -404,6 +422,9 @@ export const api = {
         }),
         ...(params.page && { page: params.page }),
         ...(params.limit && { limit: params.limit }),
+        ...(params.lat != null && { lat: params.lat }),
+        ...(params.lng != null && { lng: params.lng }),
+        ...(params.radiusMiles != null && { radiusMiles: params.radiusMiles }),
       },
     }),
 
@@ -736,11 +757,14 @@ export const api = {
   getCompaniesByCapabilities: (data: {
     capabilityIds: string[];
     excludeCompanyIds?: string[];
+    lat?: number;
+    lng?: number;
+    radiusMiles?: number;
   }) =>
-    apiCall<{ companies: Record<string, unknown>[] }>(
-      "companies/by-capabilities",
-      { body: data },
-    ),
+    apiCall<{
+      companies: Record<string, unknown>[];
+      distanceByCompany?: Record<string, number>;
+    }>("companies/by-capabilities", { body: data }),
 
   // Company taxonomies
   getCompanyTaxonomies: (companyId: string) =>
@@ -785,4 +809,11 @@ export const api = {
       companyName: string | null;
       joinRequestStatus: string | null;
     }>("user/approval-status", { method: "GET" }),
+
+  // Geocoding
+  geocode: (query: string) =>
+    apiCall<{
+      enabled: boolean;
+      result: { lat: number; lng: number; displayName: string } | null;
+    }>("geocode", { method: "GET", params: { q: query } }),
 };

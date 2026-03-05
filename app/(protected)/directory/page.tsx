@@ -5,12 +5,16 @@ import { useRouter } from "next/navigation";
 import type { Database } from "@/lib/supabase/types";
 import { useDirectory } from "@/hooks/useDirectory";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useOrg } from "@/hooks/useOrg";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompanyCardNew } from "@/components/directory/CompanyCardNew";
-import { DirectorySearchBar } from "@/components/directory/DirectorySearchBar";
+import {
+  DirectorySearchBar,
+  type DirectoryFiltersState,
+} from "@/components/directory/DirectorySearchBar";
 import { DirectoryResultsHeader } from "@/components/directory/DirectoryResultsHeader";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -37,20 +41,16 @@ type PublicCompany = Pick<
   | "user_id"
 >;
 
-interface DirectoryFilters {
-  searchTerm: string;
-  selectedTaxonomies: string[];
-}
-
-const defaultFilters: DirectoryFilters = {
+const defaultFilters: DirectoryFiltersState = {
   searchTerm: "",
   selectedTaxonomies: [],
 };
 
 export default function DirectoryPage() {
   const router = useRouter();
+  const { selectedOrg } = useOrg();
 
-  const [filters, setFilters] = useState<DirectoryFilters>(defaultFilters);
+  const [filters, setFilters] = useState<DirectoryFiltersState>(defaultFilters);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
@@ -64,17 +64,24 @@ export default function DirectoryPage() {
         : undefined,
     page: currentPage,
     limit: itemsPerPage,
+    lat: filters.lat,
+    lng: filters.lng,
+    radiusMiles: filters.radiusMiles,
   });
 
   const companies = (directoryData?.companies as unknown as PublicCompany[]) ?? [];
   const taxonomiesByCompany = directoryData?.taxonomiesByCompany ?? {};
+  const distanceByCompany = directoryData?.distanceByCompany ?? {};
   const totalCount = directoryData?.totalCount ?? 0;
+
+  const defaultLocationQuery =
+    selectedOrg?.address || selectedOrg?.postcode || undefined;
 
   const handleCompanyClick = (company: PublicCompany) => {
     router.push(`/directory/${company.id}`);
   };
 
-  const handleFiltersChange = (newFilters: DirectoryFilters) => {
+  const handleFiltersChange = (newFilters: DirectoryFiltersState) => {
     setFilters(newFilters);
   };
 
@@ -86,10 +93,9 @@ export default function DirectoryPage() {
     refetch();
   };
 
-  // Reset to page 1 when effective query changes (debounced search + taxonomies)
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
-  }, [debouncedSearch, filters.selectedTaxonomies]);
+  }, [debouncedSearch, filters.selectedTaxonomies, filters.lat, filters.lng, filters.radiusMiles]);
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -118,6 +124,7 @@ export default function DirectoryPage() {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           onReset={handleResetFilters}
+          defaultLocationQuery={defaultLocationQuery}
         />
 
         {!loading && totalCount > 0 && (
@@ -147,7 +154,8 @@ export default function DirectoryPage() {
               Try adjusting your search or filter criteria
             </p>
             {(filters.searchTerm ||
-              filters.selectedTaxonomies.length > 0) && (
+              filters.selectedTaxonomies.length > 0 ||
+              filters.lat != null) && (
               <Button variant="outline" onClick={handleResetFilters}>
                 Clear all filters
               </Button>
@@ -164,6 +172,7 @@ export default function DirectoryPage() {
                     company={company}
                     onClick={handleCompanyClick}
                     taxonomies={taxonomiesByCompany[company.id]}
+                    distanceMiles={distanceByCompany[company.id]}
                   />
                 </div>
               ))}

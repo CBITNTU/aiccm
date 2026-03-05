@@ -9,6 +9,9 @@ interface DirectoryParams {
   taxonomyIds?: string[];
   page?: number;
   limit?: number;
+  lat?: number;
+  lng?: number;
+  radiusMiles?: number;
 }
 
 export function useDirectory(params: DirectoryParams) {
@@ -17,13 +20,16 @@ export function useDirectory(params: DirectoryParams) {
     taxonomyIds: params.taxonomyIds,
     page: params.page,
     limit: params.limit,
+    lat: params.lat,
+    lng: params.lng,
+    radiusMiles: params.radiusMiles,
   };
 
   return useQuery({
     queryKey: queryKeys.directory(filterKey),
     queryFn: () => api.getDirectory(params),
-    staleTime: 2 * 60 * 1000, // 2 min
-    gcTime: 5 * 60 * 1000, // 5 min
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
   });
 }

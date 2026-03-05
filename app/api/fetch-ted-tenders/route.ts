@@ -46,59 +46,91 @@ function toArray(value: unknown): string[] {
   return [String(value)];
 }
 
-// Transform TED notice data to our tender format
-// TED uses eForms structure with field names like "BT-01-notice", "notice-title", etc.
+/** Pick the first element when TED returns an array (e.g. one date per lot). */
+function toFirst(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  if (Array.isArray(value)) return value.length > 0 ? String(value[0]) : undefined;
+  return String(value);
+}
+
+/** Parse a TED date value into a valid ISO-8601 string, or null on failure. */
+function parseTEDDate(value: unknown): string | null {
+  const raw = toFirst(value);
+  if (!raw) return null;
+  try {
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract text from a TED multilingual field.
+ * TED returns objects keyed by language code: {"eng": ["text"], "fra": ["texte"]}
+ * or sometimes {"eng": "text"}.  We prefer English, then fall back to first available.
+ */
+function extractLocalised(
+  obj: unknown,
+  preferredLangs: string[] = ["eng", "en", "ENG"],
+): string {
+  if (obj == null) return "";
+  if (typeof obj === "string") return obj;
+  if (typeof obj !== "object" || Array.isArray(obj)) return toStringOrJoin(obj, " ");
+  const map = obj as Record<string, unknown>;
+  // Try preferred languages in order
+  for (const lang of preferredLangs) {
+    if (map[lang] != null) {
+      const val = map[lang];
+      if (Array.isArray(val)) return val.map(String).join(" ");
+      return String(val);
+    }
+  }
+  // Fall back to first available key
+  const firstKey = Object.keys(map)[0];
+  if (firstKey != null) {
+    const val = map[firstKey];
+    if (Array.isArray(val)) return val.map(String).join(" ");
+    return String(val);
+  }
+  return "";
+}
+
 function transformTEDToTender(notice: Record<string, unknown>): TenderData {
-  // Extract notice identifier
   const noticeIdentifier =
     (notice["notice-identifier"] as string) ||
     (notice["BT-01-notice"] as string) ||
     "";
 
-  // Extract title (TED may use { lang: string | string[] } or plain string)
-  const titleObj = notice["notice-title"] as
-    | { lang?: string | string[] }
-    | string
-    | undefined;
   const title =
-    typeof titleObj === "object" && titleObj !== null && titleObj.lang != null
-      ? toStringOrJoin(titleObj.lang, " ") || ""
-      : typeof titleObj === "string"
-        ? titleObj
-        : (notice["BT-01-notice"] as string) || "Untitled Tender";
+    extractLocalised(notice["notice-title"]) ||
+    (notice["BT-01-notice"] as string) ||
+    "Untitled Tender";
 
-  // Extract description (TED may use { lang: string[] } or { lang: string })
-  const descriptionObj = notice["description-glo"] as
-    | { lang?: string | string[] }
-    | undefined;
   const description =
-    typeof descriptionObj === "object" &&
-    descriptionObj !== null &&
-    descriptionObj.lang != null
-      ? toStringOrJoin(descriptionObj.lang, " ") || ""
-      : "";
+    extractLocalised(notice["description-lot"]) ||
+    extractLocalised(notice["description-proc"]) ||
+    extractLocalised(notice["description-part"]) ||
+    extractLocalised(notice["description-glo"]);
 
-  // Extract buyer information (TED may use { lang: string[] } or { lang: string })
-  const buyerNameObj = notice["buyer-name"] as
-    | { lang?: string | string[] }
-    | undefined;
-  const buyer =
-    typeof buyerNameObj === "object" &&
-    buyerNameObj !== null &&
-    buyerNameObj.lang != null
-      ? toStringOrJoin(buyerNameObj.lang, ", ") || "Unknown Buyer"
-      : "Unknown Buyer";
+  const buyer = extractLocalised(notice["buyer-name"]) || "Unknown Buyer";
 
-  // Extract location - try multiple fields (TED may return array or string)
-  const location =
-    toStringOrJoin(notice["place-of-performance-country-lot"], ", ") ||
-    toStringOrJoin(notice["buyer-country"], ", ") ||
-    "EU";
+  // Extract location — deduplicate since TED returns one per lot
+  const locationCodes = [
+    ...new Set([
+      ...toArray(notice["place-of-performance-country-lot"]),
+      ...toArray(notice["buyer-country"]),
+    ]),
+  ];
+  const location = locationCodes.length > 0 ? locationCodes.join(", ") : "EU";
 
-  // Extract CPV codes (TED may return array or single value)
+  // Extract CPV codes — deduplicate since TED returns one per lot
   const cpvCodes: string[] = [
-    ...toArray(notice["main-classification-lot"]),
-    ...toArray(notice["additional-classification-lot"]),
+    ...new Set([
+      ...toArray(notice["main-classification-lot"]),
+      ...toArray(notice["additional-classification-lot"]),
+    ]),
   ];
 
   // Extract budget - TED uses estimated-value-lot
@@ -110,13 +142,13 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
     ? Math.floor(estimatedValue[1] * 100)
     : null;
 
-  // Extract dates (TED may return array or string)
+  // Extract dates — TED returns arrays (one per lot); pick the first valid one
   const publicationDate =
-    toStringOrJoin(notice["publication-date"], "") || new Date().toISOString();
-  const deadlineDate = toStringOrJoin(notice["deadline-date-lot"], "") || undefined;
+    parseTEDDate(notice["publication-date"]) || new Date().toISOString();
+  const deadlineDate = parseTEDDate(notice["deadline-date-lot"]) || undefined;
 
-  // Extract status - TED uses scope (ACTIVE, ARCHIVED)
-  const status = "active"; // All results from ACTIVE scope
+  // Map to DB-valid status: open | closing_soon | framework | closed | awarded
+  const status = "open";
 
   // Extract contact info (TED may return array or string)
   const buyerEmail = toStringOrJoin(notice["buyer-email"], ", ") || undefined;
@@ -162,6 +194,9 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
   };
 }
 
+/** ISO 639-3 language codes accepted by TED `official-language` field. */
+const TED_DEFAULT_LANGUAGES = ["ENG"];
+
 async function fetchFromTEDAPI(
   dateFrom?: string,
   dateTo?: string,
@@ -169,6 +204,7 @@ async function fetchFromTEDAPI(
   limit: number = 100,
   iterationNextToken?: string,
   isAdmin = false,
+  languages: string[] = TED_DEFAULT_LANGUAGES,
 ): Promise<{
   notices: TenderData[];
   total: number;
@@ -195,22 +231,39 @@ async function fetchFromTEDAPI(
 
   // TED expert query does NOT accept bare "*". Must use a TERM e.g. date range (YYYYMMDD).
   const DEFAULT_FROM = "19900101";
-  let builtQuery = `publication-date >= ${DEFAULT_FROM}`;
+  const queryParts: string[] = [];
+
   if (dateFrom || dateTo) {
     try {
-      const parts: string[] = [];
-      if (dateFrom) parts.push(`publication-date >= ${formatDateForTED(dateFrom)}`);
-      if (dateTo) parts.push(`publication-date <= ${formatDateForTED(dateTo)}`);
-      if (parts.length > 0) builtQuery = parts.join(" AND ");
+      if (dateFrom) queryParts.push(`publication-date >= ${formatDateForTED(dateFrom)}`);
+      if (dateTo) queryParts.push(`publication-date <= ${formatDateForTED(dateTo)}`);
     } catch {
-      // keep builtQuery as default
+      // fall through to default below
     }
   }
+  if (queryParts.length === 0) {
+    queryParts.push(`publication-date >= ${DEFAULT_FROM}`);
+  }
+
+  // Language filter: e.g. ["ENG"] → official-language = ENG
+  // Multiple: ["ENG","FRA"] → (official-language = ENG OR official-language = FRA)
+  if (languages.length > 0) {
+    const langClauses = languages.map((l) => `official-language = ${l.toUpperCase()}`);
+    queryParts.push(
+      langClauses.length === 1
+        ? langClauses[0]
+        : `(${langClauses.join(" OR ")})`,
+    );
+  }
+
+  let builtQuery = queryParts.join(" AND ");
 
   const fields = [
     "notice-identifier",
     "notice-title",
-    "description-glo",
+    "description-lot",
+    "description-proc",
+    "description-part",
     "buyer-name",
     "buyer-country",
     "place-of-performance-country-lot",
@@ -249,26 +302,51 @@ async function fetchFromTEDAPI(
     "Content-Type": "application/json",
     "User-Agent": "TenderMatchingService/1.0",
   };
-  if (process.env.TED_API_KEY) {
-    headers["Authorization"] = `Bearer ${process.env.TED_API_KEY}`;
+  const tedApiKey = process.env.TED_API_KEY?.trim();
+  if (tedApiKey) {
+    headers["Authorization"] = `Bearer ${tedApiKey}`;
     console.log("[TED] TED_API_KEY is set, sending Authorization header");
   } else {
-    console.log("[TED] TED_API_KEY not set (optional for Search API)");
+    console.log("[TED] TED_API_KEY not set (Search API allows anonymous; 429 = strict IP rate limit)");
   }
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(requestBody),
-  });
 
-  if (!response.ok) {
+  const maxRetries = 5;
+  let response!: Response;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(requestBody),
+    });
+
     if (response.status === 429) {
+      // Consume the body to release the connection before retrying
+      await response.text().catch(() => {});
+      const retryAfter = response.headers.get("Retry-After");
+      const waitSeconds = retryAfter
+        ? Math.min(parseInt(retryAfter, 10) || 60, 120)
+        : Math.min(Math.pow(2, attempt), 60);
+      if (attempt < maxRetries) {
+        console.warn(
+          `[TED] 429 rate limit (key present: ${!!tedApiKey}). Waiting ${waitSeconds}s before retry ${attempt}/${maxRetries}...`,
+        );
+        await new Promise((r) => setTimeout(r, waitSeconds * 1000));
+        continue;
+      }
+      console.error("[TED] 429 after all retries. Key present:", !!tedApiKey);
       const error: Error & { status?: number } = new Error(
-        `Rate limited (429): ${response.statusText}. Please wait before retrying.`,
+        tedApiKey
+          ? `TED rate limit (429) after ${maxRetries} retries. Search API may apply strict limits; try again later.`
+          : `TED rate limit (429). Set TED_API_KEY in .env.local for higher quota.`,
       );
       error.status = 429;
       throw error;
     }
+
+    break;
+  }
+
+  if (!response.ok) {
     const errorText = await response.text();
     let errorMessage = `TED API error: ${response.status} ${response.statusText}`;
     try {
@@ -284,7 +362,6 @@ async function fetchFromTEDAPI(
         errorMessage = JSON.stringify(errorJson);
       }
     } catch {
-      // If error text is not JSON, use it as is
       if (errorText) errorMessage += `. ${errorText}`;
     }
     console.error("TED API Error Details:", {
@@ -366,6 +443,7 @@ export async function POST(request: NextRequest) {
       limit = 100,
       iterationNextToken,
       adminImport = false,
+      languages,
     } = await request.json();
 
     // Fetch from TED API
@@ -376,6 +454,7 @@ export async function POST(request: NextRequest) {
       limit,
       iterationNextToken,
       isAdmin,
+      Array.isArray(languages) ? languages : TED_DEFAULT_LANGUAGES,
     );
 
     // If admin is importing, also save to database with duplicate prevention

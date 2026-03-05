@@ -17,7 +17,18 @@ export async function POST(request: NextRequest) {
     const {
       capabilityIds,
       excludeCompanyIds = [],
-    }: { capabilityIds: string[]; excludeCompanyIds?: string[] } = body;
+      lat: userLat,
+      lng: userLng,
+      radiusMiles,
+    }: {
+      capabilityIds: string[];
+      excludeCompanyIds?: string[];
+      lat?: number;
+      lng?: number;
+      radiusMiles?: number;
+    } = body;
+    const hasLocation =
+      userLat != null && userLng != null && !isNaN(userLat) && !isNaN(userLng);
 
     if (!capabilityIds || capabilityIds.length === 0) {
       return apiResponse({ companies: [] });
@@ -51,6 +62,8 @@ export async function POST(request: NextRequest) {
           status,
           user_id,
           is_system_company,
+          latitude,
+          longitude,
           created_at,
           updated_at
         )
@@ -102,7 +115,7 @@ export async function POST(request: NextRequest) {
           await supabase
             .from("companies")
             .select(
-              "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, created_at, updated_at",
+              "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, latitude, longitude, created_at, updated_at",
             )
             .eq("status", "active")
             .or(orConditions)
@@ -150,7 +163,6 @@ export async function POST(request: NextRequest) {
               (a, b) => a.company_name.localeCompare(b.company_name),
             );
 
-            // Fetch capabilities for each company
             const companiesWithCapabilities = await Promise.all(
               companiesArray.map(async (company) => {
                 const { data: capabilities } = await supabase
@@ -173,7 +185,14 @@ export async function POST(request: NextRequest) {
               }),
             );
 
-            return apiResponse({ companies: companiesWithCapabilities });
+            return applyLocationAndRespond(
+              companiesWithCapabilities,
+              hasLocation,
+              userLat,
+              userLng,
+              radiusMiles,
+              supabase,
+            );
           }
         }
       }
@@ -198,7 +217,6 @@ export async function POST(request: NextRequest) {
       (a, b) => a.company_name.localeCompare(b.company_name),
     );
 
-    // Fetch capabilities for each company
     const companiesWithCapabilities = await Promise.all(
       companiesArray.map(async (company) => {
         const { data: capabilities } = await supabase
@@ -218,8 +236,71 @@ export async function POST(request: NextRequest) {
       }),
     );
 
-    return apiResponse({ companies: companiesWithCapabilities });
+    return applyLocationAndRespond(
+      companiesWithCapabilities,
+      hasLocation,
+      userLat,
+      userLng,
+      radiusMiles,
+      supabase,
+    );
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+/**
+ * If the user provided coordinates, re-query via the PostGIS RPC to get
+ * distance-sorted results for the given company IDs. Otherwise return as-is.
+ */
+async function applyLocationAndRespond(
+  companies: any[],
+  hasLocation: boolean,
+  userLat: number | undefined,
+  userLng: number | undefined,
+  radiusMiles: number | undefined,
+  supabase: ReturnType<typeof createAdminClient>,
+) {
+  if (!hasLocation || companies.length === 0) {
+    return apiResponse({ companies });
+  }
+
+  const companyIds = companies.map((c: any) => c.id);
+
+  const { data, error } = await supabase.rpc("nearby_companies", {
+    user_lat: userLat!,
+    user_lng: userLng!,
+    radius_miles: radiusMiles ?? null,
+    search_text: null,
+    company_ids: companyIds,
+    page_num: 1,
+    page_size: companyIds.length,
+  });
+
+  if (error) throw error;
+
+  const distanceByCompany: Record<string, number> = {};
+  const nearbyIds = new Set<string>();
+
+  for (const row of (data || []) as any[]) {
+    distanceByCompany[row.id] = row.distance_miles;
+    nearbyIds.add(row.id);
+  }
+
+  // Merge capabilities back: the RPC returns raw company columns,
+  // but we already have capabilities attached — build a lookup.
+  const capLookup = new Map<string, any[]>();
+  for (const c of companies) {
+    capLookup.set(c.id, c.capabilities || []);
+  }
+
+  const sortedCompanies = (data || []).map((row: any) => ({
+    ...row,
+    capabilities: capLookup.get(row.id) || [],
+  }));
+
+  return apiResponse({
+    companies: sortedCompanies,
+    distanceByCompany,
+  });
 }

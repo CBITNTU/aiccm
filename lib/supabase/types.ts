@@ -41,6 +41,9 @@ export type Database = {
           id: string;
           is_system_company: boolean | null;
           key_capabilities: string | null;
+          geog: string | null;
+          latitude: number | null;
+          longitude: number | null;
           market_position: string | null;
           past_projects: string | null;
           postcode: string | null;
@@ -77,6 +80,9 @@ export type Database = {
           id?: string;
           is_system_company?: boolean | null;
           key_capabilities?: string | null;
+          geog?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           market_position?: string | null;
           past_projects?: string | null;
           postcode?: string | null;
@@ -113,6 +119,9 @@ export type Database = {
           id?: string;
           is_system_company?: boolean | null;
           key_capabilities?: string | null;
+          geog?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           market_position?: string | null;
           past_projects?: string | null;
           postcode?: string | null;
@@ -973,6 +982,47 @@ export type Database = {
       get_user_role: {
         Args: { _user_id: string };
         Returns: Database["public"]["Enums"]["app_role"];
+      };
+      nearby_companies: {
+        Args: {
+          user_lat: number;
+          user_lng: number;
+          radius_miles?: number | null;
+          search_text?: string | null;
+          company_ids?: string[] | null;
+          page_num?: number;
+          page_size?: number;
+        };
+        Returns: {
+          id: string;
+          company_name: string;
+          description: string | null;
+          key_capabilities: string | null;
+          postcode: string | null;
+          certifications: string | null;
+          equipment: string | null;
+          past_projects: string | null;
+          is_system_company: boolean | null;
+          status: string | null;
+          market_position: string | null;
+          safety_rating: string | null;
+          digital_maturity: string | null;
+          ai_competencies: Json | null;
+          ai_capabilities: Json | null;
+          ai_analysis: Json | null;
+          latitude: number | null;
+          longitude: number | null;
+          created_at: string;
+          updated_at: string;
+          user_id: string | null;
+          address: string | null;
+          companies_house_number: string | null;
+          contact_email: string | null;
+          contact_phone: string | null;
+          website_url: string | null;
+          distance_miles: number;
+          total_count: number;
+        }[];
       };
     };
     Enums: {

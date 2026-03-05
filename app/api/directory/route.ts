@@ -17,10 +17,15 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "25")));
 
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit - 1;
+    const latParam = url.searchParams.get("lat");
+    const lngParam = url.searchParams.get("lng");
+    const radiusParam = url.searchParams.get("radiusMiles");
+    const userLat = latParam ? parseFloat(latParam) : null;
+    const userLng = lngParam ? parseFloat(lngParam) : null;
+    const radiusMiles = radiusParam ? parseFloat(radiusParam) : null;
+    const hasLocation = userLat != null && userLng != null && !isNaN(userLat) && !isNaN(userLng);
 
-    // Filter by taxonomy IDs if provided
+    // Pre-filter by taxonomy IDs if provided
     let filteredCompanyIds: string[] | null = null;
     if (taxonomyIds) {
       const ids = taxonomyIds.split(",").filter(Boolean);
@@ -42,40 +47,79 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Build query
-    let query = supabase
-      .from("companies")
-      .select(
-        `id, company_name, description, key_capabilities, postcode,
-         certifications, equipment, past_projects, is_system_company,
-         status, market_position, safety_rating, digital_maturity,
-         ai_competencies, ai_capabilities, ai_analysis,
-         created_at, updated_at`,
-        { count: "exact" },
-      )
-      .eq("status", "active");
+    let companies: Record<string, unknown>[] = [];
+    let totalCount: number;
+    let totalPages: number;
+    const distanceByCompany: Record<string, number> = {};
 
-    if (filteredCompanyIds) {
-      query = query.in("id", filteredCompanyIds);
+    if (hasLocation) {
+      // Use PostGIS RPC — distance calculation, radius filter, sorting, and
+      // pagination all happen in the database via spatial index.
+      const safeSearch = sanitizeLikeParam(search) || null;
+
+      const { data, error } = await supabase.rpc("nearby_companies", {
+        user_lat: userLat,
+        user_lng: userLng,
+        radius_miles: radiusMiles,
+        search_text: safeSearch,
+        company_ids: filteredCompanyIds,
+        page_num: page,
+        page_size: limit,
+      });
+
+      if (error) throw error;
+
+      const rows = (data || []) as Record<string, unknown>[];
+      totalCount = rows.length > 0 ? Number(rows[0].total_count) : 0;
+      totalPages = Math.ceil(totalCount / limit);
+
+      companies = rows;
+      for (const row of rows) {
+        if (row.distance_miles != null) {
+          distanceByCompany[row.id as string] = row.distance_miles as number;
+        }
+      }
+    } else {
+      // Standard query — alphabetical, DB-paginated
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit - 1;
+
+      let query = supabase
+        .from("companies")
+        .select(
+          `id, company_name, description, key_capabilities, postcode,
+           certifications, equipment, past_projects, is_system_company,
+           status, market_position, safety_rating, digital_maturity,
+           ai_competencies, ai_capabilities, ai_analysis,
+           latitude, longitude,
+           created_at, updated_at, user_id`,
+          { count: "exact" },
+        )
+        .eq("status", "active");
+
+      if (filteredCompanyIds) {
+        query = query.in("id", filteredCompanyIds);
+      }
+
+      const safeSearch = sanitizeLikeParam(search);
+      if (safeSearch) {
+        query = query.or(
+          `company_name.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`,
+        );
+      }
+
+      query = query.order("company_name").range(startIndex, endIndex);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      companies = data || [];
+      totalCount = count || 0;
+      totalPages = Math.ceil(totalCount / limit);
     }
 
-    const safeSearch = sanitizeLikeParam(search);
-    if (safeSearch) {
-      query = query.or(
-        `company_name.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`,
-      );
-    }
-
-    query = query.order("company_name").range(startIndex, endIndex);
-
-    const { data, error, count } = await query;
-    if (error) throw error;
-
-    const totalCount = count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
-
-    // Fetch taxonomies for all returned companies in one query
-    const companyIds = (data || []).map((c) => c.id);
+    // Fetch taxonomies for returned companies
+    const companyIds = companies.map((c) => c.id as string);
     let taxonomiesByCompany: Record<string, { id: string; name: string }[]> = {};
 
     if (companyIds.length > 0) {
@@ -101,8 +145,9 @@ export async function GET(request: NextRequest) {
     }
 
     return apiResponse({
-      companies: data || [],
+      companies,
       taxonomiesByCompany,
+      ...(hasLocation && { distanceByCompany }),
       totalCount,
       page,
       totalPages,

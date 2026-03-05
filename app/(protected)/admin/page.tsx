@@ -22,6 +22,7 @@ import { AdminCompanyManager } from "@/components/admin/AdminCompanyManager";
 import { AdminCSVImport } from "@/components/admin/AdminCSVImport";
 import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
 import { AdminTenderSyncSchedule } from "@/components/admin/AdminTenderSyncSchedule";
+import { AdminTenderSyncProvider } from "@/components/admin/AdminTenderSyncContext";
 import { TenderAIRegeneration } from "@/components/admin/TenderAIRegeneration";
 import { CompanyAIRegeneration } from "@/components/admin/CompanyAIRegeneration";
 import AdminUsers from "@/components/admin/AdminUsers";
@@ -372,16 +373,18 @@ export default function AdminPage() {
 
         {/* Tenders Tab */}
         {activeTab === "tenders" && (
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Tender Management</h3>
-                <TenderAIRegeneration />
+          <AdminTenderSyncProvider>
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Tender Management</h3>
+                  <TenderAIRegeneration />
+                </div>
+                <AdminTenderSyncSchedule />
+                <AdminTenderImport />
               </div>
-              <AdminTenderSyncSchedule />
-              <AdminTenderImport />
             </div>
-          </div>
+          </AdminTenderSyncProvider>
         )}
 
         {/* Users Tab */}

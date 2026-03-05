@@ -1,12 +1,14 @@
 "use client";
 
+import { useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Square } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
+import { useAdminTenderSync } from "@/components/admin/AdminTenderSyncContext";
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -23,6 +25,8 @@ function formatDateTime(iso: string | null): string {
 
 export function AdminTenderSyncSchedule() {
   const queryClient = useQueryClient();
+  const { setSyncInProgress, setStopSyncFn, stopSync } = useAdminTenderSync();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const {
     data: schedule,
@@ -36,17 +40,41 @@ export function AdminTenderSyncSchedule() {
   });
 
   const triggerSync = useMutation({
-    mutationFn: () => api.triggerTenderSync(),
+    mutationFn: () => {
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      setStopSyncFn(() => controller.abort());
+      setSyncInProgress(true);
+      return api.triggerTenderSync({ signal: controller.signal });
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tenderSyncStatus() });
-      toast.success(
-        data.ran
-          ? "Sync started. Next run in 7 days."
-          : data.message ?? "Sync not run",
-      );
+      if (data.ran) {
+        if (data.syncSucceeded) {
+          toast.success("Sync completed. Next run in 7 days.");
+        } else {
+          toast.warning(
+            "Sync failed (see server logs). Next run scheduled in 7 days.",
+          );
+        }
+      } else {
+        toast.success(data.message ?? "Sync not run");
+      }
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to trigger sync");
+      const isAborted =
+        err.name === "AbortError" ||
+        (err instanceof Error && err.message?.includes("abort"));
+      if (isAborted) {
+        toast.info("Sync stopped.");
+      } else {
+        toast.error(err.message ?? "Failed to trigger sync");
+      }
+    },
+    onSettled: () => {
+      abortControllerRef.current = null;
+      setStopSyncFn(null);
+      setSyncInProgress(false);
     },
   });
 
@@ -93,15 +121,30 @@ export function AdminTenderSyncSchedule() {
             </>
           )}
         </div>
-        <Button
-          size="sm"
-          onClick={() => triggerSync.mutate()}
-          disabled={isTriggering || isLoading}
-          aria-busy={isTriggering}
-          aria-label={isTriggering ? "Syncing tenders" : "Trigger tender sync now"}
-        >
-          {isTriggering ? "Syncing…" : "Trigger sync now"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => triggerSync.mutate()}
+            disabled={isTriggering || isLoading}
+            aria-busy={isTriggering}
+            aria-label={
+              isTriggering ? "Syncing tenders" : "Trigger tender sync now"
+            }
+          >
+            {isTriggering ? "Syncing…" : "Trigger sync now"}
+          </Button>
+          {isTriggering && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => stopSync()}
+              aria-label="Stop tender sync"
+            >
+              <Square className="w-3.5 h-3.5 mr-1" aria-hidden />
+              Stop sync
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

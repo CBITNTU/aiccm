@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api/client";
 import {
   Dialog,
@@ -9,10 +9,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Award, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useGeocode } from "@/hooks/useGeocode";
+import { useOrg } from "@/hooks/useOrg";
 
 interface Company {
   id: string;
@@ -27,8 +36,16 @@ interface CompanySearchDialogProps {
   onOpenChange: (open: boolean) => void;
   onAddCompany: (companyId: string) => Promise<void>;
   excludeCompanyIds: string[];
-  selectedCapabilityIds?: string[]; // Optional: filter by selected capabilities
+  selectedCapabilityIds?: string[];
 }
+
+const RADIUS_OPTIONS = [
+  { value: "any", label: "Any distance" },
+  { value: "25", label: "25 mi" },
+  { value: "50", label: "50 mi" },
+  { value: "100", label: "100 mi" },
+  { value: "200", label: "200 mi" },
+];
 
 export function CompanySearchDialog({
   open,
@@ -39,29 +56,47 @@ export function CompanySearchDialog({
 }: CompanySearchDialogProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [distanceMap, setDistanceMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
 
+  const { selectedOrg } = useOrg();
+  const [locationInput, setLocationInput] = useState("");
+  const [radius, setRadius] = useState("any");
+  const { geocode, coords, isGeocoding, isEnabled } = useGeocode();
+
+  // Pre-fill location from org on open
   useEffect(() => {
     if (open) {
-      searchCompanies();
+      const defaultLoc = selectedOrg?.address || selectedOrg?.postcode || "";
+      setLocationInput(defaultLoc);
+      setRadius("any");
+      if (defaultLoc) {
+        geocode(defaultLoc);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, searchQuery, selectedCapabilityIds?.join(",")]);
+  }, [open]);
 
-  const searchCompanies = async () => {
+  const searchCompanies = useCallback(async () => {
     try {
       setLoading(true);
+      const locationParams = coords
+        ? {
+            lat: coords.lat,
+            lng: coords.lng,
+            ...(radius !== "any" && { radiusMiles: parseInt(radius) }),
+          }
+        : {};
 
       if (selectedCapabilityIds && selectedCapabilityIds.length > 0) {
-        // Use capability-based search
         const result = await api.getCompaniesByCapabilities({
           capabilityIds: selectedCapabilityIds,
           excludeCompanyIds,
+          ...locationParams,
         });
         let filtered = (result.companies as unknown as Company[]) || [];
 
-        // Client-side text filter if search query provided
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
           filtered = filtered.filter(
@@ -73,16 +108,18 @@ export function CompanySearchDialog({
         }
 
         setCompanies(filtered);
+        setDistanceMap(
+          (result.distanceByCompany as Record<string, number>) ?? {},
+        );
       } else {
-        // Use directory search for general company search
         const result = await api.getDirectory({
           search: searchQuery || undefined,
           limit: 20,
+          ...locationParams,
         });
         let filtered =
           (result.companies as unknown as Company[]) || [];
 
-        // Filter out excluded companies
         if (excludeCompanyIds.length > 0) {
           filtered = filtered.filter(
             (c) => !excludeCompanyIds.includes(c.id),
@@ -90,12 +127,28 @@ export function CompanySearchDialog({
         }
 
         setCompanies(filtered);
+        setDistanceMap(
+          (result.distanceByCompany as Record<string, number>) ?? {},
+        );
       }
     } catch (error: unknown) {
       console.error("Error searching companies:", error);
       toast.error("Failed to search companies");
     } finally {
       setLoading(false);
+    }
+  }, [searchQuery, selectedCapabilityIds, excludeCompanyIds, coords, radius]);
+
+  useEffect(() => {
+    if (open) {
+      searchCompanies();
+    }
+  }, [open, searchCompanies]);
+
+  const handleApplyLocation = async () => {
+    const trimmed = locationInput.trim();
+    if (trimmed) {
+      await geocode(trimmed);
     }
   };
 
@@ -132,6 +185,49 @@ export function CompanySearchDialog({
             />
           </div>
 
+          {/* Location filter — only shown when geocoding is configured */}
+          {isEnabled !== false && (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Location (city, postcode...)"
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleApplyLocation();
+                  }}
+                  className="pl-9 h-9 text-sm"
+                />
+              </div>
+              <Select value={radius} onValueChange={setRadius}>
+                <SelectTrigger className="w-[110px] h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RADIUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 text-sm"
+                onClick={handleApplyLocation}
+                disabled={isGeocoding}
+              >
+                {isGeocoding ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+            </div>
+          )}
+
           <div className="h-[400px] overflow-y-auto overflow-x-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-8">
@@ -158,6 +254,13 @@ export function CompanySearchDialog({
                           <span className="truncate">
                             {company.postcode || "N/A"}
                           </span>
+                          {distanceMap[company.id] != null && (
+                            <span className="text-primary font-medium shrink-0">
+                              {distanceMap[company.id] < 1
+                                ? "< 1 mi"
+                                : `${distanceMap[company.id].toFixed(1)} mi`}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <Button

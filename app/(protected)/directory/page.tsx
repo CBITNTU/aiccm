@@ -67,6 +67,7 @@ export default function DirectoryPage() {
     lat: filters.lat,
     lng: filters.lng,
     radiusMiles: filters.radiusMiles,
+    approvedOnly: filters.approvedOnly,
   });
 
   const companies = (directoryData?.companies as unknown as PublicCompany[]) ?? [];
@@ -95,7 +96,7 @@ export default function DirectoryPage() {
 
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
-  }, [debouncedSearch, filters.selectedTaxonomies, filters.lat, filters.lng, filters.radiusMiles]);
+  }, [debouncedSearch, filters.selectedTaxonomies, filters.approvedOnly, filters.lat, filters.lng, filters.radiusMiles]);
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;

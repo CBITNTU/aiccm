@@ -405,6 +405,7 @@ export const api = {
     lat?: number;
     lng?: number;
     radiusMiles?: number;
+    approvedOnly?: boolean;
   }) =>
     apiCall<{
       companies: Record<string, unknown>[];
@@ -425,6 +426,7 @@ export const api = {
         ...(params.lat != null && { lat: params.lat }),
         ...(params.lng != null && { lng: params.lng }),
         ...(params.radiusMiles != null && { radiusMiles: params.radiusMiles }),
+        ...(params.approvedOnly && { approvedOnly: true }),
       },
     }),
 

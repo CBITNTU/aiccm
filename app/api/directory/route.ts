@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const latParam = url.searchParams.get("lat");
     const lngParam = url.searchParams.get("lng");
     const radiusParam = url.searchParams.get("radiusMiles");
+    const approvedOnly = url.searchParams.get("approvedOnly") === "true";
     const userLat = latParam ? parseFloat(latParam) : null;
     const userLng = lngParam ? parseFloat(lngParam) : null;
     const radiusMiles = radiusParam ? parseFloat(radiusParam) : null;
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
         company_ids: filteredCompanyIds,
         page_num: page,
         page_size: limit,
+        approved_only: approvedOnly,
       });
 
       if (error) throw error;
@@ -89,13 +91,17 @@ export async function GET(request: NextRequest) {
         .select(
           `id, company_name, description, key_capabilities, postcode,
            certifications, equipment, past_projects, is_system_company,
-           status, market_position, safety_rating, digital_maturity,
+           is_approved, status, market_position, safety_rating, digital_maturity,
            ai_competencies, ai_capabilities, ai_analysis,
            latitude, longitude,
            created_at, updated_at, user_id`,
           { count: "exact" },
         )
         .eq("status", "active");
+
+      if (approvedOnly) {
+        query = query.eq("is_approved", true);
+      }
 
       if (filteredCompanyIds) {
         query = query.in("id", filteredCompanyIds);

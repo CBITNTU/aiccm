@@ -12,6 +12,7 @@ interface DirectoryParams {
   lat?: number;
   lng?: number;
   radiusMiles?: number;
+  approvedOnly?: boolean;
 }
 
 export function useDirectory(params: DirectoryParams) {
@@ -23,6 +24,7 @@ export function useDirectory(params: DirectoryParams) {
     lat: params.lat,
     lng: params.lng,
     radiusMiles: params.radiusMiles,
+    approvedOnly: params.approvedOnly,
   };
 
   return useQuery({

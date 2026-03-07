@@ -42,6 +42,7 @@ export type Database = {
           is_system_company: boolean | null;
           key_capabilities: string | null;
           geog: string | null;
+          is_approved: boolean;
           latitude: number | null;
           longitude: number | null;
           market_position: string | null;
@@ -81,6 +82,7 @@ export type Database = {
           is_system_company?: boolean | null;
           key_capabilities?: string | null;
           geog?: string | null;
+          is_approved?: boolean;
           latitude?: number | null;
           longitude?: number | null;
           market_position?: string | null;
@@ -120,6 +122,7 @@ export type Database = {
           is_system_company?: boolean | null;
           key_capabilities?: string | null;
           geog?: string | null;
+          is_approved?: boolean;
           latitude?: number | null;
           longitude?: number | null;
           market_position?: string | null;
@@ -992,6 +995,7 @@ export type Database = {
           company_ids?: string[] | null;
           page_num?: number;
           page_size?: number;
+          approved_only?: boolean;
         };
         Returns: {
           id: string;
@@ -1003,6 +1007,7 @@ export type Database = {
           equipment: string | null;
           past_projects: string | null;
           is_system_company: boolean | null;
+          is_approved: boolean;
           status: string | null;
           market_position: string | null;
           safety_rating: string | null;

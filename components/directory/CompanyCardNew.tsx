@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import type { Database } from "@/lib/supabase/types";
 import { useState } from "react";
@@ -87,22 +88,29 @@ export function CompanyCardNew({
       className="group border rounded-lg p-5 hover:shadow-md transition-all cursor-pointer bg-card"
       onClick={() => onClick(company)}
     >
-      {/* Header: Name + Verified badge */}
+      {/* Header: Name + Badge */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="font-semibold text-base text-foreground line-clamp-2 group-hover:text-primary transition-colors">
           {company.company_name}
         </h3>
-        {company.user_id ? (
-          <Badge className="shrink-0 gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
-            <BadgeCheck className="h-3 w-3" />
-            Verified
-          </Badge>
-        ) : company.is_system_company ? (
-          <Badge className="shrink-0 gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
-            <Sparkles className="h-3 w-3" />
-            AI Generated
-          </Badge>
-        ) : null}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {"is_approved" in company && company.is_approved ? (
+            <Badge className="gap-1 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">
+              <ShieldCheck className="h-3 w-3" />
+              Approved
+            </Badge>
+          ) : company.user_id ? (
+            <Badge className="gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+              <BadgeCheck className="h-3 w-3" />
+              Verified
+            </Badge>
+          ) : company.is_system_company ? (
+            <Badge className="gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
+              <Sparkles className="h-3 w-3" />
+              AI Generated
+            </Badge>
+          ) : null}
+        </div>
       </div>
 
       {/* Description - truncated */}

@@ -32,6 +32,7 @@ import {
   ChevronRight,
   MapPin,
   Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
 import { useGeocode } from "@/hooks/useGeocode";
@@ -39,6 +40,7 @@ import { useGeocode } from "@/hooks/useGeocode";
 export interface DirectoryFiltersState {
   searchTerm: string;
   selectedTaxonomies: string[];
+  approvedOnly?: boolean;
   locationQuery?: string;
   radiusMiles?: number;
   lat?: number;
@@ -73,6 +75,9 @@ export function DirectorySearchBar({
   const [tempTaxonomies, setTempTaxonomies] = useState<string[]>(
     filters.selectedTaxonomies,
   );
+  const [tempApprovedOnly, setTempApprovedOnly] = useState(
+    filters.approvedOnly ?? false,
+  );
   const [tempLocationQuery, setTempLocationQuery] = useState(
     filters.locationQuery ?? "",
   );
@@ -96,6 +101,7 @@ export function DirectorySearchBar({
 
   const getActiveFilterCount = () => {
     let count = 0;
+    if (filters.approvedOnly) count++;
     if (filters.selectedTaxonomies.length > 0) count++;
     if (filters.lat != null && filters.lng != null) count++;
     return count;
@@ -103,6 +109,14 @@ export function DirectorySearchBar({
 
   const getActiveFilterPills = () => {
     const pills: { key: string; label: string; value: string }[] = [];
+
+    if (filters.approvedOnly) {
+      pills.push({
+        key: "approved",
+        label: "Approved",
+        value: "Only",
+      });
+    }
 
     if (filters.selectedTaxonomies.length > 0) {
       pills.push({
@@ -129,7 +143,9 @@ export function DirectorySearchBar({
 
   const removeFilter = (key: string) => {
     const newFilters = { ...filters };
-    if (key === "taxonomies") {
+    if (key === "approved") {
+      newFilters.approvedOnly = false;
+    } else if (key === "taxonomies") {
       newFilters.selectedTaxonomies = [];
     } else if (key === "location") {
       newFilters.locationQuery = undefined;
@@ -144,6 +160,7 @@ export function DirectorySearchBar({
   const handleSheetOpenChange = (open: boolean) => {
     if (open) {
       setTempTaxonomies(filters.selectedTaxonomies);
+      setTempApprovedOnly(filters.approvedOnly ?? false);
       setTempLocationQuery(filters.locationQuery ?? defaultLocationQuery ?? "");
       setTempRadius(filters.radiusMiles?.toString() ?? "any");
       setGeocodeError(null);
@@ -185,6 +202,7 @@ export function DirectorySearchBar({
     onFiltersChange({
       ...filters,
       selectedTaxonomies: tempTaxonomies,
+      approvedOnly: tempApprovedOnly || undefined,
       locationQuery: locationQuery || undefined,
       radiusMiles,
       lat,
@@ -236,6 +254,28 @@ export function DirectorySearchBar({
             </SheetHeader>
 
             <div className="space-y-6 py-6">
+              {/* Approved Only Toggle */}
+              <div
+                className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setTempApprovedOnly(!tempApprovedOnly)}
+              >
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-amber-600" />
+                  <div>
+                    <p className="text-sm font-medium">Approved companies only</p>
+                    <p className="text-xs text-muted-foreground">
+                      Show only verified and approved companies
+                    </p>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={tempApprovedOnly}
+                  onCheckedChange={(checked) =>
+                    setTempApprovedOnly(checked as boolean)
+                  }
+                />
+              </div>
+
               {/* Location Filter — only shown when geocoding is configured */}
               {isEnabled !== false && (
                 <div className="space-y-3">

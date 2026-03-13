@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- profiles has extended columns */
 import { NextRequest } from "next/server";
 import {
-  createApiClient,
   createAdminClient,
   apiResponse,
   apiError,
@@ -19,6 +17,15 @@ import {
   buildCompanyGeoQuery,
   isGeocodingEnabled,
 } from "@/lib/geocode";
+import {
+  getProfileByUserId,
+  updateProfileByUserId,
+  createCompany,
+  createCompanyMember,
+  createUserRole,
+  deleteUserRole,
+  createCompanyJoinRequest,
+} from "@/lib/db/queries";
 
 interface NewCompanyData {
   action: "create";
@@ -52,34 +59,26 @@ type RequestData = NewCompanyData | JoinCompanyData;
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createApiClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { auth } = await import("@/lib/auth");
+    const session = await auth.api.getSession({ headers: request.headers });
 
-    if (userError || !user) {
+    if (!session?.user) {
       return apiError("Unauthorized", 401);
     }
+
+    const user = session.user;
 
     const adminClient = createAdminClient();
 
     // Get current profile and verify user is approved
-    const { data: profile, error: profileError } = await (
-      adminClient.from("profiles") as any
-    )
-      .select(
-        "*, approval_status, account_type, first_name, last_name, job_title",
-      )
-      .eq("user_id", user.id)
-      .single();
+    const profile = await getProfileByUserId(user.id);
 
-    if (profileError || !profile) {
+    if (!profile) {
       return apiError("Profile not found", 404);
     }
 
     // Verify user is approved
-    if (profile.approval_status !== "approved") {
+    if (profile.approvalStatus !== "approved") {
       return apiError(
         "Your account must be approved before creating or joining companies",
         403,
@@ -123,25 +122,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { data: company, error: companyError } = await adminClient
-        .from("companies")
-        .insert({
-          company_name: createData.companyName.trim(),
-          user_id: user.id,
+      let company;
+      try {
+        company = await createCompany({
+          companyName: createData.companyName.trim(),
+          userId: user.id,
           status: "pending_review",
-          contact_email: createData.contactEmail || user.email,
-          contact_phone: createData.contactPhone || null,
-          contact_person: `${profile.first_name} ${profile.last_name}`,
-          companies_house_number: createData.companiesHouseNumber || null,
-          website_url: createData.websiteUrl || null,
+          contactEmail: createData.contactEmail || user.email || null,
+          contactPhone: createData.contactPhone || null,
+          contactPerson: `${profile.firstName} ${profile.lastName}`,
+          companiesHouseNumber: createData.companiesHouseNumber || null,
+          websiteUrl: createData.websiteUrl || null,
           address: createData.address || null,
-        })
-        .select()
-        .single();
-
-      if (companyError) {
-        console.error("Company creation error:", companyError);
-        if (companyError.code === "23505") {
+        });
+      } catch (err: unknown) {
+        console.error("Company creation error:", err);
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("unique") || msg.includes("duplicate")) {
           return apiError("A company with this name already exists", 409);
         }
         return apiError("Failed to create company", 500);
@@ -165,43 +162,26 @@ export async function POST(request: NextRequest) {
       }
 
       // Add user as company admin (pending)
-      await adminClient.from("company_members").insert({
-        company_id: company.id,
-        user_id: user.id,
+      await createCompanyMember({
+        companyId: company.id,
+        userId: user.id,
         role: "admin",
         status: "pending",
       });
 
       // Handle individual user converting to business
-      if (profile.account_type === "individual") {
+      if (profile.accountType === "individual") {
         // Update account_type
-         
-        await (adminClient.from("profiles") as any)
-          .update({ account_type: "business" })
-          .eq("user_id", user.id);
+        await updateProfileByUserId(user.id, { accountType: "business" });
 
         // Update role to sme-owner
-        await adminClient
-          .from("user_roles")
-          .upsert(
-            { user_id: user.id, role: "sme-owner" },
-            { onConflict: "user_id,role" },
-          );
+        await createUserRole(user.id, "sme-owner");
 
         // Remove individual role
-        await adminClient
-          .from("user_roles")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("role", "individual");
+        await deleteUserRole(user.id, "individual");
       } else {
         // Ensure user has sme-owner role for existing business users
-        await adminClient
-          .from("user_roles")
-          .upsert(
-            { user_id: user.id, role: "sme-owner" },
-            { onConflict: "user_id,role" },
-          );
+        await createUserRole(user.id, "sme-owner");
       }
 
       // Notify superadmins about new company
@@ -222,13 +202,13 @@ export async function POST(request: NextRequest) {
           .filter(Boolean) as string[];
 
         if (adminEmails.length > 0) {
-          const userName = `${profile.first_name} ${profile.last_name}`;
+          const userName = `${profile.firstName} ${profile.lastName}`;
           const adminNotificationData = {
             userName,
             userEmail: user.email || "",
             signupType: "new-company" as const,
             companyName: createData.companyName,
-            jobTitle: profile.job_title || "",
+            jobTitle: profile.jobTitle || "",
           };
 
           await sendEmail({
@@ -302,50 +282,32 @@ export async function POST(request: NextRequest) {
       }
 
       // Create join request
-      const { error: joinRequestError } = await adminClient
-        .from("company_join_requests")
-        .insert({
-          user_id: user.id,
-          company_id: joinData.companyId,
-          company_name_requested: company.company_name,
+      try {
+        await createCompanyJoinRequest({
+          userId: user.id,
+          companyId: joinData.companyId,
+          companyNameRequested: company.company_name,
           message: joinData.message || null,
           status: "pending",
         });
-
-      if (joinRequestError) {
-        console.error("Join request error:", joinRequestError);
+      } catch (err) {
+        console.error("Join request error:", err);
         return apiError("Failed to create join request", 500);
       }
 
       // Handle individual user converting to business
-      if (profile.account_type === "individual") {
+      if (profile.accountType === "individual") {
         // Update account_type
-        await (adminClient.from("profiles") as any)
-          .update({ account_type: "business" })
-          .eq("user_id", user.id);
+        await updateProfileByUserId(user.id, { accountType: "business" });
 
         // Update role to sme-member
-        await adminClient
-          .from("user_roles")
-          .upsert(
-            { user_id: user.id, role: "sme-member" },
-            { onConflict: "user_id,role" },
-          );
+        await createUserRole(user.id, "sme-member");
 
         // Remove individual role
-        await adminClient
-          .from("user_roles")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("role", "individual");
+        await deleteUserRole(user.id, "individual");
       } else {
         // Ensure user has sme-member role
-        await adminClient
-          .from("user_roles")
-          .upsert(
-            { user_id: user.id, role: "sme-member" },
-            { onConflict: "user_id,role" },
-          );
+        await createUserRole(user.id, "sme-member");
       }
 
       // Notify company admins
@@ -363,7 +325,7 @@ export async function POST(request: NextRequest) {
           .select("email, first_name, last_name")
           .in("user_id", adminUserIds);
 
-        const userName = `${profile.first_name} ${profile.last_name}`;
+        const userName = `${profile.firstName} ${profile.lastName}`;
 
         for (const admin of adminProfiles || []) {
           if (admin.email) {
@@ -375,7 +337,7 @@ export async function POST(request: NextRequest) {
               companyName: company.company_name,
               requesterName: userName,
               requesterEmail: user.email || "",
-              requesterJobTitle: profile.job_title || "",
+              requesterJobTitle: profile.jobTitle || "",
               message: joinData.message,
             };
 

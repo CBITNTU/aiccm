@@ -6,6 +6,7 @@ import {
   getAuthenticatedUser,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { updateCompanyJoinRequest } from "@/lib/db/queries";
 import {
   sendEmail,
   getCompanyAdminApprovalEmailSubject,
@@ -107,17 +108,14 @@ export async function POST(request: NextRequest) {
 
     if (approved) {
       // Company admin approves - update status to approved_by_admin
-      const { error: updateError } = await supabase
-        .from("company_join_requests")
-        .update({
-          status: "approved_by_admin",
-          admin_approved_at: new Date().toISOString(),
-          admin_approved_by: user.id,
-        })
-        .eq("id", requestId);
+      const updated = await updateCompanyJoinRequest(requestId, {
+        status: "approved_by_admin",
+        adminApprovedAt: new Date(),
+        adminApprovedBy: user.id,
+      });
 
-      if (updateError) {
-        console.error("Error approving member:", updateError);
+      if (!updated) {
+        console.error("Error approving member: no rows updated");
         return apiError("Failed to approve member", 500);
       }
 
@@ -191,18 +189,14 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Company admin rejects
-      const { error: updateError } = await supabase
-        .from("company_join_requests")
-        .update({
-          status: "rejected",
-          rejection_reason:
-            rejectionReason || "Rejected by company administrator",
-          rejected_by: user.id,
-        })
-        .eq("id", requestId);
+      const rejected = await updateCompanyJoinRequest(requestId, {
+        status: "rejected",
+        rejectionReason: rejectionReason || "Rejected by company administrator",
+        rejectedBy: user.id,
+      });
 
-      if (updateError) {
-        console.error("Error rejecting member:", updateError);
+      if (!rejected) {
+        console.error("Error rejecting member: no rows updated");
         return apiError("Failed to reject member", 500);
       }
 

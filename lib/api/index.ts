@@ -67,31 +67,39 @@ export function createAdminClient() {
   );
 }
 
-// Get authenticated user from request
-export async function getAuthenticatedUser(_request: NextRequest) {
-  const supabase = await createApiClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+// Get authenticated user from request (Better Auth only)
+export async function getAuthenticatedUser(request: NextRequest) {
+  try {
+    const { auth } = await import("@/lib/auth");
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
 
-  if (error || !user) {
-    return { user: null, supabase, error: error?.message || "Unauthorized" };
+    if (session?.user) {
+      const supabase = await createApiClient();
+      return {
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          user_metadata: {},
+          app_metadata: {},
+          aud: "authenticated",
+          created_at: session.user.createdAt?.toISOString() ?? "",
+        } as unknown as import("@supabase/supabase-js").User,
+        supabase,
+        error: null,
+      };
+    }
+  } catch (err) {
+    console.error("Better Auth session error:", err);
   }
 
-  return { user, supabase, error: null };
+  const supabase = await createApiClient();
+  return { user: null, supabase, error: "Unauthorized" };
 }
 
-// Check if user has superadmin role
+// Check if user has superadmin role via Drizzle
 export async function checkSuperadminRole(userId: string): Promise<boolean> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "superadmin")
-    .limit(1);
-
-  // If we get any results, user has superadmin role
-  return !error && data && data.length > 0;
+  const { userHasRole } = await import("@/lib/db/queries");
+  return userHasRole(userId, "superadmin");
 }

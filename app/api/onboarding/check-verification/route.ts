@@ -1,54 +1,40 @@
 import { NextRequest } from "next/server";
-import {
-  createApiClient,
-  createAdminClient,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { auth } from "@/lib/auth";
+import { apiResponse, apiError } from "@/lib/api";
+import { updateProfileByUserId } from "@/lib/db/queries";
 import { ONBOARDING_STEPS } from "@/lib/onboarding";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 /**
  * GET /api/onboarding/check-verification
  *
- * Checks if the current user's email is verified.
- * If verified, updates their onboarding step to PROFILE_INFO.
- *
- * Returns:
- * - verified: boolean - whether email is verified
- * - email: string - the user's email address (for display)
- * - nextStep: number - the next onboarding step
+ * Checks if the current user's email is verified via Better Auth.
+ * If verified, updates their onboarding step to PROFILE_INFO via Drizzle.
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createApiClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
 
-    if (userError || !user) {
+    if (!session?.user) {
       return apiError("Unauthorized", 401);
     }
 
-    const isVerified = !!user.email_confirmed_at;
+    const user = session.user;
+    const isVerified = !!user.emailVerified;
 
     // If verified, update onboarding step to PROFILE_INFO (if still on EMAIL_VERIFICATION)
     if (isVerified) {
-      const adminClient = createAdminClient();
-
-      // Only update if currently on EMAIL_VERIFICATION step
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (adminClient.from("profiles") as any)
-        .update({ onboarding_step: ONBOARDING_STEPS.PROFILE_INFO })
-        .eq("user_id", user.id)
-        .eq("onboarding_step", ONBOARDING_STEPS.EMAIL_VERIFICATION);
+      await updateProfileByUserId(user.id, {
+        onboardingStep: ONBOARDING_STEPS.PROFILE_INFO,
+      });
     }
 
     await logApiEvent(request, {
       actionType: "onboarding_verification_checked",
       userId: user.id,
-      userEmail: user.email || undefined,
+      userEmail: user.email,
       details: { verified: isVerified },
     }).catch(() => {});
 

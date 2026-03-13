@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- profiles has extended columns */
 import { NextRequest } from "next/server";
 import {
-  createApiClient,
   createAdminClient,
   apiResponse,
   apiError,
@@ -17,18 +16,18 @@ import { logApiEvent } from "@/lib/services/eventLogger";
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createApiClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { auth } = await import("@/lib/auth");
+    const session = await auth.api.getSession({ headers: request.headers });
 
-    if (userError || !user) {
+    if (!session?.user) {
       return apiError("Unauthorized", 401);
     }
 
+    const user = session.user;
+
     // Check if user is superadmin
-    const { data: userRole } = await supabase
+    const adminClient = createAdminClient();
+    const { data: userRole } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
@@ -38,8 +37,6 @@ export async function GET(request: NextRequest) {
     if (!userRole) {
       return apiError("Superadmin access required", 403);
     }
-
-    const adminClient = createAdminClient();
 
     // Get all profiles with onboarding data
      

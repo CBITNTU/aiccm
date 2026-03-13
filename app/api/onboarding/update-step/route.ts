@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- profiles has extended columns */
 import { NextRequest } from "next/server";
 import {
-  createApiClient,
   createAdminClient,
   apiResponse,
   apiError,
@@ -20,6 +18,15 @@ import {
   buildCompanyGeoQuery,
   isGeocodingEnabled,
 } from "@/lib/geocode";
+import {
+  getProfileByUserId,
+  updateProfileByUserId,
+  createCompany,
+  createCompanyMember,
+  createUserRole,
+  deleteUserRole,
+  createCompanyJoinRequest,
+} from "@/lib/db/queries";
 
 interface ProfileData {
   firstName: string;
@@ -75,15 +82,14 @@ interface UpdateStepRequest {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createApiClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { auth } = await import("@/lib/auth");
+    const session = await auth.api.getSession({ headers: request.headers });
 
-    if (userError || !user) {
+    if (!session?.user) {
       return apiError("Unauthorized", 401);
     }
+
+    const user = session.user;
 
     const body: UpdateStepRequest = await request.json();
     const { step, data } = body;
@@ -95,23 +101,17 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // Get current profile
-     
-    const { data: profile, error: profileError } = await (
-      adminClient.from("profiles") as any
-    )
-      .select("*, onboarding_step, onboarding_completed_at, account_type")
-      .eq("user_id", user.id)
-      .single();
+    // Get current profile from Drizzle (local Postgres)
+    const profile = await getProfileByUserId(user.id);
 
-    if (profileError || !profile) {
+    if (!profile) {
       return apiError("Profile not found", 404);
     }
 
     // Validate step progression (can only go forward from current step or revisit)
     // Allow revisiting previous steps for editing
     const currentStep =
-      (profile.onboarding_step as number) ||
+      (profile.onboardingStep as number) ||
       ONBOARDING_STEPS.EMAIL_VERIFICATION;
     if (step > currentStep + 1) {
       return apiError("Cannot skip steps", 400);
@@ -135,25 +135,20 @@ export async function POST(request: NextRequest) {
 
         // Determine next step based on signup type
         // Invited users skip account type and go to company confirmation
-        const isInvitedUser = profile.signup_type === "invited";
+        const isInvitedUser = profile.signupType === "invited";
         const nextStep = isInvitedUser
           ? ONBOARDING_STEPS.COMPANY_INFO
           : ONBOARDING_STEPS.ACCOUNT_TYPE;
 
-         
-        const { error: updateError } = await (
-          adminClient.from("profiles") as any
-        )
-          .update({
-            first_name: profileData.firstName,
-            last_name: profileData.lastName,
-            job_title: profileData.jobTitle,
-            onboarding_step: nextStep,
-          })
-          .eq("user_id", user.id);
+        const updated = await updateProfileByUserId(user.id, {
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
+          jobTitle: profileData.jobTitle,
+          onboardingStep: nextStep,
+        });
 
-        if (updateError) {
-          console.error("Profile update error:", updateError);
+        if (!updated) {
+          console.error("Profile update error: no rows updated");
           return apiError("Failed to update profile", 500);
         }
 
@@ -180,25 +175,20 @@ export async function POST(request: NextRequest) {
           accountData.accountType === "business"
             ? ONBOARDING_STEPS.COMPANY_INFO
             : ONBOARDING_STEPS.COMPLETE;
-        const updates: Record<string, unknown> = {
-          account_type: accountData.accountType,
-          onboarding_step: nextStep,
+        const updates: Partial<{ accountType: string; onboardingStep: number; signupType: string }> = {
+          accountType: accountData.accountType,
+          onboardingStep: nextStep,
         };
 
         // If individual, set signup_type and mark ready for completion
         if (accountData.accountType === "individual") {
-          updates.signup_type = "individual";
+          updates.signupType = "individual";
         }
 
-         
-        const { error: updateError } = await (
-          adminClient.from("profiles") as any
-        )
-          .update(updates)
-          .eq("user_id", user.id);
+        const updated = await updateProfileByUserId(user.id, updates);
 
-        if (updateError) {
-          console.error("Account type update error:", updateError);
+        if (!updated) {
+          console.error("Account type update error: no rows updated");
           return apiError("Failed to update account type", 500);
         }
 
@@ -223,17 +213,12 @@ export async function POST(request: NextRequest) {
         if (companyData.action === "invited-confirm") {
           // Invited user is confirming their company membership
           // Just move to the complete step - the company membership was already created
-           
-          const { error: updateError } = await (
-            adminClient.from("profiles") as any
-          )
-            .update({
-              onboarding_step: ONBOARDING_STEPS.COMPLETE,
-            })
-            .eq("user_id", user.id);
+          const updated = await updateProfileByUserId(user.id, {
+            onboardingStep: ONBOARDING_STEPS.COMPLETE,
+          });
 
-          if (updateError) {
-            console.error("Profile update error:", updateError);
+          if (!updated) {
+            console.error("Profile update error: no rows updated");
             return apiError("Failed to update profile", 500);
           }
 
@@ -274,25 +259,23 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          const { data: company, error: companyError } = await adminClient
-            .from("companies")
-            .insert({
-              company_name: createData.companyName.trim(),
-              user_id: user.id,
+          let company;
+          try {
+            company = await createCompany({
+              companyName: createData.companyName.trim(),
+              userId: user.id,
               status: "pending_review",
-              contact_email: createData.contactEmail || user.email,
-              contact_phone: createData.contactPhone || null,
-              contact_person: `${profile.first_name} ${profile.last_name}`,
-              companies_house_number: createData.companiesHouseNumber || null,
-              website_url: createData.websiteUrl || null,
+              contactEmail: createData.contactEmail || user.email || null,
+              contactPhone: createData.contactPhone || null,
+              contactPerson: `${profile.firstName} ${profile.lastName}`,
+              companiesHouseNumber: createData.companiesHouseNumber || null,
+              websiteUrl: createData.websiteUrl || null,
               address: createData.address || null,
-            })
-            .select()
-            .single();
-
-          if (companyError) {
-            console.error("Company creation error:", companyError);
-            if (companyError.code === "23505") {
+            });
+          } catch (err: unknown) {
+            console.error("Company creation error:", err);
+            const msg = err instanceof Error ? err.message : "";
+            if (msg.includes("unique") || msg.includes("duplicate")) {
               return apiError("A company with this name already exists", 409);
             }
             return apiError("Failed to create company", 500);
@@ -316,41 +299,27 @@ export async function POST(request: NextRequest) {
           }
 
           // Add user as company admin (pending)
-          await adminClient.from("company_members").insert({
-            company_id: company.id,
-            user_id: user.id,
+          await createCompanyMember({
+            companyId: company.id,
+            userId: user.id,
             role: "admin",
             status: "pending",
           });
 
           // Update user role to sme-owner
-          await adminClient
-            .from("user_roles")
-            .upsert(
-              { user_id: user.id, role: "sme-owner" },
-              { onConflict: "user_id,role" },
-            );
+          await createUserRole(user.id, "sme-owner");
 
           // Remove individual role
-          await adminClient
-            .from("user_roles")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("role", "individual");
+          await deleteUserRole(user.id, "individual");
 
           // Update profile
-           
-          const { error: profileUpdateError } = await (
-            adminClient.from("profiles") as any
-          )
-            .update({
-              signup_type: "new-company",
-              onboarding_step: ONBOARDING_STEPS.COMPLETE,
-            })
-            .eq("user_id", user.id);
+          const profileUpdated = await updateProfileByUserId(user.id, {
+            signupType: "new-company",
+            onboardingStep: ONBOARDING_STEPS.COMPLETE,
+          });
 
-          if (profileUpdateError) {
-            console.error("Profile update error:", profileUpdateError);
+          if (!profileUpdated) {
+            console.error("Profile update error: no rows updated");
           }
 
           // Queue AI processing jobs for new company (capability taxonomy generation)
@@ -424,43 +393,30 @@ export async function POST(request: NextRequest) {
           }
 
           // Create join request
-          const { error: joinRequestError } = await adminClient
-            .from("company_join_requests")
-            .insert({
-              user_id: user.id,
-              company_id: joinData.companyId,
-              company_name_requested: company.company_name,
+          try {
+            await createCompanyJoinRequest({
+              userId: user.id,
+              companyId: joinData.companyId,
+              companyNameRequested: company.company_name,
               message: joinData.message || null,
               status: "pending",
             });
-
-          if (joinRequestError) {
-            console.error("Join request error:", joinRequestError);
+          } catch (err) {
+            console.error("Join request error:", err);
             return apiError("Failed to create join request", 500);
           }
 
           // Update user role to sme-member
-          await adminClient
-            .from("user_roles")
-            .upsert(
-              { user_id: user.id, role: "sme-member" },
-              { onConflict: "user_id,role" },
-            );
+          await createUserRole(user.id, "sme-member");
 
           // Remove individual role
-          await adminClient
-            .from("user_roles")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("role", "individual");
+          await deleteUserRole(user.id, "individual");
 
           // Update profile
-          await (adminClient.from("profiles") as any)
-            .update({
-              signup_type: "join-company",
-              onboarding_step: ONBOARDING_STEPS.COMPLETE,
-            })
-            .eq("user_id", user.id);
+          await updateProfileByUserId(user.id, {
+            signupType: "join-company",
+            onboardingStep: ONBOARDING_STEPS.COMPLETE,
+          });
 
           // Notify company admins
           const { data: companyAdmins } = await adminClient
@@ -477,7 +433,7 @@ export async function POST(request: NextRequest) {
               .select("email, first_name, last_name")
               .in("user_id", adminUserIds);
 
-            const userName = `${profile.first_name} ${profile.last_name}`;
+            const userName = `${profile.firstName} ${profile.lastName}`;
 
             for (const admin of adminProfiles || []) {
               if (admin.email) {
@@ -489,7 +445,7 @@ export async function POST(request: NextRequest) {
                   companyName: company.company_name,
                   requesterName: userName,
                   requesterEmail: user.email || "",
-                  requesterJobTitle: profile.job_title || "",
+                  requesterJobTitle: profile.jobTitle || "",
                   message: joinData.message,
                 };
 
@@ -514,23 +470,18 @@ export async function POST(request: NextRequest) {
 
       case ONBOARDING_STEPS.COMPLETE: {
         // Mark onboarding as complete
-         
-        const { error: completeError } = await (
-          adminClient.from("profiles") as any
-        )
-          .update({
-            onboarding_step: ONBOARDING_STEPS.COMPLETE,
-            onboarding_completed_at: new Date().toISOString(),
-          })
-          .eq("user_id", user.id);
+        const completed = await updateProfileByUserId(user.id, {
+          onboardingStep: ONBOARDING_STEPS.COMPLETE,
+          onboardingCompletedAt: new Date(),
+        });
 
-        if (completeError) {
-          console.error("Onboarding completion error:", completeError);
+        if (!completed) {
+          console.error("Onboarding completion error: no rows updated");
           return apiError("Failed to complete onboarding", 500);
         }
 
         // Notify superadmins about new user
-        const userName = `${profile.first_name} ${profile.last_name}`;
+        const userName = `${profile.firstName} ${profile.lastName}`;
         const { data: superadmins } = await adminClient
           .from("user_roles")
           .select("user_id")
@@ -550,14 +501,14 @@ export async function POST(request: NextRequest) {
           if (adminEmails.length > 0) {
             // Get company name if applicable
             let companyName: string | undefined;
-            if (profile.signup_type === "new-company") {
+            if (profile.signupType === "new-company") {
               const { data: company } = await adminClient
                 .from("companies")
                 .select("company_name")
                 .eq("user_id", user.id)
                 .single();
               companyName = company?.company_name;
-            } else if (profile.signup_type === "join-company") {
+            } else if (profile.signupType === "join-company") {
               const { data: joinRequest } = await adminClient
                 .from("company_join_requests")
                 .select("company_name_requested")
@@ -571,9 +522,9 @@ export async function POST(request: NextRequest) {
             const adminNotificationData = {
               userName,
               userEmail: user.email || "",
-              signupType: profile.signup_type || "individual",
+              signupType: (profile.signupType || "individual") as "individual" | "new-company" | "join-company" | "invited",
               companyName,
-              jobTitle: profile.job_title || "",
+              jobTitle: profile.jobTitle || "",
             };
 
             await sendEmail({
@@ -591,8 +542,8 @@ export async function POST(request: NextRequest) {
           userEmail: user.email || undefined,
           details: {
             onboardingCompleted: true,
-            signupType: profile.signup_type,
-            accountType: profile.account_type,
+            signupType: profile.signupType,
+            accountType: profile.accountType,
           },
         }).catch(() => {});
 
@@ -618,30 +569,23 @@ export async function POST(request: NextRequest) {
  *
  * Returns the current onboarding state for the user.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createApiClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { auth } = await import("@/lib/auth");
+    const session = await auth.api.getSession({ headers: request.headers });
 
-    if (userError || !user) {
+    if (!session?.user) {
       return apiError("Unauthorized", 401);
     }
 
-    const adminClient = createAdminClient();
-     
-    const { data: profile, error: profileError } = await (
-      adminClient.from("profiles") as any
-    )
-      .select(
-        "onboarding_step, onboarding_completed_at, account_type, signup_type, first_name, last_name, job_title, invited_to_company_id",
-      )
-      .eq("user_id", user.id)
-      .single();
+    const user = session.user;
 
-    if (profileError || !profile) {
+    const adminClient = createAdminClient();
+
+    // Get profile from Drizzle (local Postgres)
+    const profile = await getProfileByUserId(user.id);
+
+    if (!profile) {
       return apiError("Profile not found", 404);
     }
 
@@ -650,12 +594,12 @@ export async function GET() {
       companyName: string;
       inviterName: string;
     } | null = null;
-    if (profile.signup_type === "invited" && profile.invited_to_company_id) {
+    if (profile.signupType === "invited" && profile.invitedToCompanyId) {
       // Get company name
       const { data: company } = await adminClient
         .from("companies")
         .select("company_name")
-        .eq("id", profile.invited_to_company_id)
+        .eq("id", profile.invitedToCompanyId)
         .single();
 
       // Get inviter name from team_invitations
@@ -663,7 +607,7 @@ export async function GET() {
         ? await adminClient
             .from("team_invitations")
             .select("invited_by")
-            .eq("company_id", profile.invited_to_company_id)
+            .eq("company_id", profile.invitedToCompanyId)
             .eq("email", user.email)
             .order("created_at", { ascending: false })
             .limit(1)
@@ -695,17 +639,17 @@ export async function GET() {
 
     return apiResponse({
       currentStep:
-        (profile.onboarding_step as number) ||
+        (profile.onboardingStep as number) ||
         ONBOARDING_STEPS.EMAIL_VERIFICATION,
-      completed: !!profile.onboarding_completed_at,
-      accountType: profile.account_type as string | null,
-      signupType: profile.signup_type as string | null,
+      completed: !!profile.onboardingCompletedAt,
+      accountType: profile.accountType as string | null,
+      signupType: profile.signupType as string | null,
       profile: {
-        firstName: profile.first_name as string | null,
-        lastName: profile.last_name as string | null,
-        jobTitle: profile.job_title as string | null,
+        firstName: profile.firstName as string | null,
+        lastName: profile.lastName as string | null,
+        jobTitle: profile.jobTitle as string | null,
       },
-      emailVerified: !!user.email_confirmed_at,
+      emailVerified: !!user.emailVerified,
       email: user.email,
       invitedCompanyInfo,
     });

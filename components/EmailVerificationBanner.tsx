@@ -14,7 +14,8 @@ export function EmailVerificationBanner() {
   >("idle");
 
   // Don't show if user is verified or banner is dismissed
-  if (!user || user.email_confirmed_at || dismissed) {
+  // With Better Auth, email verification is handled differently - check profile onboarding step
+  if (!user || user.emailVerified || dismissed) {
     return null;
   }
 

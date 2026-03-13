@@ -12,6 +12,11 @@ import {
   getApprovalNotificationEmailSubject,
   getApprovalNotificationEmailHtml,
 } from "@/lib/email";
+import {
+  updateProfileByUserId,
+  updateCompanyMemberStatus,
+  updateCompanyStatus,
+} from "@/lib/db/queries";
 
 export interface ApproveUserRequest {
   userId: string;
@@ -344,29 +349,27 @@ export async function POST(request: NextRequest) {
         });
 
         // Approve the company membership
-        const { error: memberError } = await supabase
-          .from("company_members")
-          .update({
-            status: "approved",
-            approved_at: new Date().toISOString(),
-            approved_by: user.id,
-          })
-          .eq("user_id", userId)
-          .eq("status", "pending");
-
-        if (memberError) {
+        try {
+          await updateCompanyMemberStatus(
+            { userId, status: "pending" },
+            {
+              status: "approved",
+              approvedAt: new Date(),
+              approvedBy: user.id,
+            },
+          );
+        } catch (memberError) {
           console.error("Error approving company membership:", memberError);
         }
 
         // Update company status to active
-        const { error: companyError } = await supabase
-          .from("companies")
-          .update({ status: "active" })
-          .eq("id", pendingCompany.id)
-          .eq("status", "pending_review");
+        const updatedCompany = await updateCompanyStatus(
+          { id: pendingCompany.id, status: "pending_review" },
+          { status: "active" },
+        );
 
-        if (companyError) {
-          console.error("Error updating company status:", companyError);
+        if (!updatedCompany) {
+          console.error("Error updating company status: no rows updated");
           return apiError("Failed to approve company", 500);
         }
 
@@ -401,38 +404,33 @@ export async function POST(request: NextRequest) {
       }
 
       // Approve the user (only if they're pending)
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          approval_status: "approved",
-          approved_at: new Date().toISOString(),
-          approved_by: user.id,
-        })
-        .eq("user_id", userId);
+      const updatedProfile = await updateProfileByUserId(userId, {
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        approvedBy: user.id,
+      });
 
-      if (updateError) {
-        console.error("Error approving user:", updateError);
+      if (!updatedProfile) {
+        console.error("Error approving user: no rows updated");
         return apiError("Failed to approve user", 500);
       }
 
       // If user created a new company, also approve the company membership
       if (signupType === "new-company") {
-        await supabase
-          .from("company_members")
-          .update({
+        await updateCompanyMemberStatus(
+          { userId, status: "pending" },
+          {
             status: "approved",
-            approved_at: new Date().toISOString(),
-            approved_by: user.id,
-          })
-          .eq("user_id", userId)
-          .eq("status", "pending");
+            approvedAt: new Date(),
+            approvedBy: user.id,
+          },
+        );
 
         // Update company status to active
-        await supabase
-          .from("companies")
-          .update({ status: "active" })
-          .eq("user_id", userId)
-          .eq("status", "pending_review");
+        await updateCompanyStatus(
+          { userId, status: "pending_review" },
+          { status: "active" },
+        );
 
         // Trigger AI prefill in the background (non-blocking)
         // This will fetch data from Companies House, Endole, and company website
@@ -454,28 +452,23 @@ export async function POST(request: NextRequest) {
           invitedToCompanyId,
         });
 
-        const { data: memberUpdate, error: memberError } = await supabase
-          .from("company_members")
-          .update({
+        const memberUpdate = await updateCompanyMemberStatus(
+          { userId, companyId: invitedToCompanyId, status: "pending" },
+          {
             status: "approved",
-            approved_at: new Date().toISOString(),
-            approved_by: user.id,
-          })
-          .eq("user_id", userId)
-          .eq("company_id", invitedToCompanyId)
-          .eq("status", "pending")
-          .select();
+            approvedAt: new Date(),
+            approvedBy: user.id,
+          },
+        );
 
         console.log("Company member update result:", {
           memberUpdate,
-          memberError,
         });
 
         // Clear the invited_to_company_id since they're now approved
-        await supabase
-          .from("profiles")
-          .update({ invited_to_company_id: null })
-          .eq("user_id", userId);
+        await updateProfileByUserId(userId, {
+          invitedToCompanyId: null,
+        });
       } else {
         console.log("Not an invited user or no invitedToCompanyId:", {
           signupType,
@@ -520,16 +513,13 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Reject the user
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          approval_status: "rejected",
-          rejection_reason: rejectionReason || null,
-        })
-        .eq("user_id", userId);
+      const rejectedProfile = await updateProfileByUserId(userId, {
+        approvalStatus: "rejected",
+        rejectionReason: rejectionReason || null,
+      });
 
-      if (updateError) {
-        console.error("Error rejecting user:", updateError);
+      if (!rejectedProfile) {
+        console.error("Error rejecting user: no rows updated");
         return apiError("Failed to reject user", 500);
       }
 

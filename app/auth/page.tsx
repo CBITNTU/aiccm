@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,21 +14,16 @@ import {
   Mail,
   Lock,
   AlertCircle,
-  Loader2,
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
-
-// Use singleton client - createClient() returns the same instance
-const supabase = createClient();
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Form states - simplified to just email and password
   const [signUpData, setSignUpData] = useState({
     email: "",
     password: "",
@@ -40,99 +35,15 @@ export default function AuthPage() {
     password: "",
   });
 
-  // Email verification state - use ref to avoid dependency array issues
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const isVerifyingEmailRef = useRef(false);
-
-  // Signup success state - stores email on successful signup
   const [signupSuccessEmail, setSignupSuccessEmail] = useState<string | null>(
     null,
   );
-
-  // Handle hash fragment tokens (from email verification links)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const hash = window.location.hash;
-    if (hash && hash.includes("access_token")) {
-      // Parse hash to check for type=signup (email verification)
-      const hashParams = new URLSearchParams(hash.substring(1));
-      const type = hashParams.get("type");
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
-
-      if (
-        accessToken &&
-        refreshToken &&
-        (type === "signup" || type === "magiclink")
-      ) {
-        // This is an email verification - show loading state
-        setIsVerifyingEmail(true);
-        isVerifyingEmailRef.current = true;
-        setError(null);
-
-        // Manually set the session from the hash tokens
-        supabase.auth
-          .setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-          .then(({ error }) => {
-            if (error) {
-              console.error("Failed to set session from hash:", error);
-              setIsVerifyingEmail(false);
-              isVerifyingEmailRef.current = false;
-              setError("Failed to verify email. Please try again.");
-            }
-            // onAuthStateChange will handle the rest
-          });
-      }
-    }
-  }, []);
-
-  // Auth state change listener - only handles email verification
-  // Middleware handles all redirects for authenticated users
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth page - Auth state change:", event, session?.user?.id);
-
-      if (event === "SIGNED_IN" && session) {
-        // Check if this was an email verification (using ref to avoid stale closure)
-        if (isVerifyingEmailRef.current) {
-          setIsVerifyingEmail(false);
-          isVerifyingEmailRef.current = false;
-
-          // Clean up the URL hash
-          window.history.replaceState(null, "", "/auth");
-
-          toast.success("Email verified!", {
-            description: "Redirecting to complete your profile...",
-          });
-
-          // Update onboarding step to 2 if currently on step 1
-          try {
-            await fetch("/api/onboarding/check-verification");
-          } catch (e) {
-            console.error("Error updating onboarding step:", e);
-          }
-        }
-
-        // Let middleware handle the redirect - trigger a refresh
-        router.refresh();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [router]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
-    // Validation
     if (signUpData.password !== signUpData.confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
@@ -146,12 +57,9 @@ export default function AuthPage() {
     }
 
     try {
-      // Call simplified signup API
       const response = await fetch("/api/auth/signup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: signUpData.email,
           password: signUpData.password,
@@ -164,7 +72,6 @@ export default function AuthPage() {
         throw new Error(data.error || "Failed to create account");
       }
 
-      // Store email and show success screen
       setSignupSuccessEmail(signUpData.email);
       setSignUpData({ email: "", password: "", confirmPassword: "" });
     } catch (error: unknown) {
@@ -183,32 +90,32 @@ export default function AuthPage() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const result = await authClient.signIn.email({
         email: signInData.email,
         password: signInData.password,
       });
 
-      if (error) throw error;
+      if (result.error) {
+        throw new Error(result.error.message || "Failed to sign in");
+      }
 
       toast.success("Welcome back!", {
         description: "Redirecting...",
       });
 
-      // Let middleware handle the redirect
       router.refresh();
     } catch (error: unknown) {
       console.error("Sign in error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to sign in";
-      if (errorMessage === "Email not confirmed") {
+      if (errorMessage === "Email not confirmed" || errorMessage.includes("email") && errorMessage.includes("verified")) {
         setError(
           "Please check your email and click the verification link before signing in.",
         );
-      } else if (errorMessage === "Email logins are disabled") {
-        setError(
-          "Email authentication is currently disabled. Please contact support.",
-        );
-      } else if (errorMessage === "Invalid login credentials") {
+      } else if (
+        errorMessage === "Invalid login credentials" ||
+        errorMessage === "Invalid email or password"
+      ) {
         setError(
           "Invalid email or password. Please check your credentials and try again.",
         );
@@ -220,32 +127,6 @@ export default function AuthPage() {
     }
   };
 
-  // Show loading screen while verifying email
-  if (isVerifyingEmail) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header variant="landing" />
-
-        <div className="max-w-md mx-auto px-4 pt-20 pb-16">
-          <Card className="card-professional">
-            <CardContent className="pt-8 pb-8 text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">
-                Verifying Your Email
-              </h2>
-              <p className="text-muted-foreground">
-                Please wait while we verify your email address...
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // Show success screen after signup
   if (signupSuccessEmail) {
     return (
       <div className="min-h-screen bg-background">

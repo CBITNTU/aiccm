@@ -18,6 +18,7 @@ import {
   getInviteExpiryDate,
   isExpired,
 } from "@/lib/utils/invite-token";
+import { createTeamInvitation } from "@/lib/db/queries";
 
 export interface CreateInvitationRequest {
   companyId: string;
@@ -166,21 +167,18 @@ export async function POST(request: NextRequest) {
     const expiresAt = getInviteExpiryDate(7);
 
     // Create invitation
-    const { data: invitation, error: inviteError } = await supabase
-      .from("team_invitations")
-      .insert({
-        company_id: companyId,
+    let invitation;
+    try {
+      invitation = await createTeamInvitation({
+        companyId,
         email: normalizedEmail,
-        token_hash: tokenHash,
-        invited_by: user.id,
+        tokenHash,
+        invitedBy: user.id,
         status: "pending",
-        expires_at: expiresAt.toISOString(),
-      })
-      .select()
-      .single();
-
-    if (inviteError) {
-      console.error("Error creating invitation:", inviteError);
+        expiresAt,
+      });
+    } catch (err) {
+      console.error("Error creating invitation:", err);
       return apiError("Failed to create invitation", 500);
     }
 

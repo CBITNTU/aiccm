@@ -1,21 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { getProfileByUserId, updateProfileByUserId } from "@/lib/db/queries";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { auth } = await import("@/lib/auth");
+    const session = await auth.api.getSession({ headers: request.headers });
 
-    // Get the current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const user = session.user;
 
     const body = await request.json();
     const { firstName, lastName, jobTitle, phone } = body;
@@ -28,27 +25,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update the profile
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        job_title: jobTitle.trim(),
-        phone: phone?.trim() || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
+    // Update the profile via Drizzle (local Postgres)
+    const updated = await updateProfileByUserId(user.id, {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      jobTitle: jobTitle.trim(),
+      phone: phone?.trim() || null,
+    });
 
-    if (updateError) {
-      console.error("Profile update error:", updateError);
+    if (!updated) {
+      console.error("Profile update error: no rows updated");
       after(() =>
         logApiEvent(request, {
           actionType: "profile_updated",
           userId: user.id,
           userEmail: user.email || undefined,
           status: "error",
-          errorMessage: updateError.message,
+          errorMessage: "No rows updated",
         }).catch(() => {}),
       );
       return NextResponse.json(
@@ -82,29 +75,21 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { auth } = await import("@/lib/auth");
+    const session = await auth.api.getSession({ headers: request.headers });
 
-    // Get the current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch the profile
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("first_name, last_name, job_title, phone, email")
-      .eq("user_id", user.id)
-      .single();
+    const user = session.user;
 
-    if (profileError) {
-      console.error("Profile fetch error:", profileError);
+    // Fetch the profile via Drizzle (local Postgres)
+    const profile = await getProfileByUserId(user.id);
+
+    if (!profile) {
       return NextResponse.json(
         { error: "Failed to fetch profile" },
         { status: 500 },
@@ -114,11 +99,11 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       profile: {
-        firstName: profile?.first_name || "",
-        lastName: profile?.last_name || "",
-        jobTitle: profile?.job_title || "",
-        phone: profile?.phone || "",
-        email: profile?.email || user.email || "",
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        jobTitle: profile.jobTitle || "",
+        phone: profile.phone || "",
+        email: profile.email || user.email || "",
       },
     });
   } catch (error) {

@@ -12,6 +12,11 @@ import {
   getApprovalNotificationEmailSubject,
   getApprovalNotificationEmailHtml,
 } from "@/lib/email";
+import {
+  updateCompanyJoinRequest,
+  upsertCompanyMember,
+  updateProfileByUserId,
+} from "@/lib/db/queries";
 
 export interface ApproveJoinRequestRequest {
   requestId: string;
@@ -89,45 +94,33 @@ export async function POST(request: NextRequest) {
 
     if (approved) {
       // Final approval - update join request status
-      const { error: updateError } = await supabase
-        .from("company_join_requests")
-        .update({
-          status: "approved",
-          superadmin_approved_at: new Date().toISOString(),
-          superadmin_approved_by: user.id,
-        })
-        .eq("id", requestId);
+      const updated = await updateCompanyJoinRequest(requestId, {
+        status: "approved",
+        superadminApprovedAt: new Date(),
+        superadminApprovedBy: user.id,
+      });
 
-      if (updateError) {
-        console.error("Error approving join request:", updateError);
+      if (!updated) {
+        console.error("Error approving join request: no rows updated");
         return apiError("Failed to approve join request", 500);
       }
 
       // Add user to company_members
-      await supabase.from("company_members").upsert(
-        {
-          company_id: joinRequest.company_id,
-          user_id: joinRequest.user_id,
-          role: "member",
-          status: "approved",
-          approved_at: new Date().toISOString(),
-          approved_by: user.id,
-        },
-        {
-          onConflict: "company_id,user_id",
-        },
-      );
+      await upsertCompanyMember({
+        companyId: joinRequest.company_id,
+        userId: joinRequest.user_id,
+        role: "member",
+        status: "approved",
+        approvedAt: new Date(),
+        approvedBy: user.id,
+      });
 
       // Approve the user's profile if still pending
-      await supabase
-        .from("profiles")
-        .update({
-          approval_status: "approved",
-          approved_at: new Date().toISOString(),
-          approved_by: user.id,
-        })
-        .eq("user_id", joinRequest.user_id)
-        .eq("approval_status", "pending");
+      await updateProfileByUserId(joinRequest.user_id, {
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        approvedBy: user.id,
+      });
 
       // Send approval email
       if (profile?.email) {
@@ -167,17 +160,14 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Reject the request
-      const { error: updateError } = await supabase
-        .from("company_join_requests")
-        .update({
-          status: "rejected",
-          rejection_reason: rejectionReason || null,
-          rejected_by: user.id,
-        })
-        .eq("id", requestId);
+      const rejected = await updateCompanyJoinRequest(requestId, {
+        status: "rejected",
+        rejectionReason: rejectionReason || null,
+        rejectedBy: user.id,
+      });
 
-      if (updateError) {
-        console.error("Error rejecting join request:", updateError);
+      if (!rejected) {
+        console.error("Error rejecting join request: no rows updated");
         return apiError("Failed to reject join request", 500);
       }
 

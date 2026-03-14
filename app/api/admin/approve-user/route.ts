@@ -272,17 +272,9 @@ export async function POST(request: NextRequest) {
       return apiError(`User is already ${profile.approvalStatus}`, 400);
     }
 
-    // Get user's role and signup type
-    const userRoleRows = await db
-      .select({ role: userRoles.role })
-      .from(userRoles)
-      .where(eq(userRoles.userId, userId))
-      .limit(1);
-    const userRole = userRoleRows[0] ?? null;
-
-    // Determine signup type based on role and company membership
+    // Determine signup type from profile (reliably set during onboarding)
     let signupType: "individual" | "new-company" | "join-company" | "invited" =
-      "individual";
+      (profile.signupType as "individual" | "new-company" | "join-company" | "invited") || "individual";
     let companyName: string | undefined;
     let invitedToCompanyId: string | null = null;
 
@@ -298,7 +290,6 @@ export async function POST(request: NextRequest) {
       userId,
       invited_to_company_id: profile.invitedToCompanyId,
       signup_type: profile.signupType,
-      role: userRole?.role,
     });
 
     if (profile.invitedToCompanyId) {
@@ -313,7 +304,7 @@ export async function POST(request: NextRequest) {
         signupType = "invited";
         companyName = invitedCompanyRows[0].companyName;
       }
-    } else if (userRole?.role === "sme-owner") {
+    } else if (profile.signupType === "new-company") {
       const ownedCompanyRows = await db
         .select({
           id: companies.id,
@@ -330,7 +321,7 @@ export async function POST(request: NextRequest) {
         companyName = ownedCompanyRows[0].companyName;
         companyDetails = ownedCompanyRows[0];
       }
-    } else if (userRole?.role === "sme-member") {
+    } else if (profile.signupType === "join-company") {
       const joinRequestRows = await db
         .select({ companyNameRequested: companyJoinRequests.companyNameRequested })
         .from(companyJoinRequests)
@@ -677,7 +668,7 @@ export async function GET(request: NextRequest) {
           };
           companyName = pendingCompany.companyName;
           signupType = "new-company";
-        } else if (roleData?.role === "sme-owner") {
+        } else if (profile.signupType === "new-company") {
           const companyRows = await db
             .select({
               id: companies.id,
@@ -697,7 +688,7 @@ export async function GET(request: NextRequest) {
             companyName = companyRows[0].companyName;
             signupType = "new-company";
           }
-        } else if (roleData?.role === "sme-member") {
+        } else if (profile.signupType === "join-company") {
           // Check for join request first
           const joinRequestRows = await db
             .select({

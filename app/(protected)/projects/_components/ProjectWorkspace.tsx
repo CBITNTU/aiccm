@@ -8,9 +8,7 @@ import {
   useUpdateProjectStatus,
   useDeleteProject,
 } from "@/hooks/useProjectMutations";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

@@ -8,9 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { CompanyDetailView } from "@/components/directory/CompanyDetailView";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+import type { CompanyRecord as Company } from "@/lib/api/types";
 type PublicCompany = Pick<
   Company,
   | "id"

@@ -1,16 +1,22 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import {
+  virtualOrganizations,
+  voMembers,
+  tenders,
+} from "@/lib/db/schema/app";
+import { eq, inArray, desc } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
-    const supabase = createAdminClient();
 
     const { searchParams } = new URL(request.url);
     const companyId = searchParams.get("companyId");
@@ -30,67 +36,80 @@ export async function GET(request: NextRequest) {
       status === "active" ? ["draft", "active"] : [status];
 
     // 1. Owned projects (where company is the lead)
-    const { data: ownedProjects, error: ownedError } = await supabase
-      .from("virtual_organizations")
-      .select(
-        `
-        *,
-        tenders:target_tender_id (
-          id,
-          title,
-          buyer,
-          deadline
-        )
-      `,
+    const ownedProjectRows = await db
+      .select({
+        project: virtualOrganizations,
+        tenderData: {
+          id: tenders.id,
+          title: tenders.title,
+          buyer: tenders.buyer,
+          deadline: tenders.deadline,
+        },
+      })
+      .from(virtualOrganizations)
+      .leftJoin(tenders, eq(virtualOrganizations.targetTenderId, tenders.id))
+      .where(
+        eq(virtualOrganizations.leadCompanyId, companyId),
       )
-      .eq("lead_company_id", companyId)
-      .in("status", statusesToQuery)
-      .order("created_at", { ascending: false });
+      .orderBy(desc(virtualOrganizations.createdAt));
 
-    if (ownedError) throw ownedError;
+    // Filter by status in JS (since we need IN clause combined with other conditions)
+    const ownedProjects = ownedProjectRows
+      .filter((row) => statusesToQuery.includes(row.project.status))
+      .map((row) => ({
+        ...row.project,
+        tenders: row.tenderData?.id ? row.tenderData : null,
+        userRole: "owner" as const,
+      }));
 
-    // 2. Member projects (where company is an accepted member)
-    const { data: memberRows, error: memberError } = await supabase
-      .from("vo_members")
-      .select(
-        `
-        vo_id,
-        virtual_organizations:vo_id (
-          *,
-          tenders:target_tender_id (
-            id,
-            title,
-            buyer,
-            deadline
-          )
-        )
-      `,
+    // 2. Member projects (where company is an accepted member, not lead)
+    const memberRows = await db
+      .select({
+        voId: voMembers.voId,
+        member: voMembers,
+      })
+      .from(voMembers)
+      .where(eq(voMembers.companyId, companyId));
+
+    // Filter to accepted, non-lead members
+    const acceptedMemberVoIds = memberRows
+      .filter(
+        (row) =>
+          row.member.invitationStatus === "accepted" &&
+          row.member.role !== "lead",
       )
-      .eq("company_id", companyId)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .eq("invitation_status" as any, "accepted")
-      .neq("role", "lead");
-
-    if (memberError) throw memberError;
-
-    // Build combined list
-    const owned = (ownedProjects || []).map((p) => ({
-      ...p,
-      userRole: "owner" as const,
-    }));
+      .map((row) => row.voId);
 
     const memberProjects: Array<Record<string, unknown> & { userRole: "member" }> = [];
-    for (const row of memberRows || []) {
-      const vo = row.virtual_organizations as unknown as Record<string, unknown> | null;
-      if (!vo) continue;
-      const voStatus = vo.status as string;
-      if (!statusesToQuery.includes(voStatus)) continue;
-      memberProjects.push({ ...vo, userRole: "member" as const });
+
+    if (acceptedMemberVoIds.length > 0) {
+      const voRows = await db
+        .select({
+          project: virtualOrganizations,
+          tenderData: {
+            id: tenders.id,
+            title: tenders.title,
+            buyer: tenders.buyer,
+            deadline: tenders.deadline,
+          },
+        })
+        .from(virtualOrganizations)
+        .leftJoin(tenders, eq(virtualOrganizations.targetTenderId, tenders.id))
+        .where(inArray(virtualOrganizations.id, acceptedMemberVoIds));
+
+      for (const row of voRows) {
+        if (!statusesToQuery.includes(row.project.status)) continue;
+        memberProjects.push({
+          ...row.project,
+          tenders: row.tenderData?.id ? row.tenderData : null,
+          userRole: "member" as const,
+        });
+      }
     }
 
-    // Merge, avoiding duplicates (a company could be both lead and member in theory)
-    const seenIds = new Set(owned.map((p) => p.id));
-    const merged: Array<Record<string, unknown>> = [...owned];
+    // Merge, avoiding duplicates
+    const seenIds = new Set(ownedProjects.map((p) => p.id));
+    const merged: Array<Record<string, unknown>> = [...ownedProjects];
     for (const mp of memberProjects) {
       if (!seenIds.has(mp.id as string)) {
         merged.push(mp);

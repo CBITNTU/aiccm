@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
@@ -15,11 +15,21 @@ import {
   getProjectInvitationEmailHtml,
   type ProjectInvitationEmailData,
 } from "@/lib/email";
+import { db } from "@/lib/db";
+import {
+  virtualOrganizations,
+  voMembers,
+  companies,
+  tenders,
+  companyMembers,
+  partnershipMessages,
+} from "@/lib/db/schema/app";
+import { user as userTable } from "@/lib/db/schema/auth";
+import { eq, and, inArray } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
-    const supabase = createAdminClient();
 
     const { projectId, tenderTitle, partnerIds } = await request.json();
 
@@ -28,51 +38,63 @@ export async function POST(request: NextRequest) {
     }
 
     // Get project details with lead company
-    const { data: project, error: projectError } = await supabase
-      .from("virtual_organizations")
-      .select("*, companies:lead_company_id(*)")
-      .eq("id", projectId)
-      .single();
+    const projectRows = await db
+      .select({
+        project: virtualOrganizations,
+        leadCompany: companies,
+      })
+      .from(virtualOrganizations)
+      .leftJoin(companies, eq(virtualOrganizations.leadCompanyId, companies.id))
+      .where(eq(virtualOrganizations.id, projectId))
+      .limit(1);
 
-    if (projectError || !project) {
+    const projectRow = projectRows[0];
+    if (!projectRow) {
       throw new ValidationError("Project not found");
     }
 
+    const project = projectRow.project;
+    const leadCompany = projectRow.leadCompany;
+
     // Verify user has access to lead company
-    const hasAccess = await isCompanyMember(user.id, project.lead_company_id);
+    const hasAccess = await isCompanyMember(user.id, project.leadCompanyId);
     if (!hasAccess) {
       throw new AuthError("No access to this project");
     }
-
-    const leadCompany = project.companies as {
-      company_name?: string;
-      contact_email?: string;
-      contact_phone?: string;
-    } | null;
 
     // Get tender details if linked
     let tender: {
       title?: string;
       buyer?: string;
-      deadline?: string | null;
-      budget_max?: number | null;
+      deadline?: Date | null;
+      budgetMax?: number | null;
     } | null = null;
-    if (project.target_tender_id) {
-      const { data: t } = await supabase
-        .from("tenders")
-        .select("title, buyer, deadline, budget_max")
-        .eq("id", project.target_tender_id)
-        .single();
-      tender = t;
+    if (project.targetTenderId) {
+      const tenderRows = await db
+        .select({
+          title: tenders.title,
+          buyer: tenders.buyer,
+          deadline: tenders.deadline,
+          budgetMax: tenders.budgetMax,
+        })
+        .from(tenders)
+        .where(eq(tenders.id, project.targetTenderId))
+        .limit(1);
+      tender = tenderRows[0] || null;
     }
 
     // Get partner companies
-    const { data: partners, error: partnersError } = await supabase
-      .from("companies")
-      .select("id, company_name, contact_email, user_id")
-      .in("id", partnerIds);
+    const partners = await db
+      .select({
+        id: companies.id,
+        companyName: companies.companyName,
+        contactEmail: companies.contactEmail,
+        userId: companies.userId,
+      })
+      .from(companies)
+      .where(inArray(companies.id, partnerIds));
 
-    if (partnersError || !partners || partners.length === 0) {
+    if (!partners || partners.length === 0) {
       throw new ValidationError("No valid partners found");
     }
 
@@ -81,88 +103,90 @@ export async function POST(request: NextRequest) {
 
     for (const partner of partners) {
       // Update vo_members invitation status
-       
-      await supabase
-        .from("vo_members")
-        .update({
-          invitation_status: "sent",
-          invitation_sent_at: new Date().toISOString(),
-        } as Record<string, unknown>)
-        .eq("vo_id", projectId)
-        .eq("company_id", partner.id);
+      await db
+        .update(voMembers)
+        .set({
+          invitationStatus: "sent",
+          invitationSentAt: new Date(),
+        })
+        .where(
+          and(eq(voMembers.voId, projectId), eq(voMembers.companyId, partner.id)),
+        );
 
       // Get the invitation token for this member
-      const { data: memberRow } = await supabase
-        .from("vo_members")
-        .select("*")
-        .eq("vo_id", projectId)
-        .eq("company_id", partner.id)
-        .single();
+      const memberRows = await db
+        .select()
+        .from(voMembers)
+        .where(
+          and(eq(voMembers.voId, projectId), eq(voMembers.companyId, partner.id)),
+        )
+        .limit(1);
 
-      // Find admin users for this company (owner + approved admin members)
+      const memberRow = memberRows[0];
+
+      // Find admin emails for this company
       const adminEmails: string[] = [];
 
       // Company owner
-      if (partner.user_id) {
-        const { data: ownerProfile } = await supabase
-          .from("profiles")
-          .select("first_name, last_name")
-          .eq("id", partner.user_id)
-          .single();
-
-        if (partner.contact_email) {
-          adminEmails.push(partner.contact_email);
+      if (partner.userId) {
+        if (partner.contactEmail) {
+          adminEmails.push(partner.contactEmail);
         } else {
           // Fall back to auth user email
-          const { data: authUser } = await supabase.auth.admin.getUserById(
-            partner.user_id,
-          );
-          if (authUser?.user?.email) {
-            adminEmails.push(authUser.user.email);
+          const authUserRows = await db
+            .select({ email: userTable.email })
+            .from(userTable)
+            .where(eq(userTable.id, partner.userId))
+            .limit(1);
+          if (authUserRows[0]?.email) {
+            adminEmails.push(authUserRows[0].email);
           }
         }
-
-        // We use ownerProfile just for dedup logic below
-        void ownerProfile;
       }
 
       // Also check company_members with admin role
-      const { data: adminMembers } = await supabase
-        .from("company_members")
-        .select("user_id")
-        .eq("company_id", partner.id)
-        .eq("role", "admin")
-        .eq("status", "approved");
+      const adminMemberRows = await db
+        .select({ userId: companyMembers.userId })
+        .from(companyMembers)
+        .where(
+          and(
+            eq(companyMembers.companyId, partner.id),
+            eq(companyMembers.role, "admin"),
+            eq(companyMembers.status, "approved"),
+          ),
+        );
 
-      if (adminMembers) {
-        for (const am of adminMembers) {
-          const { data: authUser } = await supabase.auth.admin.getUserById(
-            am.user_id,
-          );
-          if (authUser?.user?.email && !adminEmails.includes(authUser.user.email)) {
-            adminEmails.push(authUser.user.email);
+      if (adminMemberRows.length > 0) {
+        const adminUserIds = adminMemberRows.map((am) => am.userId);
+        const authUsers = await db
+          .select({ email: userTable.email })
+          .from(userTable)
+          .where(inArray(userTable.id, adminUserIds));
+
+        for (const au of authUsers) {
+          if (au.email && !adminEmails.includes(au.email)) {
+            adminEmails.push(au.email);
           }
         }
       }
 
       if (adminEmails.length === 0) {
-        // System company or no registered users — skip email
-        unregisteredCompanies.push(partner.company_name || partner.id);
+        // System company or no registered users -- skip email
+        unregisteredCompanies.push(partner.companyName || partner.id);
         continue;
       }
 
       // Build invitation link
-      const invitationToken = (memberRow as Record<string, unknown>)
-        ?.invitation_token as string | undefined;
+      const invitationToken = memberRow?.invitationToken;
       const invitationLink = getPlatformUrl(
         `/projects/invitations?token=${invitationToken || ""}`,
       );
 
       const emailData: ProjectInvitationEmailData = {
-        recipientName: partner.company_name || "Team",
-        invitingCompanyName: leadCompany?.company_name || "Unknown",
+        recipientName: partner.companyName || "Team",
+        invitingCompanyName: leadCompany?.companyName || "Unknown",
         invitingCompanyContact:
-          leadCompany?.contact_email || user.email || "N/A",
+          leadCompany?.contactEmail || user.email || "N/A",
         projectName: project.name,
         projectDescription: project.description || undefined,
         tenderTitle: tender?.title,
@@ -174,8 +198,8 @@ export async function POST(request: NextRequest) {
               year: "numeric",
             })
           : undefined,
-        tenderValue: tender?.budget_max
-          ? `£${tender.budget_max.toLocaleString()}`
+        tenderValue: tender?.budgetMax
+          ? `\u00A3${tender.budgetMax.toLocaleString()}`
           : undefined,
         invitationLink,
       };
@@ -188,12 +212,12 @@ export async function POST(request: NextRequest) {
       });
 
       // Create partnership_messages record for audit
-      await supabase.from("partnership_messages").insert({
-        from_company_id: project.lead_company_id,
-        to_company_id: partner.id,
+      await db.insert(partnershipMessages).values({
+        fromCompanyId: project.leadCompanyId,
+        toCompanyId: partner.id,
         subject: `Invitation to collaborate on ${tenderTitle || project.name}`,
         message: `You have been invited to join the project "${project.name}"${tender?.title ? ` targeting the tender "${tender.title}"` : ""}.`,
-        tender_id: project.target_tender_id,
+        tenderId: project.targetTenderId,
       });
 
       invitationsSent++;

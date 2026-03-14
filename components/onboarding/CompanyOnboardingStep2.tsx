@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
 import {
   CheckCircle2,
   AlertCircle,
@@ -64,16 +62,12 @@ interface PrefillData {
 }
 
 interface CompanyOnboardingStep2Props {
-  supabase: SupabaseClient<Database>;
-  user: User;
   step1Data: Step1Data;
   prefillData: PrefillData | null;
   onBack: () => void;
 }
 
 export function CompanyOnboardingStep2({
-  supabase,
-  user,
   step1Data,
   prefillData,
   onBack,
@@ -202,7 +196,6 @@ export function CompanyOnboardingStep2({
 
     try {
       const companyData = {
-        user_id: user.id,
         company_name: step1Data.companyName,
         companies_house_number: step1Data.companiesHouseNumber || null,
         website_url: step1Data.websiteUrl || null,
@@ -237,17 +230,8 @@ export function CompanyOnboardingStep2({
         status: "active" as const,
       };
 
-      const { data: createdCompany, error } = await supabase
-        .from("companies")
-        .insert(
-          companyData as Database["public"]["Tables"]["companies"]["Insert"],
-        )
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
+      const { company: createdCompany } =
+        await api.createOnboardingCompanyProfile(companyData);
 
       // Run comprehensive AI analysis
       toast.success("Profile Created!", {

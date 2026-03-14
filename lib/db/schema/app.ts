@@ -24,6 +24,12 @@ export const appRoleEnum = pgEnum("app_role", [
   "user",
 ]);
 
+export const approvalStatusEnum = pgEnum("approval_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
 // ============================================================================
 // Profiles
 // ============================================================================
@@ -40,7 +46,7 @@ export const profiles = pgTable("profiles", {
   email: text("email"),
   phone: text("phone"),
   jobTitle: text("job_title"),
-  approvalStatus: text("approval_status").notNull().default("approved"),
+  approvalStatus: approvalStatusEnum("approval_status").notNull().default("pending"),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   approvedBy: uuid("approved_by").references(() => user.id, { onDelete: "set null" }),
   rejectionReason: text("rejection_reason"),

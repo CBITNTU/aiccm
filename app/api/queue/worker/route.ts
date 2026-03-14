@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- processing_queue result types */
 import { NextRequest, NextResponse } from "next/server";
 import {
   dequeueJob,
@@ -21,28 +20,30 @@ import {
 } from "@/lib/services/companyAIService";
 import { scoreTenderMatch } from "@/lib/services/tenderMatchingService";
 import { logEvent } from "@/lib/services/eventLogger";
-import { createAdminClient } from "@/lib/api";
+import { db } from "@/lib/db";
+import { batchJobs } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 async function processJob(job: {
   id: string;
-  job_type: JobType;
-  entity_id: string;
-  company_id?: string | null;
-  tender_id?: string | null;
+  jobType: JobType;
+  entityId: string;
+  companyId?: string | null;
+  tenderId?: string | null;
   metadata?: Record<string, unknown> | null;
 }) {
-  switch (job.job_type) {
+  switch (job.jobType) {
     case "tender_summary":
-      const summary = await generateTenderSummary(job.entity_id);
+      const summary = await generateTenderSummary(job.entityId);
       return { success: true, summary };
 
     case "tender_taxonomy":
-      const taxonomy = await generateTenderCapabilityTaxonomy(job.entity_id);
+      const taxonomy = await generateTenderCapabilityTaxonomy(job.entityId);
       return { success: true, taxonomy };
 
     case "tender_ai_complete":
       const { summary: tenderSummary, taxonomy: tenderTaxonomy } =
-        await generateTenderSummaryAndTaxonomy(job.entity_id);
+        await generateTenderSummaryAndTaxonomy(job.entityId);
       return {
         success: true,
         summary: tenderSummary,
@@ -52,7 +53,7 @@ async function processJob(job: {
     case "company_summary":
       // If taxonomy job exists for same company, prefer combined processing
       // For now, keep separate for backward compatibility
-      const companySummary = await generateCompanySummary(job.entity_id);
+      const companySummary = await generateCompanySummary(job.entityId);
       return { success: true, summary: companySummary };
 
     case "company_taxonomy":
@@ -60,7 +61,7 @@ async function processJob(job: {
       // For now, use separate for backward compatibility
       const fullRegeneration = job.metadata?.fullRegeneration === true;
       const companyTaxonomy = await generateCompanyCapabilityTaxonomy(
-        job.entity_id,
+        job.entityId,
         fullRegeneration,
       );
       return { success: true, taxonomy: companyTaxonomy };
@@ -68,19 +69,19 @@ async function processJob(job: {
     case "company_ai_complete":
       // Split into 2 requests: taxonomy first, then summary. Keeps each prompt smaller and more reliable.
       const fullRegen = job.metadata?.fullRegeneration === true;
-      const companyTaxonomyIds = await generateCompanyCapabilityTaxonomy(
-        job.entity_id,
-        fullRegen,
-      );
-      const companySummaryText = await generateCompanySummary(job.entity_id);
+      // TODO [MERGE]: HEAD used separate calls:
+      // const companyTaxonomyIds = await generateCompanyCapabilityTaxonomy(job.entityId, fullRegen);
+      // const companySummaryText = await generateCompanySummary(job.entityId);
+      const { summary: combinedSummary, taxonomy: combinedTaxonomy } =
+        await generateCompanySummaryAndTaxonomy(job.entityId, fullRegen);
       return {
         success: true,
-        summary: companySummaryText,
-        taxonomy: companyTaxonomyIds,
+        summary: combinedSummary,
+        taxonomy: combinedTaxonomy,
       };
 
     case "tender_matching": {
-      if (!job.company_id || !job.tender_id) {
+      if (!job.companyId || !job.tenderId) {
         throw new Error("Company ID and Tender ID required for matching");
       }
       const meta = (job.metadata ?? {}) as {
@@ -89,7 +90,7 @@ async function processJob(job: {
         batchLabel?: string;
         reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
       };
-      const score = await scoreTenderMatch(job.company_id, job.tender_id, {
+      const score = await scoreTenderMatch(job.companyId, job.tenderId, {
         demo: meta.demo,
         model: meta.model,
         batchLabel: meta.batchLabel,
@@ -99,7 +100,7 @@ async function processJob(job: {
     }
 
     default:
-      throw new Error(`Unknown job type: ${job.job_type}`);
+      throw new Error(`Unknown job type: ${job.jobType}`);
   }
 }
 
@@ -136,11 +137,11 @@ export async function POST(request: NextRequest) {
       // First, collect a batch of jobs
       const jobsToProcess: Array<{
         id: string;
-        job_type: string;
-        entity_id: string;
-        company_id: string | null;
-        tender_id: string | null;
-        batch_id: string | null;
+        jobType: string;
+        entityId: string;
+        companyId: string | null;
+        tenderId: string | null;
+        batchId: string | null;
         metadata: Record<string, unknown> | null;
       }> = [];
 
@@ -156,8 +157,8 @@ export async function POST(request: NextRequest) {
 
         // CRITICAL: Check if batch is already completed BEFORE adding to queue
         // This prevents dequeuing jobs from completed batches
-        if (job.batch_id) {
-          const batchStatus = await getBatchStatus(job.batch_id);
+        if (job.batchId) {
+          const batchStatus = await getBatchStatus(job.batchId);
           if (batchStatus) {
             // Check if batch is already complete
             if (
@@ -165,12 +166,12 @@ export async function POST(request: NextRequest) {
               batchStatus.status === "failed"
             ) {
               console.log(
-                `🛑 Skipping job ${job.id} - batch ${job.batch_id} is already ${batchStatus.status} (${batchStatus.completedJobs + batchStatus.failedJobs}/${batchStatus.totalJobs})`,
+                `Skipping job ${job.id} - batch ${job.batchId} is already ${batchStatus.status} (${batchStatus.completedJobs + batchStatus.failedJobs}/${batchStatus.totalJobs})`,
               );
               // Mark job as failed/cancelled and delete it
               await markJobFailed(
                 job.id,
-                `Batch ${job.batch_id} is already ${batchStatus.status}`,
+                `Batch ${job.batchId} is already ${batchStatus.status}`,
               );
               continue;
             }
@@ -180,23 +181,22 @@ export async function POST(request: NextRequest) {
               batchStatus.completedJobs + batchStatus.failedJobs;
             if (totalProcessed >= batchStatus.totalJobs) {
               console.log(
-                `🛑 Skipping job ${job.id} - batch ${job.batch_id} has reached its limit (${totalProcessed}/${batchStatus.totalJobs})`,
+                `Skipping job ${job.id} - batch ${job.batchId} has reached its limit (${totalProcessed}/${batchStatus.totalJobs})`,
               );
               // Mark batch as completed if not already
               if (batchStatus.status === "processing") {
-                const adminSupabase = createAdminClient();
-                await adminSupabase
-                  .from("batch_jobs" as any)
-                  .update({
+                await db
+                  .update(batchJobs)
+                  .set({
                     status: "completed",
-                    updated_at: new Date().toISOString(),
+                    updatedAt: new Date(),
                   })
-                  .eq("id", job.batch_id);
+                  .where(eq(batchJobs.id, job.batchId));
               }
               // Mark job as failed/cancelled
               await markJobFailed(
                 job.id,
-                `Batch ${job.batch_id} has reached its job limit`,
+                `Batch ${job.batchId} has reached its job limit`,
               );
               continue;
             }
@@ -205,12 +205,12 @@ export async function POST(request: NextRequest) {
 
         jobsToProcess.push({
           id: job.id,
-          job_type: job.job_type,
-          entity_id: job.entity_id,
-          company_id: job.company_id,
-          tender_id: job.tender_id,
-          batch_id: job.batch_id,
-          metadata: job.metadata || null,
+          jobType: job.jobType,
+          entityId: job.entityId,
+          companyId: job.companyId,
+          tenderId: job.tenderId,
+          batchId: job.batchId,
+          metadata: (job.metadata as Record<string, unknown> | null) || null,
         });
       }
 
@@ -228,28 +228,28 @@ export async function POST(request: NextRequest) {
         job: (typeof jobsToProcess)[0],
       ) => {
         try {
-          // Check if job has a batch_id and if that batch is already completed
+          // Check if job has a batchId and if that batch is already completed
           // This prevents processing jobs from old/completed batches
-          if (job.batch_id) {
-            const batchStatus = await getBatchStatus(job.batch_id);
+          if (job.batchId) {
+            const batchStatus = await getBatchStatus(job.batchId);
             if (
               batchStatus &&
               (batchStatus.status === "completed" ||
                 batchStatus.status === "failed")
             ) {
               console.log(
-                `⏭️ Skipping job ${job.id} - batch ${job.batch_id} is already ${batchStatus.status}`,
+                `Skipping job ${job.id} - batch ${job.batchId} is already ${batchStatus.status}`,
               );
               // Mark job as cancelled
               await markJobFailed(
                 job.id,
-                `Batch ${job.batch_id} is already ${batchStatus.status}`,
+                `Batch ${job.batchId} is already ${batchStatus.status}`,
               );
               return { jobId: job.id, success: false, skipped: true };
             }
           }
 
-          console.log(`🔄 Processing job ${job.id} (${job.job_type})`);
+          console.log(`Processing job ${job.id} (${job.jobType})`);
 
           // Note: Job is already marked as 'processing' by dequeueJob() atomic function
           // No need to call markJobProcessing() again
@@ -257,10 +257,10 @@ export async function POST(request: NextRequest) {
           // Process the job
           const result = await processJob({
             id: job.id,
-            job_type: job.job_type as JobType,
-            entity_id: job.entity_id,
-            company_id: job.company_id,
-            tender_id: job.tender_id,
+            jobType: job.jobType as JobType,
+            entityId: job.entityId,
+            companyId: job.companyId,
+            tenderId: job.tenderId,
             metadata: job.metadata || null,
           });
 
@@ -271,15 +271,15 @@ export async function POST(request: NextRequest) {
           // Log job completion (fire and forget)
           logEvent({
             actionType: "queue_job_completed",
-            entityType: job.job_type.includes("tender")
+            entityType: job.jobType.includes("tender")
               ? "tender"
-              : job.job_type.includes("company")
+              : job.jobType.includes("company")
                 ? "company"
                 : undefined,
-            entityId: job.entity_id,
+            entityId: job.entityId,
             details: {
               jobId: job.id,
-              jobType: job.job_type,
+              jobType: job.jobType,
             },
           }).catch(() => {}); // Don't fail if logging fails
 
@@ -287,12 +287,12 @@ export async function POST(request: NextRequest) {
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
-          console.error(`❌ Error processing job ${job.id}:`, errorMessage);
+          console.error(`Error processing job ${job.id}:`, errorMessage);
           try {
             await markJobFailed(job.id, errorMessage);
           } catch (markError) {
             console.error(
-              `❌ Failed to mark job ${job.id} as failed:`,
+              `Failed to mark job ${job.id} as failed:`,
               markError,
             );
           }

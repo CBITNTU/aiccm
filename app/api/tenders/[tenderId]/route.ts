@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { tenders, tenderTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
@@ -9,33 +12,29 @@ export async function GET(
   try {
     await requireAuth(request);
     const { tenderId } = await params;
-    const supabase = createAdminClient();
 
-    const { data, error } = await supabase
-      .from("tenders")
-      .select("*")
-      .eq("id", tenderId)
-      .maybeSingle();
+    const tenderResult = await db
+      .select()
+      .from(tenders)
+      .where(eq(tenders.id, tenderId))
+      .limit(1);
 
-    if (error) throw error;
-    if (!data) {
+    const tender = tenderResult[0] ?? null;
+    if (!tender) {
       return apiResponse({ error: "Tender not found" }, 404);
     }
 
-    // Fetch taxonomies
-    const { data: taxData } = await supabase
-      .from("tender_taxonomies")
-      .select("taxonomy_id, taxonomies(id, name)")
-      .eq("tender_id", tenderId);
-
-    const taxonomies = (taxData || [])
-      .map((ct) => {
-        const t = ct.taxonomies as { id: string; name: string } | null;
-        return t ? { id: t.id, name: t.name } : null;
+    // Fetch taxonomies via join
+    const taxData = await db
+      .select({
+        id: taxonomies.id,
+        name: taxonomies.name,
       })
-      .filter(Boolean);
+      .from(tenderTaxonomies)
+      .innerJoin(taxonomies, eq(tenderTaxonomies.taxonomyId, taxonomies.id))
+      .where(eq(tenderTaxonomies.tenderId, tenderId));
 
-    return apiResponse({ tender: data, taxonomies });
+    return apiResponse({ tender, taxonomies: taxData });
   } catch (error) {
     return handleApiError(error);
   }

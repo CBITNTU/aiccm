@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server";
-import { apiResponse, apiError, createAdminClient } from "@/lib/api";
+import { apiResponse, apiError } from "@/lib/api";
+import { db } from "@/lib/db";
+import { tenders } from "@/lib/db/schema/app";
+import { inArray, lt, and } from "drizzle-orm";
 
 /**
  * Cron endpoint to auto-close tenders whose deadline has passed.
  * Runs daily at midnight UTC (configured in vercel.json).
  */
-
 export async function GET(request: NextRequest) {
   // Verify cron secret in production to prevent unauthorized calls
   if (process.env.NODE_ENV === "production") {
@@ -17,18 +19,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createAdminClient();
+    const data = await db
+      .update(tenders)
+      .set({ status: "closed" })
+      .where(
+        and(
+          inArray(tenders.status, ["open", "closing_soon", "framework"]),
+          lt(tenders.deadline, new Date()),
+        ),
+      )
+      .returning({ id: tenders.id });
 
-    const { data, error } = await supabase
-      .from("tenders")
-      .update({ status: "closed" })
-      .in("status", ["open", "closing_soon", "framework"])
-      .lt("deadline", new Date().toISOString())
-      .select("id");
-
-    if (error) throw error;
-
-    const closedCount = data?.length ?? 0;
+    const closedCount = data.length;
     console.log(`[close-expired-tenders] Closed ${closedCount} expired tenders`);
 
     return apiResponse({ closed: closedCount });

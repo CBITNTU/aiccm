@@ -3,7 +3,6 @@ import {
   apiResponse,
   apiError,
   getAuthenticatedUser,
-  createAdminClient,
 } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import {
@@ -13,8 +12,10 @@ import {
   type TenderInput,
   type TeamMemberInput,
 } from "@/lib/schemas/teamAnalysis";
-import type { Database } from "@/lib/supabase/types";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { virtualOrganizations } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 // Build the prompt for team analysis
 function buildTeamAnalysisPrompt(
@@ -43,7 +44,7 @@ ${idx + 1}. ${c?.company_name} ${idx === 0 ? "(Lead)" : "(Partner)"}
 Tender: ${tender.title}
 Description: ${tender.description || "Not provided"}
 Buyer: ${tender.buyer_name || "Not specified"}
-Value: £${tender.value?.toLocaleString() || "Not specified"}
+Value: \u00A3${tender.value?.toLocaleString() || "Not specified"}
 Location: ${tender.region || "UK"}
 
 Team Members:
@@ -96,17 +97,16 @@ export async function POST(request: NextRequest) {
       analyzedAt: new Date().toISOString(),
     };
 
-    // Save to database using admin client to bypass RLS
-    const supabase = createAdminClient();
-    const { error: dbError } = await supabase
-      .from("virtual_organizations")
-      .update({
-        team_analysis:
-          teamAnalysisData as unknown as Database["public"]["Tables"]["virtual_organizations"]["Update"]["team_analysis"],
-      })
-      .eq("id", projectId);
-
-    if (dbError) {
+    // Save to database
+    try {
+      await db
+        .update(virtualOrganizations)
+        .set({
+          teamAnalysis: teamAnalysisData,
+          updatedAt: new Date(),
+        })
+        .where(eq(virtualOrganizations.id, projectId));
+    } catch (dbError) {
       console.error("Database error saving team analysis:", dbError);
       return apiError("Failed to save team analysis", 500);
     }

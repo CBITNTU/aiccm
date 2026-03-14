@@ -1,20 +1,19 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { userRoles } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
-    const supabase = createAdminClient();
 
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
+    const roles = await db
+      .select({ role: userRoles.role })
+      .from(userRoles)
+      .where(eq(userRoles.userId, user.id));
 
-    if (error) throw error;
-
-    const roles = data || [];
     const superadminRole = roles.find((r) => r.role === "superadmin");
     const smeOwnerRole = roles.find((r) => r.role === "sme-owner");
 

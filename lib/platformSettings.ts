@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- platform_settings not in generated types */
-import { createAdminClient } from "@/lib/api";
+import { getPlatformSettingsByKeys, upsertPlatformSetting } from "@/lib/db/queries";
 
 export type DefaultReasoningEffort =
   | "default"
@@ -33,17 +32,12 @@ export async function getPlatformAISettings(): Promise<PlatformAISettings> {
   if (cached && now - cacheTime < CACHE_MS) {
     return cached;
   }
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("platform_settings" as any)
-    .select("key, value")
-    .in("key", [KEYS.default_ai_model, KEYS.default_reasoning_effort]);
 
-  if (error) {
-    throw new Error(`Failed to load platform settings: ${error.message}`);
-  }
+  const rows = await getPlatformSettingsByKeys([
+    KEYS.default_ai_model,
+    KEYS.default_reasoning_effort,
+  ]);
 
-  const rows = (data ?? []) as unknown as { key: string; value: string }[];
   const map = new Map(rows.map((r) => [r.key, r.value]));
   cached = {
     default_ai_model: map.get(KEYS.default_ai_model) ?? "gpt-5-nano",
@@ -61,19 +55,12 @@ export async function getPlatformAISettings(): Promise<PlatformAISettings> {
 export async function setPlatformAISettings(
   updates: Partial<PlatformAISettings>,
 ): Promise<void> {
-  const supabase = createAdminClient();
   const entries = Object.entries(updates).filter(
     (e): e is [keyof PlatformAISettings, string] =>
       e[0] in KEYS && typeof e[1] === "string",
   );
   for (const [key, value] of entries) {
-    const { error } = await supabase
-      .from("platform_settings" as any)
-      .update({ value, updated_at: new Date().toISOString() })
-      .eq("key", key);
-    if (error) {
-      throw new Error(`Failed to update platform settings: ${error.message}`);
-    }
+    await upsertPlatformSetting(key, value);
   }
   cached = null;
 }

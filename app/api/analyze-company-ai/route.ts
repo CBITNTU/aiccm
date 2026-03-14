@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { companyAnalysisSchema } from "@/lib/schemas/companyAnalysis";
 import { logApiEvent } from "@/lib/services/eventLogger";
@@ -10,6 +10,9 @@ import {
   handleApiError,
   isCompanyMember,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { taxonomies, companyTaxonomies } from "@/lib/db/schema/app";
+import { eq, asc } from "drizzle-orm";
 
 const analyzeCompanyAIInputSchema = z.object({
   companyData: z.object({
@@ -49,8 +52,6 @@ export async function POST(request: NextRequest) {
       analyzeCompanyAIInputSchema,
     );
 
-    const supabase = createAdminClient();
-
     // If companyId provided, verify user is owner or approved team member
     if (companyId) {
       const hasAccess = await isCompanyMember(user.id, companyId);
@@ -60,13 +61,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch available taxonomies
-    const { data: taxonomies } = await supabase
-      .from("taxonomies")
-      .select("id, name, level")
-      .order("level");
+    const taxonomyRows = await db
+      .select({ id: taxonomies.id, name: taxonomies.name, level: taxonomies.level })
+      .from(taxonomies)
+      .orderBy(asc(taxonomies.level));
 
     const taxonomyList =
-      taxonomies?.map((t) => `${t.name} (Level ${t.level})`).join(", ") || "";
+      taxonomyRows.map((t) => `${t.name} (Level ${t.level})`).join(", ") || "";
 
     const prompt = buildCompanyAnalysisPrompt(companyData, taxonomyList);
 
@@ -84,9 +85,9 @@ export async function POST(request: NextRequest) {
       companyId &&
       parsedResult.suggestedTaxonomies &&
       parsedResult.suggestedTaxonomies.length > 0 &&
-      taxonomies
+      taxonomyRows.length > 0
     ) {
-      const taxonomyIds = taxonomies
+      const taxonomyIds = taxonomyRows
         .filter((t) =>
           parsedResult.suggestedTaxonomies?.some(
             (suggested) =>
@@ -97,17 +98,16 @@ export async function POST(request: NextRequest) {
         .map((t) => t.id);
 
       if (taxonomyIds.length > 0) {
-        await supabase
-          .from("company_taxonomies")
-          .delete()
-          .eq("company_id", companyId);
+        await db
+          .delete(companyTaxonomies)
+          .where(eq(companyTaxonomies.companyId, companyId));
 
         const taxonomyInserts = taxonomyIds.map((taxId) => ({
-          company_id: companyId,
-          taxonomy_id: taxId,
+          companyId: companyId,
+          taxonomyId: taxId,
         }));
 
-        await supabase.from("company_taxonomies").insert(taxonomyInserts);
+        await db.insert(companyTaxonomies).values(taxonomyInserts);
       }
     }
 

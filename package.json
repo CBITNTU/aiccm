@@ -25,6 +25,7 @@
     "supabase:db-reset": "supabase db reset",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:reset-local:drizzle": "node scripts/reset-local-db-for-drizzle.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "docker:up": "docker compose up -d",

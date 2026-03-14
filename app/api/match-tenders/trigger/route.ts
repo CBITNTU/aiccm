@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, createAdminClient } from "@/lib/api";
+import { getAuthenticatedUser } from "@/lib/api";
 import { batchScoreTendersForCompany } from "@/lib/services/tenderMatchingService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { getUserCompanyIds } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { tenders } from "@/lib/db/schema/app";
+import { and, inArray, gte } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,21 +39,17 @@ export async function POST(request: NextRequest) {
     } else {
       // Fetch open tenders with deadline >= today (same filter as main endpoint)
       const today = new Date().toISOString().split("T")[0];
-      const supabase = createAdminClient();
-      const { data: openTenders, error: tendersError } = await supabase
-        .from("tenders")
-        .select("id")
-        .in("status", ["open", "closing_soon", "framework"])
-        .gte("deadline", today);
-
-      if (tendersError) {
-        return NextResponse.json(
-          { success: false, error: `Failed to fetch tenders: ${tendersError.message}` },
-          { status: 500 },
+      const openTenders = await db
+        .select({ id: tenders.id })
+        .from(tenders)
+        .where(
+          and(
+            inArray(tenders.status, ["open", "closing_soon", "framework"]),
+            gte(tenders.deadline, new Date(today)),
+          ),
         );
-      }
 
-      filteredTenderIds = (openTenders || []).map((t: { id: string }) => t.id);
+      filteredTenderIds = openTenders.map((t) => t.id);
     }
 
     // Queue matching jobs

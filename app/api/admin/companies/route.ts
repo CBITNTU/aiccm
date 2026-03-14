@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient, checkSuperadminRole } from "@/lib/api";
+import { apiResponse, checkSuperadminRole } from "@/lib/api";
 import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies } from "@/lib/db/schema/app";
+import { eq, and, asc } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,16 +11,12 @@ export async function GET(request: NextRequest) {
     const isAdmin = await checkSuperadminRole(user.id);
     if (!isAdmin) throw new AuthError("Admin access required");
 
-    const supabase = createAdminClient();
+    const data = await db
+      .select()
+      .from(companies)
+      .orderBy(asc(companies.companyName));
 
-    const { data, error } = await supabase
-      .from("companies")
-      .select("*")
-      .order("company_name", { ascending: true });
-
-    if (error) throw error;
-
-    return apiResponse({ companies: data || [] });
+    return apiResponse({ companies: data });
   } catch (error) {
     return handleApiError(error);
   }
@@ -29,32 +28,70 @@ export async function POST(request: NextRequest) {
     const isAdmin = await checkSuperadminRole(user.id);
     if (!isAdmin) throw new AuthError("Admin access required");
 
-    const supabase = createAdminClient();
     const body = await request.json();
 
     // Check for existing company with same name
-    if (body.company_name) {
-      const { data: existing } = await supabase
-        .from("companies")
-        .select("id")
-        .eq("company_name", body.company_name)
-        .eq("is_system_company", true)
-        .maybeSingle();
+    if (body.company_name || body.companyName) {
+      const name = body.company_name || body.companyName;
+      const existingRows = await db
+        .select({ id: companies.id })
+        .from(companies)
+        .where(
+          and(
+            eq(companies.companyName, name),
+            eq(companies.isSystemCompany, true),
+          ),
+        )
+        .limit(1);
 
-      if (existing) {
-        return apiResponse({ company: existing, alreadyExists: true });
+      if (existingRows[0]) {
+        return apiResponse({ company: existingRows[0], alreadyExists: true });
       }
     }
 
-    const { data, error } = await supabase
-      .from("companies")
-      .insert(body)
-      .select()
-      .single();
+    // Map snake_case body keys to camelCase for Drizzle
+    const insertData: Record<string, unknown> = {};
+    const fieldMap: Record<string, string> = {
+      company_name: "companyName",
+      companies_house_number: "companiesHouseNumber",
+      website_url: "websiteUrl",
+      contact_email: "contactEmail",
+      contact_phone: "contactPhone",
+      contact_person: "contactPerson",
+      key_capabilities: "keyCapabilities",
+      past_projects: "pastProjects",
+      is_system_company: "isSystemCompany",
+      user_id: "userId",
+      ai_summary: "aiSummary",
+      ai_capability_taxonomy: "aiCapabilityTaxonomy",
+      ai_capabilities: "aiCapabilities",
+      ai_competencies: "aiCompetencies",
+      ai_strengths: "aiStrengths",
+      ai_certifications: "aiCertifications",
+      ai_recommendations: "aiRecommendations",
+      ai_analysis: "aiAnalysis",
+      safety_rating: "safetyRating",
+      digital_maturity: "digitalMaturity",
+      market_position: "marketPosition",
+      system_extracted: "systemExtracted",
+      human_verified: "humanVerified",
+      financial_data: "financialData",
+      compliance_data: "complianceData",
+      consent_data_fetch: "consentDataFetch",
+      operation_locations: "operationLocations",
+    };
 
-    if (error) throw error;
+    for (const [key, value] of Object.entries(body)) {
+      const camelKey = fieldMap[key] || key;
+      insertData[camelKey] = value;
+    }
 
-    return apiResponse({ company: data });
+    const result = await db
+      .insert(companies)
+      .values(insertData as typeof companies.$inferInsert)
+      .returning();
+
+    return apiResponse({ company: result[0] });
   } catch (error) {
     return handleApiError(error);
   }

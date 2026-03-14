@@ -9,11 +9,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Mail, Award, Tag } from "lucide-react";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
   Company,
   | "id"

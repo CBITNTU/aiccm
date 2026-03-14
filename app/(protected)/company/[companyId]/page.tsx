@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import {
   Card,
   CardContent,
@@ -61,8 +61,6 @@ import {
   useUpdateCompany,
   useAnalyzeCompany,
 } from "@/hooks/useCompanyMutations";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface Certification {
   name: string;
@@ -139,7 +137,7 @@ export default function CompanyDetailPage() {
     const fetchCompanyData = async () => {
       try {
         const data = await api.getCompany(companyId);
-        setCompanyData(data.company as unknown as Company);
+        setCompanyData(data.company);
         setIsOwner(data.isOwner);
         setCompanyCapabilities(data.capabilities);
 
@@ -172,7 +170,7 @@ export default function CompanyDetailPage() {
           key_capabilities: editedCapabilities,
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Overview updated successfully");
       setIsEditingOverview(false);
     } catch (error) {
@@ -195,7 +193,7 @@ export default function CompanyDetailPage() {
           contact_phone: editedPhone.trim(),
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Company information updated successfully");
       setIsEditingBasicInfo(false);
     } catch (error) {
@@ -214,7 +212,7 @@ export default function CompanyDetailPage() {
           operation_locations: editedOperationLocations,
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Operation locations updated");
       setIsEditingOperationLocations(false);
     } catch (error) {
@@ -233,7 +231,7 @@ export default function CompanyDetailPage() {
           certifications: JSON.stringify(editedCertifications),
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Certifications updated successfully");
       setIsEditingCertifications(false);
     } catch (error) {
@@ -252,7 +250,7 @@ export default function CompanyDetailPage() {
           past_projects: JSON.stringify(editedProjects),
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Projects updated successfully");
       setIsEditingProjects(false);
     } catch (error) {
@@ -272,7 +270,7 @@ export default function CompanyDetailPage() {
 
         // Refresh company data and capabilities via API
         const refreshed = await api.getCompany(companyData.id);
-        setCompanyData(refreshed.company as unknown as Company);
+        setCompanyData(refreshed.company);
         setCompanyCapabilities(refreshed.capabilities);
 
         toast.success(

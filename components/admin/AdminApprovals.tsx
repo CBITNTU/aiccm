@@ -47,22 +47,22 @@ import { toast } from "sonner";
 
 interface CompanyDetails {
   id: string;
-  company_name: string;
-  companies_house_number: string | null;
-  website_url: string | null;
-  contact_person: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
+  companyName: string;
+  companiesHouseNumber: string | null;
+  websiteUrl: string | null;
+  contactPerson: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
 }
 
 interface PendingUser {
-  user_id: string;
+  userId: string;
   email: string;
-  first_name: string | null;
-  last_name: string | null;
-  job_title: string | null;
-  approval_status: string;
-  created_at: string;
+  firstName: string | null;
+  lastName: string | null;
+  jobTitle: string | null;
+  approvalStatus: string;
+  createdAt: string;
   role: string;
   companyName: string | null;
   signupType: string;
@@ -71,19 +71,116 @@ interface PendingUser {
 
 interface JoinRequest {
   id: string;
-  user_id: string;
-  company_id: string;
-  company_name_requested: string;
+  userId: string;
+  companyId: string;
+  companyNameRequested: string;
   message: string | null;
   status: string;
-  admin_approved_at: string | null;
-  created_at: string;
+  adminApprovedAt: string | null;
+  createdAt: string;
   user: {
     email: string;
     firstName: string | null;
     lastName: string | null;
     jobTitle: string | null;
   } | null;
+}
+
+function toPendingUser(input: unknown): PendingUser | null {
+  if (!input || typeof input !== "object") return null;
+  const row = input as Record<string, unknown>;
+  if (typeof row.userId !== "string" || typeof row.email !== "string") {
+    return null;
+  }
+
+  return {
+    userId: row.userId,
+    email: row.email,
+    firstName: (row.firstName as string | null | undefined) ?? null,
+    lastName: (row.lastName as string | null | undefined) ?? null,
+    jobTitle: (row.jobTitle as string | null | undefined) ?? null,
+    approvalStatus: (row.approvalStatus as string | undefined) ?? "pending",
+    createdAt: (row.createdAt as string | undefined) ?? "",
+    role: (row.role as string | undefined) ?? "individual",
+    companyName: (row.companyName as string | null | undefined) ?? null,
+    signupType: (row.signupType as string | undefined) ?? "individual",
+    company:
+      row.company && typeof row.company === "object"
+        ? {
+            id: String((row.company as Record<string, unknown>).id ?? ""),
+            companyName: String(
+              (row.company as Record<string, unknown>).companyName ?? "",
+            ),
+            companiesHouseNumber:
+              ((row.company as Record<string, unknown>)
+                .companiesHouseNumber as string | null | undefined) ?? null,
+            websiteUrl:
+              ((row.company as Record<string, unknown>).websiteUrl as
+                | string
+                | null
+                | undefined) ?? null,
+            contactPerson:
+              ((row.company as Record<string, unknown>).contactPerson as
+                | string
+                | null
+                | undefined) ?? null,
+            contactEmail:
+              ((row.company as Record<string, unknown>).contactEmail as
+                | string
+                | null
+                | undefined) ?? null,
+            contactPhone:
+              ((row.company as Record<string, unknown>).contactPhone as
+                | string
+                | null
+                | undefined) ?? null,
+          }
+        : null,
+  };
+}
+
+function toJoinRequest(input: unknown): JoinRequest | null {
+  if (!input || typeof input !== "object") return null;
+  const row = input as Record<string, unknown>;
+  if (
+    typeof row.id !== "string" ||
+    typeof row.userId !== "string" ||
+    typeof row.companyId !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    userId: row.userId,
+    companyId: row.companyId,
+    companyNameRequested: String(row.companyNameRequested ?? ""),
+    message: (row.message as string | null | undefined) ?? null,
+    status: String(row.status ?? "pending"),
+    adminApprovedAt: (row.adminApprovedAt as string | null | undefined) ?? null,
+    createdAt: String(row.createdAt ?? ""),
+    user:
+      row.user && typeof row.user === "object"
+        ? {
+            email: String((row.user as Record<string, unknown>).email ?? ""),
+            firstName:
+              ((row.user as Record<string, unknown>).firstName as
+                | string
+                | null
+                | undefined) ?? null,
+            lastName:
+              ((row.user as Record<string, unknown>).lastName as
+                | string
+                | null
+                | undefined) ?? null,
+            jobTitle:
+              ((row.user as Record<string, unknown>).jobTitle as
+                | string
+                | null
+                | undefined) ?? null,
+          }
+        : null,
+  };
 }
 
 export default function AdminApprovals() {
@@ -125,12 +222,29 @@ export default function AdminApprovals() {
 
       if (usersRes.ok) {
         const usersData = await usersRes.json();
-        setPendingUsers(usersData.users || []);
+        const users = Array.isArray(usersData.users) ? usersData.users : [];
+        setPendingUsers(
+          users
+            .map(toPendingUser)
+            .filter(
+              (user: PendingUser | null): user is PendingUser => Boolean(user),
+            ),
+        );
       }
 
       if (requestsRes.ok) {
         const requestsData = await requestsRes.json();
-        setJoinRequests(requestsData.requests || []);
+        const requests = Array.isArray(requestsData.requests)
+          ? requestsData.requests
+          : [];
+        setJoinRequests(
+          requests
+            .map(toJoinRequest)
+            .filter(
+              (request: JoinRequest | null): request is JoinRequest =>
+                Boolean(request),
+            ),
+        );
       }
     } catch (error) {
       console.error("Error fetching approval data:", error);
@@ -152,8 +266,8 @@ export default function AdminApprovals() {
     } else {
       // Directly approve for individual or join-company users
       const userName =
-        `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown";
-      handleApproveUser(user.user_id, userName);
+        `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unknown";
+      handleApproveUser(user.userId, userName);
     }
   };
 
@@ -302,12 +416,12 @@ export default function AdminApprovals() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           companyId: editFormData.id,
-          companyName: editFormData.company_name,
-          companiesHouseNumber: editFormData.companies_house_number,
-          websiteUrl: editFormData.website_url,
-          contactPerson: editFormData.contact_person,
-          contactEmail: editFormData.contact_email,
-          contactPhone: editFormData.contact_phone,
+          companyName: editFormData.companyName,
+          companiesHouseNumber: editFormData.companiesHouseNumber,
+          websiteUrl: editFormData.websiteUrl,
+          contactPerson: editFormData.contactPerson,
+          contactEmail: editFormData.contactEmail,
+          contactPhone: editFormData.contactPhone,
         }),
       });
 
@@ -445,17 +559,17 @@ export default function AdminApprovals() {
                 <div className="space-y-4">
                   {pendingUsers.map((user) => {
                     const userName =
-                      `${user.first_name || ""} ${
-                        user.last_name || ""
+                      `${user.firstName || ""} ${
+                        user.lastName || ""
                       }`.trim() || "Unknown";
-                    const isExpanded = expandedUserId === user.user_id;
+                    const isExpanded = expandedUserId === user.userId;
                     const isEditing = editingCompanyId === user.company?.id;
                     const hasCompanyDetails =
                       user.signupType === "new-company" && user.company;
 
                     return (
                       <div
-                        key={user.user_id}
+                        key={user.userId}
                         className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-start justify-between">
@@ -469,10 +583,10 @@ export default function AdminApprovals() {
                                 <Mail className="w-3 h-3" />
                                 {user.email}
                               </div>
-                              {user.job_title && (
+                              {user.jobTitle && (
                                 <div className="flex items-center gap-1">
                                   <Briefcase className="w-3 h-3" />
-                                  {user.job_title}
+                                  {user.jobTitle}
                                 </div>
                               )}
                               {user.companyName && (
@@ -483,7 +597,7 @@ export default function AdminApprovals() {
                               )}
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {formatDate(user.created_at)}
+                                {formatDate(user.createdAt)}
                               </div>
                             </div>
 
@@ -495,7 +609,7 @@ export default function AdminApprovals() {
                                 className="mt-2 text-primary"
                                 onClick={() =>
                                   setExpandedUserId(
-                                    isExpanded ? null : user.user_id,
+                                    isExpanded ? null : user.userId,
                                   )
                                 }
                               >
@@ -521,11 +635,11 @@ export default function AdminApprovals() {
                                 setRejectDialog({
                                   open: true,
                                   type: "user",
-                                  id: user.user_id,
+                                  id: user.userId,
                                   name: userName,
                                 })
                               }
-                              disabled={actionLoading === user.user_id}
+                              disabled={actionLoading === user.userId}
                             >
                               <XCircle className="w-4 h-4 mr-1" />
                               Reject
@@ -533,9 +647,9 @@ export default function AdminApprovals() {
                             <Button
                               size="sm"
                               onClick={() => handleApproveClick(user)}
-                              disabled={actionLoading === user.user_id}
+                              disabled={actionLoading === user.userId}
                             >
-                              {actionLoading === user.user_id ? (
+                              {actionLoading === user.userId ? (
                                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                               ) : (
                                 <CheckCircle className="w-4 h-4 mr-1" />
@@ -621,11 +735,11 @@ export default function AdminApprovals() {
                                     Company Name
                                   </Label>
                                   <Input
-                                    value={editFormData.company_name}
+                                    value={editFormData.companyName}
                                     onChange={(e) =>
                                       setEditFormData({
                                         ...editFormData,
-                                        company_name: e.target.value,
+                                        companyName: e.target.value,
                                       })
                                     }
                                     placeholder="Company name"
@@ -637,12 +751,12 @@ export default function AdminApprovals() {
                                   </Label>
                                   <Input
                                     value={
-                                      editFormData.companies_house_number || ""
+                                      editFormData.companiesHouseNumber || ""
                                     }
                                     onChange={(e) =>
                                       setEditFormData({
                                         ...editFormData,
-                                        companies_house_number:
+                                        companiesHouseNumber:
                                           e.target.value || null,
                                       })
                                     }
@@ -655,11 +769,11 @@ export default function AdminApprovals() {
                                     Website URL
                                   </Label>
                                   <Input
-                                    value={editFormData.website_url || ""}
+                                    value={editFormData.websiteUrl || ""}
                                     onChange={(e) =>
                                       setEditFormData({
                                         ...editFormData,
-                                        website_url: e.target.value || null,
+                                        websiteUrl: e.target.value || null,
                                       })
                                     }
                                     placeholder="https://..."
@@ -670,11 +784,11 @@ export default function AdminApprovals() {
                                     Contact Person
                                   </Label>
                                   <Input
-                                    value={editFormData.contact_person || ""}
+                                    value={editFormData.contactPerson || ""}
                                     onChange={(e) =>
                                       setEditFormData({
                                         ...editFormData,
-                                        contact_person: e.target.value || null,
+                                        contactPerson: e.target.value || null,
                                       })
                                     }
                                     placeholder="Contact name"
@@ -685,11 +799,11 @@ export default function AdminApprovals() {
                                     Contact Email
                                   </Label>
                                   <Input
-                                    value={editFormData.contact_email || ""}
+                                    value={editFormData.contactEmail || ""}
                                     onChange={(e) =>
                                       setEditFormData({
                                         ...editFormData,
-                                        contact_email: e.target.value || null,
+                                        contactEmail: e.target.value || null,
                                       })
                                     }
                                     placeholder="contact@company.com"
@@ -701,11 +815,11 @@ export default function AdminApprovals() {
                                     Contact Phone
                                   </Label>
                                   <Input
-                                    value={editFormData.contact_phone || ""}
+                                    value={editFormData.contactPhone || ""}
                                     onChange={(e) =>
                                       setEditFormData({
                                         ...editFormData,
-                                        contact_phone: e.target.value || null,
+                                        contactPhone: e.target.value || null,
                                       })
                                     }
                                     placeholder="+44..."
@@ -722,7 +836,7 @@ export default function AdminApprovals() {
                                     <span className="text-muted-foreground text-xs block">
                                       Company Name
                                     </span>
-                                    <span>{user.company.company_name}</span>
+                                    <span>{user.company.companyName}</span>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -732,7 +846,7 @@ export default function AdminApprovals() {
                                       Companies House No.
                                     </span>
                                     <span>
-                                      {user.company.companies_house_number ||
+                                      {user.company.companiesHouseNumber ||
                                         "Not provided"}
                                     </span>
                                   </div>
@@ -743,14 +857,14 @@ export default function AdminApprovals() {
                                     <span className="text-muted-foreground text-xs block">
                                       Website
                                     </span>
-                                    {user.company.website_url ? (
+                                    {user.company.websiteUrl ? (
                                       <a
-                                        href={user.company.website_url}
+                                        href={user.company.websiteUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-primary hover:underline"
                                       >
-                                        {user.company.website_url}
+                                        {user.company.websiteUrl}
                                       </a>
                                     ) : (
                                       <span>Not provided</span>
@@ -764,7 +878,7 @@ export default function AdminApprovals() {
                                       Contact Person
                                     </span>
                                     <span>
-                                      {user.company.contact_person ||
+                                      {user.company.contactPerson ||
                                         "Not provided"}
                                     </span>
                                   </div>
@@ -776,7 +890,7 @@ export default function AdminApprovals() {
                                       Contact Email
                                     </span>
                                     <span>
-                                      {user.company.contact_email ||
+                                      {user.company.contactEmail ||
                                         "Not provided"}
                                     </span>
                                   </div>
@@ -788,7 +902,7 @@ export default function AdminApprovals() {
                                       Contact Phone
                                     </span>
                                     <span>
-                                      {user.company.contact_phone ||
+                                      {user.company.contactPhone ||
                                         "Not provided"}
                                     </span>
                                   </div>
@@ -836,7 +950,7 @@ export default function AdminApprovals() {
                               <h4 className="font-semibold">{userName}</h4>
                               <ArrowRight className="w-4 h-4 text-muted-foreground" />
                               <span className="font-medium text-primary">
-                                {request.company_name_requested}
+                                {request.companyNameRequested}
                               </span>
                               {isReadyForApproval && (
                                 <Badge className="bg-green-100 text-green-800">
@@ -859,7 +973,7 @@ export default function AdminApprovals() {
                               )}
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {formatDate(request.created_at)}
+                                {formatDate(request.createdAt)}
                               </div>
                             </div>
                             {request.message && (
@@ -1019,8 +1133,8 @@ export default function AdminApprovals() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Name:</span>
                     <span className="font-medium">
-                      {`${approvalDialog.user.first_name || ""} ${
-                        approvalDialog.user.last_name || ""
+                      {`${approvalDialog.user.firstName || ""} ${
+                        approvalDialog.user.lastName || ""
                       }`.trim() || "Not provided"}
                     </span>
                   </div>
@@ -1028,10 +1142,10 @@ export default function AdminApprovals() {
                     <span className="text-muted-foreground">Email:</span>
                     <span>{approvalDialog.user.email}</span>
                   </div>
-                  {approvalDialog.user.job_title && (
+                  {approvalDialog.user.jobTitle && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Job Title:</span>
-                      <span>{approvalDialog.user.job_title}</span>
+                      <span>{approvalDialog.user.jobTitle}</span>
                     </div>
                   )}
                 </div>
@@ -1050,41 +1164,41 @@ export default function AdminApprovals() {
                         Company Name:
                       </span>
                       <span className="font-medium text-gray-900 dark:text-gray-100">
-                        {approvalDialog.user.company.company_name}
+                        {approvalDialog.user.company.companyName}
                       </span>
                     </div>
-                    {approvalDialog.user.company.companies_house_number && (
+                    {approvalDialog.user.company.companiesHouseNumber && (
                       <div className="flex justify-between">
                         <span className="text-green-700 dark:text-green-300">
                           Companies House:
                         </span>
                         <span className="text-gray-900 dark:text-gray-100">
-                          {approvalDialog.user.company.companies_house_number}
+                          {approvalDialog.user.company.companiesHouseNumber}
                         </span>
                       </div>
                     )}
-                    {approvalDialog.user.company.website_url && (
+                    {approvalDialog.user.company.websiteUrl && (
                       <div className="flex justify-between">
                         <span className="text-green-700 dark:text-green-300">
                           Website:
                         </span>
                         <a
-                          href={approvalDialog.user.company.website_url}
+                          href={approvalDialog.user.company.websiteUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline truncate max-w-[200px]"
                         >
-                          {approvalDialog.user.company.website_url}
+                          {approvalDialog.user.company.websiteUrl}
                         </a>
                       </div>
                     )}
-                    {approvalDialog.user.company.contact_email && (
+                    {approvalDialog.user.company.contactEmail && (
                       <div className="flex justify-between">
                         <span className="text-green-700 dark:text-green-300">
                           Contact:
                         </span>
                         <span className="text-gray-900 dark:text-gray-100">
-                          {approvalDialog.user.company.contact_email}
+                          {approvalDialog.user.company.contactEmail}
                         </span>
                       </div>
                     )}
@@ -1132,16 +1246,16 @@ export default function AdminApprovals() {
               onClick={() => {
                 if (approvalDialog?.user) {
                   const userName =
-                    `${approvalDialog.user.first_name || ""} ${
-                      approvalDialog.user.last_name || ""
+                    `${approvalDialog.user.firstName || ""} ${
+                      approvalDialog.user.lastName || ""
                     }`.trim() || "Unknown";
-                  handleApproveUser(approvalDialog.user.user_id, userName);
+                  handleApproveUser(approvalDialog.user.userId, userName);
                 }
               }}
-              disabled={actionLoading === approvalDialog?.user?.user_id}
+              disabled={actionLoading === approvalDialog?.user?.userId}
               className="bg-green-600 hover:bg-green-700"
             >
-              {actionLoading === approvalDialog?.user?.user_id ? (
+              {actionLoading === approvalDialog?.user?.userId ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
               ) : (
                 <CheckCircle className="w-4 h-4 mr-1" />

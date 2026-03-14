@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient, checkSuperadminRole } from "@/lib/api";
+import { apiResponse, checkSuperadminRole } from "@/lib/api";
 import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { profiles } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -12,14 +15,8 @@ export async function DELETE(
     if (!isAdmin) throw new AuthError("Admin access required");
 
     const { userId } = await params;
-    const supabase = createAdminClient();
 
-    const { error } = await supabase
-      .from("profiles")
-      .delete()
-      .eq("user_id", userId);
-
-    if (error) throw error;
+    await db.delete(profiles).where(eq(profiles.userId, userId));
 
     return apiResponse({ success: true });
   } catch (error) {

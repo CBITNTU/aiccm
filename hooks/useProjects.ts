@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 
 export type ProjectStatus = "active" | "completed" | "archived";
 
@@ -87,11 +87,9 @@ export function useProjects(companyId: string | null, filter: ProjectStatus) {
 }
 
 // Hook to get user's companies (owned + member of)
-type Company = Database["public"]["Tables"]["companies"]["Row"];
-
 async function fetchUserCompanies(): Promise<Company[]> {
   const data = await api.getMyCompanies();
-  return data.companies as unknown as Company[];
+  return data.companies;
 }
 
 export function useUserCompanies(userId: string | null) {

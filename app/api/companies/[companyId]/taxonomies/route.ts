@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   handleApiError,
   isCompanyMember,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companyTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { eq, and, inArray } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
@@ -13,25 +16,19 @@ export async function GET(
   try {
     await requireAuth(request);
     const { companyId } = await params;
-    const supabase = createAdminClient();
 
-    const { data, error } = await supabase
-      .from("company_taxonomies")
-      .select("taxonomy_id, taxonomies(id, name)")
-      .eq("company_id", companyId);
+    const taxData = await db
+      .select({
+        id: taxonomies.id,
+        name: taxonomies.name,
+      })
+      .from(companyTaxonomies)
+      .innerJoin(taxonomies, eq(companyTaxonomies.taxonomyId, taxonomies.id))
+      .where(eq(companyTaxonomies.companyId, companyId));
 
-    if (error) throw error;
+    const filteredTaxonomies = taxData.filter((t) => t.name);
 
-    const taxonomies = (data || [])
-      .map((ct) => ({
-        id:
-          (ct.taxonomies as { id: string; name: string } | null)?.id || "",
-        name:
-          (ct.taxonomies as { id: string; name: string } | null)?.name || "",
-      }))
-      .filter((t) => t.name);
-
-    return apiResponse({ taxonomies });
+    return apiResponse({ taxonomies: filteredTaxonomies });
   } catch (error) {
     return handleApiError(error);
   }
@@ -50,39 +47,37 @@ export async function PUT(
       return apiResponse({ error: "Forbidden" }, 403);
     }
 
-    const supabase = createAdminClient();
     const body = await request.json();
     const { taxonomyIds }: { taxonomyIds: string[] } = body;
 
     // Get current taxonomies
-    const { data: current } = await supabase
-      .from("company_taxonomies")
-      .select("taxonomy_id")
-      .eq("company_id", companyId);
+    const current = await db
+      .select({ taxonomyId: companyTaxonomies.taxonomyId })
+      .from(companyTaxonomies)
+      .where(eq(companyTaxonomies.companyId, companyId));
 
-    const currentIds = new Set(current?.map((ct) => ct.taxonomy_id) || []);
+    const currentIds = new Set(current.map((ct) => ct.taxonomyId));
     const newIds = new Set(taxonomyIds);
 
     // Add new ones
     const toAdd = taxonomyIds.filter((id) => !currentIds.has(id));
     if (toAdd.length > 0) {
-      const { error: addError } = await supabase
-        .from("company_taxonomies")
-        .insert(
-          toAdd.map((taxonomy_id) => ({ company_id: companyId, taxonomy_id })),
-        );
-      if (addError) throw addError;
+      await db.insert(companyTaxonomies).values(
+        toAdd.map((taxonomyId) => ({ companyId, taxonomyId })),
+      );
     }
 
     // Remove old ones
     const toRemove = Array.from(currentIds).filter((id) => !newIds.has(id));
     if (toRemove.length > 0) {
-      const { error: removeError } = await supabase
-        .from("company_taxonomies")
-        .delete()
-        .eq("company_id", companyId)
-        .in("taxonomy_id", toRemove);
-      if (removeError) throw removeError;
+      await db
+        .delete(companyTaxonomies)
+        .where(
+          and(
+            eq(companyTaxonomies.companyId, companyId),
+            inArray(companyTaxonomies.taxonomyId, toRemove),
+          ),
+        );
     }
 
     return apiResponse({ success: true, taxonomyIds });

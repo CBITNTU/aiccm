@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useDirectory } from "@/hooks/useDirectory";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useOrg } from "@/hooks/useOrg";
@@ -17,7 +17,6 @@ import {
 } from "@/components/directory/DirectorySearchBar";
 import { DirectoryResultsHeader } from "@/components/directory/DirectoryResultsHeader";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
   Company,
   | "id"

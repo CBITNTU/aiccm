@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
-  createAdminClient,
   apiResponse,
   apiError,
 } from "@/lib/api";
@@ -9,6 +8,9 @@ import { aiGenerateObject } from "@/lib/ai";
 import { existingCapabilitiesSchema } from "@/lib/schemas/capabilitySuggestion";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { z } from "zod";
+import { db } from "@/lib/db";
+import { tenders, companyCapabilitiesRef, companyCapabilities } from "@/lib/db/schema/app";
+import { eq, asc } from "drizzle-orm";
 
 const suggestCapabilitiesInputSchema = z.object({
   tenderId: z.string().uuid(),
@@ -31,43 +33,49 @@ export async function POST(request: NextRequest) {
 
     const { tenderId } = parseResult.data;
 
-    // Use admin client to bypass RLS for reading tender (user is already authenticated)
-    const adminSupabase = createAdminClient();
-
     // Fetch tender details
-    const { data: tender, error: tenderError } = await adminSupabase
-      .from("tenders")
-      .select(
-        "title, description, buyer, budget_min, budget_max, deadline, location, cpv_codes",
-      )
-      .eq("id", tenderId)
-      .single();
+    const tenderRows = await db
+      .select({
+        title: tenders.title,
+        description: tenders.description,
+        buyer: tenders.buyer,
+        budgetMin: tenders.budgetMin,
+        budgetMax: tenders.budgetMax,
+        deadline: tenders.deadline,
+        location: tenders.location,
+        cpvCodes: tenders.cpvCodes,
+      })
+      .from(tenders)
+      .where(eq(tenders.id, tenderId))
+      .limit(1);
 
-    if (tenderError || !tender) {
+    const tender = tenderRows[0];
+    if (!tender) {
       return apiError("Tender not found", 404);
     }
 
-    // Fetch all available capabilities (public table, no RLS needed)
-    const { data: capabilities, error: capabilitiesError } = await adminSupabase
-      .from("company_capabilities_ref")
-      .select("id, name, category")
-      .order("category")
-      .order("name");
+    // Fetch all available capabilities
+    const capabilities = await db
+      .select({
+        id: companyCapabilitiesRef.id,
+        name: companyCapabilitiesRef.name,
+        category: companyCapabilitiesRef.category,
+      })
+      .from(companyCapabilitiesRef)
+      .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
 
-    if (capabilitiesError || !capabilities) {
+    if (!capabilities || capabilities.length === 0) {
       return apiError("Failed to fetch capabilities", 500);
     }
 
     // Get capabilities that companies actually have
-    const { data: companyCapabilityLinks } = await adminSupabase
-      .from("company_capabilities")
-      .select("capability_id")
+    const companyCapabilityLinks = await db
+      .select({ capabilityId: companyCapabilities.capabilityId })
+      .from(companyCapabilities)
       .limit(10000);
 
     const usedCapabilityIds = new Set(
-      (companyCapabilityLinks || []).map(
-        (link: { capability_id: string }) => link.capability_id,
-      ),
+      companyCapabilityLinks.map((link) => link.capabilityId),
     );
 
     // Separate capabilities into "used by companies" and "not used yet"
@@ -110,8 +118,8 @@ export async function POST(request: NextRequest) {
     const systemPrompt = `From the list below, pick capability names that match the tender. Prefer capabilities from the USED BY COMPANIES section. No new capabilities.`;
 
     const budgetRange =
-      tender.budget_min || tender.budget_max
-        ? `£${tender.budget_min ? tender.budget_min.toLocaleString() : "?"} - £${tender.budget_max ? tender.budget_max.toLocaleString() : "?"}`
+      tender.budgetMin || tender.budgetMax
+        ? `\u00A3${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - \u00A3${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
         : "Not specified";
 
     const userPrompt = `Tender Details:
@@ -121,7 +129,7 @@ Buyer: ${tender.buyer || "N/A"}
 Budget: ${budgetRange}
 Deadline: ${tender.deadline || "N/A"}
 Location: ${tender.location || "N/A"}
-${tender.cpv_codes && tender.cpv_codes.length > 0 ? `CPV Codes: ${tender.cpv_codes.join(", ")}` : ""}
+${tender.cpvCodes && tender.cpvCodes.length > 0 ? `CPV Codes: ${tender.cpvCodes.join(", ")}` : ""}
 
 Available Capabilities:
 ${capabilitiesList}

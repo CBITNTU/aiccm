@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,8 +21,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Search, Trash2, Building2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 export function AdminCompanyManager() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -48,7 +46,7 @@ export function AdminCompanyManager() {
   const fetchCompanies = async () => {
     try {
       const data = await api.adminListCompanies();
-      setCompanies((data.companies as unknown as Company[]) || []);
+      setCompanies(data.companies || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast.error("Failed to load companies");

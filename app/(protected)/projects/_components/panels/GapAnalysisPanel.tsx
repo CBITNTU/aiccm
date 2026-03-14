@@ -35,10 +35,8 @@ import type {
   TeamAnalysis,
 } from "@/hooks/useProjects";
 import type { Tender, TeamMember } from "@/hooks/useProjectDetails";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { deriveCoverage } from "@/lib/utils";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface GapAnalysisPanelProps {
   projectId: string;

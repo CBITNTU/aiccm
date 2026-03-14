@@ -1,11 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- company_capabilities, profiles extended columns */
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAuthenticatedUser,
   checkSuperadminRole,
-  createAdminClient,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { EIC_TAXONOMY } from "@/lib/eicTaxonomy";
+import { db } from "@/lib/db";
+import {
+  companyCapabilities,
+  companyCapabilitiesRef,
+  companies,
+} from "@/lib/db/schema/app";
+import { ne } from "drizzle-orm";
+
+// A UUID that will never match any real row - used as a "match all" condition
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,163 +36,91 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const adminSupabase = createAdminClient();
-
     console.log(
-      "🗑️ RESET CAPABILITIES: Deleting ALL capabilities and links, then reseeding from CSV taxonomy.",
+      "RESET CAPABILITIES: Deleting ALL capabilities and links, then reseeding base list...",
     );
 
     // Step 1: Delete ALL company_capabilities links (junction table)
-    console.log("📊 Step 1: Deleting all company-capability links...");
-    const { error: deleteLinksError, count: deletedLinksCount } =
-      await adminSupabase
-        .from("company_capabilities" as any)
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all (this condition always true)
+    console.log("Step 1: Deleting all company-capability links...");
+    const deletedLinks = await db
+      .delete(companyCapabilities)
+      .where(ne(companyCapabilities.id, ZERO_UUID))
+      .returning();
 
-    if (deleteLinksError) {
-      console.error(
-        "❌ Failed to delete company-capability links:",
-        deleteLinksError,
-      );
-      throw new Error(
-        `Failed to delete company-capability links: ${deleteLinksError.message}`,
-      );
-    }
-
-    console.log(
-      `✅ Deleted ${deletedLinksCount || 0} company-capability links`,
-    );
+    const deletedLinksCount = deletedLinks.length;
+    console.log(`Deleted ${deletedLinksCount} company-capability links`);
 
     // Step 2: Delete ALL capabilities from reference table
-    console.log("📋 Step 2: Deleting all capabilities from reference table...");
-    const { error: deleteCapsError, count: deletedCapsCount } =
-      await adminSupabase
-        .from("company_capabilities_ref" as any)
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
+    console.log("Step 2: Deleting all capabilities from reference table...");
+    const deletedCaps = await db
+      .delete(companyCapabilitiesRef)
+      .where(ne(companyCapabilitiesRef.id, ZERO_UUID))
+      .returning();
 
-    if (deleteCapsError) {
-      console.error("❌ Failed to delete capabilities:", deleteCapsError);
-      throw new Error(
-        `Failed to delete capabilities: ${deleteCapsError.message}`,
-      );
-    }
-
-    console.log(
-      `✅ Deleted ${deletedCapsCount || 0} capabilities from reference table`,
-    );
+    const deletedCapsCount = deletedCaps.length;
+    console.log(`Deleted ${deletedCapsCount} capabilities from reference table`);
 
     // Step 3: Clear ai_capability_taxonomy from all companies
-    console.log(
-      "🏢 Step 3: Clearing capability taxonomies from all companies...",
-    );
-    const { error: clearTaxonomyError } = await adminSupabase
-      .from("companies" as any)
-      .update({
-        ai_capability_taxonomy: null,
-        taxonomy_generated_at: null,
-      })
-      .neq("id", "00000000-0000-0000-0000-000000000000"); // Update all
-
-    if (clearTaxonomyError) {
-      console.error(
-        "⚠️ Failed to clear company taxonomies:",
-        clearTaxonomyError,
-      );
-      // Don't fail - this is a cleanup step
-    } else {
-      console.log("✅ Cleared capability taxonomies from all companies");
+    console.log("Step 3: Clearing capability taxonomies from all companies...");
+    try {
+      await db
+        .update(companies)
+        .set({
+          aiCapabilityTaxonomy: null,
+          taxonomyGeneratedAt: null,
+        })
+        .where(ne(companies.id, ZERO_UUID));
+      console.log("Cleared capability taxonomies from all companies");
+    } catch (clearTaxonomyError) {
+      console.error("Failed to clear company taxonomies:", clearTaxonomyError);
     }
 
-    // Step 4: Reseed company_capabilities_ref from read-only seed table (PostgREST returns max 1000 per request, so paginate)
-    let reseededCapabilities = 0;
-    const PAGE_SIZE = 1000;
-    const INSERT_BATCH = 200;
-    let offset = 0;
-    const seedRows: any[] = [];
+    // Step 4: Reseed base capabilities list from EIC taxonomy (standard taxonomy)
+    console.log("Step 4: Reseeding base capabilities list from EIC taxonomy...");
 
-    while (true) {
-      const { data: page, error: selectError } = await adminSupabase
-        .from("competency_taxonomy_seed" as any)
-        .select("id, name, category, parent_id, is_active")
-        .range(offset, offset + PAGE_SIZE - 1);
+    // TODO [MERGE]: migrate CSV seed pagination approach to Drizzle
+    // HEAD used: paginated reads from competency_taxonomy_seed table via Supabase,
+    // then batch-inserted into company_capabilities_ref. Consider switching to this
+    // once the seed table is migrated to Drizzle.
 
-      if (selectError) {
-        console.error("❌ Failed to read from competency_taxonomy_seed:", selectError);
-        throw new Error(
-          `Failed to read seed taxonomy: ${selectError.message}. Run the taxonomy migration to create the seed table.`,
-        );
-      }
-      if (!page || page.length === 0) break;
-      seedRows.push(...page);
-      if (page.length < PAGE_SIZE) break;
-      offset += PAGE_SIZE;
-    }
+    const baseCapabilities = EIC_TAXONOMY.map((item) => ({
+      name: item.name,
+      category: item.category,
+      isActive: true,
+    }));
 
-    if (seedRows.length > 0) {
-      console.log(
-        "📋 Step 4: Copying",
-        seedRows.length,
-        "rows from competency_taxonomy_seed into company_capabilities_ref...",
-      );
-      for (let i = 0; i < seedRows.length; i += INSERT_BATCH) {
-        const chunk = seedRows.slice(i, i + INSERT_BATCH);
-        const { error: insertError } = await adminSupabase
-          .from("company_capabilities_ref" as any)
-          .insert(
-            chunk.map((r: any) => ({
-              id: r.id,
-              name: r.name,
-              category: r.category,
-              parent_id: r.parent_id,
-              is_active: r.is_active !== false,
-            })),
-          );
-        if (insertError) {
-          console.error("❌ Failed to reseed capabilities:", insertError);
-          throw new Error(
-            `Failed to reseed capabilities: ${insertError.message}`,
-          );
-        }
-        reseededCapabilities += chunk.length;
-      }
-      console.log("✅ Reseeded", reseededCapabilities, "capabilities");
-    } else {
-      console.log(
-        "⚠️ competency_taxonomy_seed is empty — run scripts/generate-taxonomy-migration.mjs and apply the migration to populate it.",
-      );
-    }
+    const insertedCaps = await db
+      .insert(companyCapabilitiesRef)
+      .values(baseCapabilities)
+      .returning();
 
+    console.log(`Reseeded ${insertedCaps.length} base capabilities`);
+
+    // Log admin action
     await logApiEvent(request, {
-      actionType: "admin_capabilities_reset" as any,
+      actionType: "admin_capabilities_reset",
       userId: user.id,
       userEmail: user.email || undefined,
       details: {
-        deletedCapabilities: deletedCapsCount || 0,
-        deletedLinks: deletedLinksCount || 0,
-        reseededCapabilities,
+        deletedCapabilities: deletedCapsCount,
+        deletedLinks: deletedLinksCount,
+        reseededCapabilities: baseCapabilities.length,
       },
     }).catch(() => {});
 
     console.log(
-      "✅ RESET COMPLETE: Deleted all, reseeded",
-      reseededCapabilities,
-      "capabilities from CSV taxonomy.",
+      `RESET COMPLETE: All capabilities deleted and EIC taxonomy reseeded (${baseCapabilities.length} capabilities)`,
     );
 
     return NextResponse.json({
       success: true,
-      deletedCapabilities: deletedCapsCount || 0,
-      deletedLinks: deletedLinksCount || 0,
-      reseededCapabilities,
-      message:
-        reseededCapabilities > 0
-          ? `All capabilities and links deleted. Reseeded ${reseededCapabilities} capabilities from the seed table.`
-          : "All capabilities and links deleted. Seed table is empty — run scripts/generate-taxonomy-migration.mjs and apply the migration to populate competency_taxonomy_seed.",
+      deletedCapabilities: deletedCapsCount,
+      deletedLinks: deletedLinksCount,
+      reseededCapabilities: baseCapabilities.length,
+      message: `All capabilities deleted. Reseeded ${baseCapabilities.length} capabilities from EIC taxonomy.`,
     });
   } catch (error) {
-    console.error("❌ Error resetting capabilities:", error);
+    console.error("Error resetting capabilities:", error);
     return NextResponse.json(
       {
         success: false,

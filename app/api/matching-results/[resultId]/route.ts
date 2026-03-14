@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { matchingResults, companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -9,28 +12,20 @@ export async function DELETE(
   try {
     const { user } = await requireAuth(request);
     const { resultId } = await params;
-    const supabase = createAdminClient();
 
-    // Verify ownership
-    const { data: result } = await supabase
-      .from("matching_results")
-      .select("company_id, companies!inner(user_id)")
-      .eq("id", resultId)
-      .single();
+    // Verify ownership via join
+    const result = await db
+      .select({ companyUserId: companies.userId })
+      .from(matchingResults)
+      .innerJoin(companies, eq(matchingResults.companyId, companies.id))
+      .where(eq(matchingResults.id, resultId))
+      .limit(1);
 
-    if (
-      !result ||
-      (result.companies as unknown as { user_id: string })?.user_id !== user.id
-    ) {
+    if (!result[0] || result[0].companyUserId !== user.id) {
       throw new AuthError("No access to this matching result");
     }
 
-    const { error } = await supabase
-      .from("matching_results")
-      .delete()
-      .eq("id", resultId);
-
-    if (error) throw error;
+    await db.delete(matchingResults).where(eq(matchingResults.id, resultId));
 
     return apiResponse({ success: true });
   } catch (error) {

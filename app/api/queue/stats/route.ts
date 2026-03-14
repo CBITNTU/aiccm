@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createApiClient } from "@/lib/api";
+import { getAuthenticatedUser } from "@/lib/api";
 import { getQueueStats } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
@@ -9,10 +9,7 @@ export async function GET(request: NextRequest) {
 
     let userId: string | undefined;
     try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
+      const { user } = await getAuthenticatedUser(request);
       userId = user?.id;
     } catch {
       // Optional auth

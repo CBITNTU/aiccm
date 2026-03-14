@@ -1,4 +1,5 @@
 CREATE TYPE "public"."app_role" AS ENUM('superadmin', 'sme-owner', 'sme-member', 'individual', 'admin', 'user');--> statement-breakpoint
+CREATE TYPE "public"."approval_status" AS ENUM('pending', 'approved', 'rejected');--> statement-breakpoint
 CREATE TABLE "batch_jobs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"batch_type" text NOT NULL,
@@ -215,7 +216,7 @@ CREATE TABLE "profiles" (
 	"email" text,
 	"phone" text,
 	"job_title" text,
-	"approval_status" text DEFAULT 'approved' NOT NULL,
+	"approval_status" "approval_status" DEFAULT 'pending' NOT NULL,
 	"approved_at" timestamp with time zone,
 	"approved_by" uuid,
 	"rejection_reason" text,
@@ -331,36 +332,36 @@ CREATE TABLE "vo_members" (
 --> statement-breakpoint
 CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"accountId" text NOT NULL,
-	"providerId" text NOT NULL,
-	"userId" uuid NOT NULL,
-	"accessToken" text,
-	"refreshToken" text,
-	"idToken" text,
-	"accessTokenExpiresAt" timestamp with time zone,
-	"refreshTokenExpiresAt" timestamp with time zone,
+	"account_id" text NOT NULL,
+	"provider_id" text NOT NULL,
+	"user_id" uuid NOT NULL,
+	"access_token" text,
+	"refresh_token" text,
+	"id_token" text,
+	"access_token_expires_at" timestamp with time zone,
+	"refresh_token_expires_at" timestamp with time zone,
 	"scope" text,
 	"password" text,
-	"createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "invitation" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"organizationId" uuid NOT NULL,
+	"organization_id" uuid NOT NULL,
 	"email" text NOT NULL,
 	"role" text,
 	"status" text DEFAULT 'pending' NOT NULL,
-	"expiresAt" timestamp with time zone NOT NULL,
-	"inviterId" uuid NOT NULL
+	"expires_at" timestamp with time zone NOT NULL,
+	"inviter_id" uuid NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "member" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"organizationId" uuid NOT NULL,
-	"userId" uuid NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"user_id" uuid NOT NULL,
 	"role" text DEFAULT 'member' NOT NULL,
-	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "organization" (
@@ -368,20 +369,20 @@ CREATE TABLE "organization" (
 	"name" text NOT NULL,
 	"slug" text,
 	"logo" text,
-	"createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"metadata" text,
 	CONSTRAINT "organization_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"expiresAt" timestamp with time zone NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
 	"token" text NOT NULL,
-	"createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
-	"ipAddress" text,
-	"userAgent" text,
-	"userId" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"ip_address" text,
+	"user_agent" text,
+	"user_id" uuid NOT NULL,
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
@@ -389,14 +390,14 @@ CREATE TABLE "user" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"email" text NOT NULL,
-	"emailVerified" boolean DEFAULT false NOT NULL,
+	"email_verified" boolean DEFAULT false NOT NULL,
 	"image" text,
-	"createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"role" text DEFAULT 'user',
 	"banned" boolean DEFAULT false,
-	"banReason" text,
-	"banExpires" timestamp with time zone,
+	"ban_reason" text,
+	"ban_expires" timestamp with time zone,
 	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
@@ -404,9 +405,9 @@ CREATE TABLE "verification" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"identifier" text NOT NULL,
 	"value" text NOT NULL,
-	"expiresAt" timestamp with time zone NOT NULL,
-	"createdAt" timestamp with time zone,
-	"updatedAt" timestamp with time zone
+	"expires_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone,
+	"updated_at" timestamp with time zone
 );
 --> statement-breakpoint
 ALTER TABLE "batch_jobs" ADD CONSTRAINT "batch_jobs_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -449,9 +450,9 @@ ALTER TABLE "virtual_organizations" ADD CONSTRAINT "virtual_organizations_projec
 ALTER TABLE "virtual_organizations" ADD CONSTRAINT "virtual_organizations_target_tender_id_tenders_id_fk" FOREIGN KEY ("target_tender_id") REFERENCES "public"."tenders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vo_members" ADD CONSTRAINT "vo_members_vo_id_virtual_organizations_id_fk" FOREIGN KEY ("vo_id") REFERENCES "public"."virtual_organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vo_members" ADD CONSTRAINT "vo_members_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "account" ADD CONSTRAINT "account_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "invitation" ADD CONSTRAINT "invitation_organizationId_organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviterId_user_id_fk" FOREIGN KEY ("inviterId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "member" ADD CONSTRAINT "member_organizationId_organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "member" ADD CONSTRAINT "member_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "session" ADD CONSTRAINT "session_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invitation" ADD CONSTRAINT "invitation_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREIGN KEY ("inviter_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "member" ADD CONSTRAINT "member_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "member" ADD CONSTRAINT "member_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;

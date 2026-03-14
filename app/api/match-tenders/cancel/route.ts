@@ -1,13 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs/processing_queue not in generated Supabase types */
 import { NextRequest } from "next/server";
-import {
-  getAuthenticatedUser,
-  apiResponse,
-  apiError,
-  createAdminClient,
-} from "@/lib/api";
+import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
 import { getBatchStatus } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { batchJobs, processingQueue } from "@/lib/db/schema/app";
+import { eq, and, inArray } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,39 +40,30 @@ export async function POST(request: NextRequest) {
       return apiError(`Batch is already ${batchStatus.status}`, 400);
     }
 
-    const supabase = createAdminClient();
-
     // Mark batch as failed (cancelled)
-    const { error: batchError } = await supabase
-      .from("batch_jobs" as any)
-      .update({
-        status: "failed",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", batchId);
-
-    if (batchError) {
-      return apiError(`Failed to cancel batch: ${batchError.message}`, 500);
-    }
+    await db
+      .update(batchJobs)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(eq(batchJobs.id, batchId));
 
     // Cancel all pending/processing jobs in this batch
-    const { error: cancelError, count: cancelledCount } = await supabase
-      .from("processing_queue" as any)
-      .update({
+    const cancelResult = await db
+      .update(processingQueue)
+      .set({
         status: "failed",
-        error_message: "Cancelled by user",
-        updated_at: new Date().toISOString(),
+        errorMessage: "Cancelled by user",
+        updatedAt: new Date(),
       })
-      .eq("batch_id", batchId)
-      .in("status", ["pending", "processing"]);
+      .where(
+        and(
+          eq(processingQueue.batchId, batchId),
+          inArray(processingQueue.status, ["pending", "processing"]),
+        ),
+      )
+      .returning({ id: processingQueue.id });
 
-    if (cancelError) {
-      console.error(`Failed to cancel jobs for batch ${batchId}:`, cancelError);
-    } else {
-      console.log(
-        `✅ Cancelled ${cancelledCount || 0} jobs for batch ${batchId}`,
-      );
-    }
+    const cancelledCount = cancelResult.length;
+    console.log(`✅ Cancelled ${cancelledCount} jobs for batch ${batchId}`);
 
     await logApiEvent(request, {
       actionType: "matching_cancelled",
@@ -83,13 +71,13 @@ export async function POST(request: NextRequest) {
       userEmail: user.email || undefined,
       entityType: "batch_job",
       entityId: batchId,
-      details: { cancelled_jobs: cancelledCount || 0 },
+      details: { cancelled_jobs: cancelledCount },
     }).catch(() => {});
 
     return apiResponse({
       message: "Matching cancelled successfully",
       batch_id: batchId,
-      cancelled_jobs: cancelledCount || 0,
+      cancelled_jobs: cancelledCount,
     });
   } catch (error) {
     console.error("Error cancelling matching:", error);

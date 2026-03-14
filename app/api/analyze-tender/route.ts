@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { tenderTaxonomySuggestionSchema } from "@/lib/schemas/tenderTaxonomy";
 import { logApiEvent } from "@/lib/services/eventLogger";
@@ -9,6 +9,9 @@ import {
   validateBody,
   handleApiError,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { tenders, taxonomies, tenderTaxonomies } from "@/lib/db/schema/app";
+import { eq, asc } from "drizzle-orm";
 
 const analyzeTenderInputSchema = z.object({
   tenderData: z.object({
@@ -44,29 +47,27 @@ export async function POST(request: NextRequest) {
       analyzeTenderInputSchema,
     );
 
-    const supabase = createAdminClient();
-
     // If tenderId provided, verify tender exists
     if (tenderId) {
-      const { data: existingTender } = await supabase
-        .from("tenders")
-        .select("id")
-        .eq("id", tenderId)
-        .single();
+      const tenderRows = await db
+        .select({ id: tenders.id })
+        .from(tenders)
+        .where(eq(tenders.id, tenderId))
+        .limit(1);
 
-      if (!existingTender) {
+      if (!tenderRows[0]) {
         return apiResponse({ error: "Tender not found" }, 404);
       }
     }
 
     // Fetch available taxonomies
-    const { data: taxonomies } = await supabase
-      .from("taxonomies")
-      .select("id, name, level")
-      .order("level");
+    const taxonomyRows = await db
+      .select({ id: taxonomies.id, name: taxonomies.name, level: taxonomies.level })
+      .from(taxonomies)
+      .orderBy(asc(taxonomies.level));
 
     const taxonomyList =
-      taxonomies?.map((t) => `${t.name} (Level ${t.level})`).join(", ") || "";
+      taxonomyRows.map((t) => `${t.name} (Level ${t.level})`).join(", ") || "";
 
     const prompt = buildTenderAnalysisPrompt(tenderData, taxonomyList);
 
@@ -82,8 +83,8 @@ export async function POST(request: NextRequest) {
     const suggestedTaxonomies = parsed.taxonomies;
 
     // Auto-tag tender if tenderId provided
-    if (tenderId && suggestedTaxonomies.length > 0 && taxonomies) {
-      const taxonomyIds = taxonomies
+    if (tenderId && suggestedTaxonomies.length > 0 && taxonomyRows.length > 0) {
+      const taxonomyIds = taxonomyRows
         .filter((t) =>
           suggestedTaxonomies.some(
             (suggested) =>
@@ -94,17 +95,16 @@ export async function POST(request: NextRequest) {
         .map((t) => t.id);
 
       if (taxonomyIds.length > 0) {
-        await supabase
-          .from("tender_taxonomies")
-          .delete()
-          .eq("tender_id", tenderId);
+        await db
+          .delete(tenderTaxonomies)
+          .where(eq(tenderTaxonomies.tenderId, tenderId));
 
         const taxonomyInserts = taxonomyIds.map((taxId) => ({
-          tender_id: tenderId,
-          taxonomy_id: taxId,
+          tenderId: tenderId,
+          taxonomyId: taxId,
         }));
 
-        await supabase.from("tender_taxonomies").insert(taxonomyInserts);
+        await db.insert(tenderTaxonomies).values(taxonomyInserts);
       }
     }
 

@@ -53,9 +53,9 @@ export async function GET(request: NextRequest) {
       results: jobs.results
         .filter((j) => j.status === "completed")
         .map((j) => ({
-          tenderId: j.tender_id,
-          score: j.result_data as unknown as { overallScore?: number },
-          completedAt: j.completed_at,
+          tenderId: j.tenderId,
+          score: j.resultData as unknown as { overallScore?: number },
+          completedAt: j.completedAt,
         })),
     });
   } catch (error) {

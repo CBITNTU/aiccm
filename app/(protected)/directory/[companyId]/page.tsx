@@ -6,9 +6,6 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { CompanyDetailView } from "@/components/directory/CompanyDetailView";
 import { useDirectoryCompany } from "@/hooks/useDirectoryCompany";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 export default function DirectoryCompanyPage({
   params,
@@ -47,7 +44,7 @@ export default function DirectoryCompanyPage({
 
         {data && (
           <CompanyDetailView
-            company={data.company as unknown as Company}
+            company={data.company}
             isOwner={data.isOwner}
             capabilities={data.capabilities}
             markets={data.markets}

@@ -1,13 +1,11 @@
 import { NextRequest } from "next/server";
 import { after } from "next/server";
-import {
-  createAdminClient,
-  createApiClient,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { apiResponse, apiError } from "@/lib/api";
 import { sanitizeLikeParam } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { companies, companyMembers } from "@/lib/db/schema/app";
+import { eq, and, ilike, asc } from "drizzle-orm";
 
 export interface CompanySearchResult {
   id: string;
@@ -19,11 +17,9 @@ export async function GET(request: NextRequest) {
   try {
     let userId: string | undefined;
     try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
+      const { auth } = await import("@/lib/auth");
+      const session = await auth.api.getSession({ headers: request.headers });
+      userId = session?.user?.id;
     } catch {
       // Optional auth
     }
@@ -31,44 +27,41 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q");
 
-    // Require at least 2 characters for search
     const safeQuery = sanitizeLikeParam(query || "");
     if (safeQuery.length < 2) {
       return apiResponse({ companies: [] });
     }
 
-    const supabase = createAdminClient();
-
-    // Search for companies by name (case-insensitive)
-    // Only show active companies (hide pending_review companies from regular users)
-    const { data: companies, error } = await supabase
-      .from("companies")
-      .select("id, company_name")
-      .ilike("company_name", `%${safeQuery}%`)
-      .eq("status", "active")
-      .order("company_name")
+    const companyResults = await db
+      .select({ id: companies.id, companyName: companies.companyName })
+      .from(companies)
+      .where(
+        and(
+          ilike(companies.companyName, `%${safeQuery}%`),
+          eq(companies.status, "active"),
+        ),
+      )
+      .orderBy(asc(companies.companyName))
       .limit(10);
 
-    if (error) {
-      console.error("Error searching companies:", error);
-      return apiError("Failed to search companies", 500);
-    }
-
-    // Check which companies have an admin (someone with role='admin' in company_members)
     const companiesWithAdminStatus: CompanySearchResult[] = await Promise.all(
-      (companies || []).map(async (company) => {
-        const { data: members } = await supabase
-          .from("company_members")
-          .select("id")
-          .eq("company_id", company.id)
-          .eq("role", "admin")
-          .eq("status", "approved")
+      companyResults.map(async (company) => {
+        const adminCheck = await db
+          .select({ id: companyMembers.id })
+          .from(companyMembers)
+          .where(
+            and(
+              eq(companyMembers.companyId, company.id),
+              eq(companyMembers.role, "admin"),
+              eq(companyMembers.status, "approved"),
+            ),
+          )
           .limit(1);
 
         return {
           id: company.id,
-          company_name: company.company_name,
-          has_admin: (members?.length || 0) > 0,
+          company_name: company.companyName,
+          has_admin: adminCheck.length > 0,
         };
       }),
     );

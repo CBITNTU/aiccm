@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "./index";
 import {
   profiles,
@@ -7,6 +7,7 @@ import {
   companyMembers,
   companyJoinRequests,
   teamInvitations,
+  platformSettings,
 } from "./schema/app";
 
 /**
@@ -56,7 +57,7 @@ export async function createProfile(userId: string, email: string) {
       userId,
       email,
       onboardingStep: 1,
-      approvalStatus: "approved",
+      approvalStatus: "pending",
     })
     .returning();
   return result[0];
@@ -275,4 +276,95 @@ export async function acceptTeamInvitation(id: string, userId: string) {
     .where(eq(teamInvitations.id, id))
     .returning();
   return result[0] ?? null;
+}
+
+// ============================================================================
+// Company Access Helpers
+// ============================================================================
+
+/**
+ * Get the owner (user_id) of a company.
+ */
+export async function getCompanyOwner(companyId: string) {
+  const result = await db
+    .select({ userId: companies.userId })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  return result[0]?.userId ?? null;
+}
+
+/**
+ * Check if a user has an approved membership in a company.
+ */
+export async function getApprovedMembership(userId: string, companyId: string) {
+  const result = await db
+    .select({ id: companyMembers.id })
+    .from(companyMembers)
+    .where(
+      and(
+        eq(companyMembers.companyId, companyId),
+        eq(companyMembers.userId, userId),
+        eq(companyMembers.status, "approved"),
+      ),
+    )
+    .limit(1);
+  return result[0] ?? null;
+}
+
+/**
+ * Get all company IDs owned by a user.
+ */
+export async function getOwnedCompanyIds(userId: string): Promise<string[]> {
+  const result = await db
+    .select({ id: companies.id })
+    .from(companies)
+    .where(eq(companies.userId, userId));
+  return result.map((r) => r.id);
+}
+
+/**
+ * Get all company IDs where user is an approved member.
+ */
+export async function getApprovedMemberCompanyIds(userId: string): Promise<string[]> {
+  const result = await db
+    .select({ companyId: companyMembers.companyId })
+    .from(companyMembers)
+    .where(
+      and(
+        eq(companyMembers.userId, userId),
+        eq(companyMembers.status, "approved"),
+      ),
+    );
+  return result.map((r) => r.companyId);
+}
+
+// ============================================================================
+// Platform Settings
+// ============================================================================
+
+/**
+ * Get platform settings by keys.
+ */
+export async function getPlatformSettingsByKeys(keys: string[]) {
+  const result = await db
+    .select()
+    .from(platformSettings)
+    .where(inArray(platformSettings.key, keys));
+  return result;
+}
+
+/**
+ * Upsert a platform setting.
+ */
+export async function upsertPlatformSetting(key: string, value: string) {
+  const result = await db
+    .insert(platformSettings)
+    .values({ key, value, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: platformSettings.key,
+      set: { value, updatedAt: new Date() },
+    })
+    .returning();
+  return result[0];
 }

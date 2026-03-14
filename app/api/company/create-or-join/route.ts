@@ -1,9 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  createAdminClient,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { apiResponse, apiError } from "@/lib/api";
 import {
   sendEmail,
   getAdminNotificationEmailSubject,
@@ -26,6 +22,9 @@ import {
   deleteUserRole,
   createCompanyJoinRequest,
 } from "@/lib/db/queries";
+import { db } from "@/lib/db";
+import { companies, companyJoinRequests, companyMembers, userRoles, profiles } from "@/lib/db/schema/app";
+import { eq, and, inArray } from "drizzle-orm";
 
 interface NewCompanyData {
   action: "create";
@@ -46,17 +45,6 @@ interface JoinCompanyData {
 
 type RequestData = NewCompanyData | JoinCompanyData;
 
-/**
- * POST /api/company/create-or-join
- *
- * Handles company creation and join requests for already-approved users.
- * Unlike the onboarding endpoint, this doesn't require step validation
- * and handles users who already have companies.
- *
- * Request body:
- * - For create: { action: "create", companyName, companiesHouseNumber?, websiteUrl?, address?, contactEmail?, contactPhone? }
- * - For join: { action: "join", companyId, companyName, message? }
- */
 export async function POST(request: NextRequest) {
   try {
     const { auth } = await import("@/lib/auth");
@@ -67,8 +55,6 @@ export async function POST(request: NextRequest) {
     }
 
     const user = session.user;
-
-    const adminClient = createAdminClient();
 
     // Get current profile and verify user is approved
     const profile = await getProfileByUserId(user.id);
@@ -171,33 +157,27 @@ export async function POST(request: NextRequest) {
 
       // Handle individual user converting to business
       if (profile.accountType === "individual") {
-        // Update account_type
         await updateProfileByUserId(user.id, { accountType: "business" });
-
-        // Update role to sme-owner
         await createUserRole(user.id, "sme-owner");
-
-        // Remove individual role
         await deleteUserRole(user.id, "individual");
       } else {
-        // Ensure user has sme-owner role for existing business users
         await createUserRole(user.id, "sme-owner");
       }
 
       // Notify superadmins about new company
-      const { data: superadmins } = await adminClient
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "superadmin");
+      const superadmins = await db
+        .select({ userId: userRoles.userId })
+        .from(userRoles)
+        .where(eq(userRoles.role, "superadmin"));
 
-      if (superadmins && superadmins.length > 0) {
-        const superadminUserIds = superadmins.map((s) => s.user_id);
-        const { data: superadminProfiles } = await adminClient
-          .from("profiles")
-          .select("email")
-          .in("user_id", superadminUserIds);
+      if (superadmins.length > 0) {
+        const superadminUserIds = superadmins.map((s) => s.userId);
+        const superadminProfiles = await db
+          .select({ email: profiles.email })
+          .from(profiles)
+          .where(inArray(profiles.userId, superadminUserIds));
 
-        const adminEmails = (superadminProfiles || [])
+        const adminEmails = superadminProfiles
           .map((p) => p.email)
           .filter(Boolean) as string[];
 
@@ -241,42 +221,51 @@ export async function POST(request: NextRequest) {
       }
 
       // Verify company exists
-      const { data: company, error: companyFetchError } = await adminClient
-        .from("companies")
-        .select("id, company_name, user_id")
-        .eq("id", joinData.companyId)
-        .single();
+      const companyResult = await db
+        .select({ id: companies.id, companyName: companies.companyName, userId: companies.userId })
+        .from(companies)
+        .where(eq(companies.id, joinData.companyId))
+        .limit(1);
 
-      if (companyFetchError || !company) {
+      const company = companyResult[0];
+      if (!company) {
         return apiError("Company not found", 404);
       }
 
       // Check if user already has a pending/approved join request
-      const { data: existingRequest } = await adminClient
-        .from("company_join_requests")
-        .select("id, status")
-        .eq("user_id", user.id)
-        .eq("company_id", joinData.companyId)
-        .single();
+      const existingRequestResult = await db
+        .select({ id: companyJoinRequests.id, status: companyJoinRequests.status })
+        .from(companyJoinRequests)
+        .where(
+          and(
+            eq(companyJoinRequests.userId, user.id),
+            eq(companyJoinRequests.companyId, joinData.companyId),
+          ),
+        )
+        .limit(1);
 
-      if (existingRequest) {
+      if (existingRequestResult[0]) {
         return apiError(
-          `You already have a ${existingRequest.status} request to join this company`,
+          `You already have a ${existingRequestResult[0].status} request to join this company`,
           409,
         );
       }
 
       // Check if user is already a member
-      const { data: existingMembership } = await adminClient
-        .from("company_members")
-        .select("id, status")
-        .eq("user_id", user.id)
-        .eq("company_id", joinData.companyId)
-        .single();
+      const existingMembershipResult = await db
+        .select({ id: companyMembers.id, status: companyMembers.status })
+        .from(companyMembers)
+        .where(
+          and(
+            eq(companyMembers.userId, user.id),
+            eq(companyMembers.companyId, joinData.companyId),
+          ),
+        )
+        .limit(1);
 
-      if (existingMembership) {
+      if (existingMembershipResult[0]) {
         return apiError(
-          `You are already a member of this company (status: ${existingMembership.status})`,
+          `You are already a member of this company (status: ${existingMembershipResult[0].status})`,
           409,
         );
       }
@@ -286,7 +275,7 @@ export async function POST(request: NextRequest) {
         await createCompanyJoinRequest({
           userId: user.id,
           companyId: joinData.companyId,
-          companyNameRequested: company.company_name,
+          companyNameRequested: company.companyName,
           message: joinData.message || null,
           status: "pending",
         });
@@ -297,44 +286,46 @@ export async function POST(request: NextRequest) {
 
       // Handle individual user converting to business
       if (profile.accountType === "individual") {
-        // Update account_type
         await updateProfileByUserId(user.id, { accountType: "business" });
-
-        // Update role to sme-member
         await createUserRole(user.id, "sme-member");
-
-        // Remove individual role
         await deleteUserRole(user.id, "individual");
       } else {
-        // Ensure user has sme-member role
         await createUserRole(user.id, "sme-member");
       }
 
       // Notify company admins
-      const { data: companyAdmins } = await adminClient
-        .from("company_members")
-        .select("user_id")
-        .eq("company_id", joinData.companyId)
-        .eq("role", "admin")
-        .eq("status", "approved");
+      const companyAdmins = await db
+        .select({ userId: companyMembers.userId })
+        .from(companyMembers)
+        .where(
+          and(
+            eq(companyMembers.companyId, joinData.companyId),
+            eq(companyMembers.role, "admin"),
+            eq(companyMembers.status, "approved"),
+          ),
+        );
 
-      if (companyAdmins && companyAdmins.length > 0) {
-        const adminUserIds = companyAdmins.map((a) => a.user_id);
-        const { data: adminProfiles } = await adminClient
-          .from("profiles")
-          .select("email, first_name, last_name")
-          .in("user_id", adminUserIds);
+      if (companyAdmins.length > 0) {
+        const adminUserIds = companyAdmins.map((a) => a.userId);
+        const adminProfiles = await db
+          .select({
+            email: profiles.email,
+            firstName: profiles.firstName,
+            lastName: profiles.lastName,
+          })
+          .from(profiles)
+          .where(inArray(profiles.userId, adminUserIds));
 
         const userName = `${profile.firstName} ${profile.lastName}`;
 
-        for (const admin of adminProfiles || []) {
+        for (const admin of adminProfiles) {
           if (admin.email) {
             const emailData = {
               companyAdminName:
-                `${admin.first_name || ""} ${admin.last_name || ""}`.trim() ||
+                `${admin.firstName || ""} ${admin.lastName || ""}`.trim() ||
                 "Admin",
               companyId: company.id,
-              companyName: company.company_name,
+              companyName: company.companyName,
               requesterName: userName,
               requesterEmail: user.email || "",
               requesterJobTitle: profile.jobTitle || "",
@@ -356,12 +347,12 @@ export async function POST(request: NextRequest) {
         userEmail: user.email || undefined,
         entityType: "company",
         entityId: joinData.companyId,
-        details: { company_name: company.company_name, action: "join_request" },
+        details: { company_name: company.companyName, action: "join_request" },
       }).catch(() => {});
 
       return apiResponse({
         success: true,
-        message: `Request to join "${company.company_name}" submitted. Awaiting company admin approval.`,
+        message: `Request to join "${company.companyName}" submitted. Awaiting company admin approval.`,
       });
     }
 

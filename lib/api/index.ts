@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import type { Database } from "@/lib/supabase/types";
+import type { AuthenticatedApiUser } from "@/lib/api/types";
 
 /** Model ids supported for matching (demo and production). */
 export const MATCHING_MODEL_IDS = {
@@ -31,7 +31,7 @@ export function apiError(
 export async function createApiClient() {
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -55,7 +55,7 @@ export async function createApiClient() {
 
 // Create admin Supabase client (bypasses RLS)
 export function createAdminClient() {
-  return createSupabaseClient<Database>(
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
@@ -76,17 +76,12 @@ export async function getAuthenticatedUser(request: NextRequest) {
     });
 
     if (session?.user) {
-      const supabase = await createApiClient();
+      const user: AuthenticatedApiUser = {
+        id: session.user.id,
+        email: session.user.email,
+      };
       return {
-        user: {
-          id: session.user.id,
-          email: session.user.email,
-          user_metadata: {},
-          app_metadata: {},
-          aud: "authenticated",
-          created_at: session.user.createdAt?.toISOString() ?? "",
-        } as unknown as import("@supabase/supabase-js").User,
-        supabase,
+        user,
         error: null,
       };
     }
@@ -94,8 +89,7 @@ export async function getAuthenticatedUser(request: NextRequest) {
     console.error("Better Auth session error:", err);
   }
 
-  const supabase = await createApiClient();
-  return { user: null, supabase, error: "Unauthorized" };
+  return { user: null, error: "Unauthorized" };
 }
 
 // Check if user has superadmin role via Drizzle

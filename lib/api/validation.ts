@@ -1,17 +1,16 @@
 import { NextRequest } from "next/server";
 import type { ZodType } from "zod";
-import { getAuthenticatedUser, apiError, createAdminClient } from "./index";
+import { getAuthenticatedUser, apiError } from "./index";
 
 /**
  * Require authentication. Returns the user or throws a structured error.
- * Usage: const { user, supabase } = await requireAuth(request);
  */
 export async function requireAuth(request: NextRequest) {
-  const { user, supabase, error } = await getAuthenticatedUser(request);
+  const { user, error } = await getAuthenticatedUser(request);
   if (error || !user) {
     throw new AuthError("Unauthorized");
   }
-  return { user, supabase };
+  return { user };
 }
 
 /**
@@ -109,27 +108,15 @@ export async function isCompanyMember(
   userId: string,
   companyId: string,
 ): Promise<boolean> {
-  const supabase = createAdminClient();
+  const { getCompanyOwner, getApprovedMembership } = await import("@/lib/db/queries");
 
   // Check ownership first (fast path)
-  const { data: company } = await supabase
-    .from("companies")
-    .select("user_id")
-    .eq("id", companyId)
-    .single();
-
-  if (company?.user_id === userId) return true;
+  const ownerId = await getCompanyOwner(companyId);
+  if (ownerId === userId) return true;
 
   // Check approved team membership
-  const { data: membership } = await supabase
-    .from("company_members")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("user_id", userId)
-    .eq("status", "approved")
-    .limit(1);
-
-  return !!(membership && membership.length > 0);
+  const membership = await getApprovedMembership(userId, companyId);
+  return !!membership;
 }
 
 /**
@@ -137,24 +124,14 @@ export async function isCompanyMember(
  * Returns an array of company ID strings.
  */
 export async function getUserCompanyIds(userId: string): Promise<string[]> {
-  const supabase = createAdminClient();
+  const { getOwnedCompanyIds, getApprovedMemberCompanyIds } = await import("@/lib/db/queries");
 
-  // Get owned companies
-  const { data: owned } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("user_id", userId);
+  const [owned, memberships] = await Promise.all([
+    getOwnedCompanyIds(userId),
+    getApprovedMemberCompanyIds(userId),
+  ]);
 
-  // Get companies where user is an approved team member
-  const { data: memberships } = await supabase
-    .from("company_members")
-    .select("company_id")
-    .eq("user_id", userId)
-    .eq("status", "approved");
-
-  const ids = new Set<string>();
-  owned?.forEach((c) => ids.add(c.id));
-  memberships?.forEach((m) => ids.add(m.company_id));
+  const ids = new Set<string>([...owned, ...memberships]);
   return Array.from(ids);
 }
 

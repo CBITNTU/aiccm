@@ -1,17 +1,23 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- join row types */
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   handleApiError,
   sanitizeLikeParam,
 } from "@/lib/api/validation";
-
-/* eslint-disable @typescript-eslint/no-explicit-any -- supabase join types */
+import { db } from "@/lib/db";
+import {
+  companies,
+  companyCapabilities,
+  companyCapabilitiesRef,
+} from "@/lib/db/schema/app";
+import { eq, and, inArray, ilike, or } from "drizzle-orm";
+import { nearbyCompanies } from "@/lib/db/raw";
 
 export async function POST(request: NextRequest) {
   try {
     await requireAuth(request);
-    const supabase = createAdminClient();
 
     const body = await request.json();
     const {
@@ -35,68 +41,55 @@ export async function POST(request: NextRequest) {
     }
 
     // Get capability info for fallback text search
-    const { data: capabilityCheck } = await supabase
-      .from("company_capabilities_ref")
-      .select("id, name, category")
-      .in("id", capabilityIds);
+    const capabilityCheck = await db
+      .select({ id: companyCapabilitiesRef.id, name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+      .from(companyCapabilitiesRef)
+      .where(inArray(companyCapabilitiesRef.id, capabilityIds));
 
     // Join query to get companies with matching capabilities
-    const { data: companyCapabilitiesData, error: joinError } = await supabase
-      .from("company_capabilities")
-      .select(
-        `
-        company_id,
-        capability_id,
-        companies!inner(
-          id,
-          company_name,
-          companies_house_number,
-          contact_email,
-          contact_phone,
-          postcode,
-          address,
-          description,
-          website_url,
-          key_capabilities,
-          certifications,
-          status,
-          user_id,
-          is_system_company,
-          latitude,
-          longitude,
-          created_at,
-          updated_at
-        )
-      `,
-      )
-      .in("capability_id", capabilityIds);
-
-    if (joinError) throw joinError;
+    const companyCapabilitiesData = await db
+      .select({
+        companyId: companyCapabilities.companyId,
+        capabilityId: companyCapabilities.capabilityId,
+        company: {
+          id: companies.id,
+          company_name: companies.companyName,
+          companies_house_number: companies.companiesHouseNumber,
+          contact_email: companies.contactEmail,
+          contact_phone: companies.contactPhone,
+          postcode: companies.postcode,
+          address: companies.address,
+          description: companies.description,
+          website_url: companies.websiteUrl,
+          key_capabilities: companies.keyCapabilities,
+          certifications: companies.certifications,
+          status: companies.status,
+          user_id: companies.userId,
+          is_system_company: companies.isSystemCompany,
+          latitude: companies.latitude,
+          longitude: companies.longitude,
+          created_at: companies.createdAt,
+          updated_at: companies.updatedAt,
+        },
+      })
+      .from(companyCapabilities)
+      .innerJoin(companies, eq(companyCapabilities.companyId, companies.id))
+      .where(inArray(companyCapabilities.capabilityId, capabilityIds));
 
     // FALLBACK: If no companies found by capability IDs, try text search
     if (
-      (companyCapabilitiesData?.length || 0) === 0 &&
-      capabilityCheck &&
+      companyCapabilitiesData.length === 0 &&
       capabilityCheck.length > 0
     ) {
       const genericWords = new Set([
-        "services",
-        "service",
-        "solutions",
-        "solution",
-        "management",
-        "consulting",
-        "consultancy",
-        "design",
-        "development",
-        "installation",
-        "maintenance",
-        "support",
+        "services", "service", "solutions", "solution", "management",
+        "consulting", "consultancy", "design", "development",
+        "installation", "maintenance", "support",
       ]);
 
       const searchKeywords = capabilityCheck
         .map((c) => {
-          const words = c.name.toLowerCase().split(/\s+/);
+          const words = (c.name || "").toLowerCase().split(/\s+/);
           return words.filter((w) => w.length > 4 && !genericWords.has(w));
         })
         .flat()
@@ -104,29 +97,41 @@ export async function POST(request: NextRequest) {
         .slice(0, 3);
 
       if (searchKeywords.length > 0) {
-        const orConditions = searchKeywords
-          .map((keyword) => {
-            const safe = sanitizeLikeParam(keyword);
-            return `description.ilike.%${safe}%,key_capabilities.ilike.%${safe}%`;
+        const orConditions = searchKeywords.flatMap((keyword) => {
+          const safe = sanitizeLikeParam(keyword);
+          return [
+            ilike(companies.description, `%${safe}%`),
+            ilike(companies.keyCapabilities, `%${safe}%`),
+          ];
+        });
+
+        const textSearchResults = await db
+          .select({
+            id: companies.id,
+            company_name: companies.companyName,
+            companies_house_number: companies.companiesHouseNumber,
+            contact_email: companies.contactEmail,
+            contact_phone: companies.contactPhone,
+            postcode: companies.postcode,
+            address: companies.address,
+            description: companies.description,
+            website_url: companies.websiteUrl,
+            key_capabilities: companies.keyCapabilities,
+            certifications: companies.certifications,
+            status: companies.status,
+            user_id: companies.userId,
+            is_system_company: companies.isSystemCompany,
+            latitude: companies.latitude,
+            longitude: companies.longitude,
+            created_at: companies.createdAt,
+            updated_at: companies.updatedAt,
           })
-          .join(",");
+          .from(companies)
+          .where(and(eq(companies.status, "active"), or(...orConditions)))
+          .limit(50);
 
-        const { data: textSearchResults, error: textSearchError } =
-          await supabase
-            .from("companies")
-            .select(
-              "id, company_name, companies_house_number, contact_email, contact_phone, postcode, address, description, website_url, key_capabilities, certifications, status, user_id, is_system_company, latitude, longitude, created_at, updated_at",
-            )
-            .eq("status", "active")
-            .or(orConditions)
-            .limit(50);
-
-        if (
-          !textSearchError &&
-          textSearchResults &&
-          textSearchResults.length > 0
-        ) {
-          const filteredResults = textSearchResults.filter((company: any) => {
+        if (textSearchResults.length > 0) {
+          const filteredResults = textSearchResults.filter((company) => {
             const desc = (company.description || "").toLowerCase();
             const keyCaps = (company.key_capabilities || "").toLowerCase();
             const combined = `${desc} ${keyCaps}`;
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest) {
               combined.includes(keyword),
             ).length;
             const fullNameMatches = capabilityCheck.some((cap) => {
-              const fullName = cap.name.toLowerCase();
+              const fullName = (cap.name || "").toLowerCase();
               return (
                 combined.includes(fullName) ||
                 combined.includes(fullName.replace(/\s+/g, " "))
@@ -150,7 +155,7 @@ export async function POST(request: NextRequest) {
 
           if (filteredResults.length > 0) {
             const uniqueMap = new Map<string, any>();
-            filteredResults.forEach((company: any) => {
+            filteredResults.forEach((company) => {
               if (
                 !uniqueMap.has(company.id) &&
                 !excludeCompanyIds.includes(company.id)
@@ -165,22 +170,25 @@ export async function POST(request: NextRequest) {
 
             const companiesWithCapabilities = await Promise.all(
               companiesArray.map(async (company) => {
-                const { data: capabilities } = await supabase
-                  .from("company_capabilities")
-                  .select(
-                    "capability_id, company_capabilities_ref(id, name)",
-                  )
-                  .eq("company_id", company.id)
-                  .in("capability_id", capabilityIds);
+                const capabilities = await db
+                  .select({
+                    id: companyCapabilitiesRef.id,
+                    name: companyCapabilitiesRef.name,
+                  })
+                  .from(companyCapabilities)
+                  .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
+                  .where(
+                    and(
+                      eq(companyCapabilities.companyId, company.id),
+                      inArray(companyCapabilities.capabilityId, capabilityIds),
+                    ),
+                  );
 
                 return {
                   ...company,
-                  capabilities:
-                    capabilities?.map((c: any) => ({
-                      id: c.company_capabilities_ref.id,
-                      name: c.company_capabilities_ref.name,
-                    })) ||
-                    capabilityCheck.map((c) => ({ id: c.id, name: c.name })),
+                  capabilities: capabilities.length > 0
+                    ? capabilities
+                    : capabilityCheck.map((c) => ({ id: c.id, name: c.name })),
                 };
               }),
             );
@@ -191,7 +199,6 @@ export async function POST(request: NextRequest) {
               userLat,
               userLng,
               radiusMiles,
-              supabase,
             );
           }
         }
@@ -201,8 +208,8 @@ export async function POST(request: NextRequest) {
     // Deduplicate companies and filter by status
     const uniqueCompanies = new Map<string, any>();
 
-    (companyCapabilitiesData || []).forEach((item: any) => {
-      const company = item.companies;
+    companyCapabilitiesData.forEach((item) => {
+      const company = item.company;
       if (
         company &&
         (company.status === "active" || company.status === "pending_review") &&
@@ -219,19 +226,23 @@ export async function POST(request: NextRequest) {
 
     const companiesWithCapabilities = await Promise.all(
       companiesArray.map(async (company) => {
-        const { data: capabilities } = await supabase
-          .from("company_capabilities")
-          .select("capability_id, company_capabilities_ref(id, name)")
-          .eq("company_id", company.id)
-          .in("capability_id", capabilityIds);
+        const capabilities = await db
+          .select({
+            id: companyCapabilitiesRef.id,
+            name: companyCapabilitiesRef.name,
+          })
+          .from(companyCapabilities)
+          .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
+          .where(
+            and(
+              eq(companyCapabilities.companyId, company.id),
+              inArray(companyCapabilities.capabilityId, capabilityIds),
+            ),
+          );
 
         return {
           ...company,
-          capabilities:
-            capabilities?.map((c: any) => ({
-              id: c.company_capabilities_ref.id,
-              name: c.company_capabilities_ref.name,
-            })) || [],
+          capabilities,
         };
       }),
     );
@@ -242,7 +253,6 @@ export async function POST(request: NextRequest) {
       userLat,
       userLng,
       radiusMiles,
-      supabase,
     );
   } catch (error) {
     return handleApiError(error);
@@ -250,51 +260,48 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * If the user provided coordinates, re-query via the PostGIS RPC to get
+ * If the user provided coordinates, re-query via the PostGIS function to get
  * distance-sorted results for the given company IDs. Otherwise return as-is.
  */
 async function applyLocationAndRespond(
-  companies: any[],
+  companiesList: any[],
   hasLocation: boolean,
   userLat: number | undefined,
   userLng: number | undefined,
   radiusMiles: number | undefined,
-  supabase: ReturnType<typeof createAdminClient>,
 ) {
-  if (!hasLocation || companies.length === 0) {
-    return apiResponse({ companies });
+  if (!hasLocation || companiesList.length === 0) {
+    return apiResponse({ companies: companiesList });
   }
 
-  const companyIds = companies.map((c: any) => c.id);
+  const companyIds = companiesList.map((c: any) => c.id);
 
-  const { data, error } = await supabase.rpc("nearby_companies", {
-    user_lat: userLat!,
-    user_lng: userLng!,
-    radius_miles: radiusMiles ?? null,
-    search_text: null,
-    company_ids: companyIds,
-    page_num: 1,
-    page_size: companyIds.length,
+  const data = await nearbyCompanies({
+    userLat: userLat!,
+    userLng: userLng!,
+    radiusMiles: radiusMiles ?? null,
+    searchText: null,
+    companyIds,
+    pageNum: 1,
+    pageSize: companyIds.length,
   });
 
-  if (error) throw error;
-
   const distanceByCompany: Record<string, number> = {};
-  const nearbyIds = new Set<string>();
 
-  for (const row of (data || []) as any[]) {
-    distanceByCompany[row.id] = row.distance_miles;
-    nearbyIds.add(row.id);
+  for (const row of data) {
+    if (row.distance_miles != null) {
+      distanceByCompany[row.id] = row.distance_miles;
+    }
   }
 
   // Merge capabilities back: the RPC returns raw company columns,
   // but we already have capabilities attached — build a lookup.
   const capLookup = new Map<string, any[]>();
-  for (const c of companies) {
+  for (const c of companiesList) {
     capLookup.set(c.id, c.capabilities || []);
   }
 
-  const sortedCompanies = (data || []).map((row: any) => ({
+  const sortedCompanies = data.map((row: any) => ({
     ...row,
     capabilities: capLookup.get(row.id) || [],
   }));

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import {
@@ -57,8 +57,6 @@ import {
   useDeleteProject,
   useUpdateProjectStatus,
 } from "@/hooks/useProjectMutations";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface ProjectAnalysis {
   requiredCompetencies: string[];
@@ -529,7 +527,7 @@ export default function ConsultingPage() {
 
     try {
       const data = await api.getCompany(selectedProject.lead_company_id);
-      const leadCompany = data.company as unknown as Company;
+      const leadCompany = data.company;
       if (!leadCompany) {
         toast.error("Failed to load company information");
         return;
@@ -559,7 +557,7 @@ export default function ConsultingPage() {
 
     try {
       const data = await api.getCompany(selectedProject.lead_company_id);
-      const leadCompany = data.company as unknown as Company;
+      const leadCompany = data.company;
       if (!leadCompany) {
         toast.error("Failed to load company information");
         return;

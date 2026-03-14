@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- rpc truncate_demo_matching_results */
 import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
   checkSuperadminRole,
-  createAdminClient,
   apiResponse,
   apiError,
 } from "@/lib/api";
@@ -14,6 +12,10 @@ import {
 import { getPlatformAISettings } from "@/lib/platformSettings";
 import type { MatchingModelId } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { companies, tenders } from "@/lib/db/schema/app";
+import { inArray } from "drizzle-orm";
+import { truncateDemoMatchingResults } from "@/lib/db/raw";
 
 const DEFAULT_TENDER_COUNT = 50;
 
@@ -54,17 +56,15 @@ export async function POST(request: NextRequest) {
         ? (body.reasoningEffort as (typeof validEfforts)[number])
         : undefined;
 
-    const supabase = createAdminClient();
-
-    // Empty queue of pending demo jobs so only this run's jobs are processed (no mixing OpenAI/Gemini)
+    // Empty queue of pending demo jobs so only this run's jobs are processed
     await clearPendingDemoJobs().catch((err) =>
       console.error("Clear pending demo jobs failed:", err),
     );
 
-    const { error: truncateError } = await (supabase as any).rpc(
-      "truncate_demo_matching_results",
-    );
-    if (truncateError) {
+    // Truncate demo matching results using raw SQL helper
+    try {
+      await truncateDemoMatchingResults();
+    } catch (truncateError) {
       return apiError(
         "Failed to truncate demo table. Run migrations (e.g. supabase db push). " +
           String(truncateError),
@@ -72,20 +72,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: companyRow } = await supabase
-      .from("companies")
-      .select("id")
-      .limit(1)
-      .single();
-    if (!companyRow) return apiError("No company found for demo", 500);
-    const companyId = (companyRow as { id: string }).id;
+    // Get first company
+    const companyRows = await db
+      .select({ id: companies.id })
+      .from(companies)
+      .limit(1);
+    if (!companyRows[0]) return apiError("No company found for demo", 500);
+    const companyId = companyRows[0].id;
 
-    const { data: tenders } = await supabase
-      .from("tenders")
-      .select("id")
-      .in("status", ["open", "closing_soon"])
+    // Get open tenders
+    const tenderRows = await db
+      .select({ id: tenders.id })
+      .from(tenders)
+      .where(inArray(tenders.status, ["open", "closing_soon"]))
       .limit(tenderCount);
-    const tenderIds = ((tenders ?? []) as { id: string }[]).map((t) => t.id);
+    const tenderIds = tenderRows.map((t) => t.id);
     if (tenderIds.length === 0)
       return apiError("No open tenders found for demo", 500);
 

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
@@ -7,6 +7,15 @@ import {
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import {
+  virtualOrganizations,
+  voMembers,
+  tenders,
+  companies,
+  matchingResults,
+} from "@/lib/db/schema/app";
+import { eq, and, inArray } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
@@ -15,77 +24,103 @@ export async function GET(
   try {
     const { user } = await requireAuth(request);
     const { projectId } = await params;
-    const supabase = createAdminClient();
 
     // Fetch project with tender
-    const { data: project, error: projectError } = await supabase
-      .from("virtual_organizations")
-      .select(
-        `
-        *,
-        tenders:target_tender_id (*)
-      `,
-      )
-      .eq("id", projectId)
-      .single();
+    const projectRows = await db
+      .select({
+        project: virtualOrganizations,
+        tenderData: tenders,
+      })
+      .from(virtualOrganizations)
+      .leftJoin(tenders, eq(virtualOrganizations.targetTenderId, tenders.id))
+      .where(eq(virtualOrganizations.id, projectId))
+      .limit(1);
 
-    if (projectError) throw projectError;
-    if (!project) throw new AuthError("Project not found");
+    const row = projectRows[0];
+    if (!row) throw new AuthError("Project not found");
+
+    const project = {
+      ...row.project,
+      tenders: row.tenderData,
+    };
 
     // Check if user is owner (member of lead company)
-    const isOwner = await isCompanyMember(user.id, project.lead_company_id);
+    const isOwner = await isCompanyMember(user.id, project.leadCompanyId);
 
     // If not owner, check if user's company is a member with sent/accepted status
     if (!isOwner) {
       const userCompanyIds = await getUserCompanyIds(user.id);
 
-      const { data: membership } = await supabase
-        .from("vo_members")
-        .select("id")
-        .eq("vo_id", projectId)
-        .in("company_id", userCompanyIds)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .in("invitation_status" as any, ["sent", "accepted"])
-        .limit(1);
+      if (userCompanyIds.length === 0) {
+        throw new AuthError("No access to this project");
+      }
 
-      if (!membership || membership.length === 0) {
+      // Check for invitation_status in sent/accepted
+      const membershipCheck = await db
+        .select({ id: voMembers.id, invitationStatus: voMembers.invitationStatus })
+        .from(voMembers)
+        .where(
+          and(
+            eq(voMembers.voId, projectId),
+            inArray(voMembers.companyId, userCompanyIds),
+          ),
+        );
+
+      const hasAccess = membershipCheck.some(
+        (m) => m.invitationStatus === "sent" || m.invitationStatus === "accepted",
+      );
+
+      if (!hasAccess) {
         throw new AuthError("No access to this project");
       }
     }
 
-    // Fetch team members
-    const { data: members, error: membersError } = await supabase
-      .from("vo_members")
-      .select(
-        `
-        *,
-        companies:company_id (*)
-      `,
-      )
-      .eq("vo_id", projectId);
+    // Fetch team members with company data
+    const membersData = await db
+      .select({
+        member: voMembers,
+        company: companies,
+      })
+      .from(voMembers)
+      .leftJoin(companies, eq(voMembers.companyId, companies.id))
+      .where(eq(voMembers.voId, projectId));
 
-    if (membersError) throw membersError;
+    const members = membersData.map((m) => ({
+      ...m.member,
+      companies: m.company,
+    }));
 
     // Fetch tender match result if applicable
     let tenderMatchResult = null;
-    if (project.lead_company_id && project.target_tender_id) {
-      const { data: matchRow } = await supabase
-        .from("matching_results")
-        .select(
-          "id, overall_score, capability_score, experience_score, location_score, certification_score, match_reasons, ai_analysis",
+    if (project.leadCompanyId && project.targetTenderId) {
+      const matchRows = await db
+        .select({
+          id: matchingResults.id,
+          overallScore: matchingResults.overallScore,
+          capabilityScore: matchingResults.capabilityScore,
+          experienceScore: matchingResults.experienceScore,
+          locationScore: matchingResults.locationScore,
+          certificationScore: matchingResults.certificationScore,
+          matchReasons: matchingResults.matchReasons,
+          aiAnalysis: matchingResults.aiAnalysis,
+        })
+        .from(matchingResults)
+        .where(
+          and(
+            eq(matchingResults.companyId, project.leadCompanyId),
+            eq(matchingResults.tenderId, project.targetTenderId),
+          ),
         )
-        .eq("company_id", project.lead_company_id)
-        .eq("tender_id", project.target_tender_id)
-        .maybeSingle();
+        .limit(1);
 
-      if (matchRow) {
-        tenderMatchResult = matchRow;
+      if (matchRows[0]) {
+        tenderMatchResult = matchRows[0];
       }
     }
 
     return apiResponse({
       project,
-      teamMembers: members || [],
+      teamMembers: members,
       tenderMatchResult,
       isOwner,
     });
@@ -101,51 +136,51 @@ export async function PUT(
   try {
     const { user } = await requireAuth(request);
     const { projectId } = await params;
-    const supabase = createAdminClient();
 
     // Verify ownership
-    const { data: project } = await supabase
-      .from("virtual_organizations")
-      .select("lead_company_id")
-      .eq("id", projectId)
-      .single();
+    const projectRows = await db
+      .select({ leadCompanyId: virtualOrganizations.leadCompanyId })
+      .from(virtualOrganizations)
+      .where(eq(virtualOrganizations.id, projectId))
+      .limit(1);
 
+    const project = projectRows[0];
     if (!project) throw new AuthError("Project not found");
 
-    const hasAccess = await isCompanyMember(user.id, project.lead_company_id);
+    const hasAccess = await isCompanyMember(user.id, project.leadCompanyId);
     if (!hasAccess) {
       throw new AuthError("No access to this project");
     }
 
     const body = await request.json();
 
-    // Whitelist allowed fields
-    const allowedFields = [
-      "status",
-      "name",
-      "description",
-      "target_tender_id",
-      "gap_analysis",
-      "team_analysis",
-      "recommended_partners",
-    ];
-    const updates: Record<string, unknown> = {};
-    for (const key of allowedFields) {
-      if (key in body) {
-        updates[key] = body[key];
+    // Whitelist allowed fields and map to Drizzle camelCase
+    const fieldMap: Record<string, keyof typeof virtualOrganizations.$inferInsert> = {
+      status: "status",
+      name: "name",
+      description: "description",
+      target_tender_id: "targetTenderId",
+      gap_analysis: "gapAnalysis",
+      team_analysis: "teamAnalysis",
+      recommended_partners: "recommendedPartners",
+    };
+
+    const updates: Partial<typeof virtualOrganizations.$inferInsert> = {};
+    for (const [bodyKey, dbKey] of Object.entries(fieldMap)) {
+      if (bodyKey in body) {
+        (updates as Record<string, unknown>)[dbKey as string] = body[bodyKey];
       }
     }
 
-    const { data, error } = await supabase
-      .from("virtual_organizations")
-      .update(updates)
-      .eq("id", projectId)
-      .select()
-      .single();
+    updates.updatedAt = new Date();
 
-    if (error) throw error;
+    const result = await db
+      .update(virtualOrganizations)
+      .set(updates)
+      .where(eq(virtualOrganizations.id, projectId))
+      .returning();
 
-    return apiResponse({ project: data });
+    return apiResponse({ project: result[0] });
   } catch (error) {
     return handleApiError(error);
   }
@@ -158,32 +193,29 @@ export async function DELETE(
   try {
     const { user } = await requireAuth(request);
     const { projectId } = await params;
-    const supabase = createAdminClient();
 
     // Verify ownership
-    const { data: project } = await supabase
-      .from("virtual_organizations")
-      .select("lead_company_id")
-      .eq("id", projectId)
-      .single();
+    const projectRows = await db
+      .select({ leadCompanyId: virtualOrganizations.leadCompanyId })
+      .from(virtualOrganizations)
+      .where(eq(virtualOrganizations.id, projectId))
+      .limit(1);
 
+    const project = projectRows[0];
     if (!project) throw new AuthError("Project not found");
 
-    const hasAccess = await isCompanyMember(user.id, project.lead_company_id);
+    const hasAccess = await isCompanyMember(user.id, project.leadCompanyId);
     if (!hasAccess) {
       throw new AuthError("No access to this project");
     }
 
-    // Delete members first
-    await supabase.from("vo_members").delete().eq("vo_id", projectId);
+    // Delete members first (cascade should handle this, but be explicit)
+    await db.delete(voMembers).where(eq(voMembers.voId, projectId));
 
     // Delete project
-    const { error } = await supabase
-      .from("virtual_organizations")
-      .delete()
-      .eq("id", projectId);
-
-    if (error) throw error;
+    await db
+      .delete(virtualOrganizations)
+      .where(eq(virtualOrganizations.id, projectId));
 
     return apiResponse({ success: true });
   } catch (error) {

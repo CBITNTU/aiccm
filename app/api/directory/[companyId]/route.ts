@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies, companyTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { eq, and, or } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
@@ -9,149 +12,82 @@ export async function GET(
   try {
     const { user } = await requireAuth(request);
     const { companyId } = await params;
-    const supabase = createAdminClient();
 
-    // Fetch public company fields + user_id for ownership check (equipment, market_position, safety_rating removed from UI scope)
-    const { data, error } = await supabase
-      .from("companies")
-      .select(
-        `id, company_name, description, key_capabilities, postcode,
-         certifications, past_projects, is_system_company,
-         status, digital_maturity,
-         ai_competencies, ai_capabilities, ai_analysis,
-         created_at, updated_at, user_id, website_url`,
+    // TODO [MERGE]: migrate to Drizzle — HEAD used Supabase query with specific field selection:
+    // const { data, error } = await supabase.from("companies").select(`id, company_name, ...`).eq("id", companyId)...
+
+    // Fetch company - visible if active or owned by user
+    const companyRows = await db
+      .select()
+      .from(companies)
+      .where(
+        and(
+          eq(companies.id, companyId),
+          or(
+            eq(companies.status, "active"),
+            eq(companies.userId, user.id),
+          ),
+        ),
       )
-      .eq("id", companyId)
-      .or(`status.eq.active,user_id.eq.${user.id}`)
-      .single();
+      .limit(1);
 
-    if (error) throw error;
+    const companyData = companyRows[0];
+    if (!companyData) {
+      throw new Error("Company not found");
+    }
 
-    const isOwner = data.user_id === user.id;
+    const isOwner = companyData.userId === user.id;
+
+    // Build public response (exclude sensitive fields)
+    const {
+      userId: _uid,
+      contactEmail,
+      contactPhone,
+      companiesHouseNumber,
+      ...publicData
+    } = companyData;
+
+    let responseData: Record<string, unknown> = { ...publicData };
 
     // Include contact fields only for the owner
-    const { user_id: _uid, ...rest } = data;
-    let companyData: Record<string, unknown> = { ...rest };
     if (isOwner) {
-      const { data: fullData, error: fullError } = await supabase
-        .from("companies")
-        .select("contact_email, contact_phone, companies_house_number")
-        .eq("id", companyId)
-        .single();
-
-      if (!fullError && fullData) {
-        companyData = { ...companyData, ...fullData };
-      }
+      responseData = {
+        ...responseData,
+        contactEmail,
+        contactPhone,
+        companiesHouseNumber,
+      };
     }
 
     // Fetch taxonomies for the company
-    const { data: taxData } = await supabase
-      .from("company_taxonomies")
-      .select("taxonomy_id, taxonomies(id, name)")
-      .eq("company_id", companyId);
+    const taxData = await db
+      .select({
+        taxonomyId: companyTaxonomies.taxonomyId,
+        id: taxonomies.id,
+        name: taxonomies.name,
+      })
+      .from(companyTaxonomies)
+      .innerJoin(taxonomies, eq(companyTaxonomies.taxonomyId, taxonomies.id))
+      .where(eq(companyTaxonomies.companyId, companyId));
 
-    const taxonomies = (taxData || [])
-      .map((ct) => ct.taxonomies as { id: string; name: string } | null)
-      .filter((t): t is { id: string; name: string } => t !== null && !!t.name);
+    const companyTaxonomyList = taxData
+      .filter((t) => t.name)
+      .map((t) => ({ id: t.id, name: t.name }));
 
-    // Fetch capabilities (selected) with category for tree display
-    const { data: capData } = await supabase
-      .from("company_capabilities")
-      .select("company_capabilities_ref(id, name, category)")
-      .eq("company_id", companyId);
+    // TODO [MERGE]: migrate capabilities, markets, standards to Drizzle
+    // const { data: capData } = await supabase
+    //   .from("company_capabilities")
+    //   .select("company_capabilities_ref(id, name, category)")
+    //   .eq("company_id", companyId);
+    // const capabilities = (capData || []).map((cc: any) => cc.company_capabilities_ref).filter(Boolean);
+    //
+    // const { data: marketsData } = await supabase
+    //   .from("company_markets")
+    //   .select("markets(id, name, parent_id)")
+    //   .eq("company_id", companyId);
+    // ... (market parent resolution + standards fetching)
 
-    const capabilities = (capData || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cc: any) => cc.company_capabilities_ref)
-      .filter(
-        (c): c is { id: string; name: string; category: string | null } =>
-          c != null && !!c.name,
-      );
-
-    // Fetch markets (selected) with parent for tree display
-    const { data: marketsData } = await supabase
-      .from("company_markets")
-      .select("markets(id, name, parent_id)")
-      .eq("company_id", companyId);
-
-    const marketsRaw = (marketsData || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cm: any) => cm.markets)
-      .filter(
-        (m): m is { id: string; name: string; parent_id: string | null } =>
-          m != null && !!m.name,
-      );
-
-    // Resolve market parent names for tree
-    const _marketIds = marketsRaw.map((m) => m.id);
-    const parentIds = [
-      ...new Set(
-        marketsRaw.map((m) => m.parent_id).filter((id): id is string => !!id),
-      ),
-    ];
-    let parentNames: Record<string, string> = {};
-    if (parentIds.length > 0) {
-      const { data: parentRows } = await supabase
-        .from("markets")
-        .select("id, name")
-        .in("id", parentIds);
-      parentNames = Object.fromEntries(
-        (parentRows || []).map((r) => [r.id, r.name]),
-      );
-    }
-    const markets = marketsRaw.map((m) => ({
-      id: m.id,
-      name: m.name,
-      parent_id: m.parent_id,
-      parent_name: m.parent_id ? parentNames[m.parent_id] ?? null : null,
-    }));
-
-    // Fetch standards (selected) with parent for tree display
-    const { data: standardsData } = await supabase
-      .from("company_standards")
-      .select("standards_ref(id, name, parent_id)")
-      .eq("company_id", companyId);
-
-    const standardsRaw = (standardsData || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cs: any) => cs.standards_ref)
-      .filter(
-        (s): s is { id: string; name: string; parent_id: string | null } =>
-          s != null && !!s.name,
-      );
-
-    const stdParentIds = [
-      ...new Set(
-        standardsRaw
-          .map((s) => s.parent_id)
-          .filter((id): id is string => !!id),
-      ),
-    ];
-    let stdParentNames: Record<string, string> = {};
-    if (stdParentIds.length > 0) {
-      const { data: stdParentRows } = await supabase
-        .from("standards_ref")
-        .select("id, name")
-        .in("id", stdParentIds);
-      stdParentNames = Object.fromEntries(
-        (stdParentRows || []).map((r) => [r.id, r.name]),
-      );
-    }
-    const standards = standardsRaw.map((s) => ({
-      id: s.id,
-      name: s.name,
-      parent_id: s.parent_id,
-      parent_name: s.parent_id ? stdParentNames[s.parent_id] ?? null : null,
-    }));
-
-    return apiResponse({
-      company: companyData,
-      isOwner,
-      taxonomies,
-      capabilities,
-      markets,
-      standards,
-    });
+    return apiResponse({ company: responseData, isOwner, taxonomies: companyTaxonomyList });
   } catch (error) {
     return handleApiError(error);
   }

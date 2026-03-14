@@ -1,10 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  createAdminClient,
-  apiResponse,
-  apiError,
-  getAuthenticatedUser,
-} from "@/lib/api";
+import { apiResponse, apiError, getAuthenticatedUser } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { updateCompanyJoinRequest } from "@/lib/db/queries";
 import {
@@ -13,6 +8,9 @@ import {
   getCompanyAdminApprovalEmailHtml,
   getAdminNotificationEmailHtml,
 } from "@/lib/email";
+import { db } from "@/lib/db";
+import { companyJoinRequests, companyMembers, profiles, userRoles } from "@/lib/db/schema/app";
+import { eq, and, inArray, desc } from "drizzle-orm";
 
 export interface ApproveMemberRequest {
   requestId: string;
@@ -27,7 +25,6 @@ export interface ApproveMemberResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
     const { user, error: authError } = await getAuthenticatedUser(request);
     if (!user) {
       return apiError(authError || "Unauthorized", 401);
@@ -40,44 +37,39 @@ export async function POST(request: NextRequest) {
       return apiError("Request ID is required", 400);
     }
 
-    const supabase = createAdminClient();
-
     // Get join request
-    const { data: joinRequest, error: requestError } = await supabase
-      .from("company_join_requests")
-      .select(
-        `
-        id,
-        user_id,
-        company_id,
-        company_name_requested,
-        status
-      `,
-      )
-      .eq("id", requestId)
-      .single();
+    const joinRequestResult = await db
+      .select({
+        id: companyJoinRequests.id,
+        userId: companyJoinRequests.userId,
+        companyId: companyJoinRequests.companyId,
+        companyNameRequested: companyJoinRequests.companyNameRequested,
+        status: companyJoinRequests.status,
+      })
+      .from(companyJoinRequests)
+      .where(eq(companyJoinRequests.id, requestId))
+      .limit(1);
 
-    if (requestError || !joinRequest) {
+    const joinRequest = joinRequestResult[0];
+    if (!joinRequest) {
       return apiError("Join request not found", 404);
     }
 
     // Check if user is admin of this company
-    const { data: membership } = await supabase
-      .from("company_members")
-      .select("role, status")
-      .eq("company_id", joinRequest.company_id)
-      .eq("user_id", user.id)
-      .single();
+    const membershipResult = await db
+      .select({ role: companyMembers.role, status: companyMembers.status })
+      .from(companyMembers)
+      .where(
+        and(
+          eq(companyMembers.companyId, joinRequest.companyId),
+          eq(companyMembers.userId, user.id),
+        ),
+      )
+      .limit(1);
 
-    if (
-      !membership ||
-      membership.role !== "admin" ||
-      membership.status !== "approved"
-    ) {
-      return apiError(
-        "You are not authorized to approve members for this company",
-        403,
-      );
+    const membership = membershipResult[0];
+    if (!membership || membership.role !== "admin" || membership.status !== "approved") {
+      return apiError("You are not authorized to approve members for this company", 403);
     }
 
     // Check if request is in a valid state
@@ -86,28 +78,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Get requester profile
-    const { data: requesterProfile } = await supabase
-      .from("profiles")
-      .select("email, first_name, last_name")
-      .eq("user_id", joinRequest.user_id)
-      .single();
+    const requesterProfileResult = await db
+      .select({
+        email: profiles.email,
+        firstName: profiles.firstName,
+        lastName: profiles.lastName,
+      })
+      .from(profiles)
+      .where(eq(profiles.userId, joinRequest.userId))
+      .limit(1);
+    const requesterProfile = requesterProfileResult[0] ?? null;
 
     // Get current user's profile for admin name
-    const { data: adminProfile } = await supabase
-      .from("profiles")
-      .select("first_name, last_name")
-      .eq("user_id", user.id)
-      .single();
+    const adminProfileResult = await db
+      .select({ firstName: profiles.firstName, lastName: profiles.lastName })
+      .from(profiles)
+      .where(eq(profiles.userId, user.id))
+      .limit(1);
+    const adminProfile = adminProfileResult[0] ?? null;
 
     const requesterName =
-      `${requesterProfile?.first_name || ""} ${requesterProfile?.last_name || ""}`.trim() ||
-      "User";
+      `${requesterProfile?.firstName || ""} ${requesterProfile?.lastName || ""}`.trim() || "User";
     const adminName =
-      `${adminProfile?.first_name || ""} ${adminProfile?.last_name || ""}`.trim() ||
-      "Company Admin";
+      `${adminProfile?.firstName || ""} ${adminProfile?.lastName || ""}`.trim() || "Company Admin";
 
     if (approved) {
-      // Company admin approves - update status to approved_by_admin
       const updated = await updateCompanyJoinRequest(requestId, {
         status: "approved_by_admin",
         adminApprovedAt: new Date(),
@@ -115,7 +110,6 @@ export async function POST(request: NextRequest) {
       });
 
       if (!updated) {
-        console.error("Error approving member: no rows updated");
         return apiError("Failed to approve member", 500);
       }
 
@@ -123,7 +117,7 @@ export async function POST(request: NextRequest) {
       if (requesterProfile?.email) {
         const emailData = {
           userName: requesterName,
-          companyName: joinRequest.company_name_requested,
+          companyName: joinRequest.companyNameRequested,
           approvedByCompanyAdmin: true,
           companyAdminName: adminName,
         };
@@ -135,20 +129,20 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Notify superadmins that this request is ready for final approval
-      const { data: superadmins } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "superadmin");
+      // Notify superadmins
+      const superadmins = await db
+        .select({ userId: userRoles.userId })
+        .from(userRoles)
+        .where(eq(userRoles.role, "superadmin"));
 
-      if (superadmins && superadmins.length > 0) {
-        const superadminUserIds = superadmins.map((s) => s.user_id);
-        const { data: superadminProfiles } = await supabase
-          .from("profiles")
-          .select("email")
-          .in("user_id", superadminUserIds);
+      if (superadmins.length > 0) {
+        const superadminUserIds = superadmins.map((s) => s.userId);
+        const superadminProfiles = await db
+          .select({ email: profiles.email })
+          .from(profiles)
+          .where(inArray(profiles.userId, superadminUserIds));
 
-        const adminEmails = (superadminProfiles || [])
+        const adminEmails = superadminProfiles
           .map((p) => p.email)
           .filter(Boolean) as string[];
 
@@ -157,29 +151,28 @@ export async function POST(request: NextRequest) {
             userName: requesterName,
             userEmail: requesterProfile?.email || "",
             signupType: "join-company" as const,
-            companyName: joinRequest.company_name_requested,
+            companyName: joinRequest.companyNameRequested,
           };
 
           await sendEmail({
             to: adminEmails,
-            subject: `[Ready for Approval] Join request approved by ${joinRequest.company_name_requested}`,
+            subject: `[Ready for Approval] Join request approved by ${joinRequest.companyNameRequested}`,
             html: getAdminNotificationEmailHtml(adminNotificationData),
           });
         }
       }
 
-      // Log approval event
       await logApiEvent(request, {
         actionType: "company_member_approved",
         userId: user.id,
         userEmail: user.email || undefined,
         entityType: "company",
-        entityId: joinRequest.company_id,
+        entityId: joinRequest.companyId,
         details: {
           requestId,
-          requesterId: joinRequest.user_id,
+          requesterId: joinRequest.userId,
           requesterName,
-          companyName: joinRequest.company_name_requested,
+          companyName: joinRequest.companyNameRequested,
         },
       });
 
@@ -188,7 +181,6 @@ export async function POST(request: NextRequest) {
         message: `${requesterName}'s request has been approved. Awaiting platform admin approval.`,
       });
     } else {
-      // Company admin rejects
       const rejected = await updateCompanyJoinRequest(requestId, {
         status: "rejected",
         rejectionReason: rejectionReason || "Rejected by company administrator",
@@ -196,15 +188,13 @@ export async function POST(request: NextRequest) {
       });
 
       if (!rejected) {
-        console.error("Error rejecting member: no rows updated");
         return apiError("Failed to reject member", 500);
       }
 
-      // Send rejection email to requester
       if (requesterProfile?.email) {
         const emailData = {
           userName: requesterName,
-          companyName: joinRequest.company_name_requested,
+          companyName: joinRequest.companyNameRequested,
           approvedByCompanyAdmin: false,
           companyAdminName: adminName,
         };
@@ -216,19 +206,17 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Log rejection event
       await logApiEvent(request, {
         actionType: "company_member_removed",
         userId: user.id,
         userEmail: user.email || undefined,
         entityType: "company",
-        entityId: joinRequest.company_id,
+        entityId: joinRequest.companyId,
         details: {
           requestId,
-          requesterId: joinRequest.user_id,
+          requesterId: joinRequest.userId,
           requesterName,
-          rejectionReason:
-            rejectionReason || "Rejected by company administrator",
+          rejectionReason: rejectionReason || "Rejected by company administrator",
         },
       });
 
@@ -247,187 +235,145 @@ export async function POST(request: NextRequest) {
 // GET endpoint to list pending join requests for a company
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
     const { user, error: authError } = await getAuthenticatedUser(request);
     if (!user) {
       return apiError(authError || "Unauthorized", 401);
     }
 
-    const supabase = createAdminClient();
-
     // Get companies where user is an approved member (any role)
-    const { data: userMemberships } = await supabase
-      .from("company_members")
-      .select("company_id, role")
-      .eq("user_id", user.id)
-      .eq("status", "approved");
+    const userMemberships = await db
+      .select({ companyId: companyMembers.companyId, role: companyMembers.role })
+      .from(companyMembers)
+      .where(
+        and(
+          eq(companyMembers.userId, user.id),
+          eq(companyMembers.status, "approved"),
+        ),
+      );
 
-    if (!userMemberships || userMemberships.length === 0) {
+    if (userMemberships.length === 0) {
       return apiResponse({ requests: [], members: [] });
     }
 
-    const companyIds = userMemberships.map((m) => m.company_id);
+    const companyIds = userMemberships.map((m) => m.companyId);
     const adminCompanyIds = userMemberships
       .filter((m) => m.role === "admin")
-      .map((m) => m.company_id);
+      .map((m) => m.companyId);
 
     // Get pending join requests only for companies where user is admin
-    let joinRequests: Array<{
+    let joinRequests: {
       id: string;
-      user_id: string;
-      company_id: string;
-      company_name_requested: string;
+      userId: string;
+      companyId: string;
+      companyNameRequested: string;
       message: string | null;
       status: string;
-      created_at: string;
-    }> = [];
+      createdAt: Date;
+    }[] = [];
 
     if (adminCompanyIds.length > 0) {
-      const { data: requestsData, error: requestsError } = await supabase
-        .from("company_join_requests")
-        .select(
-          `
-          id,
-          user_id,
-          company_id,
-          company_name_requested,
-          message,
-          status,
-          created_at
-        `,
+      joinRequests = await db
+        .select({
+          id: companyJoinRequests.id,
+          userId: companyJoinRequests.userId,
+          companyId: companyJoinRequests.companyId,
+          companyNameRequested: companyJoinRequests.companyNameRequested,
+          message: companyJoinRequests.message,
+          status: companyJoinRequests.status,
+          createdAt: companyJoinRequests.createdAt,
+        })
+        .from(companyJoinRequests)
+        .where(
+          and(
+            inArray(companyJoinRequests.companyId, adminCompanyIds),
+            eq(companyJoinRequests.status, "pending"),
+          ),
         )
-        .in("company_id", adminCompanyIds)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
-
-      if (requestsError) {
-        console.error("Error fetching join requests:", requestsError);
-        return apiError("Failed to fetch join requests", 500);
-      }
-
-      joinRequests = requestsData || [];
+        .orderBy(desc(companyJoinRequests.createdAt));
     }
 
     // Get current members for all companies the user belongs to
-    const { data: members, error: membersError } = await supabase
-      .from("company_members")
-      .select(
-        `
-        id,
-        company_id,
-        user_id,
-        role,
-        status,
-        created_at
-      `,
+    const members = await db
+      .select({
+        id: companyMembers.id,
+        companyId: companyMembers.companyId,
+        userId: companyMembers.userId,
+        role: companyMembers.role,
+        status: companyMembers.status,
+        createdAt: companyMembers.createdAt,
+      })
+      .from(companyMembers)
+      .where(
+        and(
+          inArray(companyMembers.companyId, companyIds),
+          eq(companyMembers.status, "approved"),
+        ),
       )
-      .in("company_id", companyIds)
-      .eq("status", "approved")
-      .order("created_at", { ascending: false });
+      .orderBy(desc(companyMembers.createdAt));
 
-    if (membersError) {
-      console.error("Error fetching members:", membersError);
-      return apiError("Failed to fetch members", 500);
-    }
-
-    // Get users who have been approved by company admin but are awaiting platform admin approval
-    // These are in company_join_requests with status "approved_by_admin"
-    const { data: pendingPlatformApproval, error: pendingError } =
-      await supabase
-        .from("company_join_requests")
-        .select(
-          `
-        id,
-        user_id,
-        company_id,
-        company_name_requested,
-        status,
-        created_at
-      `,
-        )
-        .in("company_id", companyIds)
-        .eq("status", "approved_by_admin")
-        .order("created_at", { ascending: false });
-
-    if (pendingError) {
-      console.error("Error fetching pending platform approvals:", pendingError);
-      // Non-fatal, continue with empty array
-    }
+    // Get users pending platform approval
+    const pendingPlatformApproval = await db
+      .select({
+        id: companyJoinRequests.id,
+        userId: companyJoinRequests.userId,
+        companyId: companyJoinRequests.companyId,
+        companyNameRequested: companyJoinRequests.companyNameRequested,
+        status: companyJoinRequests.status,
+        createdAt: companyJoinRequests.createdAt,
+      })
+      .from(companyJoinRequests)
+      .where(
+        and(
+          inArray(companyJoinRequests.companyId, companyIds),
+          eq(companyJoinRequests.status, "approved_by_admin"),
+        ),
+      )
+      .orderBy(desc(companyJoinRequests.createdAt));
 
     // Enrich with user profile info
-    const enrichedRequests = await Promise.all(
-      (joinRequests || []).map(async (req) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email, first_name, last_name, job_title")
-          .eq("user_id", req.user_id)
-          .single();
+    const enrichWithProfile = async (userId: string) => {
+      const result = await db
+        .select({
+          email: profiles.email,
+          firstName: profiles.firstName,
+          lastName: profiles.lastName,
+          jobTitle: profiles.jobTitle,
+        })
+        .from(profiles)
+        .where(eq(profiles.userId, userId))
+        .limit(1);
+      const p = result[0];
+      return p
+        ? { email: p.email, firstName: p.firstName, lastName: p.lastName, jobTitle: p.jobTitle }
+        : null;
+    };
 
-        return {
-          ...req,
-          user: profile
-            ? {
-                email: profile.email,
-                firstName: profile.first_name,
-                lastName: profile.last_name,
-                jobTitle: profile.job_title,
-              }
-            : null,
-        };
-      }),
+    const enrichedRequests = await Promise.all(
+      joinRequests.map(async (req) => ({
+        ...req,
+        user: await enrichWithProfile(req.userId),
+      })),
     );
 
     const enrichedMembers = await Promise.all(
-      (members || []).map(async (member) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email, first_name, last_name, job_title")
-          .eq("user_id", member.user_id)
-          .single();
-
-        return {
-          ...member,
-          user: profile
-            ? {
-                email: profile.email,
-                firstName: profile.first_name,
-                lastName: profile.last_name,
-                jobTitle: profile.job_title,
-              }
-            : null,
-        };
-      }),
+      members.map(async (member) => ({
+        ...member,
+        user: await enrichWithProfile(member.userId),
+      })),
     );
 
-    // Enrich pending platform approval users and add them to members with special status
     const enrichedPendingApprovals = await Promise.all(
-      (pendingPlatformApproval || []).map(async (req) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email, first_name, last_name, job_title")
-          .eq("user_id", req.user_id)
-          .single();
-
-        return {
-          id: req.id,
-          company_id: req.company_id,
-          user_id: req.user_id,
-          role: "member" as const, // Default role for pending members
-          status: "pending_platform_approval", // Custom status for UI
-          created_at: req.created_at,
-          user: profile
-            ? {
-                email: profile.email,
-                firstName: profile.first_name,
-                lastName: profile.last_name,
-                jobTitle: profile.job_title,
-              }
-            : null,
-        };
-      }),
+      pendingPlatformApproval.map(async (req) => ({
+        id: req.id,
+        companyId: req.companyId,
+        userId: req.userId,
+        role: "member" as const,
+        status: "pending_platform_approval",
+        createdAt: req.createdAt,
+        user: await enrichWithProfile(req.userId),
+      })),
     );
 
-    // Combine approved members with pending platform approval members
     const allMembers = [...enrichedMembers, ...enrichedPendingApprovals];
 
     return apiResponse({

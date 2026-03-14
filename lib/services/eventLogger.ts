@@ -63,6 +63,8 @@ export type EventActionType =
   | "admin_demo_sync_results"
   | "admin_onboarding"
   | "admin_edit_pending_company"
+  | "admin_company_ai_regenerated"
+  | "admin_capabilities_reset"
   // Queue/Processing
   | "queue_job_created"
   | "queue_job_completed"

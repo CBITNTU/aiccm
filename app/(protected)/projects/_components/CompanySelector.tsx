@@ -11,9 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Plus } from "lucide-react";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+import type { CompanyRecord as Company } from "@/lib/api/types";
 
 interface CompanySelectorProps {
   companies: Company[];

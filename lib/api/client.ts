@@ -1,5 +1,7 @@
 // Frontend API client for calling Next.js API routes
 // This will be used in Phase 2 (frontend migration) to replace supabase.functions.invoke()
+import type { CompanyRecord } from "@/lib/api/types";
+import { normalizeCompanyRecord } from "@/lib/api/types";
 
 export class ApiError extends Error {
   status: number;
@@ -359,20 +361,29 @@ export const api = {
   getMyCompanies: () =>
     apiCall<{ companies: Record<string, unknown>[] }>("companies/mine", {
       method: "GET",
-    }),
+    }).then((data) => ({
+      ...data,
+      companies: data.companies.map((company) => normalizeCompanyRecord(company)),
+    })),
 
   getCompany: (companyId: string) =>
     apiCall<{
       company: Record<string, unknown>;
       isOwner: boolean;
       capabilities: { id: string; name: string; category: string }[];
-    }>(`companies/${companyId}`, { method: "GET" }),
+    }>(`companies/${companyId}`, { method: "GET" }).then((data) => ({
+      ...data,
+      company: normalizeCompanyRecord(data.company),
+    })),
 
   updateCompany: (companyId: string, updates: Record<string, unknown>) =>
     apiCall<{ company: Record<string, unknown> }>(`companies/${companyId}`, {
       method: "PUT",
       body: updates,
-    }),
+    }).then((data) => ({
+      ...data,
+      company: normalizeCompanyRecord(data.company),
+    })),
 
   getCompanyCapabilities: (companyId: string) =>
     apiCall<{
@@ -433,20 +444,14 @@ export const api = {
       company: Record<string, unknown>;
       isOwner: boolean;
       taxonomies: { id: string; name: string }[];
-      capabilities: { id: string; name: string; category: string | null }[];
-      markets: {
-        id: string;
-        name: string;
-        parent_id: string | null;
-        parent_name: string | null;
-      }[];
-      standards: {
-        id: string;
-        name: string;
-        parent_id: string | null;
-        parent_name: string | null;
-      }[];
-    }>(`directory/${companyId}`, { method: "GET" }),
+    // TODO [MERGE]: migrate to Drizzle — HEAD also returned:
+    // capabilities: { id: string; name: string; category: string | null }[];
+    // markets: { id: string; name: string; parent_id: string | null; parent_name: string | null }[];
+    // standards: { id: string; name: string; parent_id: string | null; parent_name: string | null }[];
+    }>(`directory/${companyId}`, { method: "GET" }).then((data) => ({
+      ...data,
+      company: normalizeCompanyRecord(data.company),
+    })),
 
   // Directory
   getDirectory: (params: {
@@ -480,7 +485,29 @@ export const api = {
         ...(params.lng != null && { lng: params.lng }),
         ...(params.radiusMiles != null && { radiusMiles: params.radiusMiles }),
       },
-    }),
+    }).then((data) => ({
+      ...data,
+      companies: data.companies.map((company) => normalizeCompanyRecord(company)),
+    })),
+
+  // Onboarding
+  checkCompanyDuplicate: (params: {
+    companyName: string;
+    companiesHouseNumber?: string;
+  }) =>
+    apiCall<{ exists: boolean; company?: Pick<CompanyRecord, "id" | "companyName"> }>(
+      "companies/check-duplicate",
+      { method: "GET", params },
+    ),
+
+  createOnboardingCompanyProfile: (data: Record<string, unknown>) =>
+    apiCall<{ success: boolean; company: CompanyRecord }>("onboarding/company-profile", {
+      method: "POST",
+      body: data,
+    }).then((response) => ({
+      ...response,
+      company: normalizeCompanyRecord(response.company as unknown as Record<string, unknown>),
+    })),
 
   // Tenders
   searchTenders: (params: {
@@ -713,7 +740,10 @@ export const api = {
   adminListCompanies: () =>
     apiCall<{ companies: Record<string, unknown>[] }>("admin/companies", {
       method: "GET",
-    }),
+    }).then((data) => ({
+      ...data,
+      companies: data.companies.map((company) => normalizeCompanyRecord(company)),
+    })),
 
   adminDeleteCompany: (companyId: string) =>
     apiCall<{ success: boolean }>(`admin/companies/${companyId}`, {

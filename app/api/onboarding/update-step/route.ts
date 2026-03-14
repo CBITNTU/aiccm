@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import {
-  createAdminClient,
   apiResponse,
   apiError,
 } from "@/lib/api";
@@ -27,6 +26,16 @@ import {
   deleteUserRole,
   createCompanyJoinRequest,
 } from "@/lib/db/queries";
+import { db } from "@/lib/db";
+import {
+  companies,
+  companyMembers,
+  companyJoinRequests,
+  userRoles,
+  profiles,
+  teamInvitations,
+} from "@/lib/db/schema/app";
+import { eq, and, inArray, desc } from "drizzle-orm";
 
 interface ProfileData {
   firstName: string;
@@ -98,8 +107,6 @@ export async function POST(request: NextRequest) {
     if (!step || !isValidStep(step) || step < ONBOARDING_STEPS.PROFILE_INFO) {
       return apiError("Invalid step number", 400);
     }
-
-    const adminClient = createAdminClient();
 
     // Get current profile from Drizzle (local Postgres)
     const profile = await getProfileByUserId(user.id);
@@ -323,7 +330,6 @@ export async function POST(request: NextRequest) {
           }
 
           // Queue AI processing jobs for new company (capability taxonomy generation)
-          // This will dynamically create new capabilities based on company data
           try {
             const { enqueueJob } = await import("@/lib/services/queueService");
             await enqueueJob({
@@ -337,7 +343,6 @@ export async function POST(request: NextRequest) {
             );
           } catch (queueError) {
             console.error("Failed to queue company taxonomy job:", queueError);
-            // Don't fail company creation if queueing fails
           }
 
           // Log company creation during onboarding
@@ -367,24 +372,30 @@ export async function POST(request: NextRequest) {
           }
 
           // Verify company exists
-          const { data: company, error: companyFetchError } = await adminClient
-            .from("companies")
-            .select("id, company_name, user_id")
-            .eq("id", joinData.companyId)
-            .single();
+          const companyRows = await db
+            .select({ id: companies.id, companyName: companies.companyName, userId: companies.userId })
+            .from(companies)
+            .where(eq(companies.id, joinData.companyId))
+            .limit(1);
 
-          if (companyFetchError || !company) {
+          const company = companyRows[0];
+          if (!company) {
             return apiError("Company not found", 404);
           }
 
           // Check if user already has a pending/approved join request
-          const { data: existingRequest } = await adminClient
-            .from("company_join_requests")
-            .select("id, status")
-            .eq("user_id", user.id)
-            .eq("company_id", joinData.companyId)
-            .single();
+          const existingRequestRows = await db
+            .select({ id: companyJoinRequests.id, status: companyJoinRequests.status })
+            .from(companyJoinRequests)
+            .where(
+              and(
+                eq(companyJoinRequests.userId, user.id),
+                eq(companyJoinRequests.companyId, joinData.companyId),
+              ),
+            )
+            .limit(1);
 
+          const existingRequest = existingRequestRows[0];
           if (existingRequest) {
             return apiError(
               `You already have a ${existingRequest.status} request to join this company`,
@@ -397,7 +408,7 @@ export async function POST(request: NextRequest) {
             await createCompanyJoinRequest({
               userId: user.id,
               companyId: joinData.companyId,
-              companyNameRequested: company.company_name,
+              companyNameRequested: company.companyName,
               message: joinData.message || null,
               status: "pending",
             });
@@ -419,30 +430,34 @@ export async function POST(request: NextRequest) {
           });
 
           // Notify company admins
-          const { data: companyAdmins } = await adminClient
-            .from("company_members")
-            .select("user_id")
-            .eq("company_id", joinData.companyId)
-            .eq("role", "admin")
-            .eq("status", "approved");
+          const companyAdmins = await db
+            .select({ userId: companyMembers.userId })
+            .from(companyMembers)
+            .where(
+              and(
+                eq(companyMembers.companyId, joinData.companyId),
+                eq(companyMembers.role, "admin"),
+                eq(companyMembers.status, "approved"),
+              ),
+            );
 
-          if (companyAdmins && companyAdmins.length > 0) {
-            const adminUserIds = companyAdmins.map((a) => a.user_id);
-            const { data: adminProfiles } = await adminClient
-              .from("profiles")
-              .select("email, first_name, last_name")
-              .in("user_id", adminUserIds);
+          if (companyAdmins.length > 0) {
+            const adminUserIds = companyAdmins.map((a) => a.userId);
+            const adminProfiles = await db
+              .select({ email: profiles.email, firstName: profiles.firstName, lastName: profiles.lastName })
+              .from(profiles)
+              .where(inArray(profiles.userId, adminUserIds));
 
             const userName = `${profile.firstName} ${profile.lastName}`;
 
-            for (const admin of adminProfiles || []) {
+            for (const admin of adminProfiles) {
               if (admin.email) {
                 const emailData = {
                   companyAdminName:
-                    `${admin.first_name || ""} ${admin.last_name || ""}`.trim() ||
+                    `${admin.firstName || ""} ${admin.lastName || ""}`.trim() ||
                     "Admin",
                   companyId: joinData.companyId,
-                  companyName: company.company_name,
+                  companyName: company.companyName,
                   requesterName: userName,
                   requesterEmail: user.email || "",
                   requesterJobTitle: profile.jobTitle || "",
@@ -461,7 +476,7 @@ export async function POST(request: NextRequest) {
           return apiResponse({
             success: true,
             nextStep: ONBOARDING_STEPS.COMPLETE,
-            message: `Request to join "${company.company_name}" submitted`,
+            message: `Request to join "${company.companyName}" submitted`,
           });
         }
 
@@ -482,19 +497,19 @@ export async function POST(request: NextRequest) {
 
         // Notify superadmins about new user
         const userName = `${profile.firstName} ${profile.lastName}`;
-        const { data: superadmins } = await adminClient
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "superadmin");
+        const superadmins = await db
+          .select({ userId: userRoles.userId })
+          .from(userRoles)
+          .where(eq(userRoles.role, "superadmin"));
 
-        if (superadmins && superadmins.length > 0) {
-          const superadminUserIds = superadmins.map((s) => s.user_id);
-          const { data: superadminProfiles } = await adminClient
-            .from("profiles")
-            .select("email")
-            .in("user_id", superadminUserIds);
+        if (superadmins.length > 0) {
+          const superadminUserIds = superadmins.map((s) => s.userId);
+          const superadminProfiles = await db
+            .select({ email: profiles.email })
+            .from(profiles)
+            .where(inArray(profiles.userId, superadminUserIds));
 
-          const adminEmails = (superadminProfiles || [])
+          const adminEmails = superadminProfiles
             .map((p) => p.email)
             .filter(Boolean) as string[];
 
@@ -502,21 +517,20 @@ export async function POST(request: NextRequest) {
             // Get company name if applicable
             let companyName: string | undefined;
             if (profile.signupType === "new-company") {
-              const { data: company } = await adminClient
-                .from("companies")
-                .select("company_name")
-                .eq("user_id", user.id)
-                .single();
-              companyName = company?.company_name;
+              const companyRows = await db
+                .select({ companyName: companies.companyName })
+                .from(companies)
+                .where(eq(companies.userId, user.id))
+                .limit(1);
+              companyName = companyRows[0]?.companyName;
             } else if (profile.signupType === "join-company") {
-              const { data: joinRequest } = await adminClient
-                .from("company_join_requests")
-                .select("company_name_requested")
-                .eq("user_id", user.id)
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .single();
-              companyName = joinRequest?.company_name_requested;
+              const joinRequestRows = await db
+                .select({ companyNameRequested: companyJoinRequests.companyNameRequested })
+                .from(companyJoinRequests)
+                .where(eq(companyJoinRequests.userId, user.id))
+                .orderBy(desc(companyJoinRequests.createdAt))
+                .limit(1);
+              companyName = joinRequestRows[0]?.companyNameRequested;
             }
 
             const adminNotificationData = {
@@ -537,7 +551,7 @@ export async function POST(request: NextRequest) {
 
         // Log onboarding completion
         await logApiEvent(request, {
-          actionType: "user_signup", // Onboarding completion is part of signup flow
+          actionType: "user_signup",
           userId: user.id,
           userEmail: user.email || undefined,
           details: {
@@ -580,8 +594,6 @@ export async function GET(request: NextRequest) {
 
     const user = session.user;
 
-    const adminClient = createAdminClient();
-
     // Get profile from Drizzle (local Postgres)
     const profile = await getProfileByUserId(user.id);
 
@@ -596,42 +608,48 @@ export async function GET(request: NextRequest) {
     } | null = null;
     if (profile.signupType === "invited" && profile.invitedToCompanyId) {
       // Get company name
-      const { data: company } = await adminClient
-        .from("companies")
-        .select("company_name")
-        .eq("id", profile.invitedToCompanyId)
-        .single();
+      const companyRows = await db
+        .select({ companyName: companies.companyName })
+        .from(companies)
+        .where(eq(companies.id, profile.invitedToCompanyId))
+        .limit(1);
 
       // Get inviter name from team_invitations
-      const { data: invitation } = user.email
-        ? await adminClient
-            .from("team_invitations")
-            .select("invited_by")
-            .eq("company_id", profile.invitedToCompanyId)
-            .eq("email", user.email)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single()
-        : { data: null };
-
       let inviterName = "Your team";
-      if (invitation?.invited_by) {
-        const { data: inviterProfile } = await adminClient
-          .from("profiles")
-          .select("first_name, last_name")
-          .eq("user_id", invitation.invited_by)
-          .single();
+      if (user.email) {
+        const invitationRows = await db
+          .select({ invitedBy: teamInvitations.invitedBy })
+          .from(teamInvitations)
+          .where(
+            and(
+              eq(teamInvitations.companyId, profile.invitedToCompanyId),
+              eq(teamInvitations.email, user.email),
+            ),
+          )
+          .orderBy(desc(teamInvitations.createdAt))
+          .limit(1);
 
-        if (inviterProfile) {
-          inviterName =
-            `${inviterProfile.first_name || ""} ${inviterProfile.last_name || ""}`.trim() ||
-            "Your team";
+        const invitation = invitationRows[0];
+        if (invitation?.invitedBy) {
+          const inviterProfileRows = await db
+            .select({ firstName: profiles.firstName, lastName: profiles.lastName })
+            .from(profiles)
+            .where(eq(profiles.userId, invitation.invitedBy))
+            .limit(1);
+
+          const inviterProfile = inviterProfileRows[0];
+          if (inviterProfile) {
+            inviterName =
+              `${inviterProfile.firstName || ""} ${inviterProfile.lastName || ""}`.trim() ||
+              "Your team";
+          }
         }
       }
 
+      const company = companyRows[0];
       if (company) {
         invitedCompanyInfo = {
-          companyName: company.company_name,
+          companyName: company.companyName,
           inviterName,
         };
       }

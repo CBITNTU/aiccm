@@ -1,11 +1,10 @@
 import { NextRequest } from "next/server";
-import {
-  createAdminClient,
-  createApiClient,
-  apiResponse,
-} from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { sanitizeHexToken, hashToken, isExpired } from "@/lib/utils/invite-token";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { teamInvitations, companies, profiles } from "@/lib/db/schema/app";
+import { eq, ilike } from "drizzle-orm";
 
 export interface ValidateInvitationRequest {
   token: string;
@@ -44,25 +43,23 @@ export async function POST(request: NextRequest) {
     }
 
     const tokenHash = hashToken(safeToken);
-    const supabase = createAdminClient();
 
     // Find invitation by token hash
-    const { data: invitation, error: inviteError } = await supabase
-      .from("team_invitations")
-      .select(
-        `
-        id,
-        email,
-        company_id,
-        invited_by,
-        status,
-        expires_at
-      `,
-      )
-      .eq("token_hash", tokenHash)
-      .single();
+    const invitationResult = await db
+      .select({
+        id: teamInvitations.id,
+        email: teamInvitations.email,
+        companyId: teamInvitations.companyId,
+        invitedBy: teamInvitations.invitedBy,
+        status: teamInvitations.status,
+        expiresAt: teamInvitations.expiresAt,
+      })
+      .from(teamInvitations)
+      .where(eq(teamInvitations.tokenHash, tokenHash))
+      .limit(1);
 
-    if (inviteError || !invitation) {
+    const invitation = invitationResult[0];
+    if (!invitation) {
       return apiResponse<ValidateInvitationResponse>({
         valid: false,
         error: "Invalid invitation link",
@@ -87,12 +84,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if expired
-    if (isExpired(invitation.expires_at)) {
+    if (isExpired(invitation.expiresAt.toISOString())) {
       // Mark as expired in the database
-      await supabase
-        .from("team_invitations")
-        .update({ status: "expired" })
-        .eq("id", invitation.id);
+      await db
+        .update(teamInvitations)
+        .set({ status: "expired" })
+        .where(eq(teamInvitations.id, invitation.id));
 
       return apiResponse<ValidateInvitationResponse>({
         valid: false,
@@ -102,38 +99,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Get company details
-    const { data: company } = await supabase
-      .from("companies")
-      .select("id, company_name")
-      .eq("id", invitation.company_id)
-      .single();
+    const companyResult = await db
+      .select({ id: companies.id, companyName: companies.companyName })
+      .from(companies)
+      .where(eq(companies.id, invitation.companyId))
+      .limit(1);
+
+    const company = companyResult[0] ?? null;
 
     // Get inviter details
-    const { data: inviterProfile } = await supabase
-      .from("profiles")
-      .select("first_name, last_name")
-      .eq("user_id", invitation.invited_by)
-      .single();
+    const inviterResult = await db
+      .select({ firstName: profiles.firstName, lastName: profiles.lastName })
+      .from(profiles)
+      .where(eq(profiles.userId, invitation.invitedBy))
+      .limit(1);
 
+    const inviterProfile = inviterResult[0] ?? null;
     const inviterName =
-      `${inviterProfile?.first_name || ""} ${inviterProfile?.last_name || ""}`.trim() ||
+      `${inviterProfile?.firstName || ""} ${inviterProfile?.lastName || ""}`.trim() ||
       "Your colleague";
 
     // Check if user already exists
-    const { data: existingProfiles } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .ilike("email", invitation.email);
+    const existingProfiles = await db
+      .select({ userId: profiles.userId })
+      .from(profiles)
+      .where(ilike(profiles.email, invitation.email));
 
-    const isExistingUser = !!(existingProfiles && existingProfiles.length > 0);
+    const isExistingUser = existingProfiles.length > 0;
 
     let userId: string | undefined;
     try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
+      const { auth } = await import("@/lib/auth");
+      const session = await auth.api.getSession({
+        headers: request.headers,
+      });
+      userId = session?.user?.id;
     } catch {
       // Optional auth
     }
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       entityType: "team_invitation",
       entityId: invitation.id,
       details: {
-        company_id: invitation.company_id,
+        company_id: invitation.companyId,
         is_existing_user: isExistingUser,
       },
     }).catch(() => {});
@@ -152,10 +152,10 @@ export async function POST(request: NextRequest) {
     return apiResponse<ValidateInvitationResponse>({
       valid: true,
       email: invitation.email,
-      companyName: company?.company_name || "Unknown Company",
-      companyId: invitation.company_id,
+      companyName: company?.companyName || "Unknown Company",
+      companyId: invitation.companyId,
       inviterName,
-      expiresAt: invitation.expires_at,
+      expiresAt: invitation.expiresAt.toISOString(),
       isExistingUser,
     });
   } catch (error) {

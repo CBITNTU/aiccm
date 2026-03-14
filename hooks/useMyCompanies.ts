@@ -3,13 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+import type { CompanyRecord as Company } from "@/lib/api/types";
 
 async function fetchMyCompanies(): Promise<Company[]> {
   const data = await api.getMyCompanies();
-  return (data.companies as unknown as Company[]) || [];
+  return data.companies || [];
 }
 
 export function useMyCompanies(userId: string | null) {

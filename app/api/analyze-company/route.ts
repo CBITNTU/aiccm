@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { performanceBenchmarkSchema } from "@/lib/schemas/performanceBenchmark";
 import { logApiEvent } from "@/lib/services/eventLogger";
@@ -12,6 +12,9 @@ import {
   handleApiError,
   isCompanyMember,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 const analyzeCompanyInputSchema = z.object({
   companyId: z.string().uuid(),
@@ -19,29 +22,29 @@ const analyzeCompanyInputSchema = z.object({
 
 function buildPerformanceBenchmarkPrompt(
   company: {
-    company_name: string;
-    website_url?: string | null;
-    key_capabilities?: string | null;
+    companyName: string;
+    websiteUrl?: string | null;
+    keyCapabilities?: string | null;
     equipment?: string | null;
     certifications?: string | null;
-    past_projects?: string | null;
-    financial_data?: Record<string, { value?: unknown }> | null;
+    pastProjects?: string | null;
+    financialData?: Record<string, { value?: unknown }> | null;
   },
 ): string {
-  const financialData = company.financial_data || {};
+  const financialData = company.financialData || {};
 
   return `Score these 8 dimensions (0-100) with a short explanation. Return JSON with performanceBenchmark as below.
 
-Company: ${company.company_name}
-Website: ${company.website_url || "N/A"}
-Key Capabilities: ${company.key_capabilities || "N/A"}
+Company: ${company.companyName}
+Website: ${company.websiteUrl || "N/A"}
+Key Capabilities: ${company.keyCapabilities || "N/A"}
 Equipment: ${company.equipment || "N/A"}
 Certifications: ${company.certifications || "N/A"}
-Past Projects: ${company.past_projects || "N/A"}
+Past Projects: ${company.pastProjects || "N/A"}
 Employees: ${financialData.employees?.value || "N/A"}
-Net Assets: £${typeof financialData.netAssets?.value === "number" ? financialData.netAssets.value.toLocaleString() : "N/A"}
-Total Assets: £${typeof financialData.totalAssets?.value === "number" ? financialData.totalAssets.value.toLocaleString() : "N/A"}
-Cash: £${typeof financialData.cash?.value === "number" ? financialData.cash.value.toLocaleString() : "N/A"}`;
+Net Assets: \u00A3${typeof financialData.netAssets?.value === "number" ? financialData.netAssets.value.toLocaleString() : "N/A"}
+Total Assets: \u00A3${typeof financialData.totalAssets?.value === "number" ? financialData.totalAssets.value.toLocaleString() : "N/A"}
+Cash: \u00A3${typeof financialData.cash?.value === "number" ? financialData.cash.value.toLocaleString() : "N/A"}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -52,16 +55,15 @@ export async function POST(request: NextRequest) {
       analyzeCompanyInputSchema,
     );
 
-    const supabase = createAdminClient();
-
     // Verify ownership or superadmin
-    const { data: company, error: companyError } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("id", companyId)
-      .single();
+    const companyRows = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
 
-    if (companyError || !company) {
+    const company = companyRows[0];
+    if (!company) {
       return apiResponse({ error: "Company not found" }, 404);
     }
 
@@ -70,9 +72,15 @@ export async function POST(request: NextRequest) {
       return apiResponse({ error: "Not authorized to analyze this company" }, 403);
     }
 
-    const prompt = buildPerformanceBenchmarkPrompt(
-      company as unknown as Parameters<typeof buildPerformanceBenchmarkPrompt>[0],
-    );
+    const prompt = buildPerformanceBenchmarkPrompt({
+      companyName: company.companyName,
+      websiteUrl: company.websiteUrl,
+      keyCapabilities: company.keyCapabilities,
+      equipment: company.equipment,
+      certifications: company.certifications,
+      pastProjects: company.pastProjects,
+      financialData: company.financialData as Record<string, { value?: unknown }> | null,
+    });
 
     const rawAnalysis = await aiGenerateObject({
       schema: performanceBenchmarkSchema,
@@ -111,54 +119,66 @@ export async function POST(request: NextRequest) {
     };
 
     // Save analysis results AND fill company information fields
-    const updateData: Record<string, unknown> = {
-      ai_analysis: analysis,
-      updated_at: new Date().toISOString(),
+    const updateData: Partial<typeof companies.$inferInsert> = {
+      aiAnalysis: analysis,
+      updatedAt: new Date(),
     };
 
     const companyInfo = analysis.companyInfo || {};
 
     if (
       companyInfo.key_capabilities &&
-      (!company.key_capabilities || company.key_capabilities.length < 50)
+      (!company.keyCapabilities || company.keyCapabilities.length < 50)
     ) {
-      updateData.key_capabilities = companyInfo.key_capabilities;
+      updateData.keyCapabilities = companyInfo.key_capabilities as string;
+    }
+    if (
+      companyInfo.equipment &&
+      (!company.equipment || company.equipment.length < 20)
+    ) {
+      updateData.equipment = companyInfo.equipment as string;
     }
     if (
       companyInfo.certifications &&
       (!company.certifications || company.certifications.length < 20)
     ) {
-      updateData.certifications = companyInfo.certifications;
+      updateData.certifications = companyInfo.certifications as string;
     }
     if (
       companyInfo.past_projects &&
-      (!company.past_projects || company.past_projects.length < 50)
+      (!company.pastProjects || company.pastProjects.length < 50)
     ) {
-      updateData.past_projects = companyInfo.past_projects;
+      updateData.pastProjects = companyInfo.past_projects as string;
     }
-    if (companyInfo.contact_person && !company.contact_person) {
-      updateData.contact_person = companyInfo.contact_person;
+    if (companyInfo.contact_person && !company.contactPerson) {
+      updateData.contactPerson = companyInfo.contact_person as string;
     }
-    if (companyInfo.contact_email && !company.contact_email) {
-      updateData.contact_email = companyInfo.contact_email;
+    if (companyInfo.contact_email && !company.contactEmail) {
+      updateData.contactEmail = companyInfo.contact_email as string;
     }
-    if (companyInfo.contact_phone && !company.contact_phone) {
-      updateData.contact_phone = companyInfo.contact_phone;
+    if (companyInfo.contact_phone && !company.contactPhone) {
+      updateData.contactPhone = companyInfo.contact_phone as string;
     }
     if (companyInfo.postcode && !company.postcode) {
-      updateData.postcode = companyInfo.postcode;
+      updateData.postcode = companyInfo.postcode as string;
     }
 
     if (analysis.digitalMaturity) {
-      updateData.digital_maturity = analysis.digitalMaturity;
+      updateData.digitalMaturity = analysis.digitalMaturity;
+    }
+    if (analysis.safetyRating) {
+      updateData.safetyRating = analysis.safetyRating;
+    }
+    if (analysis.marketPosition) {
+      updateData.marketPosition = analysis.marketPosition;
     }
 
-    const { error: updateError } = await supabase
-      .from("companies")
-      .update(updateData)
-      .eq("id", companyId);
-
-    if (updateError) {
+    try {
+      await db
+        .update(companies)
+        .set(updateData)
+        .where(eq(companies.id, companyId));
+    } catch (updateError) {
       console.error("Error saving analysis to database:", updateError);
     }
 
@@ -177,7 +197,7 @@ export async function POST(request: NextRequest) {
       entityId: companyId,
       details: {
         analysisType: "comprehensive",
-        companyName: company.company_name,
+        companyName: company.companyName,
       },
     }).catch(() => {});
 

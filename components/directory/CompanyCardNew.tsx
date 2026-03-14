@@ -9,11 +9,9 @@ import {
   ChevronUp,
   Sparkles,
 } from "lucide-react";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
   Company,
   | "id"

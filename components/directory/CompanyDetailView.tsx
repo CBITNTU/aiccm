@@ -30,10 +30,8 @@ import {
 } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
   Company,
   | "id"

@@ -1,6 +1,4 @@
-import type { Database } from "@/lib/supabase/types";
-
-export type Company = Database["public"]["Tables"]["companies"]["Row"];
+export type Company = import("@/lib/api/types").CompanyRecord;
 
 export interface DashboardStats {
   totalTenders: number;

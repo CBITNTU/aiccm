@@ -2,8 +2,9 @@ import { NextRequest } from "next/server";
 import {
   apiResponse,
   apiError,
+  checkSuperadminRole,
 } from "@/lib/api";
-import { requireAuth } from "@/lib/api/validation";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { ONBOARDING_STEPS, ONBOARDING_STEP_NAMES } from "@/lib/onboarding";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
@@ -26,14 +27,8 @@ export async function GET(request: NextRequest) {
     const { user } = await requireAuth(request);
 
     // Check if user is superadmin
-    const userRoleRows = await db
-      .select({ role: userRoles.role })
-      .from(userRoles)
-      .where(eq(userRoles.userId, user.id))
-      .limit(1);
-
-    const userRole = userRoleRows[0];
-    if (!userRole || userRole.role !== "superadmin") {
+    const isSuperadmin = await checkSuperadminRole(user.id);
+    if (!isSuperadmin) {
       return apiError("Superadmin access required", 403);
     }
 
@@ -246,8 +241,6 @@ export async function GET(request: NextRequest) {
       stepNames: ONBOARDING_STEP_NAMES,
     });
   } catch (error) {
-    console.error("Admin onboarding error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }

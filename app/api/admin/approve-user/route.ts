@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import {
   apiResponse,
   apiError,
-  getAuthenticatedUser,
   checkSuperadminRole,
 } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
@@ -196,11 +196,7 @@ export interface ApproveUserResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (!user) {
-      return apiError(authError || "Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
 
     // Check superadmin role
     const isSuperadmin = await checkSuperadminRole(user.id);
@@ -572,20 +568,14 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Approve user error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }
 
 // GET endpoint to list pending users
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (!user) {
-      return apiError(authError || "Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
 
     // Check superadmin role
     const isSuperadmin = await checkSuperadminRole(user.id);
@@ -764,8 +754,6 @@ export async function GET(request: NextRequest) {
 
     return apiResponse({ users: enrichedUsers });
   } catch (error) {
-    console.error("Get pending users error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }

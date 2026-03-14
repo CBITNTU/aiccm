@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:better-auth.com)"
+      "WebFetch(domain:better-auth.com)",
+      "Bash(head:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

@@ -4,6 +4,7 @@ import {
   requireAuth,
   handleApiError,
   isCompanyMember,
+  AuthError,
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyTaxonomies, taxonomies } from "@/lib/db/schema/app";
@@ -14,8 +15,13 @@ export async function GET(
   { params }: { params: Promise<{ companyId: string }> },
 ) {
   try {
-    await requireAuth(request);
+    const { user } = await requireAuth(request);
     const { companyId } = await params;
+
+    const hasAccess = await isCompanyMember(user.id, companyId);
+    if (!hasAccess) {
+      throw new AuthError("No access to this company");
+    }
 
     const taxData = await db
       .select({
@@ -44,7 +50,7 @@ export async function PUT(
 
     const hasAccess = await isCompanyMember(user.id, companyId);
     if (!hasAccess) {
-      return apiResponse({ error: "Forbidden" }, 403);
+      throw new AuthError("No access to this company");
     }
 
     const body = await request.json();

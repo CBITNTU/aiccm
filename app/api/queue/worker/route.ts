@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthenticatedUser, checkSuperadminRole } from "@/lib/api";
 import {
   dequeueJob,
   markJobCompleted,
@@ -23,6 +24,27 @@ import { logEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { batchJobs } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
+
+/**
+ * Validate that the request is from an authenticated admin or an internal
+ * self-trigger (identified by the X-Queue-Secret header).
+ */
+async function authorizeWorker(request: NextRequest): Promise<boolean> {
+  // Allow internal self-triggers via secret header
+  const queueSecret = process.env.CRON_SECRET;
+  const headerSecret = request.headers.get("x-queue-secret");
+  if (queueSecret && headerSecret === queueSecret) {
+    return true;
+  }
+
+  // Allow authenticated superadmins
+  const { user } = await getAuthenticatedUser(request);
+  if (user) {
+    return checkSuperadminRole(user.id);
+  }
+
+  return false;
+}
 
 async function processJob(job: {
   id: string;
@@ -108,6 +130,14 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    const authorized = await authorizeWorker(request);
+    if (!authorized) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     const {
       batchSize = 20, // Increased for higher throughput (was 10)
       maxDurationMs = 50000, // Stop before Vercel's 60s timeout (50s to be safe)
@@ -370,10 +400,14 @@ export async function POST(request: NextRequest) {
       console.log(
         `🔄 Triggering 2 parallel workers (${stats.pending} pending, ${stats.processing} processing)`,
       );
+      const triggerHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (process.env.CRON_SECRET) {
+        triggerHeaders["x-queue-secret"] = process.env.CRON_SECRET;
+      }
       [1, 2].forEach(() => {
         fetch(workerUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: triggerHeaders,
           body: JSON.stringify(payload),
         }).catch((err) => {
           console.error("❌ Worker trigger failed (cron will recover):", err);
@@ -404,9 +438,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET endpoint to check queue stats
-export async function GET() {
+// GET endpoint to check queue stats (admin only)
+export async function GET(request: NextRequest) {
   try {
+    const authorized = await authorizeWorker(request);
+    if (!authorized) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
     const stats = await getQueueStats();
     return NextResponse.json({ success: true, stats });
   } catch (error) {

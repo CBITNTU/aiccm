@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     const quickFilter = url.searchParams.get("quickFilter") || "";
     const sortBy = url.searchParams.get("sortBy") || "overall_score";
     const sortDirection = url.searchParams.get("sortDirection") || "desc";
-    const page = parseInt(url.searchParams.get("page") || "1");
-    const pageSize = parseInt(url.searchParams.get("pageSize") || "25");
+    const page = Math.max(parseInt(url.searchParams.get("page") || "1") || 1, 1);
+    const pageSize = Math.min(Math.max(parseInt(url.searchParams.get("pageSize") || "25") || 25, 1), 100);
 
     const offset = (page - 1) * pageSize;
 

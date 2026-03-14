@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import {
-  getAuthenticatedUser,
+  apiResponse,
+  apiError,
   checkSuperadminRole,
 } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { EIC_TAXONOMY } from "@/lib/eicTaxonomy";
 import { db } from "@/lib/db";
@@ -18,22 +20,12 @@ const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await getAuthenticatedUser(request);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 },
-      );
-    }
+    const { user } = await requireAuth(request);
 
     // Check if user is superadmin
     const isSuperadmin = await checkSuperadminRole(user.id);
     if (!isSuperadmin) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden: Superadmin access required" },
-        { status: 403 },
-      );
+      return apiError("Forbidden: Superadmin access required", 403);
     }
 
     console.log(
@@ -112,7 +104,7 @@ export async function POST(request: NextRequest) {
       `RESET COMPLETE: All capabilities deleted and EIC taxonomy reseeded (${baseCapabilities.length} capabilities)`,
     );
 
-    return NextResponse.json({
+    return apiResponse({
       success: true,
       deletedCapabilities: deletedCapsCount,
       deletedLinks: deletedLinksCount,
@@ -120,13 +112,6 @@ export async function POST(request: NextRequest) {
       message: `All capabilities deleted. Reseeded ${baseCapabilities.length} capabilities from EIC taxonomy.`,
     });
   } catch (error) {
-    console.error("Error resetting capabilities:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }

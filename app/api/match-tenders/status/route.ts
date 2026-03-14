@@ -1,28 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/lib/api";
+import { NextRequest } from "next/server";
+import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth, handleApiError, getUserCompanyIds } from "@/lib/api/validation";
 import { getMatchingJobsForCompany } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { getUserCompanyIds } from "@/lib/api/validation";
 
 export async function GET(request: NextRequest) {
   try {
-    const { user, error: authError } = await getAuthenticatedUser(request);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 },
-      );
-    }
+    const { user } = await requireAuth(request);
 
     // Get user's companies (owned + team memberships)
     const companyIds = await getUserCompanyIds(user.id);
 
     if (companyIds.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Company not found for user" },
-        { status: 404 },
-      );
+      return apiError("Company not found for user", 404);
     }
 
     const companyId = companyIds[0];
@@ -42,7 +32,7 @@ export async function GET(request: NextRequest) {
       details: { total: jobs.total, completed: jobs.completed },
     }).catch(() => {});
 
-    return NextResponse.json({
+    return apiResponse({
       success: true,
       total: jobs.total,
       completed: jobs.completed,
@@ -59,13 +49,6 @@ export async function GET(request: NextRequest) {
         })),
     });
   } catch (error) {
-    console.error("Error getting matching status:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/lib/api";
+import { getAuthenticatedUser, checkSuperadminRole } from "@/lib/api";
 import { getBatchStatus } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
@@ -9,15 +9,23 @@ import { eq, desc } from "drizzle-orm";
 /**
  * Debug endpoint to check queue and batch status
  * GET /api/queue/debug?batchId=xxx
+ * Requires superadmin authentication.
  */
 export async function GET(request: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const { user } = await getAuthenticatedUser(request);
-      userId = user?.id;
-    } catch {
-      // Optional auth
+    const { user } = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+    const isAdmin = await checkSuperadminRole(user.id);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: Superadmin access required" },
+        { status: 403 },
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -64,7 +72,7 @@ export async function GET(request: NextRequest) {
 
       await logApiEvent(request, {
         actionType: "queue_debug_viewed",
-        userId: userId || undefined,
+        userId: user.id,
         entityType: "batch_job",
         entityId: batchId,
         details: { jobCounts: statusCounts },
@@ -112,7 +120,7 @@ export async function GET(request: NextRequest) {
 
     await logApiEvent(request, {
       actionType: "queue_debug_viewed",
-      userId: userId || undefined,
+      userId: user.id,
       details: {
         batch_count: batches.length,
         queue_total: queueCounts.total,

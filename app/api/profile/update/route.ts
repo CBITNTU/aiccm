@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { after } from "next/server";
+import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { getProfileByUserId, updateProfileByUserId } from "@/lib/db/queries";
-import { requireAuth } from "@/lib/api/validation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,10 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!firstName?.trim() || !lastName?.trim() || !jobTitle?.trim()) {
-      return NextResponse.json(
-        { error: "First name, last name, and job title are required" },
-        { status: 400 },
-      );
+      return apiError("First name, last name, and job title are required", 400);
     }
 
     // Update the profile via Drizzle (local Postgres)
@@ -38,10 +36,7 @@ export async function POST(request: NextRequest) {
           errorMessage: "No rows updated",
         }).catch(() => {}),
       );
-      return NextResponse.json(
-        { error: "Failed to update profile" },
-        { status: 500 },
-      );
+      return apiError("Failed to update profile", 500);
     }
 
     // Log successful profile update (non-blocking)
@@ -56,16 +51,12 @@ export async function POST(request: NextRequest) {
       }).catch(() => {}),
     );
 
-    return NextResponse.json({
+    return apiResponse({
       success: true,
       message: "Profile updated successfully",
     });
   } catch (error) {
-    console.error("Profile update error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }
 
@@ -77,13 +68,10 @@ export async function GET(request: NextRequest) {
     const profile = await getProfileByUserId(user.id);
 
     if (!profile) {
-      return NextResponse.json(
-        { error: "Failed to fetch profile" },
-        { status: 500 },
-      );
+      return apiError("Failed to fetch profile", 500);
     }
 
-    return NextResponse.json({
+    return apiResponse({
       success: true,
       profile: {
         firstName: profile.firstName || "",
@@ -94,10 +82,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Profile fetch error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }

@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import {
   apiResponse,
   apiError,
-  getAuthenticatedUser,
   checkSuperadminRole,
 } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
@@ -33,11 +33,7 @@ export interface ApproveJoinRequestResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (!user) {
-      return apiError(authError || "Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
 
     // Check superadmin role
     const isSuperadmin = await checkSuperadminRole(user.id);
@@ -216,20 +212,14 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Approve join request error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }
 
 // GET endpoint to list pending join requests (for superadmin)
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (!user) {
-      return apiError(authError || "Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
 
     // Check superadmin role
     const isSuperadmin = await checkSuperadminRole(user.id);
@@ -285,8 +275,6 @@ export async function GET(request: NextRequest) {
 
     return apiResponse({ requests: enrichedRequests });
   } catch (error) {
-    console.error("Get join requests error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }

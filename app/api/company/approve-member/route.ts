@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { apiResponse, apiError, getAuthenticatedUser } from "@/lib/api";
+import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { updateCompanyJoinRequest } from "@/lib/db/queries";
 import {
@@ -25,10 +26,7 @@ export interface ApproveMemberResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (!user) {
-      return apiError(authError || "Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
 
     const body: ApproveMemberRequest = await request.json();
     const { requestId, approved, rejectionReason } = body;
@@ -226,19 +224,14 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Approve member error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }
 
 // GET endpoint to list pending join requests for a company
 export async function GET(request: NextRequest) {
   try {
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (!user) {
-      return apiError(authError || "Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
 
     // Get companies where user is an approved member (any role)
     const userMemberships = await db
@@ -381,8 +374,6 @@ export async function GET(request: NextRequest) {
       members: allMembers,
     });
   } catch (error) {
-    console.error("Get company requests error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }

@@ -1,12 +1,26 @@
 import { NextRequest } from "next/server";
-import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
+import { getAuthenticatedUser, checkSuperadminRole, apiResponse, apiError } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { processingQueue, batchJobs } from "@/lib/db/schema/app";
 import { eq, desc } from "drizzle-orm";
 
+async function requireAdmin(request: NextRequest) {
+  const { user } = await getAuthenticatedUser(request);
+  if (!user) {
+    return null;
+  }
+  const isAdmin = await checkSuperadminRole(user.id);
+  return isAdmin ? user : null;
+}
+
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAdmin(request);
+    if (!user) {
+      return apiError("Unauthorized", 401);
+    }
+
     // Get job counts by status
     const [allJobs, activeBatches, recentJobs] = await Promise.all([
       db.select({ status: processingQueue.status }).from(processingQueue),
@@ -52,17 +66,9 @@ export async function GET(request: NextRequest) {
       hasCronSecret: !!process.env.CRON_SECRET,
     };
 
-    let userId: string | undefined;
-    try {
-      const { user } = await getAuthenticatedUser(request);
-      userId = user?.id;
-    } catch {
-      // Optional auth
-    }
-
     await logApiEvent(request, {
       actionType: "queue_status_viewed",
-      userId: userId || undefined,
+      userId: user.id,
       details: {
         pending: pendingCount,
         processing: processingCount,
@@ -91,6 +97,11 @@ export async function GET(request: NextRequest) {
 // POST to manually trigger the worker
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAdmin(request);
+    if (!user) {
+      return apiError("Unauthorized", 401);
+    }
+
     // Check if there are pending jobs
     const pendingJobs = await db
       .select({ id: processingQueue.id })
@@ -113,10 +124,15 @@ export async function POST(request: NextRequest) {
     console.log(`🚀 Manually triggering worker at ${baseUrl}/api/queue/worker`);
     console.log(`📊 Pending jobs: ${pendingCount}`);
 
-    // Trigger the worker
+    // Trigger the worker with secret header for internal auth
+    const triggerHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (process.env.CRON_SECRET) {
+      triggerHeaders["x-queue-secret"] = process.env.CRON_SECRET;
+    }
+
     const workerResponse = await fetch(`${baseUrl}/api/queue/worker`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: triggerHeaders,
       body: JSON.stringify({
         batchSize: 50,
         continuous: true,
@@ -131,17 +147,9 @@ export async function POST(request: NextRequest) {
       workerResult = { error: "Failed to parse response" };
     }
 
-    let userId: string | undefined;
-    try {
-      const { user } = await getAuthenticatedUser(request);
-      userId = user?.id;
-    } catch {
-      // Optional auth
-    }
-
     await logApiEvent(request, {
       actionType: "queue_status_viewed",
-      userId: userId || undefined,
+      userId: user.id,
       details: {
         pending: pendingCount,
         triggered: true,

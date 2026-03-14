@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiResponse, apiError } from "@/lib/api";
-import { requireAuth } from "@/lib/api/validation";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import {
   sendEmail,
   getAdminNotificationEmailSubject,
@@ -352,8 +352,6 @@ export async function POST(request: NextRequest) {
 
     return apiError("Invalid action", 400);
   } catch (error) {
-    console.error("Company create-or-join error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }

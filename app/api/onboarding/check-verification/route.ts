@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
 import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth } from "@/lib/api/validation";
 import { updateProfileByUserId } from "@/lib/db/queries";
+import { db } from "@/lib/db";
+import { user as authUsersTable } from "@/lib/db/schema/auth";
+import { eq } from "drizzle-orm";
 import { ONBOARDING_STEPS } from "@/lib/onboarding";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
@@ -13,16 +16,15 @@ import { logApiEvent } from "@/lib/services/eventLogger";
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
-
-    if (!session?.user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const user = session.user;
-    const isVerified = !!user.emailVerified;
+    const { user } = await requireAuth(request);
+    const authUser = await db
+      .select({
+        emailVerified: authUsersTable.emailVerified,
+      })
+      .from(authUsersTable)
+      .where(eq(authUsersTable.id, user.id))
+      .limit(1);
+    const isVerified = !!authUser[0]?.emailVerified;
 
     // If verified, update onboarding step to PROFILE_INFO (if still on EMAIL_VERIFICATION)
     if (isVerified) {

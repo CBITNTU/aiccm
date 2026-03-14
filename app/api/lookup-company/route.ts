@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiResponse } from "@/lib/api";
+import { apiResponse, getAuthenticatedUser } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { companies, companyMembers } from "@/lib/db/schema/app";
@@ -106,14 +106,8 @@ async function fetchCompaniesHouseData(companyNumber: string): Promise<{
 
 export async function POST(request: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const { auth } = await import("@/lib/auth");
-      const session = await auth.api.getSession({ headers: request.headers });
-      userId = session?.user?.id;
-    } catch {
-      // Unauthenticated lookup is allowed
-    }
+    const { user } = await getAuthenticatedUser(request);
+    const userId = user?.id;
 
     const body: LookupCompanyRequest = await request.json();
     const { companyNumber } = body;

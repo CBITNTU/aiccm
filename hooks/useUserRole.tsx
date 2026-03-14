@@ -8,30 +8,45 @@ export const useUserRole = () => {
   const { user, loading: authLoading } = useAuth();
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const userId = user?.id ?? null;
 
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (authLoading) return;
+    let cancelled = false;
 
-      if (!user) {
+    const fetchUserRole = async () => {
+      if (authLoading) {
+        setLoading(true);
+        return;
+      }
+
+      if (!userId) {
+        if (cancelled) return;
         setRole(null);
         setLoading(false);
         return;
       }
 
       try {
+        setLoading(true);
         const data = await api.getUserRole();
+        if (cancelled) return;
         setRole(data.role);
       } catch (error) {
+        if (cancelled) return;
         console.error("Error fetching user role:", error);
         setRole(null);
       } finally {
+        if (cancelled) return;
         setLoading(false);
       }
     };
 
-    fetchUserRole();
-  }, [user, authLoading]);
+    void fetchUserRole();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, authLoading]);
 
   const isAdmin = role === "superadmin";
 

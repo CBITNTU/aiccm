@@ -26,11 +26,41 @@ interface TenderData {
   deadline: string | null;
   status: string;
   publication_date: string;
-  contact_info: unknown;
-  requirements?: unknown;
-  documents?: unknown;
+  contact_info: Record<string, unknown> | null;
+  requirements?: Record<string, unknown>;
+  documents?: Record<string, unknown>;
   external_id?: string;
   source?: string;
+}
+
+type TenderInsert = typeof tenders.$inferInsert;
+
+function mapTenderToInsert(tender: TenderData): TenderInsert {
+  return {
+    referenceNumber: tender.reference_number,
+    title: tender.title,
+    buyer: tender.buyer,
+    cpvCodes: tender.cpv_codes,
+    description: tender.description,
+    budgetMin: tender.budget_min,
+    budgetMax: tender.budget_max,
+    location: tender.location,
+    deadline: tender.deadline ? new Date(tender.deadline) : null,
+    status: tender.status,
+    publicationDate: tender.publication_date
+      ? new Date(tender.publication_date)
+      : new Date(),
+    contactInfo: tender.contact_info,
+    requirements: tender.requirements ?? {
+      sectors: tender.cpv_codes,
+      location: tender.location.split(",")[1]?.trim() || "UK",
+      deadline: tender.deadline,
+    },
+    documents: tender.documents ?? {
+      specification_url: `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`,
+      application_url: `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`,
+    },
+  };
 }
 
 // Transform OCDS release data to our tender format
@@ -310,29 +340,7 @@ export async function POST(request: NextRequest) {
 
     // If admin is importing, also save to database with duplicate prevention
     if (adminImport && isAdmin && filteredTenders.length > 0) {
-      const tendersToInsert = filteredTenders.map((tender) => ({
-        referenceNumber: tender.reference_number,
-        title: tender.title,
-        buyer: tender.buyer,
-        cpvCodes: tender.cpv_codes,
-        description: tender.description,
-        budgetMin: tender.budget_min,
-        budgetMax: tender.budget_max,
-        location: tender.location,
-        deadline: tender.deadline ? new Date(tender.deadline) : null,
-        status: tender.status,
-        publicationDate: tender.publication_date ? new Date(tender.publication_date) : new Date(),
-        contactInfo: tender.contact_info,
-        requirements: {
-          sectors: tender.cpv_codes,
-          location: tender.location.split(",")[1]?.trim() || "UK",
-          deadline: tender.deadline,
-        },
-        documents: {
-          specification_url: `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`,
-          application_url: `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`,
-        },
-      }));
+      const tendersToInsert: TenderInsert[] = filteredTenders.map(mapTenderToInsert);
 
       // Check for existing tenders to avoid duplicates
       const refNumbers = tendersToInsert.map((t) => t.referenceNumber).filter(Boolean) as string[];

@@ -2,17 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { getProfileByUserId, updateProfileByUserId } from "@/lib/db/queries";
+import { requireAuth } from "@/lib/api/validation";
 
 export async function POST(request: NextRequest) {
   try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth.api.getSession({ headers: request.headers });
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = session.user;
+    const { user } = await requireAuth(request);
 
     const body = await request.json();
     const { firstName, lastName, jobTitle, phone } = body;
@@ -77,14 +71,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth.api.getSession({ headers: request.headers });
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = session.user;
+    const { user } = await requireAuth(request);
 
     // Fetch the profile via Drizzle (local Postgres)
     const profile = await getProfileByUserId(user.id);

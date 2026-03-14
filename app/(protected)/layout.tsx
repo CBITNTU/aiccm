@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -16,17 +16,25 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const hasRedirectedRef = useRef(false);
+  const search = searchParams.toString();
+  const currentUrl = useMemo(
+    () => pathname + (search ? `?${search}` : ""),
+    [pathname, search],
+  );
 
   useEffect(() => {
-    if (!loading && !user) {
-      // Build the full current URL to preserve as redirectTo
-      const currentUrl =
-        pathname +
-        (searchParams.toString() ? `?${searchParams.toString()}` : "");
-      const encodedRedirectTo = encodeURIComponent(currentUrl);
-      router.push(`/auth?redirectTo=${encodedRedirectTo}`);
+    if (loading) {
+      hasRedirectedRef.current = false;
+      return;
     }
-  }, [user, loading, router, pathname, searchParams]);
+
+    if (!user && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      const encodedRedirectTo = encodeURIComponent(currentUrl);
+      router.replace(`/auth?redirectTo=${encodedRedirectTo}`);
+    }
+  }, [user, loading, router, currentUrl]);
 
   if (loading) {
     return (

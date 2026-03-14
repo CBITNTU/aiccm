@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { after } from "next/server";
-import { apiResponse, apiError } from "@/lib/api";
+import { apiResponse, apiError, getAuthenticatedUser } from "@/lib/api";
 import { sanitizeLikeParam } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
@@ -15,14 +15,8 @@ export interface CompanySearchResult {
 
 export async function GET(request: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const { auth } = await import("@/lib/auth");
-      const session = await auth.api.getSession({ headers: request.headers });
-      userId = session?.user?.id;
-    } catch {
-      // Optional auth
-    }
+    const { user } = await getAuthenticatedUser(request);
+    const userId = user?.id;
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q");

@@ -2,6 +2,18 @@
 
 // Re-export Zod-inferred CompanyAnalysis type
 export type { CompanyAnalysis } from "@/lib/schemas/companyAnalysis";
+import type { companies, tenders } from "@/lib/db/schema/app";
+
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: JsonValue }
+  | JsonValue[];
+
+export type CompanyDbRow = typeof companies.$inferSelect;
+export type TenderDbRow = typeof tenders.$inferSelect;
 
 // Canonical authenticated user shape returned by API auth helpers.
 export interface AuthenticatedApiUser {
@@ -24,21 +36,21 @@ export interface CompanyRecord {
   certifications?: string | null;
   equipment?: string | null;
   pastProjects: string | null;
-  operationLocations?: unknown;
+  operationLocations?: JsonValue;
   address?: string | null;
   postcode?: string | null;
   status?: string | null;
   createdAt: string;
   updatedAt: string;
-  aiAnalysis?: unknown;
-  aiCapabilities?: unknown;
-  aiCompetencies?: unknown;
-  aiStrengths?: unknown;
-  aiRecommendations?: unknown;
-  systemExtracted?: unknown;
-  humanVerified?: unknown;
-  financialData?: unknown;
-  complianceData?: unknown;
+  aiAnalysis?: JsonValue;
+  aiCapabilities?: JsonValue;
+  aiCompetencies?: JsonValue;
+  aiStrengths?: JsonValue;
+  aiRecommendations?: JsonValue;
+  systemExtracted?: JsonValue;
+  humanVerified?: JsonValue;
+  financialData?: JsonValue;
+  complianceData?: JsonValue;
   consentDataFetch?: boolean | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -53,18 +65,18 @@ export interface CompanyRecord {
   contact_phone: string | null;
   key_capabilities: string | null;
   past_projects: string | null;
-  operation_locations?: unknown;
+  operation_locations?: JsonValue;
   created_at: string;
   updated_at: string;
-  ai_analysis?: unknown;
-  ai_capabilities?: unknown;
-  ai_competencies?: unknown;
-  ai_strengths?: unknown;
-  ai_recommendations?: unknown;
-  system_extracted?: unknown;
-  human_verified?: unknown;
-  financial_data?: unknown;
-  compliance_data?: unknown;
+  ai_analysis?: JsonValue;
+  ai_capabilities?: JsonValue;
+  ai_competencies?: JsonValue;
+  ai_strengths?: JsonValue;
+  ai_recommendations?: JsonValue;
+  system_extracted?: JsonValue;
+  human_verified?: JsonValue;
+  financial_data?: JsonValue;
+  compliance_data?: JsonValue;
   consent_data_fetch?: boolean | null;
 }
 
@@ -460,8 +472,29 @@ export interface FetchUKTendersRequest {
   };
 }
 
+export interface TenderFeedRecord {
+  id?: string;
+  ocid?: string;
+  reference_number: string;
+  title: string;
+  buyer: string;
+  cpv_codes: string[];
+  description: string;
+  budget_min: number | null;
+  budget_max: number | null;
+  location: string;
+  deadline: string | null;
+  status: string;
+  publication_date: string;
+  contact_info: JsonValue;
+  requirements?: JsonValue;
+  documents?: JsonValue;
+  external_id?: string;
+  source?: string;
+}
+
 export interface FetchUKTendersResponse {
-  tenders: unknown[];
+  tenders: TenderFeedRecord[];
   total: number;
   totalFetched: number;
   hasMore: boolean;

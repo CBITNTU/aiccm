@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs, processing_queue not in generated types */
 import { NextRequest } from "next/server";
 import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
 import { isCompanyMember } from "@/lib/api/validation";
@@ -12,33 +11,33 @@ import { db } from "@/lib/db";
 import { companies, companyMembers, companyCapabilities, companyCapabilitiesRef, tenders, batchJobs } from "@/lib/db/schema/app";
 import { eq, and, inArray, gte, desc } from "drizzle-orm";
 
-interface CompanyData {
-  id: string;
-  company_name: string;
-  description: string | null;
-  key_capabilities: string | null;
-  location?: string | null;
-  postcode: string | null;
-  past_projects: string | null;
-  certifications: string | null;
-  equipment: string | null;
-  safety_rating: string | null;
-  digital_maturity: string | null;
-}
+type CompanyData = Pick<
+  typeof companies.$inferSelect,
+  | "id"
+  | "companyName"
+  | "description"
+  | "keyCapabilities"
+  | "postcode"
+  | "pastProjects"
+  | "certifications"
+  | "equipment"
+  | "safetyRating"
+  | "digitalMaturity"
+> & { location?: string | null };
 
-interface TenderData {
+type TenderData = {
   id: string;
   title: string;
   description: string | null;
   buyer: string;
   location: string | null;
-  budget_min: number | null;
-  budget_max: number | null;
+  budgetMin: number | null;
+  budgetMax: number | null;
   deadline: string | null;
-  cpv_codes: string[] | null;
+  cpvCodes: string[] | null;
   requirements: unknown;
-  contact_info: unknown;
-}
+  contactInfo: unknown;
+};
 
 /**
  * AI-based scoring similar to grant-matching's approach
@@ -49,16 +48,16 @@ async function analyzeTenderMatch(
   company: CompanyData,
   tender: TenderData,
 ): Promise<TenderMatchResult> {
-  const hasCapabilities = !!(company.key_capabilities && company.key_capabilities.trim().length > 10);
-  const hasExperience = !!(company.past_projects && company.past_projects.trim().length > 20);
+  const hasCapabilities = !!(company.keyCapabilities && company.keyCapabilities.trim().length > 10);
+  const hasExperience = !!(company.pastProjects && company.pastProjects.trim().length > 20);
   const hasCertifications = !!(company.certifications && company.certifications.trim().length > 5);
   const hasLocation = !!(company.postcode || company.location);
 
   const companyProfile = [
-    `Company: ${company.company_name}`,
+    `Company: ${company.companyName}`,
     company.description ? `Description: ${company.description}` : "",
-    hasCapabilities ? `Capabilities: ${company.key_capabilities}` : "Capabilities: NOT PROVIDED",
-    hasExperience ? `Past Projects: ${company.past_projects}` : "Past Projects: NOT PROVIDED",
+    hasCapabilities ? `Capabilities: ${company.keyCapabilities}` : "Capabilities: NOT PROVIDED",
+    hasExperience ? `Past Projects: ${company.pastProjects}` : "Past Projects: NOT PROVIDED",
     hasCertifications ? `Certifications: ${company.certifications}` : "Certifications: NOT PROVIDED",
     company.equipment ? `Equipment: ${company.equipment}` : "",
     hasLocation ? `Location: ${company.postcode || company.location}` : "Location: NOT PROVIDED",
@@ -69,12 +68,12 @@ async function analyzeTenderMatch(
     tender.description ? `Description: ${tender.description}` : "",
     `Buyer: ${tender.buyer}`,
     tender.location ? `Location: ${tender.location}` : "",
-    tender.budget_min && tender.budget_max
-      ? `Budget: £${tender.budget_min.toLocaleString()} - £${tender.budget_max.toLocaleString()}`
-      : tender.budget_min ? `Budget: £${tender.budget_min.toLocaleString()}+`
-      : tender.budget_max ? `Budget: Up to £${tender.budget_max.toLocaleString()}` : "",
+    tender.budgetMin && tender.budgetMax
+      ? `Budget: £${tender.budgetMin.toLocaleString()} - £${tender.budgetMax.toLocaleString()}`
+      : tender.budgetMin ? `Budget: £${tender.budgetMin.toLocaleString()}+`
+      : tender.budgetMax ? `Budget: Up to £${tender.budgetMax.toLocaleString()}` : "",
     tender.deadline ? `Deadline: ${new Date(tender.deadline).toLocaleDateString()}` : "",
-    tender.cpv_codes && tender.cpv_codes.length > 0 ? `CPV Codes: ${tender.cpv_codes.join(", ")}` : "",
+    tender.cpvCodes && tender.cpvCodes.length > 0 ? `CPV Codes: ${tender.cpvCodes.join(", ")}` : "",
     tender.requirements ? `Requirements: ${JSON.stringify(tender.requirements)}` : "",
   ].filter(Boolean).join("\n");
 
@@ -242,17 +241,17 @@ export async function POST(request: NextRequest) {
 
     const companyData: CompanyData = {
       id: company.id,
-      company_name: company.companyName,
+      companyName: company.companyName,
       description: company.description,
-      key_capabilities: company.keyCapabilities,
+      keyCapabilities: company.keyCapabilities,
       postcode: company.postcode,
-      past_projects: company.pastProjects,
+      pastProjects: company.pastProjects,
       certifications: company.certifications,
       equipment: company.equipment,
-      safety_rating: company.safetyRating,
-      digital_maturity: company.digitalMaturity,
+      safetyRating: company.safetyRating,
+      digitalMaturity: company.digitalMaturity,
     };
-    console.log("Found company:", companyData.company_name);
+    console.log("Found company:", companyData.companyName);
 
     // Fetch company capabilities from junction table
     const capResults = await db
@@ -264,7 +263,7 @@ export async function POST(request: NextRequest) {
     const capabilityNames = capResults.map((c) => c.name).filter(Boolean).join(" ");
 
     if (capabilityNames) {
-      companyData.key_capabilities = (companyData.key_capabilities || "") + " " + capabilityNames;
+      companyData.keyCapabilities = (companyData.keyCapabilities || "") + " " + capabilityNames;
     }
 
     // Get open tenders with deadline >= today
@@ -378,7 +377,7 @@ export async function POST(request: NextRequest) {
       userEmail: user?.email || undefined,
       entityType: "company",
       entityId: companyData.id,
-      details: { batchId, totalTenders: tenderResults.length, companyName: companyData.company_name },
+      details: { batchId, totalTenders: tenderResults.length, companyName: companyData.companyName },
     }).catch(() => {});
 
     return apiResponse({

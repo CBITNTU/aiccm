@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiResponse } from "@/lib/api";
+import { apiResponse, getAuthenticatedUser } from "@/lib/api";
 import { sanitizeHexToken, hashToken, isExpired } from "@/lib/utils/invite-token";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
@@ -127,16 +127,8 @@ export async function POST(request: NextRequest) {
 
     const isExistingUser = existingProfiles.length > 0;
 
-    let userId: string | undefined;
-    try {
-      const { auth } = await import("@/lib/auth");
-      const session = await auth.api.getSession({
-        headers: request.headers,
-      });
-      userId = session?.user?.id;
-    } catch {
-      // Optional auth
-    }
+    const { user } = await getAuthenticatedUser(request);
+    const userId = user?.id;
 
     await logApiEvent(request, {
       actionType: "profile_viewed",

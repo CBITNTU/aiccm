@@ -3,6 +3,7 @@ import {
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { requireAuth } from "@/lib/api/validation";
 import { ONBOARDING_STEPS, ONBOARDING_STEP_NAMES } from "@/lib/onboarding";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
@@ -22,14 +23,7 @@ import { desc, eq } from "drizzle-orm";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth.api.getSession({ headers: request.headers });
-
-    if (!session?.user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const user = session.user;
+    const { user } = await requireAuth(request);
 
     // Check if user is superadmin
     const userRoleRows = await db

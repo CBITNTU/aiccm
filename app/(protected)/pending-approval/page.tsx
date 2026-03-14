@@ -20,7 +20,7 @@ import {
   Loader2,
   Building2,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 
@@ -39,8 +39,6 @@ export default function PendingApprovalPage() {
     companyName: null,
     joinRequestStatus: null,
   });
-
-  const supabase = createClient();
 
   const fetchPendingInfo = async () => {
     try {
@@ -80,7 +78,7 @@ export default function PendingApprovalPage() {
         router.push("/dashboard");
       } else if (result.approvalStatus === "rejected") {
         toast.error("Your account application was not approved.");
-        await supabase.auth.signOut();
+        await authClient.signOut();
         router.push("/auth?rejected=true");
       } else {
         toast.info("Your account is still pending approval.");
@@ -95,7 +93,7 @@ export default function PendingApprovalPage() {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await authClient.signOut();
     router.push("/auth");
   };
 

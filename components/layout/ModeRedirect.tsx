@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 
 /**
  * Client component that handles the ?mode=create query parameter
@@ -26,10 +26,8 @@ export function ModeRedirect() {
     // Check if user is authenticated
     const checkAuthAndRedirect = async () => {
       try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const session = await authClient.getSession();
+        const user = session.data?.user;
 
         if (user) {
           // User is authenticated, redirect to new company page

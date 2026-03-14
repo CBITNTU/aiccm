@@ -26,11 +26,34 @@ interface TenderData {
   deadline: string | null;
   status: string;
   publication_date: string;
-  contact_info: unknown;
-  requirements?: unknown;
-  documents?: unknown;
+  contact_info: Record<string, unknown> | null;
+  requirements?: Record<string, unknown>;
+  documents?: Record<string, unknown>;
   external_id?: string;
   source?: string;
+}
+
+type TenderInsert = typeof tenders.$inferInsert;
+
+function mapTenderToInsert(tender: TenderData): TenderInsert {
+  return {
+    referenceNumber: tender.reference_number,
+    title: tender.title,
+    buyer: tender.buyer,
+    cpvCodes: tender.cpv_codes,
+    description: tender.description,
+    budgetMin: tender.budget_min,
+    budgetMax: tender.budget_max,
+    location: tender.location,
+    deadline: tender.deadline ? new Date(tender.deadline) : null,
+    status: tender.status,
+    publicationDate: tender.publication_date
+      ? new Date(tender.publication_date)
+      : new Date(),
+    contactInfo: tender.contact_info,
+    requirements: tender.requirements,
+    documents: tender.documents,
+  };
 }
 
 // TED API may return fields as arrays or strings; normalize to string/array safely
@@ -445,22 +468,7 @@ export async function POST(request: NextRequest) {
 
     // If admin is importing, also save to database with duplicate prevention
     if (adminImport && isAdmin && notices.length > 0) {
-      const tendersToInsert = notices.map((tender) => ({
-        referenceNumber: tender.reference_number,
-        title: tender.title,
-        buyer: tender.buyer,
-        cpvCodes: tender.cpv_codes,
-        description: tender.description,
-        budgetMin: tender.budget_min,
-        budgetMax: tender.budget_max,
-        location: tender.location,
-        deadline: tender.deadline ? new Date(tender.deadline) : null,
-        status: tender.status,
-        publicationDate: tender.publication_date ? new Date(tender.publication_date) : new Date(),
-        contactInfo: tender.contact_info,
-        requirements: tender.requirements,
-        documents: tender.documents,
-      }));
+      const tendersToInsert: TenderInsert[] = notices.map(mapTenderToInsert);
 
       // Check for existing tenders to avoid duplicates
       const refNumbers = tendersToInsert.map((t) => t.referenceNumber).filter(Boolean) as string[];

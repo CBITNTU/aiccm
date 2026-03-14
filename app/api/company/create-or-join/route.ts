@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth } from "@/lib/api/validation";
 import {
   sendEmail,
   getAdminNotificationEmailSubject,
@@ -47,14 +48,7 @@ type RequestData = NewCompanyData | JoinCompanyData;
 
 export async function POST(request: NextRequest) {
   try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth.api.getSession({ headers: request.headers });
-
-    if (!session?.user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const user = session.user;
+    const { user } = await requireAuth(request);
 
     // Get current profile and verify user is approved
     const profile = await getProfileByUserId(user.id);

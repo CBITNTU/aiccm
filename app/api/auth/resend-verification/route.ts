@@ -1,23 +1,23 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { user as authUsersTable } from "@/lib/db/schema/auth";
+import { eq } from "drizzle-orm";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get current user from Better Auth session
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
-
-    if (!session?.user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const user = session.user;
+    const { user } = await requireAuth(request);
+    const authUser = await db
+      .select({ emailVerified: authUsersTable.emailVerified })
+      .from(authUsersTable)
+      .where(eq(authUsersTable.id, user.id))
+      .limit(1);
 
     // Check if already verified
-    if (user.emailVerified) {
+    if (authUser[0]?.emailVerified) {
       return apiError("Email is already verified", 400);
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,11 +18,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
+import { isValidRedirectUrl } from "@/lib/utils/redirectUrl";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [signUpData, setSignUpData] = useState({
     email: "",
@@ -103,7 +104,15 @@ export default function AuthPage() {
         description: "Redirecting...",
       });
 
-      router.refresh();
+      const requestedRedirect = searchParams.get("redirectTo");
+      const redirectTo = isValidRedirectUrl(requestedRedirect)
+        ? requestedRedirect
+        : null;
+      const authRedirectPath = redirectTo
+        ? `/auth?redirectTo=${encodeURIComponent(redirectTo)}`
+        : "/auth";
+
+      window.location.assign(authRedirectPath);
     } catch (error: unknown) {
       console.error("Sign in error:", error);
       const errorMessage =

@@ -1,6 +1,7 @@
 // Frontend API client for calling Next.js API routes
 // This will be used in Phase 2 (frontend migration) to replace supabase.functions.invoke()
 import type { CompanyRecord } from "@/lib/api/types";
+import type { FetchUKTendersResponse, TenderFeedRecord } from "@/lib/api/types";
 import { normalizeCompanyRecord } from "@/lib/api/types";
 
 export class ApiError extends Error {
@@ -209,17 +210,11 @@ export const api = {
       budgetMax?: number;
     };
   }) =>
-    apiCall<{
-      tenders: unknown[];
-      total: number;
-      totalFetched: number;
-      actuallyImported?: number;
-      hasMore: boolean;
-      nextCursor?: string;
-      isAdmin?: boolean;
-      source: string;
-      duplicatesSkipped?: number;
-    }>("fetch-uk-tenders", {
+    apiCall<
+      FetchUKTendersResponse & {
+        actuallyImported?: number;
+      }
+    >("fetch-uk-tenders", {
       body: options || {},
     }),
 
@@ -254,7 +249,7 @@ export const api = {
     languages?: string[];
   }) =>
     apiCall<{
-      tenders: unknown[];
+      tenders: TenderFeedRecord[];
       total: number;
       totalFetched: number;
       actuallyImported?: number;

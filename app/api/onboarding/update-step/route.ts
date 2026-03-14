@@ -3,6 +3,7 @@ import {
   apiResponse,
   apiError,
 } from "@/lib/api";
+import { requireAuth } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
@@ -91,14 +92,7 @@ interface UpdateStepRequest {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth.api.getSession({ headers: request.headers });
-
-    if (!session?.user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const user = session.user;
+    const { user } = await requireAuth(request);
 
     const body: UpdateStepRequest = await request.json();
     const { step, data } = body;
@@ -585,14 +579,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth.api.getSession({ headers: request.headers });
-
-    if (!session?.user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const user = session.user;
+    const { user } = await requireAuth(request);
 
     // Get profile from Drizzle (local Postgres)
     const profile = await getProfileByUserId(user.id);

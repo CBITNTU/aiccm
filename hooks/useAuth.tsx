@@ -7,7 +7,6 @@ import {
   useContext,
   useCallback,
   useMemo,
-  useRef,
 } from "react";
 import { authClient } from "@/lib/auth-client";
 
@@ -55,11 +54,22 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [session, setSession] = useState<unknown>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: sessionData, isPending } = authClient.useSession();
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const mountedRef = useRef(true);
+
+  const user = useMemo<AuthUser | null>(() => {
+    const currentUser = sessionData?.user;
+    if (!currentUser) return null;
+    return {
+      id: currentUser.id,
+      email: currentUser.email,
+      emailVerified: !!currentUser.emailVerified,
+    };
+  }, [sessionData?.user]);
+
+  const session = sessionData?.session ?? null;
+  const loading = isPending;
+  const activeProfile = user ? profile : null;
 
   const signOut = useCallback(async () => {
     try {
@@ -69,9 +79,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       await authClient.signOut();
-
-      setUser(null);
-      setSession(null);
       setProfile(null);
 
       window.location.replace("/");
@@ -101,43 +108,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user]);
 
-  // Initialize auth state — Better Auth only
-  useEffect(() => {
-    mountedRef.current = true;
-
-    const initAuth = async () => {
-      try {
-        const baSession = await authClient.getSession();
-        if (baSession?.data?.user) {
-          if (!mountedRef.current) return;
-          const baUser = baSession.data.user;
-          setUser({ id: baUser.id, email: baUser.email, emailVerified: !!baUser.emailVerified });
-          setSession(baSession.data.session);
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // Session not found
-      }
-
-      if (mountedRef.current) {
-        setUser(null);
-        setSession(null);
-        setLoading(false);
-      }
-    };
-
-    initAuth();
-
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
   // Fetch profile data when user changes
   useEffect(() => {
     if (!user) {
-      setProfile(null);
       return;
     }
 
@@ -189,7 +162,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         session,
         loading,
-        profile,
+        profile: activeProfile,
         isOnboarding,
         isPendingApproval,
         signOut,

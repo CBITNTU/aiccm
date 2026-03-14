@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- queue, matching result types */
+ 
 import { type MatchingModelId } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";

@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import type { CompanyRecord } from "@/lib/api/types";
 import type {
   Project,
   GapAnalysis,
@@ -125,7 +126,7 @@ export function useAvailableTenders(enabled = true) {
 // Get lead company details
 async function fetchCompanyById(
   companyId: string,
-): Promise<Record<string, unknown> | null> {
+): Promise<CompanyRecord | null> {
   try {
     const data = await api.getCompany(companyId);
     return data.company;

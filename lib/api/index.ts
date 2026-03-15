@@ -36,6 +36,7 @@ export async function getAuthenticatedUser(request: NextRequest) {
       const user: AuthenticatedApiUser = {
         id: session.user.id,
         email: session.user.email,
+        emailVerified: session.user.emailVerified ?? null,
       };
       return {
         user,

@@ -25,6 +25,10 @@ import {
   companyMembers,
 } from "@/lib/db/schema/app";
 import { eq, and, desc, inArray } from "drizzle-orm";
+import {
+  fetchCompanySources,
+  runPrefillAI,
+} from "@/lib/services/companyEnrichmentService";
 
 export interface ApproveUserRequest {
   userId: string;
@@ -46,30 +50,26 @@ async function triggerAIPrefill(
   },
 ) {
   try {
-    // Fetch prefill data from external sources
-    const prefillResponse = await fetch(
-      `${process.env.PLATFORM_URL || "http://localhost:3000"}/api/prefill-company-data`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyName: params.companyName,
-          companyNumber: params.companyNumber,
-          websiteUrl: params.websiteUrl,
-        }),
-      },
+    // Fetch and normalize company data directly (no HTTP call needed)
+    const sources = await fetchCompanySources(
+      params.companyName,
+      params.companyNumber,
+      params.websiteUrl,
     );
 
-    if (!prefillResponse.ok) {
-      console.error("Prefill API returned error:", prefillResponse.status);
+    if (!sources.companiesHouseHtml && !sources.endoleHtml && !sources.websiteHtml) {
+      console.error("No external data fetched for prefill. Errors:", sources.errors);
       return;
     }
 
-    const prefillData = await prefillResponse.json();
+    const normalized = await runPrefillAI(
+      params.companyName,
+      params.companyNumber,
+      sources,
+    );
 
     // Apply normalized data to company if available
-    if (prefillData.normalized) {
-      const normalized = prefillData.normalized;
+    if (normalized) {
       const updateData: Record<string, unknown> = {};
 
       // Helper to extract value from structured field {value, confidence, evidence}
@@ -92,13 +92,10 @@ async function triggerAIPrefill(
       const address = extractValue(normalized.address);
       if (address) updateData.address = address;
 
-      const postcode = extractValue(normalized.postcode);
-      if (postcode) updateData.postcode = postcode;
-
       // Capabilities are an array of {value, confidence, evidence} objects
       if (normalized.capabilities?.length) {
         const capabilityValues = normalized.capabilities
-          .map((cap: unknown) => extractValue(cap))
+          .map((cap) => extractValue(cap))
           .filter(Boolean);
         if (capabilityValues.length) {
           updateData.keyCapabilities = capabilityValues.join(", ");
@@ -108,12 +105,12 @@ async function triggerAIPrefill(
       // Certifications - extract just the essential fields for display
       if (normalized.certifications?.length) {
         const cleanCerts = normalized.certifications
-          .map((cert: Record<string, unknown>) => ({
+          .map((cert) => ({
             name: cert.name || "",
             issuer: cert.issuer || "",
             validUntil: cert.validUntil || "",
           }))
-          .filter((cert: { name: string }) => cert.name);
+          .filter((cert) => cert.name);
         if (cleanCerts.length) {
           updateData.certifications = JSON.stringify(cleanCerts);
         }
@@ -122,12 +119,12 @@ async function triggerAIPrefill(
       // Equipment - extract just the essential fields for display
       if (normalized.equipment?.length) {
         const cleanEquipment = normalized.equipment
-          .map((eq: Record<string, unknown>) => ({
-            name: eq.name || "",
-            model: eq.model || "",
-            capacity: eq.capacity || "",
+          .map((item) => ({
+            name: item.name || "",
+            model: item.model || "",
+            capacity: item.capacity || "",
           }))
-          .filter((eq: { name: string }) => eq.name);
+          .filter((item) => item.name);
         if (cleanEquipment.length) {
           updateData.equipment = JSON.stringify(cleanEquipment);
         }

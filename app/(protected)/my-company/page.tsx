@@ -181,7 +181,7 @@ export default function MyCompanyPage() {
                       : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100"
                   }
                 >
-                  {formatCompanyStatus(company.status)}
+                  {formatCompanyStatus(company.status ?? null)}
                 </Badge>
                 {company.is_system_company && (
                   <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">Verified</Badge>

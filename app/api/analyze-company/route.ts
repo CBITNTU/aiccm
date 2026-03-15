@@ -18,6 +18,11 @@ import {
 import { db } from "@/lib/db";
 import { companies } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
+import {
+  companyHasSparseData,
+  enrichCompanyData,
+  fetchCompanySources,
+} from "@/lib/services/companyEnrichmentService";
 
 const analyzeCompanyInputSchema = z.object({
   companyId: z.string().uuid(),
@@ -33,10 +38,15 @@ function buildPerformanceBenchmarkPrompt(
     pastProjects?: string | null;
     financialData?: Record<string, { value?: unknown }> | null;
   },
+  scrapedContent?: {
+    websiteHtml: string;
+    companiesHouseHtml: string;
+    endoleHtml: string;
+  },
 ): string {
   const financialData = company.financialData || {};
 
-  return `Score these 8 dimensions (0-100) with a short explanation. Also extract or infer company information (description, key_capabilities, certifications, past_projects, equipment, postcode, contact details) from any available data. Return JSON with performanceBenchmark and companyInfo.
+  let prompt = `Score these 8 dimensions (0-100) with a short explanation. Also extract or infer company information (description, key_capabilities, certifications, past_projects, equipment, postcode, contact details) from any available data. Return JSON with performanceBenchmark and companyInfo.
 
 Company: ${company.companyName}
 Website: ${company.websiteUrl || "N/A"}
@@ -48,6 +58,20 @@ Employees: ${financialData.employees?.value || "N/A"}
 Net Assets: \u00A3${typeof financialData.netAssets?.value === "number" ? financialData.netAssets.value.toLocaleString() : "N/A"}
 Total Assets: \u00A3${typeof financialData.totalAssets?.value === "number" ? financialData.totalAssets.value.toLocaleString() : "N/A"}
 Cash: \u00A3${typeof financialData.cash?.value === "number" ? financialData.cash.value.toLocaleString() : "N/A"}`;
+
+  if (scrapedContent) {
+    if (scrapedContent.websiteHtml) {
+      prompt += `\n\n--- Scraped Website Content ---\n${scrapedContent.websiteHtml}`;
+    }
+    if (scrapedContent.companiesHouseHtml) {
+      prompt += `\n\n--- Companies House Data ---\n${scrapedContent.companiesHouseHtml}`;
+    }
+    if (scrapedContent.endoleHtml) {
+      prompt += `\n\n--- Endole Financial Data ---\n${scrapedContent.endoleHtml.slice(0, 12000)}`;
+    }
+  }
+
+  return prompt;
 }
 
 export async function POST(request: NextRequest) {
@@ -65,7 +89,7 @@ export async function POST(request: NextRequest) {
       .where(eq(companies.id, companyId))
       .limit(1);
 
-    const company = companyRows[0];
+    let company = companyRows[0];
     if (!company) {
       return apiResponse({ error: "Company not found" }, 404);
     }
@@ -85,6 +109,64 @@ export async function POST(request: NextRequest) {
       return apiResponse({ error: "Not authorized to analyze this company" }, 403);
     }
 
+    // Prefill fallback: if company has no enriched data, run prefill first
+    if (
+      companyHasSparseData(company) &&
+      (company.companiesHouseNumber || company.websiteUrl)
+    ) {
+      console.log("[CompanyAI:analyze] No prefilled data found, running enrichment fallback...");
+      try {
+        const enriched = await enrichCompanyData(companyId);
+        if (enriched) {
+          // Re-read company to get enriched fields for the benchmark prompt
+          const refreshed = await db
+            .select()
+            .from(companies)
+            .where(eq(companies.id, companyId))
+            .limit(1);
+          if (refreshed[0]) {
+            company = refreshed[0];
+            console.log("[CompanyAI:analyze] Enrichment fallback succeeded, using enriched data");
+          }
+        }
+      } catch (enrichError) {
+        console.error("[CompanyAI:analyze] Enrichment fallback failed, continuing with existing data:", enrichError);
+      }
+    }
+
+    // Fetch raw HTML from external sources to inject directly into the benchmark prompt
+    let scrapedContent: {
+      websiteHtml: string;
+      companiesHouseHtml: string;
+      endoleHtml: string;
+    } | undefined;
+
+    if (
+      companyHasSparseData(company) &&
+      (company.companiesHouseNumber || company.websiteUrl)
+    ) {
+      console.log("[CompanyAI:analyze] Company data is sparse, fetching external sources...");
+      try {
+        const sources = await fetchCompanySources(
+          company.companyName,
+          company.companiesHouseNumber,
+          company.websiteUrl,
+        );
+        if (sources.websiteHtml || sources.companiesHouseHtml || sources.endoleHtml) {
+          scrapedContent = sources;
+          console.log("[CompanyAI:analyze] Scraped content available —", {
+            websiteChars: sources.websiteHtml.length,
+            companiesHouseChars: sources.companiesHouseHtml.length,
+            endoleChars: sources.endoleHtml.length,
+          });
+        } else {
+          console.log("[CompanyAI:analyze] No external data fetched. Errors:", sources.errors);
+        }
+      } catch (fetchError) {
+        console.error("[CompanyAI:analyze] Source fetching failed:", fetchError);
+      }
+    }
+
     const prompt = buildPerformanceBenchmarkPrompt({
       companyName: company.companyName,
       websiteUrl: company.websiteUrl,
@@ -93,13 +175,13 @@ export async function POST(request: NextRequest) {
       certifications: company.certifications,
       pastProjects: company.pastProjects,
       financialData: company.financialData as Record<string, { value?: unknown }> | null,
-    });
+    }, scrapedContent);
 
     console.log("[CompanyAI:analyze] Prompt —", prompt);
 
     const rawAnalysis = await aiGenerateObject({
       schema: performanceBenchmarkSchema,
-      system: `Rate company 0-100 on each dimension from available data only; 0 if no data. Also extract or infer company information where possible.`,
+      system: `Rate company 0-100 on each dimension. Analyze ALL available data including any scraped web content, Companies House data, and Endole financial data provided. Extract company information from any source available. Score 0 only if genuinely no relevant data exists across all sources.`,
       prompt,
       maxTokens: 10000,
     });
@@ -191,6 +273,15 @@ export async function POST(request: NextRequest) {
     }
     if (analysis.marketPosition) {
       updateData.marketPosition = analysis.marketPosition;
+    }
+
+    // Mark as enriched so subsequent runs skip re-scraping
+    if (scrapedContent) {
+      updateData.systemExtracted = {
+        ...((company.systemExtracted as Record<string, unknown>) || {}),
+        enrichedAt: new Date().toISOString(),
+        enrichmentResult: "inline_benchmark",
+      };
     }
 
     console.log("[CompanyAI:analyze] Final update payload fields —", Object.keys(updateData));

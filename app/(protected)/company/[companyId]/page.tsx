@@ -141,7 +141,7 @@ export default function CompanyDetailPage() {
         setIsOwner(data.isOwner);
         setCompanyCapabilities(data.capabilities);
 
-        const company = data.company as Record<string, unknown>;
+        const company = data.company as unknown as Record<string, unknown>;
         if (company.ai_analysis) {
           setAnalysis(company.ai_analysis as Record<string, unknown>);
         }

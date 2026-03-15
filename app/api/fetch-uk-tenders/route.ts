@@ -358,7 +358,7 @@ export async function POST(request: NextRequest) {
       }
 
       const newTenders = tendersToInsert.filter(
-        (t) => !existingRefs.has(t.referenceNumber),
+        (t) => !existingRefs.has(t.referenceNumber ?? null),
       );
       const duplicatesCount = tendersToInsert.length - newTenders.length;
 

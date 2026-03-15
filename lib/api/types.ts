@@ -19,6 +19,7 @@ export type TenderDbRow = typeof tenders.$inferSelect;
 export interface AuthenticatedApiUser {
   id: string;
   email?: string | null;
+  emailVerified?: boolean | null;
 }
 
 // Canonical company DTO. Keep legacy snake_case aliases optional during migration.
@@ -78,6 +79,26 @@ export interface CompanyRecord {
   financial_data?: JsonValue;
   compliance_data?: JsonValue;
   consent_data_fetch?: boolean | null;
+  digitalMaturity?: string | null;
+  safetyRating?: string | null;
+  marketPosition?: string | null;
+  digital_maturity?: string | null;
+  safety_rating?: string | null;
+  market_position?: string | null;
+  isSystemCompany?: boolean | null;
+  is_system_company?: boolean | null;
+  aiCertifications?: JsonValue;
+  ai_certifications?: JsonValue;
+  aiSummary?: string | null;
+  ai_summary?: string | null;
+  aiCapabilityTaxonomy?: JsonValue;
+  ai_capability_taxonomy?: JsonValue;
+  taxonomyGeneratedAt?: string | null;
+  taxonomy_generated_at?: string | null;
+  summaryGeneratedAt?: string | null;
+  summary_generated_at?: string | null;
+  contentHash?: string | null;
+  content_hash?: string | null;
 }
 
 export interface AdminPendingCompanyDetails {
@@ -137,7 +158,7 @@ export function normalizeCompanyRecord(company: Record<string, unknown>): Compan
   );
 
   return {
-    ...(company as CompanyRecord),
+    ...(company as unknown as CompanyRecord),
     id: String(company.id ?? ""),
     userId: firstDefined<string | null>(
       company.userId as string | null | undefined,
@@ -184,26 +205,26 @@ export function normalizeCompanyRecord(company: Record<string, unknown>): Compan
         company.updated_at as string | undefined,
       ) ?? "",
     ),
-    operationLocations: firstDefined(
-      company.operationLocations as unknown,
-      company.operation_locations as unknown,
+    operationLocations: firstDefined<JsonValue>(
+      company.operationLocations as JsonValue | undefined,
+      company.operation_locations as JsonValue | undefined,
     ),
-    aiAnalysis: firstDefined(company.aiAnalysis as unknown, company.ai_analysis as unknown),
-    systemExtracted: firstDefined(
-      company.systemExtracted as unknown,
-      company.system_extracted as unknown,
+    aiAnalysis: firstDefined<JsonValue>(company.aiAnalysis as JsonValue | undefined, company.ai_analysis as JsonValue | undefined),
+    systemExtracted: firstDefined<JsonValue>(
+      company.systemExtracted as JsonValue | undefined,
+      company.system_extracted as JsonValue | undefined,
     ),
-    humanVerified: firstDefined(
-      company.humanVerified as unknown,
-      company.human_verified as unknown,
+    humanVerified: firstDefined<JsonValue>(
+      company.humanVerified as JsonValue | undefined,
+      company.human_verified as JsonValue | undefined,
     ),
-    financialData: firstDefined(
-      company.financialData as unknown,
-      company.financial_data as unknown,
+    financialData: firstDefined<JsonValue>(
+      company.financialData as JsonValue | undefined,
+      company.financial_data as JsonValue | undefined,
     ),
-    complianceData: firstDefined(
-      company.complianceData as unknown,
-      company.compliance_data as unknown,
+    complianceData: firstDefined<JsonValue>(
+      company.complianceData as JsonValue | undefined,
+      company.compliance_data as JsonValue | undefined,
     ),
     consentDataFetch: firstDefined<boolean | null>(
       company.consentDataFetch as boolean | null | undefined,
@@ -256,26 +277,26 @@ export function normalizeCompanyRecord(company: Record<string, unknown>): Compan
         company.updatedAt as string | Date | undefined,
       ) ?? "",
     ),
-    operation_locations: firstDefined(
-      company.operation_locations as unknown,
-      company.operationLocations as unknown,
+    operation_locations: firstDefined<JsonValue>(
+      company.operation_locations as JsonValue | undefined,
+      company.operationLocations as JsonValue | undefined,
     ),
-    ai_analysis: firstDefined(company.ai_analysis as unknown, company.aiAnalysis as unknown),
-    system_extracted: firstDefined(
-      company.system_extracted as unknown,
-      company.systemExtracted as unknown,
+    ai_analysis: firstDefined<JsonValue>(company.ai_analysis as JsonValue | undefined, company.aiAnalysis as JsonValue | undefined),
+    system_extracted: firstDefined<JsonValue>(
+      company.system_extracted as JsonValue | undefined,
+      company.systemExtracted as JsonValue | undefined,
     ),
-    human_verified: firstDefined(
-      company.human_verified as unknown,
-      company.humanVerified as unknown,
+    human_verified: firstDefined<JsonValue>(
+      company.human_verified as JsonValue | undefined,
+      company.humanVerified as JsonValue | undefined,
     ),
-    financial_data: firstDefined(
-      company.financial_data as unknown,
-      company.financialData as unknown,
+    financial_data: firstDefined<JsonValue>(
+      company.financial_data as JsonValue | undefined,
+      company.financialData as JsonValue | undefined,
     ),
-    compliance_data: firstDefined(
-      company.compliance_data as unknown,
-      company.complianceData as unknown,
+    compliance_data: firstDefined<JsonValue>(
+      company.compliance_data as JsonValue | undefined,
+      company.complianceData as JsonValue | undefined,
     ),
     consent_data_fetch: firstDefined<boolean | null>(
       company.consent_data_fetch as boolean | null | undefined,

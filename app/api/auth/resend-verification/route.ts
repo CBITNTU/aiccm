@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Send verification email via Better Auth
     await auth.api.sendVerificationEmail({
       body: {
-        email: user.email,
+        email: user.email!,
         callbackURL: "/auth/callback",
       },
     });

@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:better-auth.com)",
       "Bash(head:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

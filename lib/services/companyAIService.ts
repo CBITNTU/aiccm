@@ -215,8 +215,6 @@ ${capabilitiesList}
 
 Return existing = array of capability IDs from the list.`;
 
-  console.log("[CompanyAI:taxonomy] Prompt —", userPrompt);
-
   const parsed = await aiGenerateObject({
     schema: companySummaryAndTaxonomySchema,
     system: systemPrompt,
@@ -226,11 +224,9 @@ Return existing = array of capability IDs from the list.`;
   });
 
   const existingIds = parsed.existing;
-  console.log("[CompanyAI:taxonomy] AI-returned capability IDs —", existingIds);
 
   // Only use existing capabilities from static list
   const uniqueIds = Array.from(new Set(existingIds));
-  console.log("[CompanyAI:taxonomy] Deduplicated IDs — count:", uniqueIds.length, "ids:", uniqueIds);
 
   // Store taxonomy in database
   await db
@@ -240,7 +236,6 @@ Return existing = array of capability IDs from the list.`;
       taxonomyGeneratedAt: new Date(),
     })
     .where(eq(companies.id, companyId));
-  console.log("[CompanyAI:taxonomy] DB save — aiCapabilityTaxonomy updated for company", companyId);
 
   // Also populate the company_capabilities junction table for filtering
   // First, delete existing capability links for this company
@@ -264,9 +259,7 @@ Return existing = array of capability IDs from the list.`;
           capabilityId,
         })),
       );
-      console.log(
-        `Populated ${uniqueIds.length} capabilities in junction table for company ${companyId}`,
-      );
+  
     } catch (insertError) {
       console.error(
         `Failed to insert capability links for company ${companyId}:`,

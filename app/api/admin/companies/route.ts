@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Check for existing company with same name
     if (body.company_name || body.companyName) {
-      const name = body.company_name || body.companyName;
+      const name = (body.company_name || body.companyName) as string;
       const existingRows = await db
         .select({ id: companies.id })
         .from(companies)
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     const result = await db
       .insert(companies)
-      .values(insertData)
+      .values(insertData as typeof companies.$inferInsert)
       .returning();
 
     return apiResponse({ company: result[0] });

@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Clock,
   Building2,
+  Pencil,
 } from "lucide-react";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 
@@ -137,13 +138,25 @@ export default function MyCompanyPage() {
           </div>
           <div className="flex gap-2">
             <Button
+              onClick={() => router.push(`/company/${company.id}`)}
+              className="shrink-0"
+            >
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit Company
+            </Button>
+            <Button
               variant="outline"
               onClick={() => router.push(`/company/${company.id}`)}
+              className="shrink-0"
             >
               <ExternalLink className="w-4 h-4 mr-2" />
               Full Profile
             </Button>
-            <Button onClick={() => router.push("/my-company/new")}>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/my-company/new")}
+              className="shrink-0"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add Company
             </Button>

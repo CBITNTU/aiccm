@@ -393,10 +393,13 @@ export const api = {
       markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
     }>("markets", { method: "GET" }),
 
-  getStandards: () =>
+  getStandards: (companyId?: string) =>
     apiCall<{
       standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
-    }>("standards", { method: "GET" }),
+    }>(
+      companyId ? `standards?companyId=${encodeURIComponent(companyId)}` : "standards",
+      { method: "GET" },
+    ),
 
   getCompanyMarkets: (companyId: string) =>
     apiCall<{

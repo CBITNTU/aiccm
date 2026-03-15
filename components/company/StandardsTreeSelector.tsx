@@ -25,6 +25,8 @@ export interface StandardNode {
 interface StandardsTreeSelectorProps {
   selectedStandardIds: string[];
   onSelectionChange: (standardIds: string[]) => void;
+  /** When set, only standards for industries matching the company's markets are shown. */
+  companyId?: string;
 }
 
 interface TreeNode extends StandardNode {
@@ -146,6 +148,7 @@ function TreeNodeRow({
 export function StandardsTreeSelector({
   selectedStandardIds,
   onSelectionChange,
+  companyId,
 }: StandardsTreeSelectorProps) {
   const [standards, setStandards] = useState<StandardNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +158,7 @@ export function StandardsTreeSelector({
   useEffect(() => {
     const fetchStandards = async () => {
       try {
-        const result = await api.getStandards();
+        const result = await api.getStandards(companyId);
         setStandards(result.standards || []);
         const allIds = new Set((result.standards || []).map((s) => s.id));
         setExpandedIds(allIds);
@@ -165,7 +168,7 @@ export function StandardsTreeSelector({
       setLoading(false);
     };
     fetchStandards();
-  }, []);
+  }, [companyId]);
 
   const tree = useMemo(() => buildTree(standards), [standards]);
   const filteredTree = useMemo(

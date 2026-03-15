@@ -106,7 +106,7 @@ export function CompanyStandardsSelector({
         </CardTitle>
         <CardDescription>
           {editMode
-            ? "Select standards and certifications your company holds. Changes are saved automatically."
+            ? "Select standards and certifications your company holds. Only standards relevant to your selected markets are shown. Changes are saved automatically."
             : "Standards and certifications your company holds."}
           {saving && <span className="ml-2 text-primary">Saving...</span>}
         </CardDescription>
@@ -157,6 +157,7 @@ export function CompanyStandardsSelector({
             <StandardsTreeSelector
               selectedStandardIds={selectedStandardIds}
               onSelectionChange={handleSelectionChange}
+              companyId={companyId}
             />
             <Button
               type="button"

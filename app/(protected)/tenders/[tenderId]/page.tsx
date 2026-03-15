@@ -1,6 +1,5 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- tender row types */
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
@@ -27,36 +26,10 @@ import {
 } from "lucide-react";
 import { formatCpvCode } from "@/lib/cpvCodes";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
+import type { TenderMatchRecord, TenderRecord } from "@/lib/api/types";
 
-interface TenderData {
-  id: string;
-  title: string;
-  description: string | null;
-  buyer: string;
-  location: string | null;
-  status: string | null;
-  publication_date: string | null;
-  deadline: string | null;
-  budget_min: number | null;
-  budget_max: number | null;
-  reference_number: string | null;
-  cpv_codes: string[] | null;
-  ai_summary: string | null;
-  ai_capability_taxonomy: string[] | null;
-  documents: { application_url?: string; specification_url?: string } | null;
-}
-
-interface MatchData {
-  id: string;
-  overall_score: number;
-  capability_score: number;
-  experience_score: number;
-  location_score: number;
-  certification_score: number;
-  match_reasons: string[];
-  improvement_suggestions: string[];
-  ai_analysis: Record<string, unknown>;
-}
+type TenderData = TenderRecord;
+type MatchData = TenderMatchRecord;
 
 interface Taxonomy {
   id: string;
@@ -90,14 +63,14 @@ export default function TenderDetailPage() {
           return;
         }
 
-        setTender(tenderResult.tender as any);
+        setTender(tenderResult.tender as TenderData);
         setTaxonomies(tenderResult.taxonomies);
 
         // Fetch match data if companyId provided
         if (companyId) {
           const matchResult = await api.getTenderMatch(tenderId, companyId);
           if (matchResult.match) {
-            setMatchData(matchResult.match as unknown as MatchData);
+            setMatchData(matchResult.match as MatchData);
           }
         }
       } catch (error) {
@@ -185,8 +158,8 @@ export default function TenderDetailPage() {
   const sourceLabel =
     (() => {
       const url =
-        tender.documents?.specification_url ||
-        tender.documents?.application_url ||
+        ((tender.documents as { specification_url?: string } | null)?.specification_url ||
+          (tender.documents as { application_url?: string } | null)?.application_url) ||
         "";
       if (url.includes("ted.europa.eu")) return "TED (EU)";
       if (url.includes("find-tender.service.gov.uk")) return "Find a Tender (UK)";
@@ -196,11 +169,12 @@ export default function TenderDetailPage() {
     })();
 
   const handleViewExternal = () => {
-    const applicationUrl = (tender.documents as any)?.application_url;
+    const applicationUrl = (tender.documents as { application_url?: string } | null)
+      ?.application_url;
     const externalUrl =
       applicationUrl ||
-      (tender.reference_number
-        ? `https://www.find-tender.service.gov.uk/Notice/${tender.reference_number}?origin=SearchResults`
+      (tender.referenceNumber
+        ? `https://www.find-tender.service.gov.uk/Notice/${tender.referenceNumber}?origin=SearchResults`
         : null);
 
     if (externalUrl) {
@@ -255,9 +229,9 @@ export default function TenderDetailPage() {
                 <h1 className="text-2xl font-bold text-foreground">
                   {tender.title}
                 </h1>
-                {tender.reference_number && (
+                {tender.referenceNumber && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Ref: {tender.reference_number}
+                    Ref: {tender.referenceNumber}
                   </p>
                 )}
               </div>
@@ -276,10 +250,10 @@ export default function TenderDetailPage() {
               )}
               {matchData && (
                 <Badge
-                  variant={getScoreVariant(matchData.overall_score)}
+                  variant={getScoreVariant(matchData.overallScore ?? 0)}
                   className="text-lg px-3 py-1"
                 >
-                  {matchData.overall_score}% Match
+                  {matchData.overallScore ?? 0}% Match
                 </Badge>
               )}
             </div>
@@ -310,8 +284,8 @@ export default function TenderDetailPage() {
               <div>
                 <p className="text-xs text-muted-foreground">Published</p>
                 <p className="font-medium">
-                  {tender.publication_date
-                    ? formatDate(tender.publication_date)
+                  {tender.publicationDate
+                    ? formatDate(tender.publicationDate)
                     : "Not specified"}
                 </p>
               </div>
@@ -332,7 +306,7 @@ export default function TenderDetailPage() {
               <div>
                 <p className="text-xs text-muted-foreground">Budget</p>
                 <p className="font-medium">
-                  {formatBudget(tender.budget_min, tender.budget_max)}
+                  {formatBudget(tender.budgetMin, tender.budgetMax)}
                 </p>
               </div>
             </div>
@@ -340,7 +314,7 @@ export default function TenderDetailPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3">
-            {tender.reference_number && (
+            {tender.referenceNumber && (
               <Button variant="outline" onClick={handleViewExternal}>
                 <ExternalLink className="w-4 h-4 mr-2" />
                 View on Find a Tender
@@ -365,7 +339,7 @@ export default function TenderDetailPage() {
       {/* Content Area */}
       <div className="grid lg:grid-cols-2 gap-6 mb-8">
         {/* AI Summary */}
-        {tender.ai_summary && (
+        {tender.aiSummary && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -375,7 +349,7 @@ export default function TenderDetailPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                {tender.ai_summary}
+                {tender.aiSummary}
               </p>
             </CardContent>
           </Card>
@@ -394,7 +368,7 @@ export default function TenderDetailPage() {
         </Card>
 
         {/* CPV Codes */}
-        {tender.cpv_codes && tender.cpv_codes.length > 0 && (
+        {tender.cpvCodes && tender.cpvCodes.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -404,7 +378,7 @@ export default function TenderDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {tender.cpv_codes.map((code) => {
+                {tender.cpvCodes.map((code) => {
                   const cpv = formatCpvCode(code);
                   return (
                     <Badge key={code} variant="outline">
@@ -453,7 +427,8 @@ export default function TenderDetailPage() {
               <CardContent>
                 {(() => {
                   const scoreExplanations =
-                    (matchData.ai_analysis?.score_explanations as {
+                    ((matchData.aiAnalysis as { scoreExplanations?: unknown } | null | undefined)
+                      ?.scoreExplanations as {
                       capability?: string;
                       experience?: string;
                       location?: string;
@@ -463,22 +438,22 @@ export default function TenderDetailPage() {
                   const scores = [
                     {
                       label: "Capability",
-                      value: matchData.capability_score,
+                      value: matchData.capabilityScore ?? 0,
                       explanation: scoreExplanations.capability,
                     },
                     {
                       label: "Experience",
-                      value: matchData.experience_score,
+                      value: matchData.experienceScore ?? 0,
                       explanation: scoreExplanations.experience,
                     },
                     {
                       label: "Location",
-                      value: matchData.location_score,
+                      value: matchData.locationScore ?? 0,
                       explanation: scoreExplanations.location,
                     },
                     {
                       label: "Certification",
-                      value: matchData.certification_score,
+                      value: matchData.certificationScore ?? 0,
                       explanation: scoreExplanations.certification,
                     },
                   ];
@@ -508,21 +483,21 @@ export default function TenderDetailPage() {
             </Card>
 
             {/* AI Analysis Summary */}
-            {(matchData.ai_analysis as { summary?: string })?.summary && (
+            {(matchData.aiAnalysis as { summary?: string } | null)?.summary && (
               <Card>
                 <CardHeader>
                   <CardTitle>AI Analysis Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    {(matchData.ai_analysis as { summary: string }).summary}
+                    {(matchData.aiAnalysis as { summary: string }).summary}
                   </p>
                 </CardContent>
               </Card>
             )}
 
             {/* Key Strengths */}
-            {matchData.match_reasons && matchData.match_reasons.length > 0 && (
+            {matchData.matchReasons && matchData.matchReasons.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -532,7 +507,7 @@ export default function TenderDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {matchData.match_reasons.map((reason, index) => (
+                    {matchData.matchReasons.map((reason, index) => (
                       <div
                         key={index}
                         className="flex items-start gap-2 text-sm"
@@ -547,8 +522,8 @@ export default function TenderDetailPage() {
             )}
 
             {/* Improvement Suggestions */}
-            {matchData.improvement_suggestions &&
-              matchData.improvement_suggestions.length > 0 && (
+            {matchData.improvementSuggestions &&
+              matchData.improvementSuggestions.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -558,7 +533,7 @@ export default function TenderDetailPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {matchData.improvement_suggestions.map(
+                      {matchData.improvementSuggestions.map(
                         (suggestion, index) => (
                           <div
                             key={index}

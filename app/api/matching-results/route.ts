@@ -172,8 +172,8 @@ export async function GET(request: NextRequest) {
         description: row.tender.description,
         location: row.tender.location,
         deadline: row.tender.deadline,
-        budget_min: row.tender.budgetMin,
-        budget_max: row.tender.budgetMax,
+        budgetMin: row.tender.budgetMin,
+        budgetMax: row.tender.budgetMax,
         status: row.tender.status,
       },
     }));

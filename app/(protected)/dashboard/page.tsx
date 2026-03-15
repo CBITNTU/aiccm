@@ -39,7 +39,7 @@ export default function DashboardPage() {
     matchingResults: dashboardData?.stats.matchingResults ?? 0,
     companies: dashboardData?.stats.companies ?? 0,
     projects: dashboardData?.stats.projects ?? 0,
-    recentMatches: (dashboardData?.recentMatches as unknown as MatchingResult[]) ?? [],
+    recentMatches: dashboardData?.recentMatches ?? [],
   };
 
   const [companyAnalysis, setCompanyAnalysis] =
@@ -113,7 +113,7 @@ export default function DashboardPage() {
   const displayCompany = enrichedCompany ?? selectedOrg;
 
   const filteredMatches = selectedOrg
-    ? stats.recentMatches.filter((match) => match.company_id === selectedOrg.id)
+    ? stats.recentMatches.filter((match) => match.companyId === selectedOrg.id)
     : stats.recentMatches;
 
   if (loading) {

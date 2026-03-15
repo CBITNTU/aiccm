@@ -1,6 +1,5 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- tender/result row types */
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -26,35 +25,10 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
-
-interface MatchingResult {
-  id: string;
-  tender_id: string;
-  company_id: string;
-  overall_score: number;
-  capability_score: number;
-  experience_score: number;
-  location_score: number;
-  certification_score: number;
-  match_reasons: string[];
-  improvement_suggestions: string[];
-  ai_analysis: Record<string, unknown>;
-  is_bookmarked: boolean;
-  is_applied: boolean;
-  created_at: string;
-  tenders: {
-    title: string;
-    buyer: string;
-    description: string;
-    location: string;
-    deadline: string;
-    budget_min: number;
-    budget_max: number;
-  };
-}
+import type { MatchingResultRecord, TenderRecord } from "@/lib/api/types";
 
 interface TenderDetailDialogProps {
-  result: MatchingResult | null;
+  result: MatchingResultRecord | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId?: string;
@@ -71,12 +45,7 @@ export function TenderDetailDialog({
   readOnly = false,
 }: TenderDetailDialogProps) {
   const router = useRouter();
-  const [tenderDetails, setTenderDetails] = useState<{
-    reference_number: string | null;
-    documents: { application_url?: string } | null;
-    ai_summary: string | null;
-    ai_capability_taxonomy: string[] | null;
-  } | null>(null);
+  const [tenderDetails, setTenderDetails] = useState<TenderRecord | null>(null);
   const [taxonomies, setTaxonomies] = useState<
     Array<{ id: string; name: string }>
   >([]);
@@ -84,18 +53,13 @@ export function TenderDetailDialog({
   // Fetch full tender details to get external_id for the correct link
   useEffect(() => {
     const fetchTenderDetails = async () => {
-      if (!result?.tender_id) return;
+      if (!result?.tenderId) return;
 
       try {
-        const tenderResult = await api.getTender(result.tender_id);
-        const tender = tenderResult.tender as any;
+        const tenderResult = await api.getTender(result.tenderId);
+        const tender = tenderResult.tender;
         if (tender) {
-          setTenderDetails({
-            reference_number: tender.reference_number || null,
-            documents: tender.documents || null,
-            ai_summary: tender.ai_summary || null,
-            ai_capability_taxonomy: tender.ai_capability_taxonomy || null,
-          });
+          setTenderDetails(tender);
         }
 
         // Taxonomies come with the tender response
@@ -110,7 +74,7 @@ export function TenderDetailDialog({
     if (open) {
       fetchTenderDetails();
     }
-  }, [result?.tender_id, open]);
+  }, [result?.tenderId, open]);
 
   if (!result) return null;
 
@@ -130,8 +94,9 @@ export function TenderDetailDialog({
 
   const handleApplySolo = () => {
     // Try to get the application URL from documents, otherwise construct from reference_number
-    const applicationUrl = tenderDetails?.documents?.application_url;
-    const referenceNumber = tenderDetails?.reference_number;
+    const applicationUrl = (tenderDetails?.documents as { application_url?: string } | null)
+      ?.application_url;
+    const referenceNumber = tenderDetails?.referenceNumber;
 
     const externalUrl =
       applicationUrl ||
@@ -151,7 +116,7 @@ export function TenderDetailDialog({
     sessionStorage.setItem(
       "voNavState",
       JSON.stringify({
-        tenderId: result.tender_id,
+        tenderId: result.tenderId,
         tenderTitle: result.tenders?.title,
         companyId: companyId,
       }),
@@ -174,24 +139,24 @@ export function TenderDetailDialog({
               </DialogDescription>
             </div>
             <Badge
-              variant={getScoreVariant(result.overall_score)}
+              variant={getScoreVariant(result.overallScore ?? 0)}
               className="text-lg px-3 py-1"
             >
-              {result.overall_score}% Match
+              {result.overallScore ?? 0}% Match
             </Badge>
           </div>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* AI Summary (if available) */}
-          {tenderDetails?.ai_summary && (
+          {tenderDetails?.aiSummary && (
             <div>
               <h4 className="font-medium mb-2 flex items-center gap-2">
                 <span className="text-blue-500">✨</span>
                 AI Summary
               </h4>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                {tenderDetails.ai_summary}
+                {tenderDetails.aiSummary}
               </p>
             </div>
           )}
@@ -225,7 +190,7 @@ export function TenderDetailDialog({
 
           {/* Budget and Deadline */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {result.tenders?.budget_min && result.tenders?.budget_max && (
+            {result.tenders?.budgetMin && result.tenders?.budgetMax && (
               <div className="flex items-center gap-2">
                 <PoundSterling className="w-4 h-4 text-muted-foreground" />
                 <div>
@@ -233,8 +198,8 @@ export function TenderDetailDialog({
                     Budget Range
                   </div>
                   <div className="font-semibold">
-                    £{result.tenders.budget_min.toLocaleString()} - £
-                    {result.tenders.budget_max.toLocaleString()}
+                    £{result.tenders.budgetMin.toLocaleString()} - £
+                    {result.tenders.budgetMax.toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -268,7 +233,7 @@ export function TenderDetailDialog({
             {onCreateProject && !readOnly && (
               <Button
                 onClick={() => {
-                  onCreateProject(result.tender_id, companyId);
+                  onCreateProject(result.tenderId, companyId);
                   onOpenChange(false);
                 }}
                 className="w-full"
@@ -299,7 +264,8 @@ export function TenderDetailDialog({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(() => {
                 const scoreExplanations =
-                  (result.ai_analysis?.score_explanations as {
+                  ((result.aiAnalysis as { scoreExplanations?: unknown } | null | undefined)
+                    ?.scoreExplanations as {
                     capability?: string;
                     experience?: string;
                     location?: string;
@@ -312,13 +278,13 @@ export function TenderDetailDialog({
                       <div className="flex justify-between text-sm">
                         <span>Capability</span>
                         <span
-                          className={getScoreColor(result.capability_score)}
+                          className={getScoreColor(result.capabilityScore ?? 0)}
                         >
-                          {result.capability_score}%
+                          {result.capabilityScore ?? 0}%
                         </span>
                       </div>
                       <Progress
-                        value={result.capability_score}
+                        value={result.capabilityScore ?? 0}
                         className="h-2"
                       />
                       {scoreExplanations.capability && (
@@ -332,13 +298,13 @@ export function TenderDetailDialog({
                       <div className="flex justify-between text-sm">
                         <span>Experience</span>
                         <span
-                          className={getScoreColor(result.experience_score)}
+                          className={getScoreColor(result.experienceScore ?? 0)}
                         >
-                          {result.experience_score}%
+                          {result.experienceScore ?? 0}%
                         </span>
                       </div>
                       <Progress
-                        value={result.experience_score}
+                        value={result.experienceScore ?? 0}
                         className="h-2"
                       />
                       {scoreExplanations.experience && (
@@ -351,11 +317,11 @@ export function TenderDetailDialog({
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Location</span>
-                        <span className={getScoreColor(result.location_score)}>
-                          {result.location_score}%
+                        <span className={getScoreColor(result.locationScore ?? 0)}>
+                          {result.locationScore ?? 0}%
                         </span>
                       </div>
-                      <Progress value={result.location_score} className="h-2" />
+                      <Progress value={result.locationScore ?? 0} className="h-2" />
                       {scoreExplanations.location && (
                         <p className="text-xs text-muted-foreground mt-1">
                           {scoreExplanations.location}
@@ -367,13 +333,13 @@ export function TenderDetailDialog({
                       <div className="flex justify-between text-sm">
                         <span>Certification</span>
                         <span
-                          className={getScoreColor(result.certification_score)}
+                          className={getScoreColor(result.certificationScore ?? 0)}
                         >
-                          {result.certification_score}%
+                          {result.certificationScore ?? 0}%
                         </span>
                       </div>
                       <Progress
-                        value={result.certification_score}
+                        value={result.certificationScore ?? 0}
                         className="h-2"
                       />
                       {scoreExplanations.certification && (
@@ -391,24 +357,24 @@ export function TenderDetailDialog({
           <Separator />
 
           {/* AI Analysis Summary */}
-          {(result.ai_analysis as { summary?: string })?.summary && (
+          {(result.aiAnalysis as { summary?: string } | null)?.summary && (
             <div>
               <h4 className="font-medium mb-2">AI Analysis Summary</h4>
               <p className="text-sm text-muted-foreground">
-                {(result.ai_analysis as { summary: string }).summary}
+                {(result.aiAnalysis as { summary: string }).summary}
               </p>
             </div>
           )}
 
           {/* Match Reasons */}
-          {result.match_reasons && result.match_reasons.length > 0 && (
+          {result.matchReasons && result.matchReasons.length > 0 && (
             <div>
               <h4 className="font-medium mb-3 flex items-center gap-2">
                 <Award className="h-4 w-4" />
                 Key Strengths
               </h4>
               <div className="space-y-2">
-                {result.match_reasons.map((reason, index) => (
+                {result.matchReasons.map((reason, index) => (
                   <div key={index} className="flex items-start gap-2 text-sm">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2 flex-shrink-0" />
                     <span>{reason}</span>
@@ -419,15 +385,15 @@ export function TenderDetailDialog({
           )}
 
           {/* Improvement Suggestions */}
-          {result.improvement_suggestions &&
-            result.improvement_suggestions.length > 0 && (
+          {result.improvementSuggestions &&
+            result.improvementSuggestions.length > 0 && (
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2">
                   <Lightbulb className="h-4 w-4" />
                   Improvement Suggestions
                 </h4>
                 <div className="space-y-2">
-                  {result.improvement_suggestions.map((suggestion, index) => (
+                  {result.improvementSuggestions.map((suggestion, index) => (
                     <div key={index} className="flex items-start gap-2 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
                       <span>{suggestion}</span>

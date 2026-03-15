@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TenderCard } from "./TenderCard";
 import { ResultsHeader } from "./ResultsHeader";
 import { useTenders } from "@/hooks/useTenders";
+import type { TenderRecord } from "@/lib/api/types";
 
 interface TenderFilters {
   keyword?: string;
@@ -20,21 +21,6 @@ interface TenderFilters {
   selectedTaxonomies?: string[];
   sortBy?: string;
   sortDirection?: string;
-}
-
-interface DatabaseTender {
-  id: string;
-  title: string;
-  description: string;
-  buyer: string;
-  location: string;
-  status: string;
-  publication_date: string;
-  deadline: string;
-  budget_min: number;
-  budget_max: number;
-  reference_number: string;
-  cpv_codes: string[];
 }
 
 interface DatabaseTenderFeedProps {
@@ -73,7 +59,7 @@ export function DatabaseTenderFeed({
     pageSize: itemsPerPage,
   });
 
-  const tenders = (data?.tenders as unknown as DatabaseTender[]) ?? [];
+  const tenders = (data?.tenders as TenderRecord[]) ?? [];
   const totalCount = data?.totalCount ?? 0;
   const tenderTaxonomies = data?.taxonomies ?? {};
 

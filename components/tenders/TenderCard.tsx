@@ -9,6 +9,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useState } from "react";
+import type { TenderRecord } from "@/lib/api/types";
 
 interface Taxonomy {
   id: string;
@@ -26,21 +27,7 @@ function getTenderSourceLabel(documents: unknown): string | null {
 }
 
 interface TenderCardProps {
-  tender: {
-    id: string;
-    title: string;
-    description: string;
-    buyer: string;
-    location: string;
-    status: string;
-    publication_date: string;
-    deadline: string;
-    budget_min: number;
-    budget_max: number;
-    reference_number: string;
-    cpv_codes?: string[];
-    documents?: unknown;
-  };
+  tender: TenderRecord;
   taxonomies?: Taxonomy[];
   onClick?: () => void;
 }
@@ -104,8 +91,8 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
 
       {/* Buyer info */}
       <p className="text-sm text-muted-foreground mb-2">
-        {tender.reference_number && (
-          <span className="text-xs mr-2">Ref: {tender.reference_number}</span>
+        {tender.referenceNumber && (
+          <span className="text-xs mr-2">Ref: {tender.referenceNumber}</span>
         )}
         {tender.buyer}
       </p>
@@ -125,7 +112,7 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
         )}
         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-muted rounded-md">
           <PoundSterling className="h-3 w-3" />
-          {formatBudget(tender.budget_min, tender.budget_max)}
+          {formatBudget(tender.budgetMin ?? undefined, tender.budgetMax ?? undefined)}
         </span>
         {tender.deadline && (
           <span

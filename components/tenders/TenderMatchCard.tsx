@@ -17,27 +17,27 @@ import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 
 interface MatchingResult {
   id: string;
-  tender_id: string;
-  company_id: string;
-  overall_score: number;
-  capability_score: number;
-  experience_score: number;
-  location_score: number;
-  certification_score: number;
-  match_reasons: string[];
-  improvement_suggestions: string[];
-  ai_analysis: Record<string, unknown>;
-  is_bookmarked: boolean;
-  is_applied: boolean;
-  created_at: string;
+  tenderId: string;
+  companyId: string;
+  overallScore: number;
+  capabilityScore: number;
+  experienceScore: number;
+  locationScore: number;
+  certificationScore: number;
+  matchReasons: string[] | null;
+  improvementSuggestions: string[];
+  aiAnalysis: Record<string, unknown>;
+  isBookmarked: boolean;
+  isApplied: boolean;
+  createdAt: string;
   tenders: {
     title: string;
     buyer: string;
     description: string;
     location: string;
     deadline: string;
-    budget_min: number;
-    budget_max: number;
+    budgetMin: number;
+    budgetMax: number;
     status: string;
   };
 }
@@ -125,23 +125,23 @@ export function TenderMatchCard({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {result.is_applied && (
+          {result.isApplied && (
             <Badge variant="secondary" className="text-xs">
               Applied
             </Badge>
           )}
-          {result.is_bookmarked && (
+          {result.isBookmarked && (
             <Badge variant="outline" className="text-xs">
               Saved
             </Badge>
           )}
           <TenderStatusBadge status={result.tenders.status} size="sm" />
           <Badge
-            variant={getScoreBadgeVariant(result.overall_score)}
+            variant={getScoreBadgeVariant(result.overallScore)}
             className="text-sm px-2.5 py-1 gap-1"
           >
             <TrendingUp className="h-3.5 w-3.5" />
-            {Math.round(result.overall_score)}%
+            {Math.round(result.overallScore)}%
           </Badge>
         </div>
       </div>
@@ -167,9 +167,9 @@ export function TenderMatchCard({
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Capability:</span>
                     <span
-                      className={`font-medium ${getScoreColor(result.capability_score)}`}
+                      className={`font-medium ${getScoreColor(result.capabilityScore)}`}
                     >
-                      {Math.round(result.capability_score)}%
+                      {Math.round(result.capabilityScore)}%
                     </span>
                   </div>
                 </div>
@@ -177,9 +177,9 @@ export function TenderMatchCard({
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Experience:</span>
                     <span
-                      className={`font-medium ${getScoreColor(result.experience_score)}`}
+                      className={`font-medium ${getScoreColor(result.experienceScore)}`}
                     >
-                      {Math.round(result.experience_score)}%
+                      {Math.round(result.experienceScore)}%
                     </span>
                   </div>
                 </div>
@@ -187,9 +187,9 @@ export function TenderMatchCard({
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Location:</span>
                     <span
-                      className={`font-medium ${getScoreColor(result.location_score)}`}
+                      className={`font-medium ${getScoreColor(result.locationScore)}`}
                     >
-                      {Math.round(result.location_score)}%
+                      {Math.round(result.locationScore)}%
                     </span>
                   </div>
                 </div>
@@ -199,9 +199,9 @@ export function TenderMatchCard({
                       Certification:
                     </span>
                     <span
-                      className={`font-medium ${getScoreColor(result.certification_score)}`}
+                      className={`font-medium ${getScoreColor(result.certificationScore)}`}
                     >
-                      {Math.round(result.certification_score)}%
+                      {Math.round(result.certificationScore)}%
                     </span>
                   </div>
                 </div>
@@ -220,16 +220,16 @@ export function TenderMatchCard({
       </p>
 
       {/* Match reasons */}
-      {result.match_reasons.length > 0 && (
+      {result.matchReasons && result.matchReasons.length > 0 && (
         <div className="mb-3">
           <p className="text-sm font-medium text-blue-700 leading-relaxed">
             ✓{" "}
-            {result.match_reasons[0].length > 120
-              ? result.match_reasons[0].substring(0, 120) + "..."
-              : result.match_reasons[0]}
-            {result.match_reasons.length > 1 && (
+            {result.matchReasons[0].length > 120
+              ? result.matchReasons[0].substring(0, 120) + "..."
+              : result.matchReasons[0]}
+            {result.matchReasons.length > 1 && (
               <span className="ml-1 text-xs opacity-75">
-                (+{result.match_reasons.length - 1} more)
+                (+{result.matchReasons.length - 1} more)
               </span>
             )}
           </p>
@@ -241,7 +241,7 @@ export function TenderMatchCard({
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded-md">
             <PoundSterling className="h-3 w-3" />
-            {formatBudget(result.tenders.budget_min, result.tenders.budget_max)}
+            {formatBudget(result.tenders.budgetMin, result.tenders.budgetMax)}
           </span>
           {result.tenders.deadline && (
             <span
@@ -263,7 +263,7 @@ export function TenderMatchCard({
             Details
           </Button>
           <Button
-            variant={result.is_bookmarked ? "default" : "ghost"}
+            variant={result.isBookmarked ? "default" : "ghost"}
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
@@ -275,7 +275,7 @@ export function TenderMatchCard({
             }
           >
             <Bookmark
-              className={`h-4 w-4 ${result.is_bookmarked ? "fill-current" : ""}`}
+              className={`h-4 w-4 ${result.isBookmarked ? "fill-current" : ""}`}
             />
           </Button>
           <Button

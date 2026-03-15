@@ -174,7 +174,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
   const gapScore =
     teamMembers.length <= 1
-      ? (derivedGapCoverage ?? tenderMatchResult?.overall_score)
+      ? (derivedGapCoverage ?? tenderMatchResult?.overallScore)
       : derivedGapCoverage;
   const teamScore = teamAnalysis?.coveragePercentage;
   const teamCount = teamMembers.length;

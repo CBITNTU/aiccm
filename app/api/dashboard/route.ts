@@ -70,11 +70,11 @@ export async function GET(request: NextRequest) {
           deadline: row.tenderDeadline,
           description: row.tenderDescription,
           location: row.tenderLocation,
-          budget_min: row.tenderBudgetMin,
-          budget_max: row.tenderBudgetMax,
+          budgetMin: row.tenderBudgetMin,
+          budgetMax: row.tenderBudgetMax,
         },
         companies: {
-          company_name: row.companyName,
+          companyName: row.companyName,
         },
       }));
     }

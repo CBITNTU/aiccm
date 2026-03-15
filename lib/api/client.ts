@@ -1,8 +1,13 @@
 // Frontend API client for calling Next.js API routes
 // This will be used in Phase 2 (frontend migration) to replace supabase.functions.invoke()
-import type { CompanyRecord } from "@/lib/api/types";
+import type { CompanyRecord, MatchingResultRecord } from "@/lib/api/types";
 import type { FetchUKTendersResponse, TenderFeedRecord } from "@/lib/api/types";
-import { normalizeCompanyRecord } from "@/lib/api/types";
+import {
+  normalizeCompanyRecord,
+  normalizeMatchingResultRecord,
+  normalizeTenderMatchRecord,
+  normalizeTenderRecord,
+} from "@/lib/api/types";
 
 export class ApiError extends Error {
   status: number;
@@ -543,19 +548,28 @@ export const api = {
         ...(params.page && { page: params.page }),
         ...(params.pageSize && { pageSize: params.pageSize }),
       },
-    }),
+    }).then((data) => ({
+      ...data,
+      tenders: data.tenders.map((tender) => normalizeTenderRecord(tender)),
+    })),
 
   getTender: (tenderId: string) =>
     apiCall<{
       tender: Record<string, unknown>;
       taxonomies: { id: string; name: string }[];
-    }>(`tenders/${tenderId}`, { method: "GET" }),
+    }>(`tenders/${tenderId}`, { method: "GET" }).then((data) => ({
+      ...data,
+      tender: normalizeTenderRecord(data.tender),
+    })),
 
   getTenderMatch: (tenderId: string, companyId: string) =>
     apiCall<{ match: Record<string, unknown> | null }>(
       `tenders/${tenderId}/match`,
       { method: "GET", params: { companyId } },
-    ),
+    ).then((data) => ({
+      ...data,
+      match: data.match ? normalizeTenderMatchRecord(data.match) : null,
+    })),
 
   // Matching results
   getMatchingResults: (params?: {
@@ -595,7 +609,10 @@ export const api = {
           ...(params?.pageSize && { pageSize: params.pageSize }),
         },
       },
-    ),
+    ).then((data) => ({
+      ...data,
+      results: data.results.map((result) => normalizeMatchingResultRecord(result)),
+    })),
 
   deleteMatchingResult: (resultId: string) =>
     apiCall<{ success: boolean }>(`matching-results/${resultId}`, {
@@ -729,7 +746,26 @@ export const api = {
         projects: number;
       };
       recentMatches: Record<string, unknown>[];
-    }>("dashboard", { method: "GET" }),
+    }>("dashboard", { method: "GET" }).then((data) => ({
+      ...data,
+      recentMatches: data.recentMatches.map((result) => {
+        const normalizedResult = normalizeMatchingResultRecord(result);
+        const companies = result.companies as Record<string, unknown> | null | undefined;
+        const companyName =
+          typeof companies?.companyName === "string"
+            ? companies.companyName
+            : typeof companies?.company_name === "string"
+              ? companies.company_name
+              : undefined;
+
+        return {
+          ...normalizedResult,
+          companies: companyName ? { companyName } : undefined,
+        } satisfies MatchingResultRecord & {
+          companies?: { companyName?: string };
+        };
+      }),
+    })),
 
   // Admin - Companies
   adminListCompanies: () =>
@@ -830,7 +866,10 @@ export const api = {
       params: {
         ...(params?.search && { search: params.search }),
       },
-    }),
+    }).then((data) => ({
+      ...data,
+      tenders: data.tenders.map((tender) => normalizeTenderRecord(tender)),
+    })),
 
   // Companies by capabilities
   getCompaniesByCapabilities: (data: {

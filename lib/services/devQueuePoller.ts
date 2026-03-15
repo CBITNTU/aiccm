@@ -17,7 +17,7 @@ const JOBS_PER_CYCLE = 5;
 let isProcessing = false;
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __devQueueInterval: ReturnType<typeof setInterval> | undefined;
 }
 

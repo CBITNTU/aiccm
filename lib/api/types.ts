@@ -151,6 +151,27 @@ function firstDefined<T>(...values: (T | undefined | null)[]): T | undefined {
   return undefined;
 }
 
+function asStringOrNull(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+function asNumberOrNull(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function asStringArrayOrNull(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  return value.filter((item): item is string => typeof item === "string");
+}
+
 export function normalizeCompanyRecord(company: Record<string, unknown>): CompanyRecord {
   const companyName = firstDefined<string>(
     company.companyName as string | undefined,
@@ -305,6 +326,246 @@ export function normalizeCompanyRecord(company: Record<string, unknown>): Compan
   };
 }
 
+export interface TenderRecord {
+  id: string;
+  title: string;
+  description: string | null;
+  buyer: string;
+  location: string | null;
+  status: string | null;
+  publicationDate: string | null;
+  deadline: string | null;
+  budgetMin: number | null;
+  budgetMax: number | null;
+  referenceNumber: string | null;
+  cpvCodes: string[] | null;
+  aiSummary: string | null;
+  aiCapabilityTaxonomy: JsonValue;
+  documents: JsonValue;
+  requirements: JsonValue;
+  contactInfo: JsonValue;
+}
+
+export interface TenderMatchRecord {
+  id: string;
+  overallScore: number | null;
+  capabilityScore: number | null;
+  experienceScore: number | null;
+  locationScore: number | null;
+  certificationScore: number | null;
+  matchReasons: string[];
+  improvementSuggestions: string[];
+  aiAnalysis: JsonValue;
+}
+
+export interface MatchingResultRecord {
+  id: string;
+  tenderId: string;
+  companyId: string;
+  overallScore: number | null;
+  capabilityScore: number | null;
+  experienceScore: number | null;
+  locationScore: number | null;
+  certificationScore: number | null;
+  matchReasons: string[];
+  improvementSuggestions: string[];
+  aiAnalysis: JsonValue;
+  isBookmarked: boolean;
+  isApplied: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  tenders: {
+    title: string;
+    buyer: string;
+    description: string | null;
+    location: string | null;
+    deadline: string | null;
+    budgetMin: number | null;
+    budgetMax: number | null;
+    status: string | null;
+  } | null;
+}
+
+export function normalizeTenderRecord(tender: Record<string, unknown>): TenderRecord {
+  return {
+    id: String(tender.id ?? ""),
+    title: String(tender.title ?? ""),
+    description: asStringOrNull(tender.description),
+    buyer: String(tender.buyer ?? ""),
+    location: firstDefined<string | null>(
+      asStringOrNull(tender.location),
+      asStringOrNull(tender.region),
+    ) ?? null,
+    status: asStringOrNull(tender.status),
+    publicationDate: firstDefined<string | null>(
+      asStringOrNull(tender.publicationDate),
+      asStringOrNull(tender.publication_date),
+    ) ?? null,
+    deadline: asStringOrNull(tender.deadline),
+    budgetMin: firstDefined<number | null>(
+      asNumberOrNull(tender.budgetMin),
+      asNumberOrNull(tender.budget_min),
+    ) ?? null,
+    budgetMax: firstDefined<number | null>(
+      asNumberOrNull(tender.budgetMax),
+      asNumberOrNull(tender.budget_max),
+      asNumberOrNull(tender.value),
+    ) ?? null,
+    referenceNumber: firstDefined<string | null>(
+      asStringOrNull(tender.referenceNumber),
+      asStringOrNull(tender.reference_number),
+      asStringOrNull(tender.external_id),
+    ) ?? null,
+    cpvCodes: firstDefined<string[] | null>(
+      asStringArrayOrNull(tender.cpvCodes),
+      asStringArrayOrNull(tender.cpv_codes),
+    ) ?? null,
+    aiSummary: firstDefined<string | null>(
+      asStringOrNull(tender.aiSummary),
+      asStringOrNull(tender.ai_summary),
+    ) ?? null,
+    aiCapabilityTaxonomy: firstDefined<JsonValue>(
+      tender.aiCapabilityTaxonomy as JsonValue | undefined,
+      tender.ai_capability_taxonomy as JsonValue | undefined,
+    ) ?? null,
+    documents: (tender.documents as JsonValue | undefined) ?? null,
+    requirements: (tender.requirements as JsonValue | undefined) ?? null,
+    contactInfo: firstDefined<JsonValue>(
+      tender.contactInfo as JsonValue | undefined,
+      tender.contact_info as JsonValue | undefined,
+    ) ?? null,
+  };
+}
+
+export function normalizeTenderMatchRecord(match: Record<string, unknown>): TenderMatchRecord {
+  return {
+    id: String(match.id ?? ""),
+    overallScore: firstDefined<number | null>(
+      asNumberOrNull(match.overallScore),
+      asNumberOrNull(match.overall_score),
+    ) ?? null,
+    capabilityScore: firstDefined<number | null>(
+      asNumberOrNull(match.capabilityScore),
+      asNumberOrNull(match.capability_score),
+    ) ?? null,
+    experienceScore: firstDefined<number | null>(
+      asNumberOrNull(match.experienceScore),
+      asNumberOrNull(match.experience_score),
+    ) ?? null,
+    locationScore: firstDefined<number | null>(
+      asNumberOrNull(match.locationScore),
+      asNumberOrNull(match.location_score),
+    ) ?? null,
+    certificationScore: firstDefined<number | null>(
+      asNumberOrNull(match.certificationScore),
+      asNumberOrNull(match.certification_score),
+    ) ?? null,
+    matchReasons: firstDefined<string[]>(
+      asStringArrayOrNull(match.matchReasons) ?? undefined,
+      asStringArrayOrNull(match.match_reasons) ?? undefined,
+    ) ?? [],
+    improvementSuggestions: firstDefined<string[]>(
+      asStringArrayOrNull(match.improvementSuggestions) ?? undefined,
+      asStringArrayOrNull(match.improvement_suggestions) ?? undefined,
+    ) ?? [],
+    aiAnalysis: firstDefined<JsonValue>(
+      match.aiAnalysis as JsonValue | undefined,
+      match.ai_analysis as JsonValue | undefined,
+    ) ?? null,
+  };
+}
+
+export function normalizeMatchingResultRecord(
+  result: Record<string, unknown>,
+): MatchingResultRecord {
+  const nestedTenders = result.tenders as Record<string, unknown> | null | undefined;
+  return {
+    id: String(result.id ?? ""),
+    tenderId:
+      firstDefined<string>(
+        result.tenderId as string | undefined,
+        result.tender_id as string | undefined,
+      ) ?? "",
+    companyId:
+      firstDefined<string>(
+        result.companyId as string | undefined,
+        result.company_id as string | undefined,
+      ) ?? "",
+    overallScore: firstDefined<number | null>(
+      asNumberOrNull(result.overallScore),
+      asNumberOrNull(result.overall_score),
+    ) ?? null,
+    capabilityScore: firstDefined<number | null>(
+      asNumberOrNull(result.capabilityScore),
+      asNumberOrNull(result.capability_score),
+    ) ?? null,
+    experienceScore: firstDefined<number | null>(
+      asNumberOrNull(result.experienceScore),
+      asNumberOrNull(result.experience_score),
+    ) ?? null,
+    locationScore: firstDefined<number | null>(
+      asNumberOrNull(result.locationScore),
+      asNumberOrNull(result.location_score),
+    ) ?? null,
+    certificationScore: firstDefined<number | null>(
+      asNumberOrNull(result.certificationScore),
+      asNumberOrNull(result.certification_score),
+    ) ?? null,
+    matchReasons: firstDefined<string[]>(
+      asStringArrayOrNull(result.matchReasons) ?? undefined,
+      asStringArrayOrNull(result.match_reasons) ?? undefined,
+    ) ?? [],
+    improvementSuggestions: firstDefined<string[]>(
+      asStringArrayOrNull(result.improvementSuggestions) ?? undefined,
+      asStringArrayOrNull(result.improvement_suggestions) ?? undefined,
+    ) ?? [],
+    aiAnalysis: firstDefined<JsonValue>(
+      result.aiAnalysis as JsonValue | undefined,
+      result.ai_analysis as JsonValue | undefined,
+    ) ?? null,
+    isBookmarked:
+      firstDefined<boolean>(
+        result.isBookmarked as boolean | undefined,
+        result.is_bookmarked as boolean | undefined,
+      ) ?? false,
+    isApplied:
+      firstDefined<boolean>(
+        result.isApplied as boolean | undefined,
+        result.is_applied as boolean | undefined,
+      ) ?? false,
+    createdAt: firstDefined<string | null>(
+      asStringOrNull(result.createdAt),
+      asStringOrNull(result.created_at),
+    ) ?? null,
+    updatedAt: firstDefined<string | null>(
+      asStringOrNull(result.updatedAt),
+      asStringOrNull(result.updated_at),
+    ) ?? null,
+    tenders: nestedTenders
+      ? {
+          title: String(nestedTenders.title ?? ""),
+          buyer: String(nestedTenders.buyer ?? ""),
+          description: asStringOrNull(nestedTenders.description),
+          location: firstDefined<string | null>(
+            asStringOrNull(nestedTenders.location),
+            asStringOrNull(nestedTenders.region),
+          ) ?? null,
+          deadline: asStringOrNull(nestedTenders.deadline),
+          budgetMin: firstDefined<number | null>(
+            asNumberOrNull(nestedTenders.budgetMin),
+            asNumberOrNull(nestedTenders.budget_min),
+          ) ?? null,
+          budgetMax: firstDefined<number | null>(
+            asNumberOrNull(nestedTenders.budgetMax),
+            asNumberOrNull(nestedTenders.budget_max),
+            asNumberOrNull(nestedTenders.value),
+          ) ?? null,
+          status: asStringOrNull(nestedTenders.status),
+        }
+      : null,
+  };
+}
+
 export interface PlatformStats {
   companies: number;
   tenders: number;
@@ -396,38 +657,71 @@ export interface MatchTendersRequest {
   companyId?: string;
 }
 
-export interface MatchTendersResponse {
-  message: string;
-  analyzed_count: number;
-  results: {
-    tender_id: string;
-    tender_title: string;
-    overall_score: number;
-  }[];
-  up_to_date?: boolean;
-}
-
-export interface TenderMatchResult {
-  overall_score: number;
-  capability_score: number;
-  experience_score: number;
-  location_score: number;
-  certification_score: number;
-  match_reasons: string[];
-  improvement_suggestions: string[];
-  ai_analysis: {
-    summary: string;
-    strengths: string[];
-    weaknesses: string[];
-    recommendations: string[];
-    score_explanations?: {
-      capability: string;
-      experience: string;
-      location: string;
-      certification: string;
+export type MatchTendersResponse =
+  | {
+      message: string;
+      analyzedCount: number;
+      results: {
+        tenderId: string;
+        tenderTitle: string;
+        overallScore: number;
+      }[];
+      upToDate?: boolean;
+    }
+  | {
+      message: string;
+      analyzed_count: number;
+      results: {
+        tender_id: string;
+        tender_title: string;
+        overall_score: number;
+      }[];
+      up_to_date?: boolean;
     };
-  };
-}
+
+export type TenderMatchResult =
+  | {
+      overallScore: number;
+      capabilityScore: number;
+      experienceScore: number;
+      locationScore: number;
+      certificationScore: number;
+      matchReasons: string[];
+      improvementSuggestions: string[];
+      aiAnalysis: {
+        summary: string;
+        strengths: string[];
+        weaknesses: string[];
+        recommendations: string[];
+        scoreExplanations?: {
+          capability: string;
+          experience: string;
+          location: string;
+          certification: string;
+        };
+      };
+    }
+  | {
+      overall_score: number;
+      capability_score: number;
+      experience_score: number;
+      location_score: number;
+      certification_score: number;
+      match_reasons: string[];
+      improvement_suggestions: string[];
+      ai_analysis: {
+        summary: string;
+        strengths: string[];
+        weaknesses: string[];
+        recommendations: string[];
+        score_explanations?: {
+          capability: string;
+          experience: string;
+          location: string;
+          certification: string;
+        };
+      };
+    };
 
 export interface CreateProjectRequest {
   name: string;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { CompanyRecord as Company } from "@/lib/api/types";
+import type { CompanyRecord as Company, TenderRecord } from "@/lib/api/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import {
@@ -1071,7 +1071,29 @@ export default function ConsultingPage() {
 
         {/* Tender View Dialog */}
         <TenderViewDialog
-          tender={tender}
+          tender={
+            tender
+              ? ({
+                  id: tender.id,
+                  title: tender.title,
+                  description: tender.description ?? null,
+                  buyer: tender.buyer_name || tender.buyer || "",
+                  location: tender.location || tender.region || null,
+                  status: null,
+                  publicationDate: null,
+                  deadline: tender.deadline ?? null,
+                  budgetMin: tender.budget_min ?? null,
+                  budgetMax: tender.budget_max ?? tender.value ?? null,
+                  referenceNumber: tender.reference_number ?? null,
+                  cpvCodes: null,
+                  aiSummary: null,
+                  aiCapabilityTaxonomy: null,
+                  documents: null,
+                  requirements: null,
+                  contactInfo: null,
+                } satisfies TenderRecord)
+              : null
+          }
           open={tenderDialogOpen}
           onOpenChange={setTenderDialogOpen}
         />

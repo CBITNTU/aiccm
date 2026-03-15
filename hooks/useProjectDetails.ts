@@ -18,12 +18,12 @@ export interface Tender {
   location?: string;
   region?: string;
   deadline?: string;
-  budget_min?: number;
-  budget_max?: number;
+  budgetMin?: number;
+  budgetMax?: number;
   value?: number;
   description?: string;
-  external_id?: string;
-  reference_number?: string;
+  externalId?: string;
+  referenceNumber?: string;
 }
 
 export interface TeamMember {
@@ -54,13 +54,13 @@ export interface TeamMember {
 /** Tender match result for lead company + tender (used when project has no partners). */
 export interface TenderMatchResult {
   id: string;
-  overall_score: number | null;
-  capability_score: number | null;
-  experience_score: number | null;
-  location_score: number | null;
-  certification_score: number | null;
-  match_reasons: string[] | null;
-  ai_analysis: { score_explanations?: Record<string, string> } | null;
+  overallScore: number | null;
+  capabilityScore: number | null;
+  experienceScore: number | null;
+  locationScore: number | null;
+  certificationScore: number | null;
+  matchReasons: string[] | null;
+  aiAnalysis: { scoreExplanations?: Record<string, string> } | null;
 }
 
 export interface ProjectDetails {

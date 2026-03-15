@@ -76,14 +76,14 @@ export function RecentMatchesSection({
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge variant="secondary">
-                    {match.companies?.company_name}
+                    {match.companies?.companyName}
                   </Badge>
                   <Badge
                     variant={
-                      match.overall_score >= 80 ? "default" : "secondary"
+                      (match.overallScore ?? 0) >= 80 ? "default" : "secondary"
                     }
                   >
-                    {match.overall_score}% Match
+                    {match.overallScore ?? 0}% Match
                   </Badge>
                 </div>
               </div>

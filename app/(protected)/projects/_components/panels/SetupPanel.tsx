@@ -188,8 +188,8 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
                     <span>
                       {tender.value
                         ? formatCurrency(tender.value)
-                        : tender.budget_max
-                          ? formatCurrency(tender.budget_max)
+                        : tender.budgetMax
+                          ? formatCurrency(tender.budgetMax)
                           : "Not specified"}
                     </span>
                   </div>
@@ -242,13 +242,21 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
           tender={{
             id: tender.id,
             title: tender.title,
-            description: tender.description,
+            description: tender.description ?? null,
             buyer: tender.buyer_name || tender.buyer || "",
-            location: tender.location || tender.region,
-            deadline: tender.deadline,
-            budget_min: tender.budget_min,
-            budget_max: tender.budget_max || tender.value,
-            reference_number: tender.reference_number,
+            location: tender.location || tender.region || null,
+            status: null,
+            publicationDate: null,
+            deadline: tender.deadline ?? null,
+            budgetMin: tender.budgetMin ?? null,
+            budgetMax: tender.budgetMax ?? tender.value ?? null,
+            referenceNumber: tender.referenceNumber ?? null,
+            cpvCodes: null,
+            aiSummary: null,
+            aiCapabilityTaxonomy: null,
+            documents: null,
+            requirements: null,
+            contactInfo: null,
           }}
           open={tenderDialogOpen}
           onOpenChange={setTenderDialogOpen}

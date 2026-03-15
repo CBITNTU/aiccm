@@ -93,6 +93,8 @@ export async function enqueueJob(options: EnqueueJobOptions): Promise<string> {
     throw new Error("Failed to enqueue job: No data returned");
   }
 
+  triggerWorkerIfDev();
+
   return result[0].id;
 }
 
@@ -149,6 +151,8 @@ export async function enqueueBatch(
     throw new Error("Failed to enqueue jobs: No data returned");
   }
 
+  triggerWorkerIfDev();
+
   return {
     batchId,
     jobIds: jobResult.map((j) => j.id),
@@ -192,31 +196,15 @@ export async function clearPendingDemoJobs(): Promise<number> {
  * Prioritizes jobs with batch_id to ensure batch progress tracking works.
  */
 export async function dequeueJob(): Promise<ProcessingQueue | null> {
-  try {
-    // Use atomic database function to claim a job
-    const data = await dequeueJobAtomic();
+  // Use inline atomic SQL (CTE + FOR UPDATE SKIP LOCKED) to claim a job
+  const data = await dequeueJobAtomic();
 
-    if (!data) {
-      return null;
-    }
-
-    // dequeueJobAtomic returns snake_case from raw SQL, map to camelCase
-    return mapRawToProcessingQueue(data as unknown as Record<string, unknown>);
-  } catch (error: unknown) {
-    const errMsg =
-      error instanceof Error ? error.message : String(error);
-    // If function doesn't exist yet, fall back to old method (for backward compatibility)
-    if (
-      errMsg.includes("function") ||
-      errMsg.includes("does not exist")
-    ) {
-      console.warn(
-        "dequeue_job_atomic() function not found, using fallback method (may have race conditions)",
-      );
-      return dequeueJobFallback();
-    }
-    throw new Error(`Failed to dequeue job atomically: ${errMsg}`);
+  if (!data) {
+    return null;
   }
+
+  // dequeueJobAtomic returns snake_case from raw SQL, map to camelCase
+  return mapRawToProcessingQueue(data as unknown as Record<string, unknown>);
 }
 
 /**
@@ -588,29 +576,8 @@ async function updateBatchProgress(
     const batchId = job.batchId;
     console.log(`Job ${jobId} belongs to batch ${batchId}`);
 
-    // Use atomic database function to increment counters (prevents race conditions)
-    let result;
-    try {
-      result = await incrementBatchProgress(batchId, outcome);
-    } catch (rpcError: unknown) {
-      const errMsg =
-        rpcError instanceof Error ? rpcError.message : String(rpcError);
-      // If function doesn't exist yet, fall back to old method (for backward compatibility)
-      if (
-        errMsg.includes("function") ||
-        errMsg.includes("does not exist")
-      ) {
-        console.warn(
-          "increment_batch_progress() function not found, using fallback method (may have race conditions)",
-        );
-        return updateBatchProgressFallback(jobId, outcome);
-      }
-      console.error(
-        `Failed to update batch progress atomically: ${errMsg}`,
-        rpcError,
-      );
-      throw rpcError;
-    }
+    // Use inline atomic SQL to increment counters (prevents race conditions)
+    const result = await incrementBatchProgress(batchId, outcome);
 
     if (!result) {
       console.warn(`Batch ${batchId} not found or update returned no data`);
@@ -729,4 +696,18 @@ export async function getMatchingJobsForCompany(companyId: string): Promise<{
   });
 
   return stats;
+}
+
+/**
+ * In development, trigger the dev queue poller immediately so jobs are
+ * picked up without waiting for the next poll interval.
+ * Uses dynamic import to avoid circular dependencies.
+ */
+function triggerWorkerIfDev() {
+  if (process.env.NODE_ENV !== "development") return;
+  import("@/lib/services/devQueuePoller")
+    .then(({ triggerPoll }) => triggerPoll())
+    .catch(() => {
+      // Poller may not be initialized yet during startup — ignore
+    });
 }

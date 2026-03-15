@@ -30,6 +30,7 @@ import {
 
 interface User {
   id: string;
+  profileId?: string;
   email: string;
   created_at: string;
   last_sign_in_at: string;
@@ -90,6 +91,7 @@ export default function AdminUsers() {
       const formattedUsers: User[] =
         profiles?.map((profile: any) => ({
           id: profile.user_id,
+          profileId: profile.id,
           email: profile.email || "",
           first_name: profile.first_name,
           last_name: profile.last_name,
@@ -260,7 +262,7 @@ export default function AdminUsers() {
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((userData) => (
-                  <TableRow key={userData.id}>
+                  <TableRow key={userData.profileId || userData.id}>
                     <TableCell>
                       <div className="font-medium">
                         {userData.first_name && userData.last_name

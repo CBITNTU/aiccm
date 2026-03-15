@@ -130,25 +130,39 @@ export async function aiGenerateObject<T>(
     );
     const provider = getProviderName(resolvedModelId);
 
-    const result = await generateObject({
-      model,
-      schema: zodSchema(schema),
-      system,
-      prompt,
-      maxOutputTokens: maxTokens,
-      temperature,
-      providerOptions: buildProviderOptions(
-        normalisedEffort,
-        provider,
-        resolvedModelId,
-      ),
-    });
+    // DEBUG: AI call details
+    console.log("[DEBUG] aiGenerateObject:", { resolvedModelId, provider, reasoningEffort: normalisedEffort, maxTokens });
+    console.log("[DEBUG] aiGenerateObject system prompt:", system?.substring(0, 200));
+    console.log("[DEBUG] aiGenerateObject user prompt (first 200 chars):", prompt.substring(0, 200));
+
+    let result;
+    try {
+      result = await generateObject({
+        model,
+        schema: zodSchema(schema),
+        system,
+        prompt,
+        maxOutputTokens: maxTokens,
+        temperature,
+        providerOptions: buildProviderOptions(
+          normalisedEffort,
+          provider,
+          resolvedModelId,
+        ),
+      });
+    } catch (err) {
+      console.error("[DEBUG] aiGenerateObject FAILED:", err);
+      throw err;
+    }
 
     if (result.object == null) {
       throw new Error(
         "No object generated: the model did not return a response.",
       );
     }
+
+    const resultJson = JSON.stringify(result.object);
+    console.log("[DEBUG] aiGenerateObject SUCCESS — result (first 500 chars):", resultJson.substring(0, 500));
     return result.object;
   }, estTokens ?? 1500);
 }

@@ -9,7 +9,7 @@ alwaysApply: false
 ## General
 
 - Prefer `async/await` over raw Promises.
-- Avoid `any`; use `unknown` and narrow, or proper types from `@/lib/supabase/types` and `@/lib/api`.
+- Avoid `any`; use `unknown` and narrow, or proper types from `@/lib/db/schema` and `@/lib/api`.
 - Use typed errors: `AuthError`, `ValidationError` from `@/lib/api/validation` where applicable.
 
 ## Error Handling
@@ -29,7 +29,8 @@ try {
 }
 ```
 
-## Supabase
+## Database (Drizzle)
 
-- Use `createApiClient()` or `createAdminClient()` from `@/lib/api`.
-- Type results from Supabase with `Database["public"]["Tables"]["table_name"]` when needed; avoid untyped `.select("*")` in new code when you need specific columns.
+- Use `db` from `@/lib/db` for all database queries.
+- Use Drizzle schema types from `@/lib/db/schema` for type safety.
+- Prefer Drizzle query builder; use `lib/db/raw.ts` only for complex queries that can't be expressed with the builder.

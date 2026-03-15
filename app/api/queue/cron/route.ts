@@ -78,9 +78,13 @@ export async function GET(request: NextRequest) {
       const baseUrl = process.env.PLATFORM_URL || "http://localhost:3000";
 
       try {
+        const workerHeaders: Record<string, string> = { "Content-Type": "application/json" };
+        if (process.env.CRON_SECRET) {
+          workerHeaders["x-queue-secret"] = process.env.CRON_SECRET;
+        }
         const workerResponse = await fetch(`${baseUrl}/api/queue/worker`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: workerHeaders,
           body: JSON.stringify({
             batchSize: 50,
             continuous: true,

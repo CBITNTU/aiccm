@@ -1,6 +1,6 @@
 # AICCM
 
-A construction and consulting tender matching platform built with Next.js, React, TypeScript, and Supabase. AICCM facilitates matching companies with relevant tenders, managing consulting projects (Virtual Organizations), and providing AI-powered business intelligence.
+A construction and consulting tender matching platform built with Next.js, React, TypeScript, PostgreSQL, Better-Auth, and Drizzle ORM. AICCM facilitates matching companies with relevant tenders, managing consulting projects (Virtual Organizations), and providing AI-powered business intelligence.
 
 ## Features
 
@@ -9,15 +9,17 @@ A construction and consulting tender matching platform built with Next.js, React
 - **Virtual Organization (VO) Management** - Consulting project management combining multiple companies into teams
 - **CPV Taxonomy** - Common Procurement Vocabulary code-based classification system
 - **Geographic Coverage** - UK-focused coverage analysis with map visualizations
-- **AI Analysis** - OpenAI-powered tender feeds, company analysis, and chatbot
+- **AI Analysis** - Multi-provider AI (OpenAI, Google, DeepSeek) for company analysis and tender matching
 
 ## Tech Stack
 
 - **Framework**: Next.js 16 + React 19 + TypeScript
 - **UI**: shadcn/ui + Radix UI + Tailwind CSS
-- **Database & Auth**: Supabase (PostgreSQL + Auth)
+- **Database**: PostgreSQL (via Docker locally)
+- **Auth**: Better-Auth
+- **ORM**: Drizzle ORM
 - **State Management**: TanStack Query (React Query)
-- **AI**: OpenAI API (optional, user-provided key)
+- **AI**: Vercel AI SDK with OpenAI, Google, and DeepSeek providers
 - **Maps**: Leaflet
 
 ## Getting Started
@@ -26,7 +28,7 @@ A construction and consulting tender matching platform built with Next.js, React
 
 - Node.js 18+
 - npm
-- Supabase account (for database and authentication)
+- Docker (for local PostgreSQL)
 
 ### Installation
 
@@ -48,9 +50,9 @@ npm install
 Create a `.env.local` file for local development:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/tndrx
+BETTER_AUTH_SECRET=<your-secret>
+BETTER_AUTH_URL=http://localhost:3000
 OPENAI_API_KEY=<your-openai-key>
 RESEND_API_KEY=<your-resend-key>
 PLATFORM_EMAIL_FROM="noreply@example.com"
@@ -58,15 +60,14 @@ PLATFORM_NAME="AICCM Platform"
 PLATFORM_URL=http://localhost:3000
 ```
 
-Create a `.env.production` file for production configuration:
+4. Start the local database:
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<production-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<production-service-role-key>
+```bash
+npm run docker:up
+npm run db:push
 ```
 
-4. Run the development server:
+5. Run the development server:
 
 ```bash
 npm run dev
@@ -87,8 +88,8 @@ components/         # React components
 └── layout/         # Layout components
 
 hooks/              # Custom React hooks
-lib/                # Utilities and Supabase clients
-supabase/           # Database migrations
+lib/                # Database, auth, and utilities
+drizzle/            # Database migrations
 ```
 
 ## Development
@@ -100,17 +101,19 @@ npm run start     # Start production server
 npm run lint      # Lint the codebase
 ```
 
-### Supabase Commands
+### Database Commands
 
 ```bash
-# Local development
-npm run supabase:start    # Start local Supabase
-npm run supabase:stop     # Stop local Supabase
-npm run supabase:db-push  # Push migrations to local database
+# Local PostgreSQL (Docker)
+npm run docker:up          # Start local PostgreSQL
+npm run docker:down        # Stop local PostgreSQL
 
-# Production
-npm run supabase:link:prod    # Link to production project (run once)
-npm run supabase:db-push:prod # Push migrations to production
+# Drizzle ORM
+npm run db:generate        # Generate migrations from schema changes
+npm run db:migrate         # Run migrations
+npm run db:push            # Push schema directly (dev shortcut)
+npm run db:studio          # Open Drizzle Studio
+npm run db:reset-local:drizzle  # Reset local DB
 ```
 
 ## Deployment
@@ -127,11 +130,11 @@ Configure environment variables in the Vercel dashboard before deploying.
 ### Database Migrations
 
 ```bash
-# First time: link to production Supabase project
-npm run supabase:link:prod
+# Generate migration from schema changes
+npm run db:generate
 
-# Push migrations to production
-npm run supabase:db-push:prod
+# Apply migrations to database
+npm run db:migrate
 ```
 
 ### Manual Build

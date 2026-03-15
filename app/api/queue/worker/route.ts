@@ -10,16 +10,7 @@ import {
   getBatchStatus,
   type JobType,
 } from "@/lib/services/queueService";
-import {
-  generateTenderSummary,
-  generateTenderCapabilityTaxonomy,
-  generateTenderSummaryAndTaxonomy,
-} from "@/lib/services/tenderAIService";
-import {
-  generateCompanySummary,
-  generateCompanyCapabilityTaxonomy,
-} from "@/lib/services/companyAIService";
-import { scoreTenderMatch } from "@/lib/services/tenderMatchingService";
+import { processJob } from "@/lib/services/jobProcessor";
 import { logEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { batchJobs } from "@/lib/db/schema/app";
@@ -44,86 +35,6 @@ async function authorizeWorker(request: NextRequest): Promise<boolean> {
   }
 
   return false;
-}
-
-async function processJob(job: {
-  id: string;
-  jobType: JobType;
-  entityId: string;
-  companyId?: string | null;
-  tenderId?: string | null;
-  metadata?: Record<string, unknown> | null;
-}) {
-  switch (job.jobType) {
-    case "tender_summary":
-      const summary = await generateTenderSummary(job.entityId);
-      return { success: true, summary };
-
-    case "tender_taxonomy":
-      const taxonomy = await generateTenderCapabilityTaxonomy(job.entityId);
-      return { success: true, taxonomy };
-
-    case "tender_ai_complete":
-      const { summary: tenderSummary, taxonomy: tenderTaxonomy } =
-        await generateTenderSummaryAndTaxonomy(job.entityId);
-      return {
-        success: true,
-        summary: tenderSummary,
-        taxonomy: tenderTaxonomy,
-      };
-
-    case "company_summary":
-      // If taxonomy job exists for same company, prefer combined processing
-      // For now, keep separate for backward compatibility
-      const companySummary = await generateCompanySummary(job.entityId);
-      return { success: true, summary: companySummary };
-
-    case "company_taxonomy":
-      // Check if we should use combined generation (when both summary and taxonomy are queued)
-      // For now, use separate for backward compatibility
-      const fullRegeneration = job.metadata?.fullRegeneration === true;
-      const companyTaxonomy = await generateCompanyCapabilityTaxonomy(
-        job.entityId,
-        fullRegeneration,
-      );
-      return { success: true, taxonomy: companyTaxonomy };
-
-    case "company_ai_complete":
-      // Split into 2 requests: taxonomy first, then summary. Keeps each prompt smaller and more reliable.
-      const fullRegen = job.metadata?.fullRegeneration === true;
-      // TODO [MERGE]: HEAD used separate calls:
-      // const companyTaxonomyIds = await generateCompanyCapabilityTaxonomy(job.entityId, fullRegen);
-      // const companySummaryText = await generateCompanySummary(job.entityId);
-      const { summary: combinedSummary, taxonomy: combinedTaxonomy } =
-        await generateCompanySummaryAndTaxonomy(job.entityId, fullRegen);
-      return {
-        success: true,
-        summary: combinedSummary,
-        taxonomy: combinedTaxonomy,
-      };
-
-    case "tender_matching": {
-      if (!job.companyId || !job.tenderId) {
-        throw new Error("Company ID and Tender ID required for matching");
-      }
-      const meta = (job.metadata ?? {}) as {
-        demo?: boolean;
-        model?: "gpt-5-nano";
-        batchLabel?: string;
-        reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
-      };
-      const score = await scoreTenderMatch(job.companyId, job.tenderId, {
-        demo: meta.demo,
-        model: meta.model,
-        batchLabel: meta.batchLabel,
-        reasoningEffort: meta.reasoningEffort,
-      });
-      return { success: true, score };
-    }
-
-    default:
-      throw new Error(`Unknown job type: ${job.jobType}`);
-  }
 }
 
 export async function POST(request: NextRequest) {

@@ -484,3 +484,27 @@ export const platformSettings = pgTable("platform_settings", {
   value: text("value").notNull().default(""),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ============================================================================
+// Demo Matching Results
+// ============================================================================
+export const demoMatchingResults = pgTable("demo_matching_results", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  batchLabel: text("batch_label").notNull(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  tenderId: uuid("tender_id")
+    .notNull()
+    .references(() => tenders.id, { onDelete: "cascade" }),
+  modelUsed: text("model_used").notNull(),
+  overallScore: integer("overall_score"),
+  capabilityScore: integer("capability_score"),
+  experienceScore: integer("experience_score"),
+  locationScore: integer("location_score"),
+  certificationScore: integer("certification_score"),
+  matchReasons: text("match_reasons").array(),
+  improvementSuggestions: text("improvement_suggestions").array(),
+  aiAnalysis: jsonb("ai_analysis"),
+});

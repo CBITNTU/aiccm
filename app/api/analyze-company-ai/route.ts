@@ -11,7 +11,7 @@ import {
   isCompanyMember,
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { taxonomies, companyTaxonomies } from "@/lib/db/schema/app";
+import { taxonomies, companyTaxonomies, companies } from "@/lib/db/schema/app";
 import { eq, asc } from "drizzle-orm";
 
 const analyzeCompanyAIInputSchema = z.object({
@@ -60,6 +60,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log("[CompanyAI:analyze-ai] Input companyData —", {
+      companyName: companyData.companyName,
+      hasWebsiteUrl: !!companyData.websiteUrl,
+      hasDescription: !!companyData.description,
+      hasKeyCapabilities: !!companyData.keyCapabilities,
+      hasCertifications: !!companyData.certifications,
+      hasEquipment: !!companyData.equipment,
+      hasPastProjects: !!companyData.pastProjects,
+      companyId: companyId || "none",
+    });
+
     // Fetch available taxonomies
     const taxonomyRows = await db
       .select({ id: taxonomies.id, name: taxonomies.name, level: taxonomies.level })
@@ -69,7 +80,10 @@ export async function POST(request: NextRequest) {
     const taxonomyList =
       taxonomyRows.map((t) => `${t.name} (Level ${t.level})`).join(", ") || "";
 
+    console.log("[CompanyAI:analyze-ai] Taxonomies — count:", taxonomyRows.length, "list:", taxonomyList.substring(0, 300));
+
     const prompt = buildCompanyAnalysisPrompt(companyData, taxonomyList);
+    console.log("[CompanyAI:analyze-ai] Prompt —", prompt);
 
     const parsedResult = await aiGenerateObject({
       schema: companyAnalysisSchema,
@@ -80,6 +94,33 @@ export async function POST(request: NextRequest) {
       maxTokens: 5000,
     });
 
+    console.log("[CompanyAI:analyze-ai] AI response —", JSON.stringify(parsedResult, null, 2));
+
+    // Save AI analysis results to the companies table
+    if (companyId) {
+      const savePayload = {
+        aiCompetencies: parsedResult.competencies,
+        aiCapabilities: parsedResult.capabilities,
+        aiStrengths: parsedResult.strengths,
+        aiCertifications: parsedResult.certifications,
+        aiRecommendations: parsedResult.recommendations,
+        digitalMaturity: parsedResult.digitalMaturity,
+        safetyRating: parsedResult.safetyRating,
+        marketPosition: parsedResult.marketPosition,
+        updatedAt: new Date(),
+      };
+      console.log("[CompanyAI:analyze-ai] DB save payload —", JSON.stringify(savePayload, null, 2));
+      try {
+        await db
+          .update(companies)
+          .set(savePayload)
+          .where(eq(companies.id, companyId));
+        console.log("[CompanyAI:analyze-ai] DB save succeeded for company", companyId);
+      } catch (saveError) {
+        console.error("[CompanyAI:analyze-ai] DB save FAILED:", saveError);
+      }
+    }
+
     // Auto-tag company with suggested taxonomies
     if (
       companyId &&
@@ -87,6 +128,7 @@ export async function POST(request: NextRequest) {
       parsedResult.suggestedTaxonomies.length > 0 &&
       taxonomyRows.length > 0
     ) {
+      console.log("[CompanyAI:analyze-ai] Taxonomy matching — suggested:", parsedResult.suggestedTaxonomies);
       const taxonomyIds = taxonomyRows
         .filter((t) =>
           parsedResult.suggestedTaxonomies?.some(
@@ -96,6 +138,8 @@ export async function POST(request: NextRequest) {
           ),
         )
         .map((t) => t.id);
+
+      console.log("[CompanyAI:analyze-ai] Taxonomy matching — matched IDs:", taxonomyIds, "count:", taxonomyIds.length);
 
       if (taxonomyIds.length > 0) {
         await db
@@ -108,6 +152,7 @@ export async function POST(request: NextRequest) {
         }));
 
         await db.insert(companyTaxonomies).values(taxonomyInserts);
+        console.log("[CompanyAI:analyze-ai] Taxonomy insert — linked", taxonomyInserts.length, "taxonomies");
       }
     }
 

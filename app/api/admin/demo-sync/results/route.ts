@@ -7,7 +7,8 @@ import {
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
-import { sql } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
+import { demoMatchingResults, tenders, companies } from "@/lib/db/schema";
 
 /**
  * GET /api/admin/demo-sync/results
@@ -20,32 +21,31 @@ export async function GET(request: NextRequest) {
     const isAdmin = await checkSuperadminRole(user.id);
     if (!isAdmin) return apiError("Forbidden: Superadmin access required", 403);
 
-    // demo_matching_results is not in the Drizzle schema, so use raw SQL
-    const result = await db.execute(sql`
-      SELECT
-        dmr.id,
-        dmr.created_at,
-        dmr.batch_label,
-        dmr.company_id,
-        dmr.tender_id,
-        dmr.model_used,
-        dmr.overall_score,
-        dmr.capability_score,
-        dmr.experience_score,
-        dmr.location_score,
-        dmr.certification_score,
-        dmr.match_reasons,
-        dmr.improvement_suggestions,
-        dmr.ai_analysis,
-        t.title AS tender_title,
-        c.company_name
-      FROM demo_matching_results dmr
-      LEFT JOIN tenders t ON t.id = dmr.tender_id
-      LEFT JOIN companies c ON c.id = dmr.company_id
-      ORDER BY dmr.created_at ASC
-    `);
+    const result = await db
+      .select({
+        id: demoMatchingResults.id,
+        created_at: demoMatchingResults.createdAt,
+        batch_label: demoMatchingResults.batchLabel,
+        company_id: demoMatchingResults.companyId,
+        tender_id: demoMatchingResults.tenderId,
+        model_used: demoMatchingResults.modelUsed,
+        overall_score: demoMatchingResults.overallScore,
+        capability_score: demoMatchingResults.capabilityScore,
+        experience_score: demoMatchingResults.experienceScore,
+        location_score: demoMatchingResults.locationScore,
+        certification_score: demoMatchingResults.certificationScore,
+        match_reasons: demoMatchingResults.matchReasons,
+        improvement_suggestions: demoMatchingResults.improvementSuggestions,
+        ai_analysis: demoMatchingResults.aiAnalysis,
+        tender_title: tenders.title,
+        company_name: companies.companyName,
+      })
+      .from(demoMatchingResults)
+      .leftJoin(tenders, eq(tenders.id, demoMatchingResults.tenderId))
+      .leftJoin(companies, eq(companies.id, demoMatchingResults.companyId))
+      .orderBy(asc(demoMatchingResults.createdAt));
 
-    const rows = (result.rows ?? []).map((row: Record<string, unknown>) => ({
+    const rows = result.map((row) => ({
       ...row,
       tender_title: row.tender_title ?? row.tender_id,
       company_name: row.company_name ?? row.company_id,

@@ -3,7 +3,10 @@ import { apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { performanceBenchmarkSchema } from "@/lib/schemas/performanceBenchmark";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { generateCompanyCapabilityTaxonomy } from "@/lib/services/companyAIService";
+import {
+  generateCompanyCapabilityTaxonomy,
+  generateCompanySummary,
+} from "@/lib/services/companyAIService";
 import type { DeepCompanyAnalysis } from "@/lib/api/types";
 import { z } from "zod";
 import {
@@ -33,7 +36,7 @@ function buildPerformanceBenchmarkPrompt(
 ): string {
   const financialData = company.financialData || {};
 
-  return `Score these 8 dimensions (0-100) with a short explanation. Return JSON with performanceBenchmark as below.
+  return `Score these 8 dimensions (0-100) with a short explanation. Also extract or infer company information (description, key_capabilities, certifications, past_projects, equipment, postcode, contact details) from any available data. Return JSON with performanceBenchmark and companyInfo.
 
 Company: ${company.companyName}
 Website: ${company.websiteUrl || "N/A"}
@@ -67,6 +70,16 @@ export async function POST(request: NextRequest) {
       return apiResponse({ error: "Company not found" }, 404);
     }
 
+    console.log("[CompanyAI:analyze] Input company data —", {
+      companyName: company.companyName,
+      hasWebsiteUrl: !!company.websiteUrl,
+      hasKeyCapabilities: !!company.keyCapabilities,
+      hasEquipment: !!company.equipment,
+      hasCertifications: !!company.certifications,
+      hasPastProjects: !!company.pastProjects,
+      hasFinancialData: !!company.financialData,
+    });
+
     const hasAccess = await isCompanyMember(user.id, companyId);
     if (!hasAccess) {
       return apiResponse({ error: "Not authorized to analyze this company" }, 403);
@@ -82,16 +95,21 @@ export async function POST(request: NextRequest) {
       financialData: company.financialData as Record<string, { value?: unknown }> | null,
     });
 
+    console.log("[CompanyAI:analyze] Prompt —", prompt);
+
     const rawAnalysis = await aiGenerateObject({
       schema: performanceBenchmarkSchema,
-      system: `Rate company 0-100 on each dimension from available data only; 0 if no data.`,
+      system: `Rate company 0-100 on each dimension from available data only; 0 if no data. Also extract or infer company information where possible.`,
       prompt,
       maxTokens: 10000,
     });
 
+    console.log("[CompanyAI:analyze] AI response — benchmark scores:", JSON.stringify(rawAnalysis.performanceBenchmark, null, 2));
+    console.log("[CompanyAI:analyze] AI response — companyInfo:", JSON.stringify(rawAnalysis.companyInfo, null, 2));
+
     const benchmark = rawAnalysis.performanceBenchmark;
     const analysis: DeepCompanyAnalysis = {
-      companyInfo: {},
+      companyInfo: rawAnalysis.companyInfo,
       performanceBenchmark: {
         technicalExpertise: benchmark.technicalExpertise.score,
         safetyStandards: benchmark.safetyStandards.score,
@@ -123,6 +141,8 @@ export async function POST(request: NextRequest) {
       aiAnalysis: analysis,
       updatedAt: new Date(),
     };
+
+    console.log("[CompanyAI:analyze] Update payload (before field merging) — aiAnalysis set, updatedAt set");
 
     const companyInfo = analysis.companyInfo || {};
 
@@ -173,20 +193,35 @@ export async function POST(request: NextRequest) {
       updateData.marketPosition = analysis.marketPosition;
     }
 
+    console.log("[CompanyAI:analyze] Final update payload fields —", Object.keys(updateData));
+    console.log("[CompanyAI:analyze] Final update payload values —", JSON.stringify(updateData, null, 2));
+
     try {
       await db
         .update(companies)
         .set(updateData)
         .where(eq(companies.id, companyId));
+      console.log("[CompanyAI:analyze] DB update succeeded for company", companyId);
     } catch (updateError) {
-      console.error("Error saving analysis to database:", updateError);
+      console.error("[CompanyAI:analyze] DB update FAILED:", updateError);
     }
 
     // Generate capabilities from the static list
     try {
-      await generateCompanyCapabilityTaxonomy(companyId, false);
+      console.log("[CompanyAI:analyze] Starting capability taxonomy generation...");
+      const taxonomyResult = await generateCompanyCapabilityTaxonomy(companyId, false);
+      console.log("[CompanyAI:analyze] Capability taxonomy result —", taxonomyResult);
     } catch (capabilityError) {
-      console.error("Failed to generate company capabilities:", capabilityError);
+      console.error("[CompanyAI:analyze] Capability taxonomy FAILED:", capabilityError);
+    }
+
+    // Generate AI summary for matching and UI display
+    try {
+      console.log("[CompanyAI:analyze] Starting summary generation...");
+      const summaryResult = await generateCompanySummary(companyId);
+      console.log("[CompanyAI:analyze] Summary result — length:", summaryResult.length, "preview:", summaryResult.substring(0, 200));
+    } catch (summaryError) {
+      console.error("[CompanyAI:analyze] Summary generation FAILED:", summaryError);
     }
 
     await logApiEvent(request, {

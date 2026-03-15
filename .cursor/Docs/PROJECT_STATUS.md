@@ -218,7 +218,7 @@ This document provides a comprehensive overview of the AI-CCM platform implement
 
 ### 3. Performance Benchmark Defaults
 
-**Location:** `supabase/functions/analyze-company/index.ts`
+**Location:** Company analysis service (`lib/services/companyAIService.ts`)
 
 - Hardcoded default values if AI analysis fails
 - **Fix:** These are fallbacks, acceptable but should be documented
@@ -277,7 +277,7 @@ The Admin Portal has reached 100% implementation according to the tech spec.
 
 ### Database:
 
-- ✅ Admin RLS policies for all management operations
+- ✅ Admin authorization checks for all management operations
 - ✅ Auto-assignment of 'user' role on signup
 - ✅ Role-based navigation (Admin link only for admins)
 
@@ -290,7 +290,7 @@ The Admin Portal has reached 100% implementation according to the tech spec.
 3. **Company Directory** - Full search and filtering capabilities
 4. **Consulting Team Builder** - AI-powered partner recommendations
 5. **Admin Dashboard** - Real metrics and data quality monitoring
-6. **Database Architecture** - Solid foundation with RLS policies
+6. **Database Architecture** - Solid foundation with Drizzle ORM schema
 7. **Role-Based Access** - Admin/user roles working correctly
 8. **Taxonomy Management** - Full editor with import/export
 
@@ -386,8 +386,8 @@ The Admin Portal has reached 100% implementation according to the tech spec.
 ## Technical Stack
 
 - **Frontend:** React + TypeScript
-- **Backend:** Supabase (PostgreSQL, Auth, Storage, Edge Functions)
-- **AI Services:** OpenAI API for analysis and matching
+- **Backend:** PostgreSQL + Better-Auth + Drizzle ORM
+- **AI Services:** Vercel AI SDK (OpenAI, Google, DeepSeek providers)
 - **Data Sources:** Companies House API, Find a Tender API, Endole
 - **Deployment:** Vercel/AWS (configured)
 

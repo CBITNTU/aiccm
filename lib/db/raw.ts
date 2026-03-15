@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "./index";
+import { demoMatchingResults } from "./schema";
 
 /**
  * PostGIS-based nearby companies search.
@@ -73,7 +74,7 @@ export async function nearbyCompanies(params: {
  * Replaces the Supabase RPC `truncate_demo_matching_results()`.
  */
 export async function truncateDemoMatchingResults() {
-  await db.execute(sql`SELECT truncate_demo_matching_results()`);
+  await db.delete(demoMatchingResults);
 }
 
 /**
@@ -82,7 +83,24 @@ export async function truncateDemoMatchingResults() {
  * Uses SELECT FOR UPDATE SKIP LOCKED for concurrency safety.
  */
 export async function dequeueJobAtomic() {
-  const result = await db.execute(sql`SELECT * FROM dequeue_job_atomic()`);
+  const result = await db.execute(sql`
+    WITH next_job AS (
+      SELECT id FROM processing_queue
+      WHERE status = 'pending'
+        AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+      ORDER BY
+        (CASE WHEN batch_id IS NOT NULL THEN 0 ELSE 1 END),
+        priority DESC,
+        scheduled_at ASC
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE processing_queue
+    SET status = 'processing', started_at = NOW(), updated_at = NOW()
+    FROM next_job
+    WHERE processing_queue.id = next_job.id
+    RETURNING processing_queue.*
+  `);
   if (!result.rows || result.rows.length === 0) {
     return null;
   }
@@ -118,7 +136,18 @@ export async function incrementBatchProgress(
   outcome: "completed" | "failed",
 ) {
   const result = await db.execute(
-    sql`SELECT * FROM increment_batch_progress(${batchId}::uuid, ${outcome}::text)`,
+    sql`UPDATE batch_jobs
+SET
+  completed_jobs = completed_jobs + (CASE WHEN ${outcome} = 'completed' THEN 1 ELSE 0 END),
+  failed_jobs    = failed_jobs    + (CASE WHEN ${outcome} = 'failed'    THEN 1 ELSE 0 END),
+  status = CASE
+    WHEN (completed_jobs + failed_jobs + 1) >= total_jobs
+    THEN CASE WHEN ${outcome} = 'failed' AND (failed_jobs + 1) = total_jobs THEN 'failed' ELSE 'completed' END
+    ELSE 'processing'
+  END,
+  updated_at = NOW()
+WHERE id = ${batchId}::uuid
+RETURNING completed_jobs, failed_jobs, total_jobs, status`,
   );
   if (!result.rows || result.rows.length === 0) {
     return null;

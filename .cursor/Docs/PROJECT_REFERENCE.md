@@ -12,11 +12,12 @@
 | ------------ | ------------------------------------------------- |
 | **Frontend** | Next.js 16 + React 19 + TypeScript                |
 | **UI**       | shadcn/ui + Radix UI + Tailwind CSS               |
-| **Backend**  | Supabase (PostgreSQL + Auth) + Next.js API Routes |
-| **Auth**     | @supabase/ssr (server-side)                       |
-| **State**    | TanStack Query (React Query)                      |
-| **Routing**  | Next.js App Router                                |
-| **AI**       | OpenAI API (optional, user-provided key)          |
+| **Backend**  | PostgreSQL + Better-Auth + Drizzle ORM + Next.js API Routes |
+| **Auth**     | Better-Auth with Drizzle adapter                            |
+| **ORM**      | Drizzle ORM (node-postgres driver)                          |
+| **State**    | TanStack Query (React Query)                                |
+| **Routing**  | Next.js App Router                                          |
+| **AI**       | Vercel AI SDK (OpenAI, Google, DeepSeek providers)           |
 | **Maps**     | Leaflet                                           |
 
 Key features:
@@ -26,7 +27,7 @@ Key features:
 - Virtual Organization (VO) consulting project management
 - CPV (Common Procurement Vocabulary) code-based taxonomy
 - Geographic coverage analysis (UK-focused)
-- Real-time tender feeds with OpenAI-powered analysis
+- Real-time tender feeds with AI-powered analysis
 
 ---
 
@@ -78,9 +79,16 @@ hooks/                      # Custom React hooks (queries + mutations)
 └── useMatchingProgress.ts  # Matching progress polling
 
 lib/
-├── supabase/server.ts      # Server-side Supabase client
-├── supabase/client.ts      # Client-side Supabase client (AUTH ONLY!)
-├── api/index.ts            # apiResponse, apiError, createAdminClient
+├── auth.ts                 # Better-Auth server config
+├── auth-client.ts          # Better-Auth client (signIn, signUp, signOut, useSession)
+├── auth/middleware.ts       # Session validation middleware
+├── db/index.ts             # Connection pool (pg) + Drizzle instance
+├── db/queries.ts           # Reusable query helpers
+├── db/raw.ts               # Raw SQL for complex queries
+├── db/schema/              # Drizzle schema (auth.ts, app.ts, index.ts)
+├── ai/generate.ts          # Rate-limited AI wrappers
+├── ai/models.ts            # Model registry and resolution
+├── api/index.ts            # apiResponse, apiError, getAuthenticatedUser
 ├── api/client.ts           # Typed API client for frontend (api.*)
 ├── api/validation.ts       # requireAuth, validateBody, handleApiError
 ├── queryKeys.ts            # Centralized React Query key factory
@@ -88,23 +96,24 @@ lib/
 └── utils.ts                # General utilities (cn(), etc.)
 
 middleware.ts               # Auth middleware for route protection
-supabase/migrations/        # Database migrations
+instrumentation.ts          # Next.js instrumentation — starts dev queue poller
+drizzle/migrations/         # Database migrations
 ```
 
 ### Critical Rules
 
-1. **No direct Supabase from client components** -- All data queries go through Next.js API routes via `lib/api/client.ts`. The client-side Supabase client (`lib/supabase/client.ts`) is used **only for auth** (login, signup, session).
-2. **API routes use `requireAuth()` + `createAdminClient()`** -- Every API route authenticates the user first, then uses an admin Supabase client for database access.
+1. **No direct database access from client components** -- All data queries go through Next.js API routes via `lib/api/client.ts`. Client-side auth uses `authClient` from `lib/auth-client.ts`.
+2. **API routes use `requireAuth()` + `db` from `lib/db`** -- Every API route authenticates the user first, then uses the Drizzle ORM instance for database access.
 3. **TanStack Query for all client-side state** -- Query hooks in `hooks/` handle caching, refetching, and invalidation. Centralized key factory in `lib/queryKeys.ts`.
 4. **Path alias `@/*`** maps to `./*` (project root).
 5. **Always check for company existence** before redirecting to dashboard.
 
 ### Authentication Flow
 
-- `middleware.ts` handles route protection at the edge
+- `middleware.ts` calls `betterAuthUpdateSession()` from `lib/auth/middleware.ts`
 - `(protected)` route group contains all authenticated pages
-- Server components: `createClient()` from `lib/supabase/server.ts`
-- Client components: only `lib/supabase/client.ts` for auth operations (login, signup, session)
+- API routes: `auth.api.getSession()` via `requireAuth()` in `lib/api/validation.ts`
+- Client-side: `authClient` from `lib/auth-client.ts` (`useSession`, `signIn`, `signUp`, `signOut`)
 
 ### Data Flow
 
@@ -114,8 +123,8 @@ Client Component
     → fetch("/api/endpoint")
       → API Route (app/api/*/route.ts)
         → requireAuth(request)
-        → createAdminClient()
-        → Supabase query
+        → db (Drizzle)
+        → Drizzle query
       ← apiResponse({ data })
     ← JSON response
   → TanStack Query cache
@@ -136,19 +145,20 @@ Create `app/api/[endpoint-name]/route.ts`:
 
 ```typescript
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
-    const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("table_name")
-      .select("*")
-      .eq("user_id", user.id);
-    if (error) throw error;
-    return apiResponse({ data });
+    const result = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.userId, user.id));
+    return apiResponse({ companies: result });
   } catch (error) {
     return handleApiError(error);
   }
@@ -158,8 +168,7 @@ export async function POST(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
     const body = await request.json();
-    const supabase = createAdminClient();
-    // Your logic here
+    // Your logic here using db.insert(), db.update(), etc.
     return apiResponse({ success: true });
   } catch (error) {
     return handleApiError(error);
@@ -167,17 +176,18 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-### Querying Supabase in a Server Component
+### Querying the Database (Server Component)
 
 ```typescript
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export default async function Page() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("companies")
-    .select("*")
-    .eq("user_id", userId);
+  const result = await db
+    .select()
+    .from(companies)
+    .where(eq(companies.userId, userId));
   // ...
 }
 ```
@@ -241,7 +251,7 @@ export function useUpdateCompany() {
 
 ### Adding a New Data Query (End-to-End)
 
-1. Add API route in `app/api/[endpoint]/route.ts` using `requireAuth` + `createAdminClient`
+1. Add API route in `app/api/[endpoint]/route.ts` using `requireAuth` + `db` from `lib/db`
 2. Add typed method to the `api` object in `lib/api/client.ts`
 3. Add query key to `lib/queryKeys.ts`
 4. Create query hook in `hooks/use[Domain].ts` using `queryKeys` and `api`
@@ -294,14 +304,16 @@ npm run start            # Start production server
 npm run lint             # ESLint
 ```
 
-### Supabase
+### Database
 
 ```bash
-npm run supabase:start       # Start local Supabase
-npm run supabase:stop        # Stop local Supabase
-npm run supabase:db-push     # Push migrations locally
-npm run supabase:link:prod   # Link to production (run once)
-npm run supabase:db-push:prod # Push migrations to production
+npm run docker:up            # Start local PostgreSQL
+npm run docker:down          # Stop local PostgreSQL
+npm run db:generate          # Generate migrations from schema changes
+npm run db:migrate           # Run migrations
+npm run db:push              # Push schema directly (dev shortcut)
+npm run db:studio            # Open Drizzle Studio (visual DB browser)
+npm run db:reset-local:drizzle  # Reset local DB
 ```
 
 ### Deployment
@@ -318,9 +330,9 @@ npm run deploy:prod      # Deploy to Vercel production
 ### Local Development (`.env.local`)
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/tndrx
+BETTER_AUTH_SECRET=<your-secret>
+BETTER_AUTH_URL=http://localhost:3000
 OPENAI_API_KEY=<your-openai-key>
 RESEND_API_KEY=<your-resend-key>
 PLATFORM_EMAIL_FROM="noreply@example.com"
@@ -331,9 +343,9 @@ PLATFORM_URL=http://localhost:3000
 ### Production (`.env.production`)
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<production-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<production-service-role-key>
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>
+BETTER_AUTH_SECRET=<production-secret>
+BETTER_AUTH_URL=https://yourdomain.com
 OPENAI_API_KEY=<your-openai-key>
 RESEND_API_KEY=<your-resend-key>
 PLATFORM_EMAIL_FROM="noreply@yourdomain.com"
@@ -343,12 +355,12 @@ PLATFORM_URL=https://yourdomain.com
 
 For Vercel deployment, configure environment variables in the Vercel dashboard.
 
-### OpenAI Integration Notes
+### AI Integration Notes
 
-- API key provided by users through `OpenAIKeyDialog` component
-- Stored in localStorage as `openai_api_key`
-- Optional: app functions without it but lacks AI-powered analysis
-- Used for: company analysis, tender matching reasoning, chatbot
+- Uses Vercel AI SDK (`ai` package) with multiple providers: `@ai-sdk/openai`, `@ai-sdk/google`, `@ai-sdk/deepseek`
+- API keys configured server-side via environment variables
+- `lib/ai/generate.ts` provides rate-limited `aiGenerateObject()` and `aiGenerateText()` wrappers
+- Used for: company analysis, tender matching reasoning, performance benchmarks
 
 ---
 
@@ -422,7 +434,7 @@ For Vercel deployment, configure environment variables in the Vercel dashboard.
 
 - Hardcoded company data in `src/components/AdminDataImport.tsx` (38 companies, only 8 imported)
 - Sample tender data in SQL migrations (5 test tenders)
-- Performance benchmark defaults in `supabase/functions/analyze-company/index.ts` (acceptable fallbacks)
+- Performance benchmark defaults in company analysis service (acceptable fallbacks)
 
 ---
 
@@ -439,7 +451,7 @@ For Vercel deployment, configure environment variables in the Vercel dashboard.
 
 - Path alias `@/*` maps to `./*`
 - Strict type checking enabled
-- Types from `@supabase/supabase-js` (regenerate after schema changes)
+- Types from Drizzle schema definitions in `lib/db/schema/`
 
 ### Routing (App Router)
 

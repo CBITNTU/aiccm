@@ -54,6 +54,17 @@ export async function generateCompanySummary(
     throw new Error("Failed to fetch company: Company not found");
   }
 
+  console.log("[CompanyAI:summary] Company data fetched —", {
+    companyName: company.companyName,
+    hasDescription: !!company.description,
+    hasKeyCapabilities: !!company.keyCapabilities,
+    hasCertifications: !!company.certifications,
+    hasEquipment: !!company.equipment,
+    hasPastProjects: !!company.pastProjects,
+    hasWebsiteUrl: !!company.websiteUrl,
+    hasPostcode: !!company.postcode,
+  });
+
   // Fetch company capabilities from junction table
   const capabilityRows = await db
     .select({ name: companyCapabilitiesRef.name })
@@ -70,6 +81,8 @@ export async function generateCompanySummary(
       .filter(Boolean)
       .join(", ") || "";
 
+  console.log("[CompanyAI:summary] Capabilities from junction table — count:", capabilityRows.length, "list:", capabilitiesList.substring(0, 200));
+
   const systemPrompt = `Generate a 200-word professional summary: competencies, achievements, certifications, market position, differentiators. Be specific.`;
 
   const userPrompt = `Company Details:
@@ -85,12 +98,16 @@ ${company.postcode ? `Location: ${company.postcode}` : ""}
 
 Summarize.`;
 
+  console.log("[CompanyAI:summary] Prompt —", userPrompt);
+
   const summary = await aiGenerateText({
     system: systemPrompt,
     prompt: userPrompt,
     maxTokens: 1000,
     estTokens: 2000,
   });
+
+  console.log("[CompanyAI:summary] Result — length:", summary.length, "preview:", summary.substring(0, 200));
 
   // Store summary in database
   await db
@@ -100,6 +117,8 @@ Summarize.`;
       summaryGeneratedAt: new Date(),
     })
     .where(eq(companies.id, companyId));
+
+  console.log("[CompanyAI:summary] DB save confirmed for company", companyId);
 
   return summary;
 }
@@ -136,6 +155,15 @@ export async function generateCompanyCapabilityTaxonomy(
     throw new Error("Failed to fetch company: Company not found");
   }
 
+  console.log("[CompanyAI:taxonomy] Company data fetched —", {
+    companyName: company.companyName,
+    hasDescription: !!company.description,
+    hasKeyCapabilities: !!company.keyCapabilities,
+    hasCertifications: !!company.certifications,
+    hasEquipment: !!company.equipment,
+    hasPastProjects: !!company.pastProjects,
+  });
+
   // Fetch existing capabilities from static list
   const existingCapabilities = await db
     .select({
@@ -149,6 +177,8 @@ export async function generateCompanyCapabilityTaxonomy(
   if (!existingCapabilities || existingCapabilities.length === 0) {
     throw new Error("Failed to fetch capabilities: No capabilities found");
   }
+
+  console.log("[CompanyAI:taxonomy] Available capabilities from static list — count:", existingCapabilities.length);
 
   // Format capabilities for AI
   const capabilitiesByCategory: Record<
@@ -185,6 +215,8 @@ ${capabilitiesList}
 
 Return existing = array of capability IDs from the list.`;
 
+  console.log("[CompanyAI:taxonomy] Prompt —", userPrompt);
+
   const parsed = await aiGenerateObject({
     schema: companySummaryAndTaxonomySchema,
     system: systemPrompt,
@@ -194,9 +226,11 @@ Return existing = array of capability IDs from the list.`;
   });
 
   const existingIds = parsed.existing;
+  console.log("[CompanyAI:taxonomy] AI-returned capability IDs —", existingIds);
 
   // Only use existing capabilities from static list
   const uniqueIds = Array.from(new Set(existingIds));
+  console.log("[CompanyAI:taxonomy] Deduplicated IDs — count:", uniqueIds.length, "ids:", uniqueIds);
 
   // Store taxonomy in database
   await db
@@ -206,6 +240,7 @@ Return existing = array of capability IDs from the list.`;
       taxonomyGeneratedAt: new Date(),
     })
     .where(eq(companies.id, companyId));
+  console.log("[CompanyAI:taxonomy] DB save — aiCapabilityTaxonomy updated for company", companyId);
 
   // Also populate the company_capabilities junction table for filtering
   // First, delete existing capability links for this company
@@ -276,8 +311,18 @@ export async function generateCompanySummaryAndTaxonomy(
     throw new Error("Failed to fetch company: Company not found");
   }
 
+  console.log("[CompanyAI:summary-taxonomy] Company data fetched —", {
+    companyName: company.companyName,
+    hasDescription: !!company.description,
+    hasKeyCapabilities: !!company.keyCapabilities,
+    hasCertifications: !!company.certifications,
+    hasEquipment: !!company.equipment,
+    hasPastProjects: !!company.pastProjects,
+    hasWebsiteUrl: !!company.websiteUrl,
+    hasPostcode: !!company.postcode,
+  });
+
   // Fetch existing capabilities from static list (direct Drizzle query)
-  // TODO [MERGE]: HEAD used getCapabilitiesForPrompt() which paginated via Supabase
   const existingCapabilities = await db
     .select({
       id: companyCapabilitiesRef.id,
@@ -290,6 +335,8 @@ export async function generateCompanySummaryAndTaxonomy(
   if (!existingCapabilities || existingCapabilities.length === 0) {
     throw new Error("Failed to fetch capabilities: No capabilities found");
   }
+
+  console.log("[CompanyAI:summary-taxonomy] Available capabilities — count:", existingCapabilities.length);
 
   const capabilitiesByCategory: Record<
     string,
@@ -340,6 +387,8 @@ Respond with a summary and 2-5 capability IDs from the list above.`;
 
   const validIdSet = new Set(existingCapabilities.map((c) => c.id));
 
+  console.log("[CompanyAI:summary-taxonomy] Prompt —", userPrompt);
+
   const parsed = await aiGenerateObject({
     schema: companySummaryAndTaxonomySchema,
     system: systemPrompt,
@@ -351,8 +400,12 @@ Respond with a summary and 2-5 capability IDs from the list above.`;
   const summary = parsed.summary;
   const existingIds = (parsed.existing || []).filter((id) => validIdSet.has(id));
 
+  console.log("[CompanyAI:summary-taxonomy] AI response — summary length:", summary.length, "preview:", summary.substring(0, 200));
+  console.log("[CompanyAI:summary-taxonomy] AI response — capability IDs:", existingIds);
+
   // Only use existing capabilities from static list
   const uniqueIds = Array.from(new Set(existingIds));
+  console.log("[CompanyAI:summary-taxonomy] Deduplicated IDs — count:", uniqueIds.length, "ids:", uniqueIds);
 
   // Store both summary and taxonomy in database
   await db
@@ -364,6 +417,7 @@ Respond with a summary and 2-5 capability IDs from the list above.`;
       taxonomyGeneratedAt: new Date(),
     })
     .where(eq(companies.id, companyId));
+  console.log("[CompanyAI:summary-taxonomy] DB save — summary + taxonomy updated for company", companyId);
 
   // Also populate the company_capabilities junction table
   try {

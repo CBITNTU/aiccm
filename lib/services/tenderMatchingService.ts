@@ -3,7 +3,7 @@ import { type MatchingModelId } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { db } from "@/lib/db";
-import { companies, tenders, matchingResults } from "@/lib/db/schema/app";
+import { companies, tenders, matchingResults, demoMatchingResults } from "@/lib/db/schema/app";
 import { eq, inArray, sql } from "drizzle-orm";
 
 /** Reasoning effort for GPT-5 models: lower = faster, fewer reasoning tokens. */
@@ -73,6 +73,16 @@ export async function scoreTenderMatch(
     throw new Error("Failed to fetch company: Company not found");
   }
 
+  // DEBUG: Company data summary
+  console.log("\n[DEBUG] Company data for", companyData.companyName);
+  console.log("  description:", companyData.description ? `${companyData.description.trim().length} chars` : "MISSING");
+  console.log("  keyCapabilities:", companyData.keyCapabilities ? `${companyData.keyCapabilities.trim().length} chars` : "MISSING");
+  console.log("  aiCapabilityTaxonomy:", Array.isArray(companyData.aiCapabilityTaxonomy) ? `${(companyData.aiCapabilityTaxonomy as string[]).length} items` : "MISSING");
+  console.log("  certifications:", companyData.certifications ? `${companyData.certifications.trim().length} chars` : "MISSING");
+  console.log("  pastProjects:", companyData.pastProjects ? `${companyData.pastProjects.trim().length} chars` : "MISSING");
+  console.log("  postcode:", companyData.postcode || "MISSING");
+  console.log("  aiSummary:", companyData.aiSummary ? `${String(companyData.aiSummary).length} chars` : "MISSING");
+
   // Fetch tender data with AI-generated summary and taxonomy
   const tenderRows = await db
     .select({
@@ -96,6 +106,14 @@ export async function scoreTenderMatch(
   if (!tenderData) {
     throw new Error("Failed to fetch tender: Tender not found");
   }
+
+  // DEBUG: Tender data summary
+  console.log("[DEBUG] Tender data for", tenderData.title);
+  console.log("  description:", tenderData.description ? `${tenderData.description.length} chars` : "MISSING");
+  console.log("  buyer:", tenderData.buyer || "MISSING");
+  console.log("  location:", tenderData.location || "MISSING");
+  console.log("  cpvCodes:", tenderData.cpvCodes?.length ?? 0, "codes");
+  console.log("  budget:", tenderData.budgetMin, "-", tenderData.budgetMax);
 
   // Format budget range
   const budgetRange =
@@ -133,6 +151,9 @@ export async function scoreTenderMatch(
   ].filter(Boolean).length;
   const _isMinimalData = dataPoints < 3;
   void _isMinimalData;
+
+  // DEBUG: Data completeness flags
+  console.log("[DEBUG] Data completeness:", { hasCapabilities, hasExperience, hasCertifications, hasLocation, hasDescription, dataPoints });
 
   const systemPrompt = `You are an expert at evaluating company-tender matches.
 
@@ -172,6 +193,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   // Log the prompt for debugging
   console.log("\n" + "=".repeat(80));
   console.log(`Matching: ${companyData.companyName} → ${tenderData.title}`);
+  console.log("[DEBUG] User prompt (first 500 chars):", userPrompt.slice(0, 500));
 
   // Call LLM with rate limiting via aiGenerateObject (rate limiter is built in)
   let score: MatchingScore;
@@ -186,7 +208,15 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       estTokens: 4000,
     });
 
-    console.log(`Got AI response for matching`);
+    // DEBUG: Raw AI response scores
+    console.log("[DEBUG] Raw AI scores:", {
+      capability: parsed.capabilityScore,
+      experience: parsed.experienceScore,
+      certification: parsed.certificationScore,
+      location: parsed.locationScore,
+      aiAnalysis: parsed.aiAnalysis?.slice(0, 200),
+      matchReasons: parsed.matchReasons,
+    });
 
     // Get scores from AI (no overallScore from AI - we calculate it)
     let capabilityScore = Math.max(
@@ -205,18 +235,22 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
 
     // Enforce rules based on data completeness - mark 0 if data is missing
     if (!hasCapabilities) {
+      console.log("[DEBUG] Override: capabilityScore forced to 0 (no capabilities data)");
       capabilityScore = 0;
     }
 
     if (!hasExperience) {
+      console.log("[DEBUG] Override: experienceScore forced to 0 (no experience data)");
       experienceScore = 0;
     }
 
     if (!hasCertifications) {
+      console.log("[DEBUG] Override: certificationScore forced to 0 (no certifications data)");
       certificationScore = 0;
     }
 
     if (!hasLocation) {
+      console.log("[DEBUG] Override: locationScore forced to 0 (no location data)");
       locationScore = 0;
     }
 
@@ -230,7 +264,12 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       overallScore = Math.round(
         certificationScore * 0.5 + experienceScore * 0.4 + locationScore * 0.1,
       );
+    } else {
+      console.log(`[DEBUG] Override: overallScore forced to 0 (capabilityScore ${capabilityScore} < 50)`);
     }
+
+    // DEBUG: Final computed scores
+    console.log("[DEBUG] Final scores:", { overallScore, capabilityScore, experienceScore, certificationScore, locationScore });
 
     const scoreExplanations = parsed.scoreExplanations || {
       capability: "",
@@ -320,11 +359,20 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   const modelUsed = model ?? "platform-default";
 
   if (isDemo) {
-    // demo_matching_results is not in the Drizzle schema; use raw SQL
-    await db.execute(
-      sql`INSERT INTO demo_matching_results (batch_label, company_id, tender_id, model_used, overall_score, capability_score, experience_score, location_score, certification_score, match_reasons, improvement_suggestions, ai_analysis)
-          VALUES (${batchLabel}, ${companyId}::uuid, ${tenderId}::uuid, ${modelUsed}, ${score.overallScore}, ${score.capabilityScore}, ${score.experienceScore}, ${score.locationScore}, ${score.certificationScore}, ${score.matchReasons}::text[], ${score.improvementSuggestions}::text[], ${JSON.stringify(aiAnalysisPayload)}::jsonb)`,
-    );
+    await db.insert(demoMatchingResults).values({
+      batchLabel: batchLabel!,
+      companyId,
+      tenderId,
+      modelUsed,
+      overallScore: score.overallScore,
+      capabilityScore: score.capabilityScore,
+      experienceScore: score.experienceScore,
+      locationScore: score.locationScore,
+      certificationScore: score.certificationScore,
+      matchReasons: score.matchReasons,
+      improvementSuggestions: score.improvementSuggestions,
+      aiAnalysis: aiAnalysisPayload,
+    });
   } else {
     await db
       .insert(matchingResults)

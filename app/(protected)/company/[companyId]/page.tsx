@@ -49,6 +49,8 @@ import {
 import { toast } from "sonner";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import { CompanyCapabilitySelector } from "@/components/company/CompanyCapabilitySelector";
+import { CompanyMarketSelector } from "@/components/company/CompanyMarketSelector";
+import { CompanyStandardsSelector } from "@/components/company/CompanyStandardsSelector";
 import { OperationLocationsEditor } from "@/components/company/OperationLocationsEditor";
 import { suggestLocationsFromCompanyLocation } from "@/lib/locationData";
 import { TenderMatching } from "@/components/tenders/TenderMatching";
@@ -758,9 +760,7 @@ export default function CompanyDetailPage() {
             )}
 
             {/* Business Insights */}
-            {(companyData.market_position ||
-              companyData.safety_rating ||
-              companyData.digital_maturity) && (
+            {companyData.digital_maturity && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -769,34 +769,14 @@ export default function CompanyDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {companyData.market_position && (
-                    <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                      <span className="text-sm font-medium">
-                        Market Position
-                      </span>
-                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                        {companyData.market_position}
-                      </Badge>
-                    </div>
-                  )}
-                  {companyData.safety_rating && (
-                    <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                      <span className="text-sm font-medium">Safety Rating</span>
-                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                        {companyData.safety_rating}
-                      </Badge>
-                    </div>
-                  )}
-                  {companyData.digital_maturity && (
-                    <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                      <span className="text-sm font-medium">
-                        Digital Maturity
-                      </span>
-                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                        {companyData.digital_maturity}
-                      </Badge>
-                    </div>
-                  )}
+                  <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                    <span className="text-sm font-medium">
+                      Digital Maturity
+                    </span>
+                    <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
+                      {companyData.digital_maturity}
+                    </Badge>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -806,19 +786,24 @@ export default function CompanyDetailPage() {
         {/* Capabilities Tab */}
         <TabsContent value="capabilities">
           <div className="space-y-6">
-            {/* Capability Selector */}
+            {/* Competency */}
             <CompanyCapabilitySelector
               companyId={companyId}
               onUpdate={() => {
-                // Refresh capabilities when updated
                 api.getCompany(companyId).then((data) => {
                   setCompanyCapabilities(data.capabilities);
                 });
               }}
             />
 
+            {/* Market */}
+            <CompanyMarketSelector companyId={companyId} />
+
+            {/* Standards & Certifications */}
+            <CompanyStandardsSelector companyId={companyId} />
+
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Certifications */}
+              {/* Other certifications (free-text) */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Backfill latitude/longitude for companies that have a postcode or address
- * but no coordinates yet. Uses Google Maps Geocoding API.
+ * One-time smart backfill: latitude/longitude for all companies that have
+ * a postcode or address but no coordinates yet. Uses Google Maps Geocoding API.
+ * After running once, coordinates are only set when a company address changes
+ * (PUT /api/companies/[id]) or a new company is created (create-or-join / onboarding).
  *
  * Usage:
  *   node scripts/backfill-company-coordinates.mjs

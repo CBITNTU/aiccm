@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
         .from("companies")
         .select(
           `id, company_name, description, key_capabilities, postcode,
-           certifications, equipment, past_projects, is_system_company,
-           status, market_position, safety_rating, digital_maturity,
+           certifications, past_projects, is_system_company,
+           status, digital_maturity,
            ai_competencies, ai_capabilities, ai_analysis,
            latitude, longitude,
            created_at, updated_at, user_id`,
@@ -118,9 +118,11 @@ export async function GET(request: NextRequest) {
       totalPages = Math.ceil(totalCount / limit);
     }
 
-    // Fetch taxonomies for returned companies
+    // Fetch taxonomies, markets, and standards for returned companies
     const companyIds = companies.map((c) => c.id as string);
-    let taxonomiesByCompany: Record<string, { id: string; name: string }[]> = {};
+    const taxonomiesByCompany: Record<string, { id: string; name: string }[]> = {};
+    const marketsByCompany: Record<string, { id: string; name: string }[]> = {};
+    const standardsByCompany: Record<string, { id: string; name: string }[]> = {};
 
     if (companyIds.length > 0) {
       const { data: taxData } = await supabase
@@ -129,7 +131,6 @@ export async function GET(request: NextRequest) {
         .in("company_id", companyIds);
 
       if (taxData) {
-        taxonomiesByCompany = {};
         for (const ct of taxData) {
           const taxonomy = ct.taxonomies as { id: string; name: string } | null;
           if (!taxonomy?.name) continue;
@@ -142,11 +143,45 @@ export async function GET(request: NextRequest) {
           });
         }
       }
+
+      const { data: marketsData } = await supabase
+        .from("company_markets")
+        .select("company_id, markets(id, name)")
+        .in("company_id", companyIds);
+
+      if (marketsData) {
+        for (const cm of marketsData) {
+          const market = cm.markets as { id: string; name: string } | null;
+          if (!market?.name) continue;
+          if (!marketsByCompany[cm.company_id]) {
+            marketsByCompany[cm.company_id] = [];
+          }
+          marketsByCompany[cm.company_id].push({ id: market.id, name: market.name });
+        }
+      }
+
+      const { data: standardsData } = await supabase
+        .from("company_standards")
+        .select("company_id, standards_ref(id, name)")
+        .in("company_id", companyIds);
+
+      if (standardsData) {
+        for (const cs of standardsData) {
+          const standard = cs.standards_ref as { id: string; name: string } | null;
+          if (!standard?.name) continue;
+          if (!standardsByCompany[cs.company_id]) {
+            standardsByCompany[cs.company_id] = [];
+          }
+          standardsByCompany[cs.company_id].push({ id: standard.id, name: standard.name });
+        }
+      }
     }
 
     return apiResponse({
       companies,
       taxonomiesByCompany,
+      marketsByCompany,
+      standardsByCompany,
       ...(hasLocation && { distanceByCompany }),
       totalCount,
       page,

@@ -25,6 +25,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "@/lib/api/client";
 
 interface CompanySearchResult {
   id: string;
@@ -39,16 +40,21 @@ interface CreateJoinCompanyFormProps {
     companyId?: string;
     companyName: string;
   }) => void;
+  /** When set, switch to Join tab and pre-select this company (e.g. from directory ?join=id). */
+  preselectedCompanyId?: string;
 }
 
 export function CreateJoinCompanyForm({
   userEmail,
   onSuccess,
+  preselectedCompanyId,
 }: CreateJoinCompanyFormProps) {
   const _router = useRouter();
   void _router;
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"create" | "join">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "join">(
+    preselectedCompanyId ? "join" : "create",
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -137,6 +143,33 @@ export function CreateJoinCompanyForm({
     activeTab,
     searchCompanies,
   ]);
+
+  // Pre-select company when arriving from directory "Join this company" (e.g. ?join=companyId)
+  useEffect(() => {
+    if (!preselectedCompanyId || joinForm.selectedCompany?.id === preselectedCompanyId)
+      return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.getDirectoryCompany(preselectedCompanyId);
+        const c = data?.company;
+        if (cancelled || !c?.id) return;
+        setJoinForm((prev) => ({
+          ...prev,
+          selectedCompany: {
+            id: c.id as string,
+            company_name: (c.company_name as string) ?? "",
+            has_admin: false,
+          },
+        }));
+      } catch {
+        // Ignore: user can still search manually
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [preselectedCompanyId]); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally only preselectedCompanyId; joinForm.selectedCompany is set inside effect
 
   const handleSelectCompany = (company: CompanySearchResult) => {
     setJoinForm({

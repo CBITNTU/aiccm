@@ -388,12 +388,61 @@ export const api = {
       body: { capabilityIds },
     }),
 
+  getMarkets: () =>
+    apiCall<{
+      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+    }>("markets", { method: "GET" }),
+
+  getStandards: () =>
+    apiCall<{
+      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+    }>("standards", { method: "GET" }),
+
+  getCompanyMarkets: (companyId: string) =>
+    apiCall<{
+      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+    }>(`companies/${companyId}/markets`, { method: "GET" }),
+
+  syncMarkets: (companyId: string, marketIds: string[]) =>
+    apiCall<{
+      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+    }>(`companies/${companyId}/markets`, {
+      method: "PUT",
+      body: { marketIds },
+    }),
+
+  getCompanyStandards: (companyId: string) =>
+    apiCall<{
+      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+    }>(`companies/${companyId}/standards`, { method: "GET" }),
+
+  syncStandards: (companyId: string, standardIds: string[]) =>
+    apiCall<{
+      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+    }>(`companies/${companyId}/standards`, {
+      method: "PUT",
+      body: { standardIds },
+    }),
+
   // Directory - single company
   getDirectoryCompany: (companyId: string) =>
     apiCall<{
       company: Record<string, unknown>;
       isOwner: boolean;
       taxonomies: { id: string; name: string }[];
+      capabilities: { id: string; name: string; category: string | null }[];
+      markets: {
+        id: string;
+        name: string;
+        parent_id: string | null;
+        parent_name: string | null;
+      }[];
+      standards: {
+        id: string;
+        name: string;
+        parent_id: string | null;
+        parent_name: string | null;
+      }[];
     }>(`directory/${companyId}`, { method: "GET" }),
 
   // Directory
@@ -409,6 +458,8 @@ export const api = {
     apiCall<{
       companies: Record<string, unknown>[];
       taxonomiesByCompany: Record<string, { id: string; name: string }[]>;
+      marketsByCompany: Record<string, { id: string; name: string }[]>;
+      standardsByCompany: Record<string, { id: string; name: string }[]>;
       distanceByCompany?: Record<string, number>;
       totalCount: number;
       page: number;

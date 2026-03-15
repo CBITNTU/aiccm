@@ -13,7 +13,7 @@ import { Calendar, Globe, Building2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api/client";
 import { useAdminTenderSyncOptional } from "@/components/admin/AdminTenderSyncContext";
 
-type TenderSource = "find-tender" | "ted" | "contracts-finder";
+type TenderSource = "find-tender" | "ted";
 
 export function AdminTenderImport() {
   const { isSyncInProgress } = useAdminTenderSyncOptional();
@@ -178,8 +178,6 @@ export function AdminTenderImport() {
       await handleFindTenderImport();
     } else if (source === "ted") {
       await handleTEDImport();
-    } else if (source === "contracts-finder") {
-      toast.info("Contracts Finder import coming soon!");
     }
   };
 
@@ -336,7 +334,7 @@ export function AdminTenderImport() {
           value={source}
           onValueChange={(v) => setSource(v as TenderSource)}
         >
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger
               value="find-tender"
               className="flex items-center gap-2"
@@ -347,14 +345,6 @@ export function AdminTenderImport() {
             <TabsTrigger value="ted" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               TED (EU)
-            </TabsTrigger>
-            <TabsTrigger
-              value="contracts-finder"
-              className="flex items-center gap-2"
-              disabled
-            >
-              <Globe className="w-4 h-4" />
-              Contracts Finder
             </TabsTrigger>
           </TabsList>
 
@@ -495,19 +485,6 @@ export function AdminTenderImport() {
             </div>
           </TabsContent>
 
-          <TabsContent value="contracts-finder" className="space-y-4 mt-4">
-            <div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Import tenders from Contracts Finder (UK government contracts
-                database).
-              </p>
-              <Alert>
-                <AlertDescription>
-                  Contracts Finder import is coming soon.
-                </AlertDescription>
-              </Alert>
-            </div>
-          </TabsContent>
         </Tabs>
 
         {isImporting && (
@@ -515,12 +492,8 @@ export function AdminTenderImport() {
             <Progress value={progress} className="w-full" />
             <p className="text-sm text-center">
               Importing from{" "}
-              {source === "find-tender"
-                ? "Find a Tender"
-                : source === "ted"
-                  ? "TED"
-                  : "Contracts Finder"}
-              ... {Math.round(progress)}% complete ({importedCount} imported,{" "}
+              {source === "find-tender" ? "Find a Tender" : "TED"}...{" "}
+              {Math.round(progress)}% complete ({importedCount} imported,{" "}
               {duplicatesSkipped} skipped)
             </p>
           </div>

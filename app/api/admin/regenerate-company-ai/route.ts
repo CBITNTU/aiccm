@@ -107,108 +107,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // RESET CAPABILITIES LIST: Delete all capabilities NOT in base categories
-    // This happens FIRST before queuing jobs, so the list resets immediately
-    // Using VERY BROAD, SIMPLE categories only - keep it minimal!
-    console.log("🔄 Resetting capabilities list to base categories only...");
-    const baseCategories = [
-      "Construction",
-      "Services",
-      "ICT Process",
-      "Design",
-      "Manufacturing",
-      "Engineering",
-      "Healthcare",
-      "Education",
-      "Logistics",
-      "Energy",
-    ];
-
-    // Delete all capabilities NOT in base categories
-    // First get all capabilities, then delete ones not in base categories
-    console.log(
-      "📋 Fetching all capabilities to check what needs to be deleted...",
-    );
-    const { data: allCaps, error: fetchError } = await adminSupabase
-      .from("company_capabilities_ref" as any)
-      .select("id, name, category")
-      .order("category")
-      .order("name");
-
-    if (fetchError) {
-      console.error("⚠️ Failed to fetch capabilities for reset:", fetchError);
-      // Continue anyway
-    } else if (allCaps && Array.isArray(allCaps)) {
-      console.log(`📊 Found ${allCaps.length} total capabilities in database`);
-
-      // Log all categories found
-      const allCategories = Array.from(
-        new Set(allCaps.map((cap: any) => cap.category)),
-      );
-      console.log(
-        `📂 Categories found (${allCategories.length}):`,
-        allCategories,
-      );
-
-      const capsToDelete = allCaps
-        .filter((cap: any) => !baseCategories.includes(cap.category))
-        .map((cap: any) => ({
-          id: cap.id,
-          name: cap.name,
-          category: cap.category,
-        }));
-
-      console.log(`🗑️ Capabilities to delete: ${capsToDelete.length}`);
-      if (capsToDelete.length > 0) {
-        console.log(
-          "🗑️ Deleting capabilities:",
-          capsToDelete.map((c) => `${c.name} (${c.category})`).slice(0, 10),
-        );
-        if (capsToDelete.length > 10) {
-          console.log(`   ... and ${capsToDelete.length - 10} more`);
-        }
-
-        const idsToDelete = capsToDelete.map((c) => c.id);
-        const { error: deleteCapsError, count } = await adminSupabase
-          .from("company_capabilities_ref" as any)
-          .delete()
-          .in("id", idsToDelete);
-
-        if (deleteCapsError) {
-          console.error("⚠️ Failed to reset capabilities:", deleteCapsError);
-          // Don't fail - continue with regeneration
-        } else {
-          console.log(
-            `✅ Reset capabilities list: deleted ${count || capsToDelete.length} custom capabilities`,
-          );
-
-          // Verify deletion by fetching again
-          const { data: remainingCaps } = await adminSupabase
-            .from("company_capabilities_ref" as any)
-            .select("id, name, category")
-            .order("category");
-
-          if (remainingCaps) {
-            const remainingCategories = Array.from(
-              new Set(remainingCaps.map((cap: any) => cap.category)),
-            );
-            console.log(
-              `✅ After reset: ${remainingCaps.length} capabilities remaining`,
-            );
-            console.log(
-              `✅ Remaining categories (${remainingCategories.length}):`,
-              remainingCategories,
-            );
-          }
-        }
-      } else {
-        console.log(
-          "✅ No custom capabilities to delete - all are in base categories",
-        );
-      }
-    } else {
-      console.log("⚠️ No capabilities found or invalid data structure");
-    }
+    // Do NOT reset/delete capabilities here. The taxonomy is the CSV seed (competency_taxonomy_seed).
+    // Use Admin "Reset List" to restore from seed; this action only regenerates company AI (summary + taxonomy assignment).
 
     // If no company IDs provided, get all companies (with pagination to handle 5000+ companies)
     let companiesToProcess: string[] = [];
@@ -283,9 +183,9 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        batchSize: 50, // Increased batch size for faster processing
+        batchSize: 30,
         continuous: true,
-        concurrency: 15, // Process 15 jobs in parallel (higher concurrency)
+        concurrency: 5, // Lower concurrency to avoid rate limits and "no response" from the model
       }),
     })
       .then((res) => {

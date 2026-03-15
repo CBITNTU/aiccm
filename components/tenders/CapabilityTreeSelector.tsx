@@ -24,11 +24,97 @@ interface Capability {
   id: string;
   name: string;
   category: string | null;
+  parent_id?: string | null;
 }
 
-interface CapabilityGroup {
-  category: string | null;
-  capabilities: Capability[];
+interface TreeNode {
+  id: string;
+  name: string;
+  children: TreeNode[];
+}
+
+function TreeLevel({
+  node,
+  depth,
+  selectedCapabilities,
+  expandedTreeIds,
+  onToggleExpand,
+  onCapabilityToggle,
+  isCapabilitySelected,
+}: {
+  node: TreeNode;
+  depth: number;
+  selectedCapabilities: string[];
+  expandedTreeIds: Set<string>;
+  onToggleExpand: (id: string) => void;
+  onCapabilityToggle: (id: string, checked: boolean) => void;
+  isCapabilitySelected: (id: string) => boolean;
+}) {
+  const hasChildren = node.children.length > 0;
+  const isExpanded = expandedTreeIds.has(node.id);
+
+  return (
+    <div className="select-none">
+      <div
+        className="flex items-center gap-2 py-2 px-2 rounded-md hover:bg-muted/50"
+        style={{ paddingLeft: depth * 16 + 8 }}
+      >
+        <button
+          type="button"
+          onClick={() => hasChildren && onToggleExpand(node.id)}
+          className="p-0.5 hover:bg-muted rounded"
+        >
+          {hasChildren ? (
+            isExpanded ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )
+          ) : (
+            <div className="w-4 h-4" />
+          )}
+        </button>
+        <div className="flex items-center gap-2 flex-1">
+          {hasChildren ? (
+            isExpanded ? (
+              <FolderOpen className="w-4 h-4 text-primary" />
+            ) : (
+              <Folder className="w-4 h-4 text-muted-foreground" />
+            )
+          ) : (
+            <div className="w-4 h-4" />
+          )}
+          <Checkbox
+            checked={isCapabilitySelected(node.id)}
+            onCheckedChange={(c) => onCapabilityToggle(node.id, c === true)}
+            id={`capability-${node.id}`}
+          />
+          <label
+            htmlFor={`capability-${node.id}`}
+            className="flex-1 cursor-pointer text-sm"
+          >
+            {node.name}
+          </label>
+        </div>
+      </div>
+      {hasChildren && isExpanded && (
+        <div className="space-y-0">
+          {node.children.map((child) => (
+            <TreeLevel
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              selectedCapabilities={selectedCapabilities}
+              expandedTreeIds={expandedTreeIds}
+              onToggleExpand={onToggleExpand}
+              onCapabilityToggle={onCapabilityToggle}
+              isCapabilitySelected={isCapabilitySelected}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function CapabilityTreeSelector({
@@ -39,6 +125,9 @@ export function CapabilityTreeSelector({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [expandedTreeIds, setExpandedTreeIds] = useState<Set<string>>(
     new Set(),
   );
 
@@ -65,20 +154,44 @@ export function CapabilityTreeSelector({
     fetchCapabilities();
   }, []);
 
-  // Group capabilities by category
-  const groupedCapabilities = useMemo(() => {
-    const groups = new Map<string | null, Capability[]>();
+  // Build tree from parent_id when present; otherwise group by category
+  const hasParentId = useMemo(
+    () => capabilities.some((c) => c.parent_id != null && c.parent_id !== ""),
+    [capabilities],
+  );
 
+  const tree = useMemo((): TreeNode[] => {
+    if (!hasParentId) return [];
+    const byId = new Map<string, TreeNode>();
+    capabilities.forEach((c) =>
+      byId.set(c.id, { id: c.id, name: c.name, children: [] }),
+    );
+    const roots: TreeNode[] = [];
+    capabilities.forEach((c) => {
+      const node = byId.get(c.id)!;
+      const parentId = c.parent_id ?? null;
+      if (!parentId || !byId.has(parentId)) {
+        roots.push(node);
+      } else {
+        byId.get(parentId)!.children.push(node);
+      }
+    });
+    roots.sort((a, b) => a.name.localeCompare(b.name));
+    roots.forEach((r) =>
+      r.children.sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    return roots;
+  }, [capabilities, hasParentId]);
+
+  const groupedCapabilities = useMemo(() => {
+    if (hasParentId) return [];
+    const groups = new Map<string | null, Capability[]>();
     capabilities.forEach((cap) => {
       const category = cap.category || "Uncategorized";
-      if (!groups.has(category)) {
-        groups.set(category, []);
-      }
+      if (!groups.has(category)) groups.set(category, []);
       groups.get(category)!.push(cap);
     });
-
-    // Convert to array and sort
-    const result: CapabilityGroup[] = Array.from(groups.entries())
+    return Array.from(groups.entries())
       .map(([category, caps]) => ({
         category: category === "Uncategorized" ? null : category,
         capabilities: caps,
@@ -88,14 +201,28 @@ export function CapabilityTreeSelector({
         if (b.category === null) return -1;
         return (a.category || "").localeCompare(b.category || "");
       });
+  }, [capabilities, hasParentId]);
 
-    return result;
-  }, [capabilities]);
+  const filteredTree = useMemo(() => {
+    if (!hasParentId || !searchTerm.trim()) return tree;
+    const searchLower = searchTerm.toLowerCase();
+    const filterNodes = (nodes: TreeNode[]): TreeNode[] =>
+      nodes
+        .map((n) => ({
+          ...n,
+          children: filterNodes(n.children),
+        }))
+        .filter(
+          (n) =>
+            n.name.toLowerCase().includes(searchLower) ||
+            n.children.length > 0,
+        );
+    return filterNodes(tree);
+  }, [tree, hasParentId, searchTerm]);
 
-  // Filter capabilities based on search
   const filteredGroups = useMemo(() => {
+    if (hasParentId) return [];
     if (!searchTerm.trim()) return groupedCapabilities;
-
     const searchLower = searchTerm.toLowerCase();
     return groupedCapabilities
       .map((group) => {
@@ -108,7 +235,7 @@ export function CapabilityTreeSelector({
         return { ...group, capabilities: filtered };
       })
       .filter((group) => group.capabilities.length > 0);
-  }, [groupedCapabilities, searchTerm]);
+  }, [groupedCapabilities, hasParentId, searchTerm]);
 
   const toggleCategory = (category: string | null) => {
     const categoryKey = category || "Uncategorized";
@@ -140,6 +267,15 @@ export function CapabilityTreeSelector({
     return expandedCategories.has(categoryKey);
   };
 
+  const toggleTreeId = (id: string) => {
+    setExpandedTreeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -168,7 +304,26 @@ export function CapabilityTreeSelector({
 
       <Card>
         <CardContent className="p-4 max-h-[500px] overflow-y-auto">
-          {filteredGroups.length === 0 ? (
+          {hasParentId && filteredTree.length === 0 && !searchTerm ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No capabilities available.
+            </div>
+          ) : hasParentId && filteredTree.length > 0 ? (
+            <div className="space-y-1">
+              {filteredTree.map((node) => (
+                <TreeLevel
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  selectedCapabilities={selectedCapabilities}
+                  expandedTreeIds={expandedTreeIds}
+                  onToggleExpand={toggleTreeId}
+                  onCapabilityToggle={handleCapabilityToggle}
+                  isCapabilitySelected={isCapabilitySelected}
+                />
+              ))}
+            </div>
+          ) : filteredGroups.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchTerm
                 ? "No capabilities found matching your search."

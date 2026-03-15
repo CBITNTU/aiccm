@@ -49,6 +49,9 @@ export default function DirectoryCompanyPage({
           <CompanyDetailView
             company={data.company as unknown as Company}
             isOwner={data.isOwner}
+            capabilities={data.capabilities}
+            markets={data.markets}
+            standards={data.standards}
           />
         )}
       </main>

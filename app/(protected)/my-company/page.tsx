@@ -5,7 +5,6 @@ import { useOrg } from "@/hooks/useOrg";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Globe,
   Mail,
@@ -211,24 +210,6 @@ export default function MyCompanyPage() {
               )}
             </div>
 
-            {company.safety_rating && (
-              <>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Safety Rating</span>
-                  <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                    {company.safety_rating}
-                  </Badge>
-                </div>
-              </>
-            )}
-
-            {company.market_position && (
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Market Position</span>
-                <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">{company.market_position}</Badge>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -270,9 +251,7 @@ export default function MyCompanyPage() {
           )}
 
         {/* Capabilities Card */}
-        {(company.key_capabilities ||
-          company.certifications ||
-          company.equipment) && (
+        {(company.key_capabilities || company.certifications) && (
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Capabilities & Certifications</CardTitle>
@@ -295,16 +274,6 @@ export default function MyCompanyPage() {
                     {Array.isArray(company.certifications)
                       ? company.certifications.join(", ")
                       : company.certifications}
-                  </p>
-                </div>
-              )}
-              {company.equipment && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Equipment</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {Array.isArray(company.equipment)
-                      ? company.equipment.join(", ")
-                      : company.equipment}
                   </p>
                 </div>
               )}

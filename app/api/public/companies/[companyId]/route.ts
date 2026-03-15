@@ -22,8 +22,8 @@ export async function GET(
       .from("companies")
       .select(
         `id, company_name, description, key_capabilities, postcode,
-         certifications, equipment, past_projects, is_system_company,
-         status, market_position, safety_rating, digital_maturity,
+         certifications, past_projects, is_system_company,
+         status, digital_maturity,
          ai_competencies, ai_capabilities, ai_analysis,
          created_at, updated_at, website_url`,
       )

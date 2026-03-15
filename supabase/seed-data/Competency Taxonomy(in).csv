@@ -1,0 +1,1256 @@
+Level 1 - Domain,Level 2 - Capability Group,Level 3 - Specific Competency
+Aerospace & Space,Aerospace Engineering,Aerospace Systems Engineering
+Aerospace & Space,Aerospace Engineering,Airworthiness Support
+Aerospace & Space,Aerospace Engineering,Avionics Systems Integration
+Aerospace & Space,Aerospace Engineering,Flight Test Support
+Aerospace & Space,Aerospace Engineering,"Maintenance, Repair & Overhaul (MRO)"
+Aerospace & Space,Aerospace Engineering,Propulsion Systems Support
+Aerospace & Space,Aerospace Engineering,Structures Engineering Support
+Aerospace & Space,Aerospace Engineering,Thermal Analysis Support
+Aerospace & Space,Space Systems,Ground Segment Engineering
+Aerospace & Space,Space Systems,Mission Operations Support
+Aerospace & Space,Space Systems,Satellite Systems Engineering
+Aerospace & Space,Space Systems,Spacecraft Integration Support
+Aerospace & Space,Space Systems,"Telemetry, Tracking & Control (TT&C) Support"
+Aerospace & Space,Standards & Compliance,AS9100 Quality Management
+Aerospace & Space,Standards & Compliance,NADCAP Special Processes Support
+Aerospace & Space,Standards & Compliance,Part 21 Compliance Support
+Agriculture & Food Systems,Agriculture Operations,Agri-supply Logistics
+Agriculture & Food Systems,Agriculture Operations,Crop Advisory Services
+Agriculture & Food Systems,Agriculture Operations,Irrigation System Design
+Agriculture & Food Systems,Agriculture Operations,Livestock Health Management Support
+Agriculture & Food Systems,Agriculture Operations,Precision Agriculture Support
+Agriculture & Food Systems,Food Manufacturing,BRCGS Food Safety Compliance
+Agriculture & Food Systems,Food Manufacturing,Cold Storage Operations
+Agriculture & Food Systems,Food Manufacturing,Food Processing Operations
+Agriculture & Food Systems,Food Manufacturing,Food Safety Management (HACCP)
+Agriculture & Food Systems,Food Manufacturing,Packaging for Food Products
+Agriculture & Food Systems,Food Production Operations,Bakery Production Operations
+Agriculture & Food Systems,Food Production Operations,Beverage Brewing Operations
+Agriculture & Food Systems,Food Production Operations,Canning Operations
+Agriculture & Food Systems,Food Production Operations,Dairy Processing Operations
+Agriculture & Food Systems,Food Production Operations,Meat Processing Operations
+Agriculture & Food Systems,Food Production Operations,Ready Meal Production Operations
+Agriculture & Food Systems,Food Safety & Quality Operations,Allergen Management
+Agriculture & Food Systems,Food Safety & Quality Operations,Cold Chain Temperature Monitoring
+Agriculture & Food Systems,Food Safety & Quality Operations,Food Traceability Operations
+Agriculture & Food Systems,Food Safety & Quality Operations,Foreign Body Control Operations
+Agriculture & Food Systems,Food Safety & Quality Operations,Hygiene & Sanitation Operations
+Agriculture & Food Systems,Food Safety & Quality Operations,Shelf-life Testing Support
+Agriculture & Forestry,Field Crops,Cereals
+Agriculture & Forestry,Field Crops,Fruit
+Agriculture & Forestry,Field Crops,Root Crops
+Agriculture & Forestry,Forestry,
+Agriculture & Forestry,Livestock Production,
+Automotive,Aftermarket & Services,Fleet Maintenance Services
+Automotive,Aftermarket & Services,Telematics Installation
+Automotive,Aftermarket & Services,Warranty Claims Management Support
+Automotive,Manufacturing & Supply,APQP/PPAP Support
+Automotive,Manufacturing & Supply,Automotive Assembly Operations
+Automotive,Manufacturing & Supply,IATF 16949 Quality Management
+Automotive,Manufacturing & Supply,Injection Moulding (Automotive)
+Automotive,Manufacturing & Supply,Stamping Operations (Automotive)
+Automotive,Manufacturing & Supply,Supplier PPAP Submission Support
+Automotive,Vehicle Engineering,Automotive Cybersecurity (ISO/SAE 21434) Support
+Automotive,Vehicle Engineering,Battery Pack Assembly
+Automotive,Vehicle Engineering,Battery Pack Design Support
+Automotive,Vehicle Engineering,EV Powertrain Integration
+Automotive,Vehicle Engineering,Functional Safety (ISO 26262) Support
+Automotive,Vehicle Engineering,Powertrain Engineering Support
+Automotive,Vehicle Engineering,Vehicle Calibration Support
+Automotive,Vehicle Engineering,Vehicle Testing Support
+Aviation,Aircraft Maintenance Services,Aircraft Component Repair
+Aviation,Aircraft Maintenance Services,Engine Overhaul Services
+Aviation,Aircraft Maintenance Services,Heavy Maintenance (C-Check/D-Check)
+Aviation,Aircraft Maintenance Services,Line Maintenance Operations
+Aviation,Airline Operations,Airport Operations Support
+Aviation,Airline Operations,Aviation Safety Management Systems (SMS) Support
+Aviation,Airline Operations,Crew Scheduling Support
+Aviation,Airline Operations,Flight Operations Support
+Aviation,Airline Operations,Ground Operations Support
+Aviation,Airline Operations,Maintenance Planning Support
+Aviation,Airport Services,Airport Security Operations Support
+Aviation,Airport Services,Baggage Handling Systems Support
+Aviation,Airport Services,Passenger Processing Systems Support
+Business Processes,Administration,
+Business Processes,E-commerce,
+Business Processes,Financing,
+Business Processes,Planning,
+Business Processes,Project Management,
+Business Processes,Shop Floor Control,
+Chemicals & Materials,Chemical Manufacturing,Batch Chemical Production
+Chemicals & Materials,Chemical Manufacturing,Chemical Scale-up Support
+Chemicals & Materials,Chemical Manufacturing,Continuous Chemical Processing
+Chemicals & Materials,Chemical Manufacturing,Distillation Operations Support
+Chemicals & Materials,Chemical Manufacturing,Formulation Development
+Chemicals & Materials,Chemical Manufacturing,Polymer Processing
+Chemicals & Materials,Chemical Manufacturing,Process Control (Chemicals)
+Chemicals & Materials,Chemical Manufacturing,Reactor Operations Support
+Chemicals & Materials,Laboratory & QC,Analytical Chemistry Testing
+Chemicals & Materials,Laboratory & QC,Chromatography (HPLC/GC) Testing
+Chemicals & Materials,Laboratory & QC,Materials Characterisation
+Chemicals & Materials,Laboratory & QC,Quality Control Testing (Chemicals)
+Chemicals & Materials,Laboratory & QC,Stability Testing
+Chemicals & Materials,Materials Testing & Reliability,Accelerated Ageing Testing
+Chemicals & Materials,Materials Testing & Reliability,Corrosion Testing
+Chemicals & Materials,Materials Testing & Reliability,Failure Analysis (Materials)
+Chemicals & Materials,Materials Testing & Reliability,Mechanical Property Testing
+Chemicals & Materials,Materials Testing & Reliability,Metallography Sample Preparation
+Chemicals & Materials,Materials Testing & Reliability,Rheology Testing
+Chemicals & Materials,Materials Testing & Reliability,Thermal Analysis (DSC/TGA) Support
+Chemicals & Materials,Process Engineering & Operations,Batch Process Scale-up
+Chemicals & Materials,Process Engineering & Operations,Chemical Process Control Tuning
+Chemicals & Materials,Process Engineering & Operations,Continuous Process Optimisation
+Chemicals & Materials,Process Engineering & Operations,Distillation Column Optimisation
+Chemicals & Materials,Process Engineering & Operations,Drying Operations (Chemicals)
+Chemicals & Materials,Process Engineering & Operations,Filtration & Separation Operations
+Chemicals & Materials,Process Engineering & Operations,Powder Handling & Dust Control
+Chemicals & Materials,Process Engineering & Operations,Process Safety Management (Chemicals)
+Chemicals & Materials,Process Engineering & Operations,Reactor Kinetics Modelling Support
+Chemicals & Materials,Process Engineering & Operations,Solvent Recovery Operations
+Chemicals & Materials,Regulatory & Safety,CLP Classification & Labelling
+Chemicals & Materials,Regulatory & Safety,Chemical Hazard Assessment
+Chemicals & Materials,Regulatory & Safety,REACH Compliance Support
+Chemicals & Materials,Regulatory & Safety,Responsible Care Programme Support
+Chemicals & Materials,Regulatory & Safety,Safety Data Sheet (SDS) Authoring
+Chemicals & Materials,Specialty Chemicals & Formulation,Additive Masterbatch Formulation
+Chemicals & Materials,Specialty Chemicals & Formulation,Adhesives Formulation
+Chemicals & Materials,Specialty Chemicals & Formulation,Agrochemical Formulation
+Chemicals & Materials,Specialty Chemicals & Formulation,Coatings Formulation
+Chemicals & Materials,Specialty Chemicals & Formulation,Detergent Formulation
+Chemicals & Materials,Specialty Chemicals & Formulation,Dispersion Milling Operations
+Chemicals & Materials,Specialty Chemicals & Formulation,Emulsion Manufacturing
+Chemicals & Materials,Specialty Chemicals & Formulation,Ink Formulation
+Construction & Built Environment,Building Engineering,Building Automation System Integration
+Construction & Built Environment,Building Engineering,Concrete Pouring Operations
+Construction & Built Environment,Building Engineering,Curtain Wall Installation
+Construction & Built Environment,Building Engineering,Facade Installation
+Construction & Built Environment,Building Engineering,Fire Alarm System Commissioning
+Construction & Built Environment,Building Engineering,Structural Steel Installation
+Construction & Built Environment,Construction Delivery,BIM Modelling
+Construction & Built Environment,Construction Delivery,Commissioning & Handover
+Construction & Built Environment,Construction Delivery,Design & Build Delivery
+Construction & Built Environment,Construction Delivery,EPC Contracting
+Construction & Built Environment,Construction Delivery,General Contracting
+Construction & Built Environment,Construction Delivery,MEP Installation
+Construction & Built Environment,Construction Delivery,Quantity Surveying
+Construction & Built Environment,Construction Delivery,Site Management
+Construction & Built Environment,Finishing & Interiors,Drywall Installation
+Construction & Built Environment,Finishing & Interiors,Flooring Installation
+Construction & Built Environment,Finishing & Interiors,Joinery Installation
+Construction & Built Environment,Finishing & Interiors,Kitchen & Bathroom Installation
+Construction & Built Environment,Finishing & Interiors,Painting & Decorating
+Construction & Built Environment,Heavy Civil Works,Bridge Construction Execution
+Construction & Built Environment,Heavy Civil Works,Dam Construction Support
+Construction & Built Environment,Heavy Civil Works,Highway Paving Operations
+Construction & Built Environment,Heavy Civil Works,Rail Track Installation
+Construction & Built Environment,Heavy Civil Works,Tunnelling Operations
+Construction & Built Environment,Heavy Civil Works,Water Treatment Plant Construction
+Construction & Built Environment,Infrastructure Engineering,Bridges & Structures
+Construction & Built Environment,Infrastructure Engineering,Geotechnical Engineering Support
+Construction & Built Environment,Infrastructure Engineering,Rail Infrastructure
+Construction & Built Environment,Infrastructure Engineering,Road & Highway Works
+Construction & Built Environment,Infrastructure Engineering,Utilities Installation
+Construction & Built Environment,Infrastructure Engineering,Water & Wastewater Systems
+Construction & Built Environment,Mechanical & Electrical Trades,Data Cabling Installation
+Construction & Built Environment,Mechanical & Electrical Trades,Electrical Wiring Installation
+Construction & Built Environment,Mechanical & Electrical Trades,Fire Suppression System Installation
+Construction & Built Environment,Mechanical & Electrical Trades,HVAC Installation
+Construction & Built Environment,Mechanical & Electrical Trades,Plumbing Installation
+Construction & Built Environment,Mechanical & Electrical Trades,Solar Panel Installation (Building)
+Construction & Built Environment,Specialist Trades,Asbestos Surveying & Removal Support
+Construction & Built Environment,Specialist Trades,Building Envelope Installation
+Construction & Built Environment,Specialist Trades,Fire Protection Systems Installation
+Construction & Built Environment,Specialist Trades,Fit-out & Refurbishment
+Construction & Built Environment,Specialist Trades,Lift/Elevator Installation & Maintenance
+Construction & Built Environment,Specialist Trades,Roofing Services
+Defence & Security,Cyber & Information Operations,Digital Forensics Operations
+Defence & Security,Cyber & Information Operations,Identity Operations (Privileged Access)
+Defence & Security,Cyber & Information Operations,SOC Operations (Defence)
+Defence & Security,Cyber & Information Operations,Secure Configuration Hardening
+Defence & Security,Cyber & Information Operations,Secure Endpoint Management
+Defence & Security,Cyber & Information Operations,Security Log Correlation Engineering
+Defence & Security,Cyber & Information Operations,Threat Hunting Operations
+Defence & Security,Cyber & Information Operations,Vulnerability Remediation Programmes
+Defence & Security,Defence Engineering & Integration,Avionics Integration
+Defence & Security,Defence Engineering & Integration,C4ISR Integration
+Defence & Security,Defence Engineering & Integration,Electronic Warfare Support
+Defence & Security,Defence Engineering & Integration,Mission Systems Integration
+Defence & Security,Defence Engineering & Integration,Platform Modernisation
+Defence & Security,Defence Engineering & Integration,Systems Engineering (Defence)
+Defence & Security,Defence Engineering & Integration,Systems Integration (Air Systems)
+Defence & Security,Defence Engineering & Integration,Systems Integration (Land Systems)
+Defence & Security,Defence Engineering & Integration,Systems Integration (Munitions Support)
+Defence & Security,Defence Engineering & Integration,Systems Integration (Naval Systems)
+Defence & Security,Defence Engineering & Integration,Systems Integration (Space Systems)
+Defence & Security,Defence Engineering & Integration,Systems Integration (Unmanned Systems)
+Defence & Security,Defence Engineering & Integration,Test & Evaluation (Defence)
+Defence & Security,Defence Manufacturing,Ammunition Manufacturing Support
+Defence & Security,Defence Manufacturing,Armoured Vehicle Assembly Support
+Defence & Security,Defence Manufacturing,Military Aircraft Component Repair
+Defence & Security,Defence Manufacturing,Military Vehicle Retrofit Operations
+Defence & Security,Defence Manufacturing,Naval Vessel Maintenance Support
+Defence & Security,Defence Standards & Assurance,Configuration Management (Defence)
+Defence & Security,Defence Standards & Assurance,Defence Quality Assurance (DQA) Support
+Defence & Security,Defence Standards & Assurance,MIL-STD Compliance Support
+Defence & Security,Defence Standards & Assurance,NATO Standardisation (STANAG) Support
+Defence & Security,Defence Standards & Assurance,Security Risk Classification Support
+Defence & Security,Defence Supply & Compliance,Classified Information Handling
+Defence & Security,Defence Supply & Compliance,ITAR/EAR Compliance Support
+Defence & Security,Defence Supply & Compliance,Secure Supply Chain Assurance
+Defence & Security,Defence Supply & Compliance,Security Clearance Managed Staffing
+Defence & Security,Defence Supply & Compliance,UK MOD Contract Compliance
+Defence & Security,Operational Support Services,Base Operations Support
+Defence & Security,Operational Support Services,Field Engineering Support (Defence)
+Defence & Security,Operational Support Services,Logistics Support (Military)
+Defence & Security,Operational Support Services,Simulation & Training Systems Support
+Defence & Security,Platform Sustainment,Configuration Control Board Support
+Defence & Security,Platform Sustainment,Depot Maintenance Planning
+Defence & Security,Platform Sustainment,Maintenance Task Analysis Support
+Defence & Security,Platform Sustainment,Obsolescence Management
+Defence & Security,Platform Sustainment,Reliability Centred Maintenance (RCM) Support
+Defence & Security,Platform Sustainment,Spares Provisioning Operations
+Defence & Security,Platform Sustainment,Technical Publications Support (Defence)
+Defence & Security,Secure Communications,Cryptographic Key Management Support
+Defence & Security,Secure Communications,Secure Network Design (Defence)
+Defence & Security,Secure Communications,Secure Radio Integration Support
+Defence & Security,Security Services,Incident Response & Forensics
+Defence & Security,Security Services,Physical Security Operations
+Defence & Security,Security Services,Protective Monitoring
+Defence & Security,Security Services,SOC Operations
+Defence & Security,Security Services,Secure Facility Design Support
+Defence & Security,Security Services,Security Risk Assessment
+Design,CAD / CAM,
+Design,CAE/Simulation,
+Design,CNC Programming,
+Design,Design for EMC,
+Design,Electrical or Electronic Design,
+Design,Graphic Design,
+Design,Mechanical Design,
+Design,Programming,
+Design,Reverse Engineering,
+Design,Specification Development,
+Digital & Data,AI & Advanced Analytics,Computer Vision Model Deployment
+Digital & Data,AI & Advanced Analytics,Customer Churn Modelling
+Digital & Data,AI & Advanced Analytics,Fraud Detection Model Development
+Digital & Data,AI & Advanced Analytics,Predictive Maintenance Modelling
+Digital & Data,AI & Advanced Analytics,Recommendation Engine Development
+Digital & Data,Cloud & Infrastructure,Cloud Architecture Design
+Digital & Data,Cloud & Infrastructure,Cloud Migration
+Digital & Data,Cloud & Infrastructure,Containerisation (Kubernetes)
+Digital & Data,Cloud & Infrastructure,Disaster Recovery Implementation
+Digital & Data,Cloud & Infrastructure,Infrastructure as Code
+Digital & Data,Cloud & Infrastructure,Monitoring & Observability
+Digital & Data,Cloud & Infrastructure,Platform Engineering
+Digital & Data,Cybersecurity,Application Security Testing
+Digital & Data,Cybersecurity,Identity & Access Management
+Digital & Data,Cybersecurity,Network Security Engineering
+Digital & Data,Cybersecurity,Penetration Testing
+Digital & Data,Cybersecurity,Security Architecture
+Digital & Data,Cybersecurity,Security Awareness Training
+Digital & Data,Cybersecurity,Vulnerability Management
+Digital & Data,Data & AI,Analytics & BI Development
+Digital & Data,Data & AI,Computer Vision Development
+Digital & Data,Data & AI,Data Engineering (ETL/ELT)
+Digital & Data,Data & AI,Data Lake Architecture
+Digital & Data,Data & AI,Data Warehousing
+Digital & Data,Data & AI,LLM Application Development
+Digital & Data,Data & AI,MLOps Deployment
+Digital & Data,Data & AI,Machine Learning Model Development
+Digital & Data,Data & AI,Master Data Management
+Digital & Data,Data & AI,NLP Pipeline Development
+Digital & Data,Data Operations,Data Lineage Implementation
+Digital & Data,Data Operations,Data Pipeline Observability
+Digital & Data,Data Operations,Data Quality Monitoring Operations
+Digital & Data,Data Operations,Feature Store Operations
+Digital & Data,Data Operations,ML Model Monitoring (MLOps)
+Digital & Data,Data Operations,Metadata Management Operations
+Digital & Data,Enterprise Application Development,API Gateway Implementation
+Digital & Data,Enterprise Application Development,Cloud-native Application Development
+Digital & Data,Enterprise Application Development,Custom Enterprise Application Development
+Digital & Data,Enterprise Application Development,Data Integration Middleware Development
+Digital & Data,Enterprise Application Development,Microservices Architecture Development
+Digital & Data,Enterprise Platforms,CRM Implementation
+Digital & Data,Enterprise Platforms,Data Governance Framework Deployment
+Digital & Data,Enterprise Platforms,ERP Implementation
+Digital & Data,Enterprise Platforms,HRIS Implementation
+Digital & Data,Enterprise Platforms,Supply Chain Platform Integration
+Digital & Data,ICT Process,Application Development
+Digital & Data,ICT Process,Cabling Installation Service
+Digital & Data,ICT Process,Data Conversion
+Digital & Data,ICT Process,Data Warehousing
+Digital & Data,ICT Process,Database Applications
+Digital & Data,ICT Process,Disaster Recovery
+Digital & Data,ICT Process,ICT Consultancy
+Digital & Data,ICT Process,ICT Maintenance & Support
+Digital & Data,ICT Process,IP Surveillance - CCTV
+Digital & Data,ICT Process,IT Networks
+Digital & Data,ICT Process,Internet Services
+Digital & Data,ICT Process,Legacy Software Support
+Digital & Data,ICT Process,Mobile Media & Services
+Digital & Data,ICT Process,Multimedia Production
+Digital & Data,ICT Process,Search Engine Marketing
+Digital & Data,ICT Process,Software and System Design
+Digital & Data,ICT Process,System Integration
+Digital & Data,ICT Process,Telecoms Installation
+Digital & Data,ICT Process,Testing (ICT systems)
+Digital & Data,ICT Process,Unified Messaging
+Digital & Data,ICT Process,VoIP Network Installation
+Digital & Data,ICT Process,Web Based Applications
+Digital & Data,ICT Process,Web Hosting
+Digital & Data,ICT Process,Wireless Networking
+Digital & Data,IT Operations & Reliability,Capacity Management (ITIL)
+Digital & Data,IT Operations & Reliability,Change Management (ITIL)
+Digital & Data,IT Operations & Reliability,Incident Management (ITIL)
+Digital & Data,IT Operations & Reliability,Problem Management (ITIL)
+Digital & Data,IT Operations & Reliability,Release Management Operations
+Digital & Data,IT Operations & Reliability,SRE (Site Reliability Engineering) Operations
+Digital & Data,IT Operations & Reliability,Service Catalogue Management
+Digital & Data,Managed IT Services,Backup as a Service
+Digital & Data,Managed IT Services,Endpoint Detection & Response (EDR) Operations
+Digital & Data,Managed IT Services,Managed Cloud Services
+Digital & Data,Managed IT Services,Managed Network Services
+Digital & Data,Managed IT Services,Managed Security Services (MSSP)
+Digital & Data,Managed IT Services,Managed Service Desk
+Digital & Data,Managed IT Services,Patch Management Services
+Digital & Data,Software Engineering,API Development
+Digital & Data,Software Engineering,DevOps & CI/CD
+Digital & Data,Software Engineering,Enterprise Software Development
+Digital & Data,Software Engineering,Integration Engineering
+Digital & Data,Software Engineering,Legacy System Modernisation
+Digital & Data,Software Engineering,Mobile App Development
+Digital & Data,Software Engineering,Web Application Development
+Education,Education Delivery,Accreditation Support
+Education,Education Delivery,Assessment & Examination Services
+Education,Education Delivery,Curriculum Design
+Education,Education Delivery,Learning Management Systems (LMS) Administration
+Education,Education Delivery,Online Course Production
+Education,Education Delivery,Student Support Services
+Education,Higher Education Operations,Academic Timetabling Management
+Education,Higher Education Operations,Examination Invigilation Services
+Education,Higher Education Operations,Student Records Administration
+Education,Higher Education Operations,University Admissions Processing
+Education,Research Administration,Ethics Review Administration
+Education,Research Administration,Research Data Management
+Education,Research Administration,Research Grant Administration
+Education,School Operations,Safeguarding Administration (Schools)
+Education,School Operations,School Catering Operations
+Education,School Operations,School Timetabling Operations
+Education,School Operations,Special Educational Needs (SEN) Support Services
+Education,School Operations,Student Attendance Operations
+Education,Vocational & Technical Training,Apprenticeship Programme Delivery
+Education,Vocational & Technical Training,Certification Exam Delivery
+Education,Vocational & Technical Training,E-learning Content Development
+Education,Vocational & Technical Training,Workplace Skills Training
+Electrical & Electronics,Electrical & Electronics Assembly,
+Electrical & Electronics,Embedded Processor Programming & Design,
+Electrical & Electronics,FPGA Implementation,
+Electrical & Electronics,PCB Development,
+Electrical & Electronics,Soldering,
+Electrical & Electronics,Surface Mount Assembly,
+Electrical & Electronics,Wiring Harnesses,
+Electronics & Semiconductors,Electronics Manufacturing Services,Box Build Assembly
+Electronics & Semiconductors,Electronics Manufacturing Services,Cable Harness Assembly
+Electronics & Semiconductors,Electronics Manufacturing Services,Conformal Coating
+Electronics & Semiconductors,Electronics Manufacturing Services,Electronics Test (ICT/FCT)
+Electronics & Semiconductors,Electronics Manufacturing Services,PCB Assembly (High Mix)
+Electronics & Semiconductors,Electronics Manufacturing Services,PCB Assembly (High Volume)
+Electronics & Semiconductors,Electronics Manufacturing Services,SMT Line Programming
+Electronics & Semiconductors,Electronics Manufacturing Services,Through-hole Assembly
+Electronics & Semiconductors,IC Design & Verification,ASIC Design Support
+Electronics & Semiconductors,IC Design & Verification,DFT (Design for Test) Support
+Electronics & Semiconductors,IC Design & Verification,FPGA Design & Verification
+Electronics & Semiconductors,IC Design & Verification,Functional Verification
+Electronics & Semiconductors,IC Design & Verification,Physical Design Support
+Electronics & Semiconductors,IC Design & Verification,RTL Development
+Electronics & Semiconductors,IC Design & Verification,Timing Closure Support
+Electronics & Semiconductors,Packaging & Assembly,Die Attach Operations
+Electronics & Semiconductors,Packaging & Assembly,Encapsulation/Moulding (IC Packaging)
+Electronics & Semiconductors,Packaging & Assembly,Flip-Chip Assembly Support
+Electronics & Semiconductors,Packaging & Assembly,Package Substrate Assembly
+Electronics & Semiconductors,Packaging & Assembly,Thermal Interface Material Application
+Electronics & Semiconductors,Packaging & Assembly,Wafer Dicing Operations
+Electronics & Semiconductors,Packaging & Assembly,Wire Bonding Operations
+Electronics & Semiconductors,Packaging & Assembly,X-ray Inspection (Electronics)
+Electronics & Semiconductors,Semiconductor Manufacturing,CMP (Chemical Mechanical Planarisation) Support
+Electronics & Semiconductors,Semiconductor Manufacturing,Cleanroom Operations
+Electronics & Semiconductors,Semiconductor Manufacturing,Defect Analysis Support
+Electronics & Semiconductors,Semiconductor Manufacturing,Diffusion/Furnace Processing Support
+Electronics & Semiconductors,Semiconductor Manufacturing,Etch Process Support
+Electronics & Semiconductors,Semiconductor Manufacturing,Metrology & Inspection Support
+Electronics & Semiconductors,Semiconductor Manufacturing,Photolithography Support
+Electronics & Semiconductors,Semiconductor Manufacturing,Thin Film Deposition Support
+Electronics & Semiconductors,Semiconductor Manufacturing,Wafer Fabrication Support
+Electronics & Semiconductors,Semiconductor Manufacturing,Yield Improvement Support
+Electronics & Semiconductors,Semiconductor Yield & Quality,Burn-in Test Operations
+Electronics & Semiconductors,Semiconductor Yield & Quality,Final Test Operations
+Electronics & Semiconductors,Semiconductor Yield & Quality,Inline Metrology Data Analysis
+Electronics & Semiconductors,Semiconductor Yield & Quality,Reliability Qualification Testing
+Electronics & Semiconductors,Semiconductor Yield & Quality,Root Cause Analysis (Defects)
+Electronics & Semiconductors,Semiconductor Yield & Quality,SPC for Semiconductor Manufacturing
+Electronics & Semiconductors,Semiconductor Yield & Quality,Wafer Sort Test Operations
+Electronics & Semiconductors,Semiconductor Yield & Quality,Yield Learning Cycle Support
+Energy & Utilities,Energy Systems,Battery Energy Storage Systems
+Energy & Utilities,Energy Systems,Biomass & Biogas Operations
+Energy & Utilities,Energy Systems,EV Charging Infrastructure
+Energy & Utilities,Energy Systems,Grid Connection & Protection
+Energy & Utilities,Energy Systems,Hydro Power Systems
+Energy & Utilities,Energy Systems,Solar PV Installation
+Energy & Utilities,Energy Systems,Wind Farm O&M
+Energy & Utilities,Grid & Distribution Operations,DER Integration Support
+Energy & Utilities,Grid & Distribution Operations,Demand Response Programme Operations
+Energy & Utilities,Grid & Distribution Operations,Distribution Network Planning
+Energy & Utilities,Grid & Distribution Operations,Outage Management Operations
+Energy & Utilities,Grid & Distribution Operations,Power Quality Monitoring
+Energy & Utilities,Grid & Distribution Operations,Protection Relay Testing
+Energy & Utilities,Grid & Distribution Operations,Smart Meter Rollout Operations
+Energy & Utilities,Grid & Distribution Operations,Switchgear Maintenance
+Energy & Utilities,Hydrogen & Alternative Fuels,Fuel Cell Integration
+Energy & Utilities,Hydrogen & Alternative Fuels,Hydrogen Production (Electrolysers)
+Energy & Utilities,Hydrogen & Alternative Fuels,Hydrogen Refuelling Stations
+Energy & Utilities,Hydrogen & Alternative Fuels,Hydrogen Storage & Compression
+Energy & Utilities,Hydrogen & Alternative Fuels,SAF (Sustainable Aviation Fuel) Operations Support
+Energy & Utilities,Oil & Gas Field Services,Directional Drilling Support
+Energy & Utilities,Oil & Gas Field Services,Drilling Rig Operations Support
+Energy & Utilities,Oil & Gas Field Services,Offshore Platform Operations
+Energy & Utilities,Oil & Gas Field Services,Pipeline Inspection (Pigging)
+Energy & Utilities,Oil & Gas Field Services,Well Logging Operations
+Energy & Utilities,Power Generation Operations,Gas Turbine Operations
+Energy & Utilities,Power Generation Operations,Hydroelectric Plant Operations
+Energy & Utilities,Power Generation Operations,Nuclear Plant Operations Support
+Energy & Utilities,Power Generation Operations,Solar Farm Operations
+Energy & Utilities,Power Generation Operations,Steam Turbine Operations
+Energy & Utilities,Power Generation Operations,Wind Turbine Blade Maintenance
+Energy & Utilities,Renewable Energy Engineering,Battery Storage Installation
+Energy & Utilities,Renewable Energy Engineering,Hydrogen Electrolyser Installation
+Energy & Utilities,Renewable Energy Engineering,Solar PV System Design
+Energy & Utilities,Renewable Energy Engineering,Wind Turbine Installation
+Energy & Utilities,Utilities Management,District Heating Operations
+Energy & Utilities,Utilities Management,Grid Dispatch Operations
+Energy & Utilities,Utilities Management,Substation Maintenance Operations
+Energy & Utilities,Utilities Management,Wastewater Treatment Operations
+Energy & Utilities,Utilities Management,Water Treatment Operations
+Energy & Utilities,Water & Wastewater Operations,Chemical Dosing Optimisation (Water)
+Energy & Utilities,Water & Wastewater Operations,Leak Detection Operations
+Energy & Utilities,Water & Wastewater Operations,Membrane Filtration Operations
+Energy & Utilities,Water & Wastewater Operations,Pump Station Maintenance
+Energy & Utilities,Water & Wastewater Operations,SCADA Operations (Water)
+Energy & Utilities,Water & Wastewater Operations,Sludge Treatment Operations
+Energy & Utilities,Water & Wastewater Operations,UV Disinfection Operations
+Energy & Utilities,Water & Wastewater Operations,Water Network Pressure Management
+Environmental Services,Environmental Consulting,Air Quality Monitoring Support
+Environmental Services,Environmental Consulting,Contaminated Land Assessment
+Environmental Services,Environmental Consulting,Environmental Impact Assessment (EIA)
+Environmental Services,Environmental Consulting,Environmental Monitoring
+Environmental Services,Environmental Consulting,Noise Impact Assessment
+Environmental Services,Environmental Consulting,Water Quality Monitoring Support
+Environmental Services,Renewable Project Development,Carbon Offset Project Development
+Environmental Services,Renewable Project Development,Energy Efficiency Auditing
+Environmental Services,Renewable Project Development,Environmental Permitting Management
+Environmental Services,Renewable Project Development,Green Building Certification Support
+Environmental Services,Renewable Project Development,Sustainability Reporting Services
+Environmental Services,Waste & Resource Management,Hazardous Waste Management
+Environmental Services,Waste & Resource Management,Industrial Wastewater Treatment Operations
+Environmental Services,Waste & Resource Management,Materials Recovery Facility (MRF) Operations
+Environmental Services,Waste & Resource Management,Recycling Programme Management
+Environmental Services,Waste & Resource Management,Waste Collection Operations
+Eroding (EDM),CNC Eroding,
+Eroding (EDM),Spark Erosion,
+Eroding (EDM),Wire Erosion,
+Finance & Insurance,Asset & Wealth Management,Client Onboarding (Wealth)
+Finance & Insurance,Asset & Wealth Management,Discretionary Portfolio Management
+Finance & Insurance,Asset & Wealth Management,Fund Accounting Operations
+Finance & Insurance,Asset & Wealth Management,Investor Reporting Services
+Finance & Insurance,Asset & Wealth Management,NAV Calculation
+Finance & Insurance,Asset & Wealth Management,Performance Attribution Analysis
+Finance & Insurance,Asset & Wealth Management,Portfolio Rebalancing Operations
+Finance & Insurance,Asset & Wealth Management,Trust Administration
+Finance & Insurance,Banking Operations,Collections & Recoveries
+Finance & Insurance,Banking Operations,Corporate Banking Operations
+Finance & Insurance,Banking Operations,Credit Risk Assessment
+Finance & Insurance,Banking Operations,Customer Due Diligence (CDD)
+Finance & Insurance,Banking Operations,Enhanced Due Diligence (EDD)
+Finance & Insurance,Banking Operations,Fraud Detection Operations
+Finance & Insurance,Banking Operations,KYC/AML Operations
+Finance & Insurance,Banking Operations,Ongoing Monitoring
+Finance & Insurance,Banking Operations,PEP Screening
+Finance & Insurance,Banking Operations,Payments Processing
+Finance & Insurance,Banking Operations,Retail Banking Operations
+Finance & Insurance,Banking Operations,Sanctions Screening
+Finance & Insurance,Banking Operations,Suspicious Activity Reporting (SAR)
+Finance & Insurance,Banking Operations,Transaction Monitoring
+Finance & Insurance,Banking Operations,Treasury Operations
+Finance & Insurance,Capital Markets Operations,Bond Issuance Support
+Finance & Insurance,Capital Markets Operations,Clearing & Settlement Operations
+Finance & Insurance,Capital Markets Operations,Collateral Management Operations
+Finance & Insurance,Capital Markets Operations,Corporate Actions Processing
+Finance & Insurance,Capital Markets Operations,Equities Trade Processing
+Finance & Insurance,Capital Markets Operations,Fixed Income Trade Processing
+Finance & Insurance,Capital Markets Operations,IPO Support Services
+Finance & Insurance,Capital Markets Operations,Margin Call Processing
+Finance & Insurance,Capital Markets Operations,Prime Brokerage Operations
+Finance & Insurance,Capital Markets Operations,Securities Lending Operations
+Finance & Insurance,Credit & Lending,Credit Portfolio Monitoring
+Finance & Insurance,Credit & Lending,Credit Scoring Model Implementation
+Finance & Insurance,Credit & Lending,Debt Restructuring Support
+Finance & Insurance,Credit & Lending,Loan Origination Processing
+Finance & Insurance,Credit & Lending,Mortgage Underwriting Support
+Finance & Insurance,Credit & Lending,Syndicated Loan Administration
+Finance & Insurance,FinTech & RegTech,Core Banking Platform Implementation
+Finance & Insurance,FinTech & RegTech,Digital Identity & Verification
+Finance & Insurance,FinTech & RegTech,Open Banking API Integration
+Finance & Insurance,FinTech & RegTech,Payment Gateway Integration
+Finance & Insurance,FinTech & RegTech,Regulatory Reporting Automation
+Finance & Insurance,FinTech & RegTech,Transaction Monitoring Systems
+Finance & Insurance,Insurance Claims Operations,Claims Settlement Processing
+Finance & Insurance,Insurance Claims Operations,Fraud Investigation (Insurance)
+Finance & Insurance,Insurance Claims Operations,Health Claims Processing
+Finance & Insurance,Insurance Claims Operations,Loss Adjustment Coordination
+Finance & Insurance,Insurance Claims Operations,Motor Claims Processing
+Finance & Insurance,Insurance Claims Operations,Property Claims Processing
+Finance & Insurance,Insurance Operations,Actuarial Modelling Support
+Finance & Insurance,Insurance Operations,Claims Handling
+Finance & Insurance,Insurance Operations,Loss Adjusting
+Finance & Insurance,Insurance Operations,Policy Administration
+Finance & Insurance,Insurance Operations,Reinsurance Operations
+Finance & Insurance,Insurance Operations,Underwriting (Aviation)
+Finance & Insurance,Insurance Operations,Underwriting (Casualty)
+Finance & Insurance,Insurance Operations,Underwriting (Commercial)
+Finance & Insurance,Insurance Operations,Underwriting (Cyber)
+Finance & Insurance,Insurance Operations,Underwriting (Health)
+Finance & Insurance,Insurance Operations,Underwriting (Liability)
+Finance & Insurance,Insurance Operations,Underwriting (Marine)
+Finance & Insurance,Insurance Operations,Underwriting (Motor)
+Finance & Insurance,Insurance Operations,Underwriting (Personal Lines)
+Finance & Insurance,Insurance Operations,Underwriting (Property)
+Finance & Insurance,Investment & Capital Markets,Custody & Settlement
+Finance & Insurance,Investment & Capital Markets,Derivatives Operations
+Finance & Insurance,Investment & Capital Markets,ESG Reporting for Investments
+Finance & Insurance,Investment & Capital Markets,Execution & Trading Support
+Finance & Insurance,Investment & Capital Markets,Fund Administration
+Finance & Insurance,Investment & Capital Markets,Market Risk Modelling
+Finance & Insurance,Investment & Capital Markets,Portfolio Management
+Finance & Insurance,Payments & Cards,Card Acquiring Operations
+Finance & Insurance,Payments & Cards,Card Issuing Operations
+Finance & Insurance,Payments & Cards,Chargeback Management
+Finance & Insurance,Payments & Cards,Payment Reconciliation Operations
+Finance & Insurance,Payments & Cards,Real-time Payments Operations
+Finance & Insurance,Payments & Cards,SWIFT Payments Operations
+Finance & Insurance,Regulatory & Reporting,Basel III Reporting Support
+Finance & Insurance,Regulatory & Reporting,EMIR Reporting Support
+Finance & Insurance,Regulatory & Reporting,FCA Regulatory Reporting Support
+Finance & Insurance,Regulatory & Reporting,IFRS 9 Modelling Support
+Finance & Insurance,Regulatory & Reporting,MiFID II Transaction Reporting Support
+Finance & Insurance,Regulatory & Reporting,Solvency II Reporting Support
+Finance & Insurance,Risk & Compliance Operations,Credit Risk Modelling
+Finance & Insurance,Risk & Compliance Operations,Internal Controls Testing
+Finance & Insurance,Risk & Compliance Operations,Market Risk Monitoring
+Finance & Insurance,Risk & Compliance Operations,Operational Risk Assessment
+Finance & Insurance,Risk & Compliance Operations,Regulatory Audit Preparation
+Finance & Insurance,Risk & Compliance Operations,Stress Testing Execution
+Finance & Insurance,Treasury & Liquidity Management,ALM (Asset Liability Management) Support
+Finance & Insurance,Treasury & Liquidity Management,Cash Flow Management
+Finance & Insurance,Treasury & Liquidity Management,FX Hedging Operations
+Finance & Insurance,Treasury & Liquidity Management,Interbank Funding Operations
+Finance & Insurance,Treasury & Liquidity Management,Interest Rate Risk Management
+Finance & Insurance,Treasury & Liquidity Management,Liquidity Forecasting
+Government & Public Safety,Civic Technology,Case Management Systems (Public Sector)
+Government & Public Safety,Civic Technology,Citizen Portal Development
+Government & Public Safety,Civic Technology,Digital Identity Services
+Government & Public Safety,Civic Technology,Government Cloud Migration
+Government & Public Safety,Civic Technology,Open Data Platform Implementation
+Government & Public Safety,Emergency & Response Services,Ambulance Service Support
+Government & Public Safety,Emergency & Response Services,Disaster Recovery Coordination
+Government & Public Safety,Emergency & Response Services,Emergency Communications Centre Operations
+Government & Public Safety,Emergency & Response Services,Fire Service Support Operations
+Government & Public Safety,Municipal Services,Civic Infrastructure Maintenance
+Government & Public Safety,Municipal Services,Parking Management Services
+Government & Public Safety,Municipal Services,Public Transport Operations Management
+Government & Public Safety,Municipal Services,Urban Planning Support
+Government & Public Safety,Municipal Services,Waste Collection Operations (Municipal)
+Government & Public Safety,Public Safety Services,911/999 Call Handling Operations
+Government & Public Safety,Public Safety Services,Critical Infrastructure Protection Support
+Government & Public Safety,Public Safety Services,Emergency Management Support
+Government & Public Safety,Public Safety Services,Incident Command Support
+Government & Public Safety,Public Safety Services,Public Safety Dispatch Systems
+Healthcare & Life Sciences,Biopharmaceutical Manufacturing,Aseptic Filling Operations
+Healthcare & Life Sciences,Biopharmaceutical Manufacturing,Bioreactor Operation
+Healthcare & Life Sciences,Biopharmaceutical Manufacturing,Cell Culture Operations
+Healthcare & Life Sciences,Biopharmaceutical Manufacturing,Downstream Purification
+Healthcare & Life Sciences,Biopharmaceutical Manufacturing,Lyophilisation Operations
+Healthcare & Life Sciences,Biopharmaceutical Manufacturing,Upstream Bioprocessing
+Healthcare & Life Sciences,Clinical Services,Cardiology Service Support
+Healthcare & Life Sciences,Clinical Services,Community Healthcare Delivery
+Healthcare & Life Sciences,Clinical Services,Diagnostic Imaging Services
+Healthcare & Life Sciences,Clinical Services,Emergency Care Operations
+Healthcare & Life Sciences,Clinical Services,Hospital Operations Support
+Healthcare & Life Sciences,Clinical Services,Laboratory Services
+Healthcare & Life Sciences,Clinical Services,Mental Health Services Support
+Healthcare & Life Sciences,Clinical Services,Oncology Service Support
+Healthcare & Life Sciences,Clinical Services,Pathology Lab Operations
+Healthcare & Life Sciences,Clinical Services,Pharmacy Operations Support
+Healthcare & Life Sciences,Clinical Services,Primary Care Operations
+Healthcare & Life Sciences,Clinical Services,Radiology Operations
+Healthcare & Life Sciences,Clinical Services,Rehabilitation Services Support
+Healthcare & Life Sciences,Clinical Services,Surgical Services Support
+Healthcare & Life Sciences,Clinical Services,Telehealth Service Delivery
+Healthcare & Life Sciences,Clinical Trials & Research Operations,Adverse Event Processing
+Healthcare & Life Sciences,Clinical Trials & Research Operations,Clinical Data Query Management
+Healthcare & Life Sciences,Clinical Trials & Research Operations,Clinical Trial Supply Management
+Healthcare & Life Sciences,Clinical Trials & Research Operations,Medical Writing Support
+Healthcare & Life Sciences,Clinical Trials & Research Operations,Patient Recruitment Operations Support
+Healthcare & Life Sciences,Clinical Trials & Research Operations,Randomisation & Trial Supply Management (RTSM) Support
+Healthcare & Life Sciences,Clinical Trials & Research Operations,Site Feasibility & Start-up Support
+Healthcare & Life Sciences,Clinical Trials & Research Operations,Trial Master File (TMF) Management
+Healthcare & Life Sciences,Diagnostics & Imaging,Blood Bank Operations
+Healthcare & Life Sciences,Diagnostics & Imaging,CT Scan Operations Support
+Healthcare & Life Sciences,Diagnostics & Imaging,MRI Operations Support
+Healthcare & Life Sciences,Diagnostics & Imaging,Pathology Sample Processing
+Healthcare & Life Sciences,Diagnostics & Imaging,Radiology Reporting Support
+Healthcare & Life Sciences,Diagnostics & Imaging,Ultrasound Operations Support
+Healthcare & Life Sciences,Health Informatics & Data,AI for Diagnostics (Deployment)
+Healthcare & Life Sciences,Health Informatics & Data,AI for Diagnostics (Development)
+Healthcare & Life Sciences,Health Informatics & Data,Clinical Data Management
+Healthcare & Life Sciences,Health Informatics & Data,EHR Integration
+Healthcare & Life Sciences,Health Informatics & Data,HL7/FHIR Integration
+Healthcare & Life Sciences,Health Informatics & Data,Health Data Governance
+Healthcare & Life Sciences,Health Informatics & Data,Medical Coding Support
+Healthcare & Life Sciences,Hospital Operations,Bed Management Operations
+Healthcare & Life Sciences,Hospital Operations,Clinical Staffing Coordination
+Healthcare & Life Sciences,Hospital Operations,Medical Records Administration
+Healthcare & Life Sciences,Hospital Operations,Operating Theatre Scheduling
+Healthcare & Life Sciences,Hospital Operations,Patient Flow Optimisation
+Healthcare & Life Sciences,Hospital Operations,Pharmacy Dispensing Operations
+Healthcare & Life Sciences,Medical Devices & Diagnostics,Clinical Evaluation Support
+Healthcare & Life Sciences,Medical Devices & Diagnostics,Device Verification & Validation
+Healthcare & Life Sciences,Medical Devices & Diagnostics,Electronics for Medical Devices
+Healthcare & Life Sciences,Medical Devices & Diagnostics,ISO 13485 QMS
+Healthcare & Life Sciences,Medical Devices & Diagnostics,Medical Device Design Controls
+Healthcare & Life Sciences,Medical Devices & Diagnostics,Risk Management (ISO 14971)
+Healthcare & Life Sciences,Medical Devices & Diagnostics,Sterile Packaging Design
+Healthcare & Life Sciences,Medical Devices & Diagnostics,Usability Engineering (IEC 62366)
+Healthcare & Life Sciences,Medical Supply Chain,Clinical Equipment Maintenance
+Healthcare & Life Sciences,Medical Supply Chain,Cold Chain Management (Healthcare)
+Healthcare & Life Sciences,Medical Supply Chain,Medical Inventory Management
+Healthcare & Life Sciences,Medical Supply Chain,Surgical Instrument Sterilisation
+Healthcare & Life Sciences,Pharma & Biotech,Analytical Method Development
+Healthcare & Life Sciences,Pharma & Biotech,Batch Release Support
+Healthcare & Life Sciences,Pharma & Biotech,GMP Manufacturing
+Healthcare & Life Sciences,Pharma & Biotech,GxP Compliance
+Healthcare & Life Sciences,Pharma & Biotech,Process Development
+Healthcare & Life Sciences,Pharma & Biotech,Quality Control Testing
+Healthcare & Life Sciences,Pharma & Biotech,Tech Transfer
+Healthcare & Life Sciences,Pharma & Biotech,Validation (CSV/Process/Cleaning)
+Healthcare & Life Sciences,Pharma Manufacturing Operations,Aseptic Gowning & Behaviour Support
+Healthcare & Life Sciences,Pharma Manufacturing Operations,Batch Record Review
+Healthcare & Life Sciences,Pharma Manufacturing Operations,Change Control Operations
+Healthcare & Life Sciences,Pharma Manufacturing Operations,Cleanroom Environmental Monitoring
+Healthcare & Life Sciences,Pharma Manufacturing Operations,Deviation Management Operations
+Healthcare & Life Sciences,Pharma Manufacturing Operations,Equipment Qualification Support
+Healthcare & Life Sciences,Pharma Manufacturing Operations,OOS/OOT Investigation Support
+Healthcare & Life Sciences,Pharma Manufacturing Operations,Sterile Manufacturing Operations
+Healthcare & Life Sciences,Regulatory Affairs,Clinical Monitoring Support
+Healthcare & Life Sciences,Regulatory Affairs,Clinical Trial Management
+Healthcare & Life Sciences,Regulatory Affairs,Medical Information Services
+Healthcare & Life Sciences,Regulatory Affairs,Pharmacovigilance Operations
+Healthcare & Life Sciences,Regulatory Affairs,Post-market Surveillance (Medical Devices)
+Healthcare & Life Sciences,Regulatory Affairs,Regulatory Submissions (eCTD) Support
+Healthcare & Life Sciences,Specialist Clinical Services,Cardiology Services Support
+Healthcare & Life Sciences,Specialist Clinical Services,Intensive Care Unit (ICU) Support
+Healthcare & Life Sciences,Specialist Clinical Services,Maternity Services Support
+Healthcare & Life Sciences,Specialist Clinical Services,Neurology Services Support
+Healthcare & Life Sciences,Specialist Clinical Services,Oncology Services Support
+Healthcare & Life Sciences,Specialist Clinical Services,Orthopaedics Services Support
+Hospitality & Tourism,Food Production Services,Catering Services Management
+Hospitality & Tourism,Food Production Services,Commercial Kitchen Operations
+Hospitality & Tourism,Food Production Services,Food Safety Auditing
+Hospitality & Tourism,Food Production Services,Menu Development Services
+Hospitality & Tourism,Guest Services,Concierge Operations
+Hospitality & Tourism,Guest Services,Event Booking Operations
+Hospitality & Tourism,Guest Services,Guest Complaint Resolution Operations
+Hospitality & Tourism,Guest Services,Housekeeping Scheduling
+Hospitality & Tourism,Guest Services,Property Management System (PMS) Administration
+Hospitality & Tourism,Hospitality Operations,Events & Conference Operations
+Hospitality & Tourism,Hospitality Operations,Food & Beverage Operations
+Hospitality & Tourism,Hospitality Operations,Front Office Operations
+Hospitality & Tourism,Hospitality Operations,Hotel Operations Management
+Hospitality & Tourism,Hospitality Operations,Housekeeping Operations
+Hospitality & Tourism,Hospitality Operations,Revenue Management (Hospitality)
+Hospitality & Tourism,Travel Services,Airline Ground Handling Support
+Hospitality & Tourism,Travel Services,Reservation Systems Management
+Hospitality & Tourism,Travel Services,Tour Operations Management
+Hospitality & Tourism,Travel Services,Visitor Experience Design
+Industrial Furnaces,Electric Furnaces,
+Industrial Furnaces,Stress Relieving Furnaces,
+Machining,Boring,
+Machining,Broaching,
+Machining,CNC Laser Cutting,
+Machining,CNC Machining,
+Machining,CNC Milling,
+Machining,CNC Turning,
+Machining,Cutting,
+Machining,Drilling,
+Machining,Fettling,
+Machining,Gear Cutting,
+Machining,Grinding,
+Machining,Hobbing,
+Machining,Manual Machining,
+Machining,Milling,
+Machining,Profiling,
+Machining,Rotary Transfer,
+Machining,Sawing,
+Machining,Splining,
+Machining,Tapping,
+Machining,Thread Grinding,
+Machining,Threading,
+Machining,Turning,
+Manufacturing & Industrial,Advanced Manufacturing,Additive Manufacturing (Metal)
+Manufacturing & Industrial,Advanced Manufacturing,Additive Manufacturing (Polymer)
+Manufacturing & Industrial,Advanced Manufacturing,Automation & Robotics Integration
+Manufacturing & Industrial,Advanced Manufacturing,Digital Twin Development
+Manufacturing & Industrial,Advanced Manufacturing,Industrial IoT Deployment
+Manufacturing & Industrial,Advanced Manufacturing,Lean Manufacturing Implementation
+Manufacturing & Industrial,Advanced Materials Processing,Additive Manufacturing Post-processing
+Manufacturing & Industrial,Advanced Materials Processing,Carbon Fibre Processing
+Manufacturing & Industrial,Advanced Materials Processing,Ceramic Processing
+Manufacturing & Industrial,Advanced Materials Processing,Composite Layup Operations
+Manufacturing & Industrial,Assembly & Fabrication,Adhesion
+Manufacturing & Industrial,Assembly & Fabrication,Assembly
+Manufacturing & Industrial,Assembly & Fabrication,Bottling
+Manufacturing & Industrial,Assembly & Fabrication,Fabrication (General)
+Manufacturing & Industrial,Assembly & Fabrication,Fabrication (Metal)
+Manufacturing & Industrial,Assembly & Fabrication,Fabrication (Plastic)
+Manufacturing & Industrial,Assembly & Fabrication,Kitting
+Manufacturing & Industrial,Automated Production Systems,Automated Assembly Line Operation
+Manufacturing & Industrial,Automated Production Systems,CNC Multi-axis Programming
+Manufacturing & Industrial,Automated Production Systems,Industrial Robot Maintenance
+Manufacturing & Industrial,Automated Production Systems,Machine Vision Inspection Systems
+Manufacturing & Industrial,Automated Production Systems,Robotic Welding Operations
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Casting
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Closed Die Press Forging
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Compression Moulding
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Diecasting
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Drop Forging
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Forging
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Gas Injection Moulding
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Injection Moulding
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Insert Moulding / Encapsulation
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Moulding
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Plastic Extrusion
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Transfer Moulding
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Two Shot Moulding
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Upset Forging
+Manufacturing & Industrial,"Casting, Moulding, Forming, & Forging",Vacuum Forming
+Manufacturing & Industrial,Craft and Trade Processes,Carpentry and Woodworking
+Manufacturing & Industrial,Craft and Trade Processes,Food Technology
+Manufacturing & Industrial,Craft and Trade Processes,Leatherwork
+Manufacturing & Industrial,Craft and Trade Processes,Locksmithing
+Manufacturing & Industrial,Craft and Trade Processes,Manual Sewing Machining
+Manufacturing & Industrial,Craft and Trade Processes,Plumbing
+Manufacturing & Industrial,Craft and Trade Processes,Silversmithing
+Manufacturing & Industrial,Craft and Trade Processes,Upholstery & Trim
+Manufacturing & Industrial,Industrial Specialisms,Cement & Concrete Products Manufacturing
+Manufacturing & Industrial,Industrial Specialisms,Food & Beverage Manufacturing
+Manufacturing & Industrial,Industrial Specialisms,Furniture Manufacturing
+Manufacturing & Industrial,Industrial Specialisms,Glass Manufacturing
+Manufacturing & Industrial,Industrial Specialisms,Packaging Manufacturing
+Manufacturing & Industrial,Industrial Specialisms,Plastics Processing
+Manufacturing & Industrial,Industrial Specialisms,Pulp & Paper Manufacturing
+Manufacturing & Industrial,Industrial Specialisms,Rubber Processing
+Manufacturing & Industrial,Industrial Specialisms,Textiles Manufacturing
+Manufacturing & Industrial,Maintenance & Reliability,CMMS Administration
+Manufacturing & Industrial,Maintenance & Reliability,Condition Monitoring (Vibration)
+Manufacturing & Industrial,Maintenance & Reliability,Lubrication Management
+Manufacturing & Industrial,Maintenance & Reliability,Maintenance Shutdown Planning
+Manufacturing & Industrial,Maintenance & Reliability,Preventative Maintenance Scheduling
+Manufacturing & Industrial,Maintenance & Reliability,Spare Parts Management (Maintenance)
+Manufacturing & Industrial,Materials & Processing,Casting & Foundry
+Manufacturing & Industrial,Materials & Processing,Composite Manufacturing
+Manufacturing & Industrial,Materials & Processing,Forging
+Manufacturing & Industrial,Materials & Processing,Injection Moulding
+Manufacturing & Industrial,Materials & Processing,Non-Destructive Testing (NDT)
+Manufacturing & Industrial,Materials & Processing,Precision Welding
+Manufacturing & Industrial,Metal Forming & Press-work,Bending
+Manufacturing & Industrial,Metal Forming & Press-work,CNC Bending
+Manufacturing & Industrial,Metal Forming & Press-work,CNC Punching
+Manufacturing & Industrial,Metal Forming & Press-work,Cold Roll Forming
+Manufacturing & Industrial,Metal Forming & Press-work,Crushing
+Manufacturing & Industrial,Metal Forming & Press-work,Folding
+Manufacturing & Industrial,Metal Forming & Press-work,Metal Sheet Bending
+Manufacturing & Industrial,Metal Forming & Press-work,Metal Spinning
+Manufacturing & Industrial,Metal Forming & Press-work,Piercing
+Manufacturing & Industrial,Metal Forming & Press-work,Presswork
+Manufacturing & Industrial,Metal Forming & Press-work ,Spring Winding
+Manufacturing & Industrial,Metal Forming & Press-work,Stamping
+Manufacturing & Industrial,Metal Forming & Press-work,Tube Bending
+Manufacturing & Industrial,Metal Forming & Press-work,Wire Forming
+Manufacturing & Industrial,Precision Manufacturing,Injection Tooling Production
+Manufacturing & Industrial,Precision Manufacturing,Metal Stamping Operations
+Manufacturing & Industrial,Precision Manufacturing,Micro-machining Operations
+Manufacturing & Industrial,Precision Manufacturing,Powder Metallurgy Processing
+Manufacturing & Industrial,Precision Manufacturing,Press Tool Manufacturing
+Manufacturing & Industrial,Precision Manufacturing,Tool & Die Manufacturing
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Digital Scanning
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Fine Art Printing
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Hot Foil Printing
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Image Retouching/Manipulation
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Photography
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Printing
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Screen Printing
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Shredding
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Silk Screen Printing
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Stamp Cutting
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps",Type & Image Setting
+Manufacturing & Industrial,"Printing, Photography & Ink Stamps ",Video Production/Editing
+Manufacturing & Industrial,Process Manufacturing,Beverage Bottling Operations
+Manufacturing & Industrial,Process Manufacturing,Capsule Filling Operations
+Manufacturing & Industrial,Process Manufacturing,Cosmetics Formulation & Filling
+Manufacturing & Industrial,Process Manufacturing,Food Packaging Line Operations
+Manufacturing & Industrial,Process Manufacturing,Industrial Mixing Operations
+Manufacturing & Industrial,Process Manufacturing,Pharmaceutical Tablet Compression
+Manufacturing & Industrial,Prototyping,Prototyping
+Manufacturing & Industrial,Prototyping,Rapid Prototyping
+Manufacturing & Industrial,Quality & Inspection Operations,Final Inspection Operations
+Manufacturing & Industrial,Quality & Inspection Operations,First Article Inspection (FAI)
+Manufacturing & Industrial,Quality & Inspection Operations,Gauge R&R Studies
+Manufacturing & Industrial,Quality & Inspection Operations,In-process Inspection Operations
+Manufacturing & Industrial,Quality & Inspection Operations,Incoming Inspection Operations
+Manufacturing & Industrial,Quality & Inspection Operations,Nonconformance Management
+Manufacturing & Industrial,"Quality, Statistics & Measurement",CMM
+Manufacturing & Industrial,"Quality, Statistics & Measurement ",Calibration
+Manufacturing & Industrial,"Quality, Statistics & Measurement",Certification & Approvals
+Manufacturing & Industrial,"Quality, Statistics & Measurement",Data Collection
+Manufacturing & Industrial,"Quality, Statistics & Measurement",Measuring
+Manufacturing & Industrial,"Quality, Statistics & Measurement",Quality Control
+Manufacturing & Industrial,Surface Engineering & Treatments,Heat Treatment
+Manufacturing & Industrial,Surface Engineering & Treatments,Surface Coating
+Manufacturing & Industrial,Surface treatment & coating,Annealing
+Manufacturing & Industrial,Surface treatment & coating ,Anodising
+Manufacturing & Industrial,Surface treatment & coating ,Blasting
+Manufacturing & Industrial,Surface treatment & coating ,Braising
+Manufacturing & Industrial,Surface treatment & coating,Engraving
+Manufacturing & Industrial,Surface treatment & coating ,Heat Treatment
+Manufacturing & Industrial,Surface treatment & coating,Paint formulation and mixing
+Manufacturing & Industrial,Surface treatment & coating,Painting
+Manufacturing & Industrial,Surface treatment & coating,Plating inc. electroplating & electroless plating
+Manufacturing & Industrial,Surface treatment & coating,Polishing
+Manufacturing & Industrial,Surface treatment & coating,Powder Coating
+Manufacturing & Industrial,Surface treatment & coating,Pre-treatment cleaning & chemical anti-corrosion
+Manufacturing & Industrial,Surface treatment & coating,Surfacing
+Manufacturing & Industrial,Tooling,Progression Tooling
+Manufacturing & Industrial,Tooling,Tool Maintenance
+Manufacturing & Industrial,Tooling,Tool Making
+Manufacturing & Industrial,Tooling,Tool Manufacturing
+Manufacturing & Industrial,"Welding, Brazing & Soldering ",ARC Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",Brazing
+Manufacturing & Industrial,"Welding, Brazing & Soldering",CO2 Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",Gas Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",Laser Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",MIG Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",Projection Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",Robotic Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",Soldering
+Manufacturing & Industrial,"Welding, Brazing & Soldering ",Spot Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",TIG Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",Ultrasonic Welding
+Manufacturing & Industrial,"Welding, Brazing & Soldering",Welding
+Maritime & Offshore,Marine Engineering,Marine Electrical Systems
+Maritime & Offshore,Marine Engineering,Marine HVAC Systems
+Maritime & Offshore,Marine Engineering,Marine Systems Integration
+Maritime & Offshore,Marine Engineering,Naval Architecture Support
+Maritime & Offshore,Marine Engineering,Propulsion Systems (Marine) Support
+Maritime & Offshore,Marine Engineering,Shipbuilding Support
+Maritime & Offshore,Offshore Energy,Offshore Platform Maintenance Support
+Maritime & Offshore,Offshore Energy,Offshore Subsea Inspection
+Maritime & Offshore,Offshore Energy,Offshore Wind Installation Support
+Maritime & Offshore,Offshore Energy,Offshore Wind O&M
+Maritime & Offshore,Offshore Energy,ROV Operations Support
+Maritime & Offshore,Port & Logistics,Container Terminal Operations
+Maritime & Offshore,Port & Logistics,Customs & Port Compliance
+Maritime & Offshore,Port & Logistics,Harbour Master Support Services
+Maritime & Offshore,Port & Logistics,Marine Freight Forwarding
+Maritime & Offshore,Port & Logistics,Port Operations Support
+Maritime & Offshore,Ship Operations,Dry Dock Maintenance Operations
+Maritime & Offshore,Ship Operations,Marine Navigation Support
+Maritime & Offshore,Ship Operations,Marine Safety Compliance
+Maritime & Offshore,Ship Operations,Vessel Crew Management
+Media & Entertainment,Advertising Operations,Ad Server Trafficking
+Media & Entertainment,Advertising Operations,Brand Safety Monitoring
+Media & Entertainment,Advertising Operations,Campaign Performance Reporting
+Media & Entertainment,Advertising Operations,Creative Versioning Operations
+Media & Entertainment,Advertising Operations,Media Buying Operations
+Media & Entertainment,Advertising Operations,Programmatic Advertising Operations
+Media & Entertainment,Content Production,Animation Production
+Media & Entertainment,Content Production,Audio Production
+Media & Entertainment,Content Production,Broadcast Engineering Support
+Media & Entertainment,Content Production,Post-production Editing
+Media & Entertainment,Content Production,Studio Operations
+Media & Entertainment,Content Production,Video Production
+Media & Entertainment,Digital Media & Distribution,Ad Operations (Digital)
+Media & Entertainment,Digital Media & Distribution,Audience Analytics
+Media & Entertainment,Digital Media & Distribution,Content Delivery Network (CDN) Operations
+Media & Entertainment,Digital Media & Distribution,Digital Rights Management
+Media & Entertainment,Digital Media & Distribution,Streaming Platform Operations
+Media & Entertainment,Film & TV Production,Lighting & Grip Operations
+Media & Entertainment,Film & TV Production,Location Scouting Support
+Media & Entertainment,Film & TV Production,Production Scheduling
+Media & Entertainment,Film & TV Production,Sound Engineering (Film)
+Media & Entertainment,Film & TV Production,Visual Effects (VFX) Production
+Media & Entertainment,Publishing,Digital Publishing Operations
+Media & Entertainment,Publishing,Editorial Production
+Media & Entertainment,Publishing,Print Production Management
+Mining & Metals,Exploration & Geoscience,Drill Core Logging Support
+Mining & Metals,Exploration & Geoscience,Geochemical Analysis Support
+Mining & Metals,Exploration & Geoscience,Geological Mapping Support
+Mining & Metals,Exploration & Geoscience,Mineral Exploration Support
+Mining & Metals,Exploration & Geoscience,Resource Estimation Support
+Mining & Metals,Extraction & Mine Operations,Blasting Operations Support
+Mining & Metals,Extraction & Mine Operations,Haulage Fleet Operations Support
+Mining & Metals,Extraction & Mine Operations,Materials Handling (Mining)
+Mining & Metals,Extraction & Mine Operations,Mine Ventilation Support
+Mining & Metals,Extraction & Mine Operations,Open Pit Mine Planning Support
+Mining & Metals,Extraction & Mine Operations,Underground Mine Planning Support
+Mining & Metals,Mineral Processing,Crushing & Grinding Operations
+Mining & Metals,Mineral Processing,Dewatering & Tailings Management
+Mining & Metals,Mineral Processing,Flotation Process Support
+Mining & Metals,Mineral Processing,Leaching Process Support
+Mining & Metals,Mineral Processing,Refining Operations Support
+Mining & Metals,Mineral Processing,Smelting Operations Support
+Mining & Metals,Sustainability & Safety,Environmental Impact Management (Mining)
+Mining & Metals,Sustainability & Safety,Mine Closure Planning Support
+Mining & Metals,Sustainability & Safety,Tailings Risk Management
+Mining & Metals,Sustainability & Safety,Worker Safety Programmes (Mining)
+"Oil, Gas & Petrochemicals",Downstream & Refining,Asset Integrity (Downstream)
+"Oil, Gas & Petrochemicals",Downstream & Refining,Catalyst Management Support
+"Oil, Gas & Petrochemicals",Downstream & Refining,Petrochemical Process Support
+"Oil, Gas & Petrochemicals",Downstream & Refining,Process Safety Management (PSM)
+"Oil, Gas & Petrochemicals",Downstream & Refining,Refinery Operations Support
+"Oil, Gas & Petrochemicals",Downstream & Refining,Turnaround Planning
+"Oil, Gas & Petrochemicals",HSE & Compliance,COMAH Compliance Support
+"Oil, Gas & Petrochemicals",HSE & Compliance,HAZOP Facilitation
+"Oil, Gas & Petrochemicals",HSE & Compliance,Permit to Work System Implementation
+"Oil, Gas & Petrochemicals",HSE & Compliance,Process Hazard Analysis Support
+"Oil, Gas & Petrochemicals",HSE & Compliance,Safety Case Preparation Support
+"Oil, Gas & Petrochemicals",Midstream & Logistics,Crude & Product Scheduling
+"Oil, Gas & Petrochemicals",Midstream & Logistics,Marine Loading Operations
+"Oil, Gas & Petrochemicals",Midstream & Logistics,Pipeline Integrity Management
+"Oil, Gas & Petrochemicals",Midstream & Logistics,Pipeline SCADA Operations
+"Oil, Gas & Petrochemicals",Midstream & Logistics,Tank Farm Operations
+"Oil, Gas & Petrochemicals",Midstream & Logistics,Terminal Operations Support
+"Oil, Gas & Petrochemicals",Upstream Operations,Artificial Lift Optimisation
+"Oil, Gas & Petrochemicals",Upstream Operations,Drilling Services Support
+"Oil, Gas & Petrochemicals",Upstream Operations,Exploration Data Support
+"Oil, Gas & Petrochemicals",Upstream Operations,Production Optimisation (Upstream)
+"Oil, Gas & Petrochemicals",Upstream Operations,Reservoir Modelling Support
+"Oil, Gas & Petrochemicals",Upstream Operations,Seismic Data Processing
+"Oil, Gas & Petrochemicals",Upstream Operations,Subsea Systems Support
+"Oil, Gas & Petrochemicals",Upstream Operations,Well Integrity Management
+"Oil, Gas & Petrochemicals",Upstream Operations,Well Planning Support
+Professional Services,Accounting & Tax,Audit Services
+Professional Services,Accounting & Tax,Bookkeeping & Reporting
+Professional Services,Accounting & Tax,Corporate Tax Advisory
+Professional Services,Accounting & Tax,Payroll Services
+Professional Services,Accounting & Tax,Statutory Accounts Preparation
+Professional Services,Accounting & Tax,Transfer Pricing Support
+Professional Services,Accounting & Tax,VAT Advisory
+Professional Services,Consulting & Advisory,Change Management
+Professional Services,Consulting & Advisory,Data & Analytics Advisory
+Professional Services,Consulting & Advisory,Digital Transformation Advisory
+Professional Services,Consulting & Advisory,Operating Model Design
+Professional Services,Consulting & Advisory,PMO Setup & Governance
+Professional Services,Consulting & Advisory,Process Re-engineering
+Professional Services,Consulting & Advisory,Strategy Consulting
+Professional Services,Consulting & Advisory,Sustainability Advisory
+Professional Services,Customer Operations,Call Centre Operations
+Professional Services,Customer Operations,Complaints Handling
+Professional Services,Customer Operations,Customer Experience Design
+Professional Services,Customer Operations,Customer Success Management
+Professional Services,Customer Operations,Customer Support (Tier 1)
+Professional Services,Customer Operations,Customer Support (Tier 2)
+Professional Services,Facilities & Estates,Building Compliance Management
+Professional Services,Facilities & Estates,Cleaning Services Management
+Professional Services,Facilities & Estates,Facilities Maintenance
+Professional Services,Facilities & Estates,Security & Access Control
+Professional Services,Facilities & Estates,Space Planning
+Professional Services,Facilities & Estates,Utilities Management
+Professional Services,IT Operations,Backup & Recovery Operations
+Professional Services,IT Operations,Endpoint Management
+Professional Services,IT Operations,IT Asset Management
+Professional Services,IT Operations,IT Service Management (ITIL)
+Professional Services,IT Operations,Identity Administration
+Professional Services,IT Operations,Network Administration
+Professional Services,Marketing,Brand Strategy
+Professional Services,Marketing,Content Marketing
+Professional Services,Marketing,Demand Generation
+Professional Services,Marketing,Marketing Automation
+Professional Services,Marketing,PR & Communications
+Professional Services,Marketing,SEO/SEM
+Professional Services,Operations,Capacity Planning
+Professional Services,Operations,Operational Reporting
+Professional Services,Operations,Performance Management
+Professional Services,Operations,Process Mapping
+Professional Services,Operations,Service Operations Management
+Professional Services,Operations,Standard Operating Procedures
+Professional Services,Product Management,Go-to-Market Planning
+Professional Services,Product Management,Pricing Strategy
+Professional Services,Product Management,Product Analytics
+Professional Services,Product Management,Product Discovery
+Professional Services,Product Management,Requirements Management
+Professional Services,Product Management,Roadmap Management
+Professional Services,Sales & Commercial,B2B Sales
+Professional Services,Sales & Commercial,Channel Partner Management
+Professional Services,Sales & Commercial,Contract Negotiation Support
+Professional Services,Sales & Commercial,Enterprise Sales
+Professional Services,Sales & Commercial,Key Account Management
+Professional Services,Sales & Commercial,Proposal Development
+Professional Services,Engineering & Technical Services,Certification Support Services
+Professional Services,Engineering & Technical Services,Independent Verification & Validation (IV&V)
+Professional Services,Engineering & Technical Services,Technical Authoring
+Professional Services,Engineering & Technical Services,Technical Documentation
+Professional Services,Engineering & Technical Services,Technical Training Delivery
+Professional Services,Engineering Consultancy & Assurance,Design Assurance Support
+Professional Services,Engineering Consultancy & Assurance,Hazard Analysis Support
+Professional Services,Engineering Consultancy & Assurance,Independent Design Review
+Professional Services,Engineering Consultancy & Assurance,RAMS Analysis Support
+Professional Services,Engineering Consultancy & Assurance,Safety Engineering Support
+Professional Services,Engineering Consultancy & Assurance,Technical Due Diligence
+Professional Services,Engineering Consultancy & Assurance,Value Engineering Workshops
+Professional Services, Information Security & Privacy,BCP/DR Planning
+Professional Services, Information Security & Privacy,Data Protection Impact Assessments (DPIA)
+Professional Services, Information Security & Privacy,GDPR Compliance Programme
+Professional Services, Information Security & Privacy,ISO 27001 ISMS Implementation
+Professional Services, Information Security & Privacy,SOC 2 Readiness
+Professional Services, Information Security & Privacy,Secure-by-Design Governance
+Professional Services, Information Security & Privacy,Security Incident Response
+Professional Services, Information Security & Privacy,Third-Party Risk Management
+Professional Services, Quality & Management Systems,Continuous Improvement (Lean/Six Sigma)
+Professional Services, Quality & Management Systems,Corrective & Preventive Actions (CAPA)
+Professional Services, Quality & Management Systems,Document Control & SOP Management
+Professional Services, Quality & Management Systems,ISO 14001 EMS Implementation
+Professional Services, Quality & Management Systems,ISO 45001 OHSMS Implementation
+Professional Services, Quality & Management Systems,ISO 9001 QMS Implementation
+Professional Services, Quality & Management Systems,Internal Auditing
+Professional Services, Quality & Management Systems,Supplier Quality Management
+Professional Services, Regulatory & Legal Compliance,Contract Review & Negotiation
+Professional Services, Regulatory & Legal Compliance,Environmental Permitting
+Professional Services, Regulatory & Legal Compliance,Ethics & Anti-Bribery Programme
+Professional Services, Regulatory & Legal Compliance,Export Control Compliance
+Professional Services, Regulatory & Legal Compliance,Health & Safety Compliance
+Professional Services, Regulatory & Legal Compliance,Public Procurement Compliance
+Professional Services, Regulatory & Legal Compliance,Sanctions Compliance
+Professional Services,Human Capital & HR,HR Policy Design
+Professional Services,Human Capital & HR,Learning & Development
+Professional Services,Human Capital & HR,Recruitment Services
+Professional Services,Human Capital & HR,Talent Assessment
+Professional Services,Human Capital & HR,Workforce Planning
+Professional Services,Legal Services,Commercial Contracts
+Professional Services,Legal Services,Data Protection Legal Support
+Professional Services,Legal Services,Employment Law Support
+Professional Services,Legal Services,Intellectual Property Advisory
+Professional Services,Legal Services,Litigation Support
+Professional Services,Legal Services,Public Law & Procurement
+Professional Services,Procurement & Commercial Advisory,Category Strategy Development
+Professional Services,Procurement & Commercial Advisory,Competitive Tendering Support
+Professional Services,Procurement & Commercial Advisory,Contract Mobilisation Support
+Professional Services,Procurement & Commercial Advisory,Cost Benchmarking Analysis
+Professional Services,Procurement & Commercial Advisory,Procurement Policy Design
+Professional Services,Procurement & Commercial Advisory,Supplier Negotiation Support
+Public Sector Delivery,Government Procurement & Bidding,Bid/Proposal Writing
+Public Sector Delivery,Government Procurement & Bidding,Contract Performance Reporting
+Public Sector Delivery,Government Procurement & Bidding,Framework Application Support
+Public Sector Delivery,Government Procurement & Bidding,Mobilisation Planning
+Public Sector Delivery,Government Procurement & Bidding,Pricing & Cost Modelling
+Public Sector Delivery,Government Procurement & Bidding,Social Value Planning
+Public Sector Delivery,Government Procurement & Bidding,Supply Chain Due Diligence
+Public Sector Delivery,Government Procurement & Bidding,Tender Response Management
+Public Sector Delivery,Justice & Courts Services,Case File Digitisation (Courts)
+Public Sector Delivery,Justice & Courts Services,Court Administration Operations
+Public Sector Delivery,Justice & Courts Services,Legal Aid Casework Support
+Public Sector Delivery,Justice & Courts Services,Prison Education Services Support
+Public Sector Delivery,Justice & Courts Services,Probation Support Operations
+Public Sector Delivery,Public Service Operations,Asset & Facilities Management
+Public Sector Delivery,Public Service Operations,Case Management Operations
+Public Sector Delivery,Public Service Operations,Citizen Service Design
+Public Sector Delivery,Public Service Operations,Field Service Delivery
+Public Sector Delivery,Public Service Operations,Service Desk Operations
+Public Sector Delivery,Public Service Operations,Training Delivery for Public Bodies
+Public Sector Delivery,Social Care & Community Services,Adult Social Care Operations Support
+Public Sector Delivery,Social Care & Community Services,Benefits Processing Operations
+Public Sector Delivery,Social Care & Community Services,Care Provider Contract Management
+Public Sector Delivery,Social Care & Community Services,Children's Services Operations Support
+Public Sector Delivery,Social Care & Community Services,Housing Services Case Management
+Public Sector Delivery,Social Care & Community Services,Safeguarding Casework Support
+Real Estate,Building Operations,Building Management System (BMS) Operations
+Real Estate,Building Operations,Compliance Inspections Scheduling
+Real Estate,Building Operations,Energy Procurement (Buildings)
+Real Estate,Building Operations,Helpdesk Operations (Facilities)
+Real Estate,Building Operations,Planned Preventative Maintenance (PPM)
+Real Estate,Building Operations,Vendor Management (Facilities)
+Real Estate,Construction & Development,Development Finance Support
+Real Estate,Construction & Development,Land Acquisition Support
+Real Estate,Construction & Development,Planning Permission Support
+Real Estate,Facilities Operations,Building Maintenance Services
+Real Estate,Facilities Operations,Cleaning & Janitorial Services
+Real Estate,Facilities Operations,Energy Management (Buildings)
+Real Estate,Facilities Operations,Security Guard Services
+Real Estate,Property Investment Services,Commercial Leasing Management
+Real Estate,Property Investment Services,Property Due Diligence Support
+Real Estate,Property Investment Services,Real Estate Portfolio Management
+Real Estate,Property Investment Services,Tenant Relationship Management
+Real Estate,Property Services,Building Compliance Management
+Real Estate,Property Services,Facilities Management Operations
+Real Estate,Property Services,Lease Administration
+Real Estate,Property Services,Property Asset Management
+Real Estate,Property Services,Property Development Management
+Real Estate,Property Services,Property Valuation Support
+Renewable Energy,"Biomass inc Biodiesel, Biogas, etc.",Biodiesel
+Renewable Energy,"Biomass inc Biodiesel, Biogas, etc.",Biogas
+Renewable Energy,"Biomass inc Biodiesel, Biogas, etc.",Biomass Energy
+Renewable Energy,"Biomass inc Biodiesel, Biogas, etc.",Ethanol
+Renewable Energy,Hydro Power,
+Renewable Energy,Solar Energy,
+Renewable Energy,Wind Energy,
+Renewable Materials,Renewable material processing,
+Renewable Materials,Renewable material production,
+Renewable Materials,Renewable product development,
+Research & Development,Bioenergy,
+Research & Development,Biological Science,
+Research & Development,Healty & Wellbeing,
+Research & Development,Laboratory Analysis,
+Research & Development,Renewable & Novel Materials,
+Retail & eCommerce,Customer Experience Operations,Call Centre Operations (Retail)
+Retail & eCommerce,Customer Experience Operations,Customer Loyalty Programme Management
+Retail & eCommerce,Customer Experience Operations,Digital Marketing Campaign Management
+Retail & eCommerce,Customer Experience Operations,Omnichannel Customer Support
+Retail & eCommerce,Retail Operations,Inventory Replenishment Operations
+Retail & eCommerce,Retail Operations,Loss Prevention Operations
+Retail & eCommerce,Retail Operations,Merchandising & Category Operations
+Retail & eCommerce,Retail Operations,Point-of-Sale (POS) Implementation
+Retail & eCommerce,Retail Operations,Retail Workforce Scheduling
+Retail & eCommerce,Retail Operations,Store Operations Management
+Retail & eCommerce,Supply & Distribution,Distribution Centre Operations
+Retail & eCommerce,Supply & Distribution,Omnichannel Fulfilment
+Retail & eCommerce,Supply & Distribution,Retail Demand Forecasting
+Retail & eCommerce,Supply & Merchandising,Private Label Development
+Retail & eCommerce,Supply & Merchandising,Product Sourcing Operations
+Retail & eCommerce,Supply & Merchandising,Retail Pricing Optimisation
+Retail & eCommerce,Supply & Merchandising,Visual Merchandising Execution
+Retail & eCommerce,Supply Chain Retail Operations,Assortment Planning Support
+Retail & eCommerce,Supply Chain Retail Operations,Markdown Optimisation Operations
+Retail & eCommerce,Supply Chain Retail Operations,Planogram Execution Support
+Retail & eCommerce,Supply Chain Retail Operations,Retail Allocation Planning
+Retail & eCommerce,Supply Chain Retail Operations,Store Labour Planning
+Retail & eCommerce,Supply Chain Retail Operations,Store Replenishment Planning
+Retail & eCommerce,eCommerce Platforms,Marketplace Integration
+Retail & eCommerce,eCommerce Platforms,Order Fulfilment Integration
+Retail & eCommerce,eCommerce Platforms,Payment Processing Integration
+Retail & eCommerce,eCommerce Platforms,Product Information Management (PIM)
+Retail & eCommerce,eCommerce Platforms,Returns Management Operations
+Retail & eCommerce,eCommerce Platforms,eCommerce Platform Implementation
+Services,Archiving,
+Services,Commissioning,
+Services,Consultancy,
+Services,Distribution Service,
+Services,Installation,
+Services,Kanban Service,
+Services,Lobbying,
+Services,Maintenance & Service,
+Services,Marketing Consultancy,
+Services,Mould Design service,
+Services,Production-line Feed Service,
+Services,Promotion,
+Services,Publishing,
+Services,Recruitment,
+Services,Retail,
+Services,Site Survey Service,
+Services,Surveying Services,
+Services,Training & Education,
+Services,Translation,
+Services,Waste Management,
+Services,Waste recycling,
+Sintering,Laser Sintering,
+Supply Chain,Global Supply Management,
+Supply Chain,Logistics & Warehousing,
+Supply Chain,Material Handling & Packaging,
+Supply Chain,Procurement,
+Supply Chain,Supply Chain Management,
+Supply Chain & Logistics,International Trade Operations,Import/Export Documentation Processing
+Supply Chain & Logistics,International Trade Operations,Incoterms Advisory Services
+Supply Chain & Logistics,International Trade Operations,Letter of Credit Processing
+Supply Chain & Logistics,International Trade Operations,Trade Compliance Screening
+Supply Chain & Logistics,International Trade Operations,Trade Finance Operations
+Supply Chain & Logistics,Logistics Operations,Cold Chain Logistics
+Supply Chain & Logistics,Logistics Operations,Customs Brokerage
+Supply Chain & Logistics,Logistics Operations,Fleet Management
+Supply Chain & Logistics,Logistics Operations,Freight Forwarding
+Supply Chain & Logistics,Logistics Operations,Inventory Management
+Supply Chain & Logistics,Logistics Operations,Last-mile Delivery
+Supply Chain & Logistics,Logistics Operations,Warehousing Operations
+Supply Chain & Logistics,Planning & Inventory,Inventory Optimisation
+Supply Chain & Logistics,Planning & Inventory,MRP Planning Operations
+Supply Chain & Logistics,Planning & Inventory,Order Promising (ATP) Support
+Supply Chain & Logistics,Planning & Inventory,S&OP Process Operations
+Supply Chain & Logistics,Planning & Inventory,Safety Stock Optimisation
+Supply Chain & Logistics,Planning & Inventory,Supplier Lead Time Optimisation
+Supply Chain & Logistics,Procurement & Supplier Management,Category Management
+Supply Chain & Logistics,Procurement & Supplier Management,Contract Management (Supply)
+Supply Chain & Logistics,Procurement & Supplier Management,Cost Reduction Programmes
+Supply Chain & Logistics,Procurement & Supplier Management,Strategic Sourcing
+Supply Chain & Logistics,Procurement & Supplier Management,Supplier Audits
+Supply Chain & Logistics,Procurement & Supplier Management,Supplier Onboarding
+Supply Chain & Logistics,Transportation Operations,Air Freight Operations
+Supply Chain & Logistics,Transportation Operations,Fleet Route Optimisation
+Supply Chain & Logistics,Transportation Operations,Ocean Freight Operations
+Supply Chain & Logistics,Transportation Operations,Rail Freight Coordination
+Supply Chain & Logistics,Transportation Operations,Road Transport Dispatch
+Supply Chain & Logistics,Warehouse & Fulfilment Operations,Automation (Warehouse) Support
+Supply Chain & Logistics,Warehouse & Fulfilment Operations,Cross-docking Operations
+Supply Chain & Logistics,Warehouse & Fulfilment Operations,Inventory Cycle Counting Operations
+Supply Chain & Logistics,Warehouse & Fulfilment Operations,Pick-Pack Operations
+Supply Chain & Logistics,Warehouse & Fulfilment Operations,Returns Processing (Warehouse)
+Supply Chain & Logistics,Warehouse & Fulfilment Operations,Value-added Logistics (VAL)
+Supply Chain & Logistics,Warehouse & Fulfilment Operations,WMS Implementation Support
+Supply Chain & Logistics,Warehouse & Fulfilment Operations,Warehouse Slotting Optimisation
+Telecommunications,Core Network & Services,5G Core (5GC) Operations
+Telecommunications,Core Network & Services,CDN Interconnect Operations
+Telecommunications,Core Network & Services,Carrier Ethernet Operations
+Telecommunications,Core Network & Services,DNS/DHCP/IPAM Operations
+Telecommunications,Core Network & Services,Diameter Signalling Operations
+Telecommunications,Core Network & Services,IMS Core Operations
+Telecommunications,Core Network & Services,Peering & Transit Operations
+Telecommunications,Core Network & Services,VoLTE Service Operations
+Telecommunications,Field Build & Maintenance,Antenna & Radio Installation
+Telecommunications,Field Build & Maintenance,Cell Tower Civil Works
+Telecommunications,Field Build & Maintenance,Drive Testing Operations
+Telecommunications,Field Build & Maintenance,Fibre OTDR Testing
+Telecommunications,Field Build & Maintenance,Fibre Splicing Operations
+Telecommunications,Field Build & Maintenance,In-building DAS Installation
+Telecommunications,Field Build & Maintenance,Small Cell Deployment
+Telecommunications,Field Build & Maintenance,Telecoms Preventative Maintenance
+Telecommunications,Network Engineering & Operations,4G/LTE Optimisation
+Telecommunications,Network Engineering & Operations,5G Site Deployment
+Telecommunications,Network Engineering & Operations,Core Network Operations
+Telecommunications,Network Engineering & Operations,Fibre Network Build (FTTP/FTTC)
+Telecommunications,Network Engineering & Operations,Field Engineering (Telecoms)
+Telecommunications,Network Engineering & Operations,IP/MPLS Network Engineering
+Telecommunications,Network Engineering & Operations,Microwave Backhaul Design
+Telecommunications,Network Engineering & Operations,NOC Operations
+Telecommunications,Network Engineering & Operations,Network Capacity Planning
+Telecommunications,Network Engineering & Operations,Network Fault Management
+Telecommunications,Network Engineering & Operations,Network Performance Monitoring
+Telecommunications,Network Engineering & Operations,RAN Optimisation
+Telecommunications,Network Engineering & Operations,Radio Access Network (RAN) Planning
+Telecommunications,Network Engineering & Operations,Service Provisioning
+Telecommunications,OSS/BSS & Service Platforms,BSS Integration
+Telecommunications,OSS/BSS & Service Platforms,Billing System Implementation
+Telecommunications,OSS/BSS & Service Platforms,CRM for Telecoms Implementation
+Telecommunications,OSS/BSS & Service Platforms,Network Inventory Management Systems
+Telecommunications,OSS/BSS & Service Platforms,OSS Integration
+Telecommunications,OSS/BSS & Service Platforms,Order Management Systems
+Telecommunications,OSS/BSS & Service Platforms,SIM Provisioning & Management
+Telecommunications,OSS/BSS & Service Platforms,Service Assurance Platforms
+Telecommunications,OSS/BSS & Service Platforms,VoIP/IMS Service Deployment
+Telecommunications,Regulatory & Spectrum,Emergency Services (E112/E911) Integration
+Telecommunications,Regulatory & Spectrum,Lawful Intercept Compliance Support
+Telecommunications,Regulatory & Spectrum,Spectrum Planning Support
+Telecommunications,Regulatory & Spectrum,Telecoms Regulatory Reporting

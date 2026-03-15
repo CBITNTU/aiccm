@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import { CreateJoinCompanyForm } from "@/components/company/CreateJoinCompanyForm";
@@ -13,6 +13,8 @@ export default function NewCompanyPage() {
   const { user } = useAuth();
   const { setSelectedOrg } = useOrg();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedCompanyId = searchParams.get("join") ?? undefined;
   const [submitResult, setSubmitResult] = useState<{
     action: "create" | "join";
     companyId?: string;
@@ -129,6 +131,7 @@ export default function NewCompanyPage() {
         <CreateJoinCompanyForm
           userEmail={user?.email || ""}
           onSuccess={handleSuccess}
+          preselectedCompanyId={preselectedCompanyId}
         />
       </div>
     </div>

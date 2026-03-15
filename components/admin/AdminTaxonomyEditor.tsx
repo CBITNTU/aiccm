@@ -58,8 +58,129 @@ import { Progress } from "@/components/ui/progress";
 type Capability = {
   id: string;
   name: string;
-  category: string;
+  category: string | null;
+  parent_id?: string | null;
 };
+
+interface TreeNode {
+  id: string;
+  name: string;
+  children: TreeNode[];
+}
+
+function AdminTreeLevel({
+  node,
+  depth,
+  expandedCategories,
+  toggleExpand,
+  getCapability,
+  onEdit,
+  onDelete,
+  deletingId,
+}: {
+  node: TreeNode;
+  depth: number;
+  expandedCategories: Set<string>;
+  toggleExpand: (id: string) => void;
+  getCapability: (id: string) => Capability;
+  onEdit: (c: Capability) => void;
+  onDelete: (id: string) => void;
+  deletingId: string | null;
+}) {
+  const hasChildren = node.children.length > 0;
+  const isExpanded = expandedCategories.has(node.id);
+  const cap = getCapability(node.id);
+
+  return (
+    <div className="space-y-0">
+      <div
+        className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50"
+        style={{ paddingLeft: 8 + depth * 16 }}
+      >
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 shrink-0"
+          onClick={() => hasChildren && toggleExpand(node.id)}
+        >
+          {hasChildren ? (
+            isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )
+          ) : (
+            <div className="w-4 h-4" />
+          )}
+        </Button>
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          {hasChildren ? (
+            <Folder className="h-4 w-4 text-primary shrink-0" />
+          ) : (
+            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+          <span className="truncate">{node.name}</span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => cap && onEdit(cap)}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={deletingId === node.id}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Capability</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete &quot;{node.name}&quot;? This
+                  action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onDelete(node.id)}
+                  className="bg-destructive text-destructive-foreground"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+      {hasChildren && isExpanded && (
+        <>
+          {node.children.map((child) => (
+            <AdminTreeLevel
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              expandedCategories={expandedCategories}
+              toggleExpand={toggleExpand}
+              getCapability={getCapability}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              deletingId={deletingId}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
 
 const AdminTaxonomyEditor = () => {
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
@@ -80,6 +201,7 @@ const AdminTaxonomyEditor = () => {
   const [formData, setFormData] = useState({
     name: "",
     category: "",
+    parent_id: "",
   });
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -119,38 +241,12 @@ const AdminTaxonomyEditor = () => {
       const { capabilities: allCapabilities } =
         await api.adminListCapabilities();
 
-      // Filter out null categories and map to ensure type safety
-      const validCapabilities = (allCapabilities || [])
-        .filter(
-          (c): c is { id: string; name: string; category: string } =>
-            (c as any).category !== null,
-        )
-        .map((c) => ({
-          id: c.id as string,
-          name: c.name as string,
-          category: c.category as string,
-        }));
-
-      // Log the fetched capabilities
-      console.log(
-        `📋 Fetched ${validCapabilities.length} capabilities from database`,
-      );
-      const categories = Array.from(
-        new Set(validCapabilities.map((c) => c.category)),
-      );
-      console.log(`📂 Categories in UI (${categories.length}):`, categories);
-      console.log(
-        `📊 Capabilities by category:`,
-        Object.entries(
-          validCapabilities.reduce(
-            (acc, cap) => {
-              acc[cap.category] = (acc[cap.category] || 0) + 1;
-              return acc;
-            },
-            {} as Record<string, number>,
-          ),
-        ),
-      );
+      const validCapabilities = (allCapabilities || []).map((c: any) => ({
+        id: c.id as string,
+        name: c.name as string,
+        category: c.category as string | null,
+        parent_id: c.parent_id as string | null | undefined,
+      }));
 
       setCapabilities(validCapabilities);
     } catch (error: any) {
@@ -161,14 +257,37 @@ const AdminTaxonomyEditor = () => {
     }
   };
 
-  // Get unique categories
-  const categories = Array.from(
-    new Set(capabilities.map((c) => c.category)),
-  ).toSorted();
+  const hasParentId = capabilities.some(
+    (c) => c.parent_id != null && c.parent_id !== "",
+  );
 
-  // Get capabilities by category
+  const tree = (() => {
+    if (!hasParentId) return [];
+    const byId = new Map<string, TreeNode>();
+    capabilities.forEach((c) =>
+      byId.set(c.id, { id: c.id, name: c.name, children: [] }),
+    );
+    const roots: TreeNode[] = [];
+    capabilities.forEach((c) => {
+      const node = byId.get(c.id)!;
+      const parentId = c.parent_id ?? null;
+      if (!parentId || !byId.has(parentId)) roots.push(node);
+      else byId.get(parentId)!.children.push(node);
+    });
+    roots.sort((a, b) => a.name.localeCompare(b.name));
+    roots.forEach((r) =>
+      r.children.sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    return roots;
+  })();
+
+  const categories = Array.from(
+    new Set(capabilities.map((c) => c.category ?? "Uncategorized")),
+  ).toSorted((a, b) => (a === "Uncategorized" ? 1 : b === "Uncategorized" ? -1 : a.localeCompare(b)));
+
   const getCapabilitiesByCategory = (category: string) => {
-    return capabilities.filter((c) => c.category === category);
+    const key = category === "Uncategorized" ? null : category;
+    return capabilities.filter((c) => (c.category ?? null) === key);
   };
 
   const toggleExpand = (category: string) => {
@@ -182,9 +301,11 @@ const AdminTaxonomyEditor = () => {
   };
 
   const handleCreate = () => {
+    const firstCat = categories.find((c) => c !== "Uncategorized") ?? categories[0] ?? "";
     setFormData({
       name: "",
-      category: categories[0] || "",
+      category: firstCat,
+      parent_id: "",
     });
     setIsCreateDialogOpen(true);
   };
@@ -193,7 +314,8 @@ const AdminTaxonomyEditor = () => {
     setEditingCapability(capability);
     setFormData({
       name: capability.name,
-      category: capability.category,
+      category: capability.category ?? "",
+      parent_id: capability.parent_id ?? "",
     });
     setIsEditDialogOpen(true);
   };
@@ -215,40 +337,38 @@ const AdminTaxonomyEditor = () => {
 
   const handleSave = async () => {
     try {
-      if (!formData.name.trim() || !formData.category.trim()) {
-        toast.error("Name and category are required");
+      if (!formData.name.trim()) {
+        toast.error("Name is required");
+        return;
+      }
+      const category = formData.category.trim() || null;
+      const parent_id = formData.parent_id.trim() || null;
+      if (!category && !parent_id) {
+        toast.error("Either category or parent must be set");
         return;
       }
 
       if (editingCapability) {
-        // Update existing
         await api.adminUpdateCapability(editingCapability.id, {
           name: formData.name.trim(),
-          category: formData.category.trim(),
+          category,
+          parent_id,
         });
-
         toast.success("Capability updated successfully");
         setIsEditDialogOpen(false);
         setEditingCapability(null);
       } else {
-        // Create new
         await api.adminCreateCapability({
           name: formData.name.trim(),
-          category: formData.category.trim(),
+          category,
+          parent_id,
         });
-
         toast.success("Capability created successfully");
         setIsCreateDialogOpen(false);
       }
 
-      // Reset form
-      setFormData({
-        name: "",
-        category: categories[0] || "",
-      });
+      setFormData({ name: "", category: categories[0] ?? "", parent_id: "" });
       setEditingCapability(null);
-
-      // Refresh the capability list
       await fetchCapabilities();
     } catch (error: any) {
       console.error("Error saving capability:", error);
@@ -260,7 +380,7 @@ const AdminTaxonomyEditor = () => {
     const confirmReset = window.confirm(
       "⚠️ WARNING: This will DELETE ALL capabilities and company-capability links!\n\n" +
         "This action cannot be undone. All companies will have their capabilities cleared.\n\n" +
-        "After reset, you should run 'Regenerate All Company Capabilities' to repopulate.\n\n" +
+        "The editable taxonomy will then be restored from the read-only seed table (populated by the CSV migration).\n\n" +
         "Are you sure you want to proceed?",
     );
 
@@ -284,8 +404,9 @@ const AdminTaxonomyEditor = () => {
       await fetchCapabilities();
 
       toast.success(
-        `✅ Reset complete! Deleted ${data.deletedCapabilities} capabilities and ${data.deletedLinks} links. ` +
-          `Reseeded ${data.reseededCapabilities} base capabilities. You can now run 'Regenerate All Company Capabilities' to assign companies to these capabilities.`,
+        data.reseededCapabilities > 0
+          ? `✅ Reset complete. Deleted ${data.deletedCapabilities} capabilities and ${data.deletedLinks} links. Reseeded ${data.reseededCapabilities} from the seed table.`
+          : `✅ Reset complete. Deleted ${data.deletedCapabilities} capabilities and ${data.deletedLinks} links. Seed table is empty — run the taxonomy migration to populate it.`,
       );
     } catch (error) {
       console.error("Error resetting capabilities:", error);
@@ -337,13 +458,27 @@ const AdminTaxonomyEditor = () => {
     }
   };
 
+  const searchLower = searchTerm.toLowerCase();
+
+  const filteredTree = (() => {
+    if (!hasParentId || !searchTerm.trim()) return tree;
+    const filterNodes = (nodes: TreeNode[]): TreeNode[] =>
+      nodes
+        .map((n) => ({ ...n, children: filterNodes(n.children) }))
+        .filter(
+          (n) =>
+            n.name.toLowerCase().includes(searchLower) || n.children.length > 0,
+        );
+    return filterNodes(tree);
+  })();
+
   const filteredCategories = categories.filter((category) => {
     const categoryLower = category.toLowerCase();
     const categoryCapabilities = getCapabilitiesByCategory(category);
     return (
-      categoryLower.includes(searchTerm.toLowerCase()) ||
+      categoryLower.includes(searchLower) ||
       categoryCapabilities.some((c) =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        c.name.toLowerCase().includes(searchLower),
       )
     );
   });
@@ -442,6 +577,32 @@ const AdminTaxonomyEditor = () => {
             <div className="text-center py-8 text-muted-foreground">
               Loading capabilities...
             </div>
+          ) : hasParentId ? (
+            <div className="space-y-1">
+              {filteredTree.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchTerm
+                    ? "No capabilities match your search."
+                    : "No capabilities found. Create your first capability."}
+                </div>
+              ) : (
+                filteredTree.map((node) => (
+                  <AdminTreeLevel
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    expandedCategories={expandedCategories}
+                    toggleExpand={toggleExpand}
+                    getCapability={(id) =>
+                      capabilities.find((c) => c.id === id)!
+                    }
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    deletingId={deletingId}
+                  />
+                ))
+              )}
+            </div>
           ) : (
             <div className="space-y-2">
               {filteredCategories.length === 0 ? (
@@ -452,9 +613,7 @@ const AdminTaxonomyEditor = () => {
                 filteredCategories.map((category) => {
                   const categoryCapabilities = getCapabilitiesByCategory(
                     category,
-                  ).filter((c) =>
-                    c.name.toLowerCase().includes(searchTerm.toLowerCase()),
-                  );
+                  ).filter((c) => c.name.toLowerCase().includes(searchLower));
                   const isExpanded = expandedCategories.has(category);
 
                   return (
@@ -569,32 +728,6 @@ const AdminTaxonomyEditor = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="category">Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, category: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select or enter category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formData.category && !categories.includes(formData.category) && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  This will create a new category: "{formData.category}"
-                </p>
-              )}
-            </div>
-
-            <div>
               <Label htmlFor="name">Name *</Label>
               <Input
                 id="name"
@@ -604,6 +737,56 @@ const AdminTaxonomyEditor = () => {
                 }
                 placeholder="Capability name"
               />
+            </div>
+
+            <div>
+              <Label>Parent (optional)</Label>
+              <Select
+                value={formData.parent_id || "none"}
+                onValueChange={(v) =>
+                  setFormData({
+                    ...formData,
+                    parent_id: v === "none" ? "" : v,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {capabilities.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="category">Category (optional if parent set)</Label>
+              <Select
+                value={formData.category || "none"}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    category: value === "none" ? "" : value,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -629,27 +812,6 @@ const AdminTaxonomyEditor = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-category">Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, category: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
               <Label htmlFor="edit-name">Name *</Label>
               <Input
                 id="edit-name"
@@ -659,6 +821,58 @@ const AdminTaxonomyEditor = () => {
                 }
                 placeholder="Capability name"
               />
+            </div>
+
+            <div>
+              <Label>Parent (optional)</Label>
+              <Select
+                value={formData.parent_id || "none"}
+                onValueChange={(v) =>
+                  setFormData({
+                    ...formData,
+                    parent_id: v === "none" ? "" : v,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {capabilities
+                    .filter((c) => c.id !== editingCapability?.id)
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-category">Category (optional if parent set)</Label>
+              <Select
+                value={formData.category || "none"}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    category: value === "none" ? "" : value,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

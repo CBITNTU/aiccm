@@ -38,16 +38,6 @@ interface Certification {
   verified?: boolean;
 }
 
-interface Equipment {
-  name: string;
-  model: string;
-  capacity: string;
-  notes: string;
-  confidence: number;
-  evidence: string;
-  verified?: boolean;
-}
-
 interface Step1Data {
   companyName: string;
   companiesHouseNumber: string;
@@ -64,7 +54,7 @@ interface PrefillData {
     description?: { value: string; confidence: number; evidence: string };
     capabilities?: Array<ConfidenceField>;
     certifications?: Certification[];
-    equipment?: Equipment[];
+    equipment?: Array<Record<string, unknown>>;
     sectors?: Array<ConfidenceField>;
     locations?: Array<ConfidenceField>;
     address?: { value: string; confidence: number; evidence: string };
@@ -105,10 +95,6 @@ export function CompanyOnboardingStep2({
 
   const [certifications, setCertifications] = useState<Certification[]>(
     normalized.certifications || [],
-  );
-
-  const [equipment, setEquipment] = useState<Equipment[]>(
-    normalized.equipment || [],
   );
 
   const [sectors, setSectors] = useState<string[]>(
@@ -170,35 +156,6 @@ export function CompanyOnboardingStep2({
     setCertifications(certifications.filter((_, i) => i !== index));
   };
 
-  const addEquipment = () => {
-    setEquipment([
-      ...equipment,
-      {
-        name: "",
-        model: "",
-        capacity: "",
-        notes: "",
-        confidence: 0,
-        evidence: "manual",
-        verified: true,
-      },
-    ]);
-  };
-
-  const updateEquipment = (
-    index: number,
-    field: keyof Equipment,
-    value: string | boolean,
-  ) => {
-    const updated = [...equipment];
-    updated[index] = { ...updated[index], [field]: value };
-    setEquipment(updated);
-  };
-
-  const removeEquipment = (index: number) => {
-    setEquipment(equipment.filter((_, i) => i !== index));
-  };
-
   const addSector = () => {
     if (newSector.trim()) {
       setSectors([...sectors, newSector.trim()]);
@@ -225,7 +182,6 @@ export function CompanyOnboardingStep2({
     setCertifications(
       certifications.map((cert) => ({ ...cert, verified: true })),
     );
-    setEquipment(equipment.map((eq) => ({ ...eq, verified: true })));
     toast.success("All Data Verified", {
       description: "All auto-filled data has been marked as verified.",
     });
@@ -236,7 +192,6 @@ export function CompanyOnboardingStep2({
       setDescription("");
       setCapabilities([]);
       setCertifications([]);
-      setEquipment([]);
       setSectors([]);
       setLocations([]);
     }
@@ -258,7 +213,6 @@ export function CompanyOnboardingStep2({
         description,
         key_capabilities: capabilities.join(", "),
         certifications: JSON.stringify(certifications),
-        equipment: JSON.stringify(equipment),
         address: normalized.address?.value || null,
         postcode: step1Data.postcode || null,
         system_extracted: JSON.parse(
@@ -266,7 +220,6 @@ export function CompanyOnboardingStep2({
             description: normalized.description,
             capabilities: normalized.capabilities,
             certifications: normalized.certifications,
-            equipment: normalized.equipment,
             sectors: normalized.sectors,
             locations: normalized.locations,
             address: normalized.address,
@@ -277,7 +230,6 @@ export function CompanyOnboardingStep2({
             certifications: certifications
               .filter((c) => c.verified)
               .map((c) => c.name),
-            equipment: equipment.filter((e) => e.verified).map((e) => e.name),
           }),
         ),
         financial_data: JSON.parse(JSON.stringify(financial)),
@@ -501,99 +453,6 @@ export function CompanyOnboardingStep2({
                     variant="destructive"
                     size="sm"
                     onClick={() => removeCertification(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Equipment */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Equipment & Resources
-            <Button onClick={addEquipment} size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Row
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {equipment.map((eq, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg"
-              >
-                <div className="md:col-span-2">
-                  <Label>
-                    Machine/Tool{" "}
-                    <span
-                      className={`w-2 h-2 inline-block rounded-full ${getConfidenceDot(
-                        eq.confidence,
-                      )}`}
-                    />
-                  </Label>
-                  <Input
-                    value={eq.name}
-                    onChange={(e) =>
-                      updateEquipment(index, "name", e.target.value)
-                    }
-                    placeholder="Equipment name"
-                  />
-                </div>
-                <div>
-                  <Label>Model</Label>
-                  <Input
-                    value={eq.model}
-                    onChange={(e) =>
-                      updateEquipment(index, "model", e.target.value)
-                    }
-                    placeholder="Model"
-                  />
-                </div>
-                <div>
-                  <Label>Capacity</Label>
-                  <Input
-                    value={eq.capacity}
-                    onChange={(e) =>
-                      updateEquipment(index, "capacity", e.target.value)
-                    }
-                    placeholder="Capacity"
-                  />
-                </div>
-                <div>
-                  <Label>Notes</Label>
-                  <Input
-                    value={eq.notes}
-                    onChange={(e) =>
-                      updateEquipment(index, "notes", e.target.value)
-                    }
-                    placeholder="Notes"
-                  />
-                </div>
-                <div className="flex items-end gap-2">
-                  <Button
-                    variant={eq.verified ? "default" : "outline"}
-                    size="sm"
-                    onClick={() =>
-                      updateEquipment(index, "verified", !eq.verified)
-                    }
-                  >
-                    {eq.verified ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => removeEquipment(index)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

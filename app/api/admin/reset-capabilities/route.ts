@@ -6,7 +6,6 @@ import {
   createAdminClient,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { EIC_TAXONOMY } from "@/lib/eicTaxonomy";
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +30,7 @@ export async function POST(request: NextRequest) {
     const adminSupabase = createAdminClient();
 
     console.log(
-      "🗑️ RESET CAPABILITIES: Deleting ALL capabilities and links, then reseeding base list...",
+      "🗑️ RESET CAPABILITIES: Deleting ALL capabilities and links, then reseeding from CSV taxonomy.",
     );
 
     // Step 1: Delete ALL company_capabilities links (junction table)
@@ -97,30 +96,65 @@ export async function POST(request: NextRequest) {
       console.log("✅ Cleared capability taxonomies from all companies");
     }
 
-    // Step 4: Reseed base capabilities list from EIC taxonomy (standard taxonomy)
-    console.log(
-      "📋 Step 4: Reseeding base capabilities list from EIC taxonomy...",
-    );
+    // Step 4: Reseed company_capabilities_ref from read-only seed table (PostgREST returns max 1000 per request, so paginate)
+    let reseededCapabilities = 0;
+    const PAGE_SIZE = 1000;
+    const INSERT_BATCH = 200;
+    let offset = 0;
+    const seedRows: any[] = [];
 
-    const baseCapabilities = EIC_TAXONOMY.flatMap((cat) =>
-      cat.subcategories.map((name) => ({ name, category: cat.name })),
-    );
+    while (true) {
+      const { data: page, error: selectError } = await adminSupabase
+        .from("competency_taxonomy_seed" as any)
+        .select("id, name, category, parent_id, is_active")
+        .range(offset, offset + PAGE_SIZE - 1);
 
-    const { error: insertError } = await adminSupabase
-      .from("company_capabilities_ref" as any)
-      .insert(baseCapabilities)
-      .select();
+      if (selectError) {
+        console.error("❌ Failed to read from competency_taxonomy_seed:", selectError);
+        throw new Error(
+          `Failed to read seed taxonomy: ${selectError.message}. Run the taxonomy migration to create the seed table.`,
+        );
+      }
+      if (!page || page.length === 0) break;
+      seedRows.push(...page);
+      if (page.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
 
-    if (insertError) {
-      console.error("❌ Failed to reseed base capabilities:", insertError);
-      throw new Error(
-        `Failed to reseed base capabilities: ${insertError.message}`,
+    if (seedRows.length > 0) {
+      console.log(
+        "📋 Step 4: Copying",
+        seedRows.length,
+        "rows from competency_taxonomy_seed into company_capabilities_ref...",
+      );
+      for (let i = 0; i < seedRows.length; i += INSERT_BATCH) {
+        const chunk = seedRows.slice(i, i + INSERT_BATCH);
+        const { error: insertError } = await adminSupabase
+          .from("company_capabilities_ref" as any)
+          .insert(
+            chunk.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              category: r.category,
+              parent_id: r.parent_id,
+              is_active: r.is_active !== false,
+            })),
+          );
+        if (insertError) {
+          console.error("❌ Failed to reseed capabilities:", insertError);
+          throw new Error(
+            `Failed to reseed capabilities: ${insertError.message}`,
+          );
+        }
+        reseededCapabilities += chunk.length;
+      }
+      console.log("✅ Reseeded", reseededCapabilities, "capabilities");
+    } else {
+      console.log(
+        "⚠️ competency_taxonomy_seed is empty — run scripts/generate-taxonomy-migration.mjs and apply the migration to populate it.",
       );
     }
 
-    console.log(`✅ Reseeded ${baseCapabilities.length} base capabilities`);
-
-    // Log admin action
     await logApiEvent(request, {
       actionType: "admin_capabilities_reset" as any,
       userId: user.id,
@@ -128,20 +162,25 @@ export async function POST(request: NextRequest) {
       details: {
         deletedCapabilities: deletedCapsCount || 0,
         deletedLinks: deletedLinksCount || 0,
-        reseededCapabilities: baseCapabilities.length,
+        reseededCapabilities,
       },
-    }).catch(() => {}); // Don't fail if logging fails
+    }).catch(() => {});
 
     console.log(
-      `✅ RESET COMPLETE: All capabilities deleted and EIC taxonomy reseeded (${baseCapabilities.length} capabilities)`,
+      "✅ RESET COMPLETE: Deleted all, reseeded",
+      reseededCapabilities,
+      "capabilities from CSV taxonomy.",
     );
 
     return NextResponse.json({
       success: true,
       deletedCapabilities: deletedCapsCount || 0,
       deletedLinks: deletedLinksCount || 0,
-      reseededCapabilities: baseCapabilities.length,
-      message: `All capabilities deleted. Reseeded ${baseCapabilities.length} capabilities from EIC taxonomy.`,
+      reseededCapabilities,
+      message:
+        reseededCapabilities > 0
+          ? `All capabilities and links deleted. Reseeded ${reseededCapabilities} capabilities from the seed table.`
+          : "All capabilities and links deleted. Seed table is empty — run scripts/generate-taxonomy-migration.mjs and apply the migration to populate competency_taxonomy_seed.",
     });
   } catch (error) {
     console.error("❌ Error resetting capabilities:", error);

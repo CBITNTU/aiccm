@@ -10,14 +10,15 @@ import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
 import { useAdminTenderSync } from "@/components/admin/AdminTenderSyncContext";
 
-function formatDateTime(iso: string | null): string {
+function formatDateTimeGMT(iso: string | null): string {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
-    return d.toLocaleString(undefined, {
+    return `${d.toLocaleString("en-GB", {
+      timeZone: "UTC",
       dateStyle: "medium",
       timeStyle: "short",
-    });
+    })} GMT`;
   } catch {
     return iso;
   }
@@ -110,13 +111,13 @@ export function AdminTenderSyncSchedule() {
                 <span className="text-muted-foreground">
                   Last sync finished:
                 </span>{" "}
-                {lastSync ? formatDateTime(lastSync) : "Never"}
+                {lastSync ? formatDateTimeGMT(lastSync) : "Never"}
               </p>
               <p>
                 <span className="text-muted-foreground">
                   Next scheduled sync:
                 </span>{" "}
-                {nextSync ? formatDateTime(nextSync) : "Not scheduled"}
+                {nextSync ? formatDateTimeGMT(nextSync) : "Not scheduled"}
               </p>
             </>
           )}

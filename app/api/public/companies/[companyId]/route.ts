@@ -19,9 +19,6 @@ export async function GET(
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
-    // TODO [MERGE]: migrate to Drizzle — HEAD used Supabase query with field selection:
-    // const { data, error } = await supabase.from("companies").select(`id, company_name, ...`).eq("id", companyId)...
-
     const companyResult = await db
       .select({
         id: companies.id,

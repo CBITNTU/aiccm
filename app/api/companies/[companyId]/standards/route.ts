@@ -1,11 +1,27 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companyStandards, standardsRef } from "@/lib/db/schema/app";
+import { eq, and, inArray } from "drizzle-orm";
+
+async function getCompanyStandardsData(companyId: string) {
+  return db
+    .select({
+      id: standardsRef.id,
+      name: standardsRef.name,
+      parent_id: standardsRef.parentId,
+      sort_order: standardsRef.sortOrder,
+    })
+    .from(companyStandards)
+    .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+    .where(eq(companyStandards.companyId, companyId));
+}
 
 export async function GET(
   request: NextRequest,
@@ -20,21 +36,8 @@ export async function GET(
       throw new AuthError("No access to this company");
     }
 
-    const supabase = createAdminClient();
-
-    const { data: companyStandards, error } = await supabase
-      .from("company_standards")
-      .select("standards_ref(id, name, parent_id, sort_order)")
-      .eq("company_id", companyId);
-
-    if (error) throw error;
-
-    const standards = (companyStandards || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cs: any) => cs.standards_ref)
-      .filter(Boolean);
-
-    return apiResponse({ standards });
+    const data = await getCompanyStandardsData(companyId);
+    return apiResponse({ standards: data });
   } catch (error) {
     return handleApiError(error);
   }
@@ -53,52 +56,42 @@ export async function PUT(
       throw new AuthError("No access to this company");
     }
 
-    const supabase = createAdminClient();
     const body = await request.json();
     const { standardIds } = body as { standardIds: string[] };
 
-    const { data: current } = await supabase
-      .from("company_standards")
-      .select("standard_id")
-      .eq("company_id", companyId);
+    const current = await db
+      .select({ standardId: companyStandards.standardId })
+      .from(companyStandards)
+      .where(eq(companyStandards.companyId, companyId));
 
-    const currentIds = new Set((current || []).map((c) => c.standard_id));
+    const currentIds = new Set(current.map((c) => c.standardId));
     const newIds = new Set(standardIds);
 
     const toRemove = [...currentIds].filter((id) => !newIds.has(id));
     const toAdd = [...newIds].filter((id) => !currentIds.has(id));
 
     if (toRemove.length > 0) {
-      const { error } = await supabase
-        .from("company_standards")
-        .delete()
-        .eq("company_id", companyId)
-        .in("standard_id", toRemove);
-      if (error) throw error;
+      await db
+        .delete(companyStandards)
+        .where(
+          and(
+            eq(companyStandards.companyId, companyId),
+            inArray(companyStandards.standardId, toRemove),
+          ),
+        );
     }
 
     if (toAdd.length > 0) {
-      const inserts = toAdd.map((standardId) => ({
-        company_id: companyId,
-        standard_id: standardId,
-      }));
-      const { error } = await supabase
-        .from("company_standards")
-        .insert(inserts);
-      if (error) throw error;
+      await db.insert(companyStandards).values(
+        toAdd.map((standardId) => ({
+          companyId,
+          standardId,
+        })),
+      );
     }
 
-    const { data: updated } = await supabase
-      .from("company_standards")
-      .select("standards_ref(id, name, parent_id, sort_order)")
-      .eq("company_id", companyId);
-
-    const standards = (updated || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cs: any) => cs.standards_ref)
-      .filter(Boolean);
-
-    return apiResponse({ standards });
+    const data = await getCompanyStandardsData(companyId);
+    return apiResponse({ standards: data });
   } catch (error) {
     return handleApiError(error);
   }

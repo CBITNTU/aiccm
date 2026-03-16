@@ -8,24 +8,6 @@ import { eq, asc } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
 import { companySummaryAndTaxonomySchema } from "@/lib/schemas/capabilitySuggestion";
 
-// TODO [MERGE]: migrate to Drizzle — HEAD imported Supabase client:
-// import { createAdminClient } from "@/lib/api";
-// const supabase = createAdminClient();
-
-// TODO [MERGE]: migrate to Drizzle — HEAD helper functions for reference:
-// function sleep(ms: number): Promise<void> { ... }
-// function extractJsonObject(text: string): { summary?: string; existing?: string[] } | null { ... }
-// async function retryAiGenerateObject<T>(options, { maxAttempts, delayMs }): Promise<T> { ... }
-
-// TODO [MERGE]: migrate local taxonomy system to Drizzle
-// HEAD had a full local taxonomy system (keyword matching, no AI):
-// - Constants: MAX_CAPABILITIES_IN_PROMPT=350, LOCAL_TAXONOMY_MIN_SCORE=1, LOCAL_TAXONOMY_MAX_L1=5
-// - toSearchWords(text): string[] — normalize text for scoring
-// - scoreCapabilityMatch(companyWords, companyTextLower, capabilityName, category): number
-// - getL1Capabilities(): Promise<Array<{id,name,category}>> — fetch L1 capabilities via Supabase
-// - assignCapabilitiesLocally(companyId): Promise<string[]> — keyword-based capability assignment
-// - getCapabilitiesForPrompt(): Promise<Array<{id,name,category,parent_id}>> — paginated Supabase fetch
-
 /**
  * Generate AI summary for a company
  */
@@ -133,8 +115,6 @@ export async function generateCompanyCapabilityTaxonomy(
   companyId: string,
   _fullRegeneration: boolean = false,
 ): Promise<string[]> {
-  // TODO [MERGE]: HEAD used local keyword matching (assignCapabilitiesLocally) instead of AI
-
   // Fetch company data
   const result = await db
     .select({

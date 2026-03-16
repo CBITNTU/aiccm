@@ -291,10 +291,10 @@ export async function POST(request: NextRequest) {
             if (geoQuery) {
               const coords = await geocodeLocation(geoQuery);
               if (coords) {
-                await adminClient
-                  .from("companies")
-                  .update({ latitude: coords.lat, longitude: coords.lng })
-                  .eq("id", company.id);
+                await db
+                  .update(companies)
+                  .set({ latitude: coords.lat, longitude: coords.lng })
+                  .where(eq(companies.id, company.id));
               }
             }
           }

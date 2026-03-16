@@ -12,7 +12,7 @@ import {
   isGeocodingEnabled,
 } from "@/lib/geocode";
 import { db } from "@/lib/db";
-import { companies, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
+import { companies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
 
 export async function GET(
@@ -62,20 +62,31 @@ export async function GET(
       )
       .where(eq(companyCapabilities.companyId, companyId));
 
-    // TODO [MERGE]: migrate markets/standards to Drizzle
-    // const { data: marketsData } = await supabase
-    //   .from("company_markets")
-    //   .select("markets(id, name, parent_id, sort_order)")
-    //   .eq("company_id", companyId);
-    // const markets = (marketsData || []).map((cm: any) => cm.markets).filter(Boolean);
-    //
-    // const { data: standardsData } = await supabase
-    //   .from("company_standards")
-    //   .select("standards_ref(id, name, parent_id, sort_order)")
-    //   .eq("company_id", companyId);
-    // const standards = (standardsData || []).map((cs: any) => cs.standards_ref).filter(Boolean);
+    // Fetch markets via join
+    const marketsData = await db
+      .select({
+        id: markets.id,
+        name: markets.name,
+        parentId: markets.parentId,
+        sortOrder: markets.sortOrder,
+      })
+      .from(companyMarkets)
+      .innerJoin(markets, eq(companyMarkets.marketId, markets.id))
+      .where(eq(companyMarkets.companyId, companyId));
 
-    return apiResponse({ company, isOwner, capabilities: capData });
+    // Fetch standards via join
+    const standardsData = await db
+      .select({
+        id: standardsRef.id,
+        name: standardsRef.name,
+        parentId: standardsRef.parentId,
+        sortOrder: standardsRef.sortOrder,
+      })
+      .from(companyStandards)
+      .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+      .where(eq(companyStandards.companyId, companyId));
+
+    return apiResponse({ company, isOwner, capabilities: capData, markets: marketsData, standards: standardsData });
   } catch (error) {
     return handleApiError(error);
   }

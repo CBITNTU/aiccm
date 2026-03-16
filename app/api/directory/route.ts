@@ -6,7 +6,7 @@ import {
   sanitizeLikeParam,
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { companies, companyTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { companies, companyTaxonomies, taxonomies, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
 import { eq, and, or, ilike, inArray, asc, count, sql } from "drizzle-orm";
 import { nearbyCompanies } from "@/lib/db/raw";
 
@@ -77,8 +77,6 @@ export async function GET(request: NextRequest) {
       // Standard query — alphabetical, DB-paginated
       const offset = (page - 1) * limit;
 
-      // TODO [MERGE]: migrate to Drizzle — HEAD used Supabase query builder:
-      // let query = supabase.from("companies").select(`id, company_name, ...`, { count: "exact" }).eq("status", "active");
       const conditions = [eq(companies.status, "active")];
 
       if (filteredCompanyIds) {
@@ -138,6 +136,8 @@ export async function GET(request: NextRequest) {
     // Fetch taxonomies for returned companies
     const companyIds = companiesData.map((c) => (c.id as string) || (c as { id: string }).id);
     let taxonomiesByCompany: Record<string, { id: string; name: string }[]> = {};
+    let marketsByCompany: Record<string, { id: string; name: string }[]> = {};
+    let standardsByCompany: Record<string, { id: string; name: string }[]> = {};
 
     if (companyIds.length > 0) {
       const taxData = await db
@@ -162,18 +162,52 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // TODO [MERGE]: migrate markets/standards aggregation to Drizzle
-      // const { data: marketsData } = await supabase
-      //   .from("company_markets")
-      //   .select("company_id, markets(id, name)")
-      //   .in("company_id", companyIds);
-      // ... (marketsByCompany + standardsByCompany aggregation)
+      // Fetch markets for all returned companies
+      const marketsData = await db
+        .select({
+          companyId: companyMarkets.companyId,
+          marketId: markets.id,
+          marketName: markets.name,
+        })
+        .from(companyMarkets)
+        .innerJoin(markets, eq(companyMarkets.marketId, markets.id))
+        .where(inArray(companyMarkets.companyId, companyIds));
+
+      marketsByCompany = {};
+      for (const row of marketsData) {
+        if (!row.marketName) continue;
+        if (!marketsByCompany[row.companyId]) {
+          marketsByCompany[row.companyId] = [];
+        }
+        marketsByCompany[row.companyId].push({ id: row.marketId, name: row.marketName });
+      }
+
+      // Fetch standards for all returned companies
+      const standardsData = await db
+        .select({
+          companyId: companyStandards.companyId,
+          standardId: standardsRef.id,
+          standardName: standardsRef.name,
+        })
+        .from(companyStandards)
+        .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+        .where(inArray(companyStandards.companyId, companyIds));
+
+      standardsByCompany = {};
+      for (const row of standardsData) {
+        if (!row.standardName) continue;
+        if (!standardsByCompany[row.companyId]) {
+          standardsByCompany[row.companyId] = [];
+        }
+        standardsByCompany[row.companyId].push({ id: row.standardId, name: row.standardName });
+      }
     }
 
     return apiResponse({
       companies: companiesData,
       taxonomiesByCompany,
-      // TODO [MERGE]: add marketsByCompany, standardsByCompany once migrated to Drizzle
+      marketsByCompany,
+      standardsByCompany,
       ...(hasLocation && { distanceByCompany }),
       totalCount,
       page,

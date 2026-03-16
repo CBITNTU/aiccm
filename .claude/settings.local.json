@@ -4,7 +4,9 @@
       "WebFetch(domain:better-auth.com)",
       "Bash(head:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ]
   }
 }

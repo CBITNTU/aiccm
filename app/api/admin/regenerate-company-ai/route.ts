@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
     } else {
       console.log("No custom capabilities to delete - all are in base categories");
     }
-    // TODO [MERGE]: migrate to Drizzle — HEAD note: "Do NOT reset/delete capabilities here. The taxonomy is the CSV seed."
+    // Custom capabilities are deleted during full regeneration — they will be reassigned by AI.
 
     // If no company IDs provided, get all companies
     let companiesToProcess: string[] = [];
@@ -198,10 +198,9 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        batchSize: 50,
+        batchSize: 40,
         continuous: true,
-        concurrency: 15,
-        // TODO [MERGE]: HEAD used conservative values: batchSize: 30, concurrency: 5 (to avoid rate limits)
+        concurrency: 10,
       }),
     })
       .then((res) => {

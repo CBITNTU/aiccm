@@ -371,6 +371,8 @@ export const api = {
       company: Record<string, unknown>;
       isOwner: boolean;
       capabilities: { id: string; name: string; category: string }[];
+      markets: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
     }>(`companies/${companyId}`, { method: "GET" }).then((data) => ({
       ...data,
       company: normalizeCompanyRecord(data.company),
@@ -444,10 +446,9 @@ export const api = {
       company: Record<string, unknown>;
       isOwner: boolean;
       taxonomies: { id: string; name: string }[];
-    // TODO [MERGE]: migrate to Drizzle — HEAD also returned:
-    // capabilities: { id: string; name: string; category: string | null }[];
-    // markets: { id: string; name: string; parent_id: string | null; parent_name: string | null }[];
-    // standards: { id: string; name: string; parent_id: string | null; parent_name: string | null }[];
+      capabilities: { id: string; name: string; category: string | null }[];
+      markets: { id: string; name: string; parentId: string | null }[];
+      standards: { id: string; name: string; parentId: string | null }[];
     }>(`directory/${companyId}`, { method: "GET" }).then((data) => ({
       ...data,
       company: normalizeCompanyRecord(data.company),

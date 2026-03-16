@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { companies, companyTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { companies, companyTaxonomies, taxonomies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
 import { eq, and, or } from "drizzle-orm";
 
 export async function GET(
@@ -12,9 +12,6 @@ export async function GET(
   try {
     const { user } = await requireAuth(request);
     const { companyId } = await params;
-
-    // TODO [MERGE]: migrate to Drizzle — HEAD used Supabase query with specific field selection:
-    // const { data, error } = await supabase.from("companies").select(`id, company_name, ...`).eq("id", companyId)...
 
     // Fetch company - visible if active or owned by user
     const companyRows = await db
@@ -74,20 +71,40 @@ export async function GET(
       .filter((t) => t.name)
       .map((t) => ({ id: t.id, name: t.name }));
 
-    // TODO [MERGE]: migrate capabilities, markets, standards to Drizzle
-    // const { data: capData } = await supabase
-    //   .from("company_capabilities")
-    //   .select("company_capabilities_ref(id, name, category)")
-    //   .eq("company_id", companyId);
-    // const capabilities = (capData || []).map((cc: any) => cc.company_capabilities_ref).filter(Boolean);
-    //
-    // const { data: marketsData } = await supabase
-    //   .from("company_markets")
-    //   .select("markets(id, name, parent_id)")
-    //   .eq("company_id", companyId);
-    // ... (market parent resolution + standards fetching)
+    // Fetch capabilities
+    const capData = await db
+      .select({
+        id: companyCapabilitiesRef.id,
+        name: companyCapabilitiesRef.name,
+        category: companyCapabilitiesRef.category,
+      })
+      .from(companyCapabilities)
+      .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
+      .where(eq(companyCapabilities.companyId, companyId));
 
-    return apiResponse({ company: responseData, isOwner, taxonomies: companyTaxonomyList });
+    // Fetch markets
+    const marketsData = await db
+      .select({
+        id: markets.id,
+        name: markets.name,
+        parentId: markets.parentId,
+      })
+      .from(companyMarkets)
+      .innerJoin(markets, eq(companyMarkets.marketId, markets.id))
+      .where(eq(companyMarkets.companyId, companyId));
+
+    // Fetch standards
+    const standardsData = await db
+      .select({
+        id: standardsRef.id,
+        name: standardsRef.name,
+        parentId: standardsRef.parentId,
+      })
+      .from(companyStandards)
+      .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+      .where(eq(companyStandards.companyId, companyId));
+
+    return apiResponse({ company: responseData, isOwner, taxonomies: companyTaxonomyList, capabilities: capData, markets: marketsData, standards: standardsData });
   } catch (error) {
     return handleApiError(error);
   }

@@ -11,6 +11,7 @@ import {
   inet,
   doublePrecision,
   unique,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
@@ -305,6 +306,7 @@ export const companyCapabilitiesRef = pgTable("company_capabilities_ref", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
   category: text("category"),
+  parentId: uuid("parent_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -323,6 +325,56 @@ export const companyCapabilities = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique().on(table.companyId, table.capabilityId)],
+);
+
+// ============================================================================
+// Markets
+// ============================================================================
+export const markets = pgTable("markets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  parentId: uuid("parent_id"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const companyMarkets = pgTable(
+  "company_markets",
+  {
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    marketId: uuid("market_id")
+      .notNull()
+      .references(() => markets.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.companyId, table.marketId] })],
+);
+
+// ============================================================================
+// Standards
+// ============================================================================
+export const standardsRef = pgTable("standards_ref", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  parentId: uuid("parent_id"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const companyStandards = pgTable(
+  "company_standards",
+  {
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    standardId: uuid("standard_id")
+      .notNull()
+      .references(() => standardsRef.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.companyId, table.standardId] })],
 );
 
 // ============================================================================

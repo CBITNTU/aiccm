@@ -70,16 +70,13 @@ export async function POST(request: NextRequest) {
     // Step 4: Reseed base capabilities list from EIC taxonomy (standard taxonomy)
     console.log("Step 4: Reseeding base capabilities list from EIC taxonomy...");
 
-    // TODO [MERGE]: migrate CSV seed pagination approach to Drizzle
-    // HEAD used: paginated reads from competency_taxonomy_seed table via Supabase,
-    // then batch-inserted into company_capabilities_ref. Consider switching to this
-    // once the seed table is migrated to Drizzle.
-
-    const baseCapabilities = EIC_TAXONOMY.map((item) => ({
-      name: item.name,
-      category: item.category,
-      isActive: true,
-    }));
+    const baseCapabilities = EIC_TAXONOMY.flatMap((item) =>
+      item.subcategories.map((sub) => ({
+        name: sub,
+        category: item.name,
+        isActive: true,
+      })),
+    );
 
     const insertedCaps = await db
       .insert(companyCapabilitiesRef)

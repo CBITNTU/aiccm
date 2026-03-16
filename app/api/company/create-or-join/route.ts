@@ -14,6 +14,11 @@ import {
   getCompanyJoinRequestEmailHtml,
 } from "@/lib/email";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import {
+  geocodeLocation,
+  buildCompanyGeoQuery,
+  isGeocodingEnabled,
+} from "@/lib/geocode";
 
 interface NewCompanyData {
   action: "create";
@@ -140,6 +145,23 @@ export async function POST(request: NextRequest) {
           return apiError("A company with this name already exists", 409);
         }
         return apiError("Failed to create company", 500);
+      }
+
+      // Geocode new company if address present
+      if (isGeocodingEnabled() && createData.address?.trim()) {
+        const geoQuery = buildCompanyGeoQuery(
+          createData.address.trim(),
+          null,
+        );
+        if (geoQuery) {
+          const coords = await geocodeLocation(geoQuery);
+          if (coords) {
+            await adminClient
+              .from("companies")
+              .update({ latitude: coords.lat, longitude: coords.lng })
+              .eq("id", company.id);
+          }
+        }
       }
 
       // Add user as company admin (pending)

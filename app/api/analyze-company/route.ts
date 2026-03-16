@@ -125,12 +125,6 @@ export async function POST(request: NextRequest) {
       updateData.key_capabilities = companyInfo.key_capabilities;
     }
     if (
-      companyInfo.equipment &&
-      (!company.equipment || company.equipment.length < 20)
-    ) {
-      updateData.equipment = companyInfo.equipment;
-    }
-    if (
       companyInfo.certifications &&
       (!company.certifications || company.certifications.length < 20)
     ) {
@@ -157,12 +151,6 @@ export async function POST(request: NextRequest) {
 
     if (analysis.digitalMaturity) {
       updateData.digital_maturity = analysis.digitalMaturity;
-    }
-    if (analysis.safetyRating) {
-      updateData.safety_rating = analysis.safetyRating;
-    }
-    if (analysis.marketPosition) {
-      updateData.market_position = analysis.marketPosition;
     }
 
     const { error: updateError } = await supabase

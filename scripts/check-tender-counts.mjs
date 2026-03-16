@@ -79,7 +79,7 @@ async function countFindATender() {
       try {
         const u = new URL(nextUrl);
         cursor = u.searchParams.get("cursor") ?? undefined;
-      } catch (_) {}
+      } catch {}
     }
     if (cursor) await new Promise((r) => setTimeout(r, 500));
   } while (cursor);

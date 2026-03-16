@@ -12,7 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tag, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tag, Loader2, Pencil } from "lucide-react";
 import { CapabilityTreeSelector } from "@/components/tenders/CapabilityTreeSelector";
 
 interface Capability {
@@ -36,6 +37,7 @@ export function CompanyCapabilitySelector({
   const [allCapabilities, setAllCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     fetchCompanyCapabilities();
@@ -128,49 +130,83 @@ export function CompanyCapabilitySelector({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Tag className="h-5 w-5" />
-          Company Capabilities
+          Competency
         </CardTitle>
         <CardDescription>
-          Select capabilities that your company has. Changes are saved
-          automatically.
+          {editMode
+            ? "Select capabilities that your company has. Changes are saved automatically."
+            : "Capabilities your company has."}
           {saving && <span className="ml-2 text-primary">Saving...</span>}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {selectedCapabilityIds.length > 0 && (
-          <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm">
-                Currently Selected ({selectedCapabilityIds.length})
-              </h3>
+      <CardContent className="space-y-4">
+        {!editMode ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {selectedCapabilityIds.length === 0 ? (
+                <span className="text-sm text-muted-foreground">
+                  No capabilities selected.
+                </span>
+              ) : (
+                allCapabilities.map((cap) => (
+                  <Badge key={cap.id} variant="secondary">
+                    {cap.name}
+                  </Badge>
+                ))
+              )}
             </div>
-            <div className="space-y-3">
-              {groupedSelected.map(([category, caps]) => (
-                <div key={category || "uncategorized"}>
-                  {category && category !== "Uncategorized" && (
-                    <h4 className="font-semibold text-xs text-muted-foreground mb-2 uppercase">
-                      {category}
-                    </h4>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {caps.map((cap) => (
-                      <Badge key={cap.id} variant="default">
-                        {cap.name}
-                      </Badge>
-                    ))}
-                  </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setEditMode(true)}
+              className="gap-1"
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
+            </Button>
+          </>
+        ) : (
+          <>
+            {selectedCapabilityIds.length > 0 && (
+              <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+                <h3 className="font-semibold text-sm">
+                  Currently Selected ({selectedCapabilityIds.length})
+                </h3>
+                <div className="space-y-3">
+                  {groupedSelected.map(([category, caps]) => (
+                    <div key={category || "uncategorized"}>
+                      {category && category !== "Uncategorized" && (
+                        <h4 className="font-semibold text-xs text-muted-foreground mb-2 uppercase">
+                          {category}
+                        </h4>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {caps.map((cap) => (
+                          <Badge key={cap.id} variant="default">
+                            {cap.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            )}
+            <CapabilityTreeSelector
+              selectedCapabilities={selectedCapabilityIds}
+              onSelectionChange={handleSelectionChange}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setEditMode(false)}
+            >
+              Done
+            </Button>
+          </>
         )}
-
-        <div>
-          <CapabilityTreeSelector
-            selectedCapabilities={selectedCapabilityIds}
-            onSelectionChange={handleSelectionChange}
-          />
-        </div>
       </CardContent>
     </Card>
   );

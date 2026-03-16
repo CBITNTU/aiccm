@@ -37,24 +37,6 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
             </span>
           </div>
 
-          {company.safety_rating && (
-            <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-              <span className="text-sm font-medium">Safety Rating</span>
-              <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                {company.safety_rating}
-              </Badge>
-            </div>
-          )}
-
-          {company.market_position && (
-            <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-              <span className="text-sm font-medium">Market Position</span>
-              <span className="text-sm">
-                {company.market_position}
-              </span>
-            </div>
-          )}
-
           {/* Financial Data */}
           {company.financial_data &&
             Object.keys(

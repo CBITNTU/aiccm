@@ -56,7 +56,29 @@ export async function GET(
       .map((cc: any) => cc.company_capabilities_ref)
       .filter(Boolean);
 
-    return apiResponse({ company: data, isOwner, capabilities });
+    // Fetch markets
+    const { data: marketsData } = await supabase
+      .from("company_markets")
+      .select("markets(id, name, parent_id, sort_order)")
+      .eq("company_id", companyId);
+
+    const markets = (marketsData || [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((cm: any) => cm.markets)
+      .filter(Boolean);
+
+    // Fetch standards
+    const { data: standardsData } = await supabase
+      .from("company_standards")
+      .select("standards_ref(id, name, parent_id, sort_order)")
+      .eq("company_id", companyId);
+
+    const standards = (standardsData || [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((cs: any) => cs.standards_ref)
+      .filter(Boolean);
+
+    return apiResponse({ company: data, isOwner, capabilities, markets, standards });
   } catch (error) {
     return handleApiError(error);
   }

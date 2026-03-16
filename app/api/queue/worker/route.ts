@@ -18,7 +18,6 @@ import {
 import {
   generateCompanySummary,
   generateCompanyCapabilityTaxonomy,
-  generateCompanySummaryAndTaxonomy,
 } from "@/lib/services/companyAIService";
 import { scoreTenderMatch } from "@/lib/services/tenderMatchingService";
 import { logEvent } from "@/lib/services/eventLogger";
@@ -66,14 +65,18 @@ async function processJob(job: {
       );
       return { success: true, taxonomy: companyTaxonomy };
 
-    case "company_ai_complete": // New combined job type
+    case "company_ai_complete":
+      // Split into 2 requests: taxonomy first, then summary. Keeps each prompt smaller and more reliable.
       const fullRegen = job.metadata?.fullRegeneration === true;
-      const { summary: combinedSummary, taxonomy: combinedTaxonomy } =
-        await generateCompanySummaryAndTaxonomy(job.entity_id, fullRegen);
+      const companyTaxonomyIds = await generateCompanyCapabilityTaxonomy(
+        job.entity_id,
+        fullRegen,
+      );
+      const companySummaryText = await generateCompanySummary(job.entity_id);
       return {
         success: true,
-        summary: combinedSummary,
-        taxonomy: combinedTaxonomy,
+        summary: companySummaryText,
+        taxonomy: companyTaxonomyIds,
       };
 
     case "tender_matching": {

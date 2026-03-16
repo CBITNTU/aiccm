@@ -185,9 +185,6 @@ export default function DashboardPage() {
                 certifications: Array.isArray(selectedOrg.certifications)
                   ? selectedOrg.certifications.join(", ")
                   : undefined,
-                equipment: Array.isArray(selectedOrg.equipment)
-                  ? selectedOrg.equipment.join(", ")
-                  : undefined,
               }
             : undefined
         }

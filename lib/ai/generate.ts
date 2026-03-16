@@ -144,6 +144,11 @@ export async function aiGenerateObject<T>(
       ),
     });
 
+    if (result.object == null) {
+      throw new Error(
+        "No object generated: the model did not return a response.",
+      );
+    }
     return result.object;
   }, estTokens ?? 1500);
 }

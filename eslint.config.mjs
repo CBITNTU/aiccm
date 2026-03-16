@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Scripts: .mjs causes parser "Expression expected" at EOF
+    "scripts/**/*.mjs",
   ]),
   // Allow unused vars/args that start with _
   {

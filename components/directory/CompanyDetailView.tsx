@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,13 +12,14 @@ import {
   Mail,
   Award,
   Building2,
-  FileText,
-  Wrench,
   Shield,
   Loader2,
   BadgeCheck,
   Sparkles,
+  UserPlus,
+  Tag,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   Radar,
   RadarChart,
@@ -40,12 +42,9 @@ type PublicCompany = Pick<
   | "key_capabilities"
   | "postcode"
   | "certifications"
-  | "equipment"
   | "past_projects"
   | "is_system_company"
   | "status"
-  | "market_position"
-  | "safety_rating"
   | "digital_maturity"
   | "ai_competencies"
   | "ai_capabilities"
@@ -89,6 +88,75 @@ interface CompanyDetailViewProps {
   readOnly?: boolean;
   /** If provided, overrides the client-side owner check from useAuth */
   isOwner?: boolean;
+  /** Selected capabilities (Competency box) - with category for tree */
+  capabilities?: { id: string; name: string; category?: string | null }[];
+  /** Selected markets - with parent for tree */
+  markets?: {
+    id: string;
+    name: string;
+    parent_id?: string | null;
+    parent_name?: string | null;
+  }[];
+  /** Selected standards - with parent for tree */
+  standards?: {
+    id: string;
+    name: string;
+    parent_id?: string | null;
+    parent_name?: string | null;
+  }[];
+}
+
+/** Renders a list of items as a tree: grouped by parent (L1), then children (L2) with indentation */
+function TaxonomyTree({
+  items,
+}: {
+  items: { id: string; label: string; parentLabel: string | null }[];
+}) {
+  const groups = useMemo(() => {
+    const byParent = new Map<string | null, { id: string; label: string }[]>();
+    for (const item of items) {
+      const key = item.parentLabel ?? null;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push({ id: item.id, label: item.label });
+    }
+    // Sort parents; null (root) last or first
+    const entries = Array.from(byParent.entries()).sort((a, b) => {
+      if (a[0] === null) return 1;
+      if (b[0] === null) return -1;
+      return a[0].localeCompare(b[0]);
+    });
+    return entries;
+  }, [items]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-md border border-border bg-muted/20 text-sm">
+      <ul className="divide-y divide-border/50">
+        {groups.map(([parentLabel, children]) => (
+          <li key={parentLabel ?? "__root__"} className="first:pt-0">
+            {parentLabel != null && (
+              <div className="px-3 py-1.5 font-medium text-foreground bg-muted/40">
+                {parentLabel}
+              </div>
+            )}
+            <ul className={parentLabel != null ? "pl-4 pb-1" : ""}>
+              {children.map((c) => (
+                <li
+                  key={c.id}
+                  className={`py-1 text-muted-foreground ${
+                    parentLabel != null ? "border-l-2 border-border/50 pl-3 ml-1" : "px-3"
+                  }`}
+                >
+                  {c.label}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 // Type guard to check if company has full contact fields
@@ -100,8 +168,12 @@ export function CompanyDetailView({
   company,
   readOnly = false,
   isOwner: isOwnerProp,
+  capabilities: capabilitiesProp,
+  markets = [],
+  standards = [],
 }: CompanyDetailViewProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [analysis, setAnalysis] = useState<CompanyAnalysis | null>(null);
   const analyzeMutation = useAnalyzeCompany();
   const loadingAnalysis = analyzeMutation.isPending;
@@ -179,7 +251,20 @@ export function CompanyDetailView({
       <div className="mb-6">
         <div className="flex justify-between items-start mb-2">
           <h1 className="text-2xl font-bold">{company.company_name}</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!isOwner && user && (
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-1.5"
+                onClick={() =>
+                  router.push(`/my-company/new?join=${encodeURIComponent(company.id)}`)
+                }
+              >
+                <UserPlus className="h-4 w-4" />
+                Join this company
+              </Button>
+            )}
             {analysis?.performanceBenchmark?.overallScore && (
               <Badge variant="default" className="text-lg px-3 py-1">
                 {analysis.performanceBenchmark.overallScore}/100
@@ -204,53 +289,130 @@ export function CompanyDetailView({
           </p>
         )}
 
-        {/* Key Capabilities */}
+        {/* Competency, Market & Standards – single card with tree display */}
         <div className="mt-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <Award className="h-4 w-4" />
-            Key Capabilities
-            {analysis && (
-              <Badge variant="outline" className="text-xs">
-                AI Analyzed
-              </Badge>
-            )}
-          </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {(() => {
-              let capabilities: string[] = [];
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Competency, Market & Standards
+                {analysis && capabilitiesProp?.length === 0 && (
+                  <Badge variant="outline" className="text-xs font-normal">
+                    AI Analyzed
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Competency tree (category = L1, name = L2) */}
+              <div>
+                <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                  <Tag className="h-3.5 w-3.5" />
+                  Competency
+                </h4>
+                {capabilitiesProp && capabilitiesProp.length > 0 ? (
+                  <TaxonomyTree
+                    items={capabilitiesProp.map((c) => ({
+                      id: c.id,
+                      label: c.name,
+                      parentLabel: c.category ?? null,
+                    }))}
+                  />
+                ) : (
+                  (() => {
+                    let fallback: string[] = [];
+                    if (
+                      analysis?.coreCompetencies &&
+                      Array.isArray(analysis.coreCompetencies)
+                    ) {
+                      fallback = analysis.coreCompetencies;
+                    } else if (
+                      company.ai_competencies &&
+                      Array.isArray(company.ai_competencies)
+                    ) {
+                      fallback = company.ai_competencies as string[];
+                    } else if (
+                      company.ai_capabilities &&
+                      Array.isArray(company.ai_capabilities)
+                    ) {
+                      fallback = company.ai_capabilities as string[];
+                    } else if (company.key_capabilities) {
+                      fallback = company.key_capabilities
+                        .split(",")
+                        .map((cap) => cap.trim());
+                    }
+                    if (fallback.filter(Boolean).length === 0) {
+                      return (
+                        <span className="text-sm text-muted-foreground">
+                          No competencies listed.
+                        </span>
+                      );
+                    }
+                    return (
+                      <TaxonomyTree
+                        items={fallback
+                          .filter(Boolean)
+                          .slice(0, 12)
+                          .map((label, index) => ({
+                            id: `fallback-${index}`,
+                            label,
+                            parentLabel: null,
+                          }))}
+                      />
+                    );
+                  })()
+                )}
+              </div>
 
-              if (
-                analysis?.coreCompetencies &&
-                Array.isArray(analysis.coreCompetencies)
-              ) {
-                capabilities = analysis.coreCompetencies;
-              } else if (
-                company.ai_competencies &&
-                Array.isArray(company.ai_competencies)
-              ) {
-                capabilities = company.ai_competencies as string[];
-              } else if (
-                company.ai_capabilities &&
-                Array.isArray(company.ai_capabilities)
-              ) {
-                capabilities = company.ai_capabilities as string[];
-              } else if (company.key_capabilities) {
-                capabilities = company.key_capabilities
-                  .split(",")
-                  .map((cap) => cap.trim());
-              }
+              {/* Market tree (parent_name = L1, name = L2) */}
+              <div>
+                <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                  <Globe className="h-3.5 w-3.5" />
+                  Market
+                </h4>
+                {markets.length > 0 ? (
+                  <TaxonomyTree
+                    items={markets.map((m) => ({
+                      id: m.id,
+                      label: m.name,
+                      parentLabel: m.parent_name ?? null,
+                    }))}
+                  />
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    No markets selected.
+                  </span>
+                )}
+              </div>
 
-              return capabilities.slice(0, 9).map((capability, index) => (
-                <Badge
-                  key={index}
-                  variant="outline"
-                  className="justify-center py-2 px-3 text-center hover:bg-primary/10"
-                >
-                  {capability}
-                </Badge>
-              ));
-            })()}
-          </div>
+              {/* Standards & Certifications tree (parent_name = L1, name = L2) */}
+              <div>
+                <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                  <Award className="h-3.5 w-3.5" />
+                  Standards & Certifications
+                </h4>
+                {standards.length > 0 ? (
+                  <TaxonomyTree
+                    items={standards.map((s) => ({
+                      id: s.id,
+                      label: s.name,
+                      parentLabel: s.parent_name ?? null,
+                    }))}
+                  />
+                ) : null}
+                {company.certifications && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {company.certifications}
+                  </p>
+                )}
+                {standards.length === 0 && !company.certifications && (
+                  <span className="text-sm text-muted-foreground">
+                    No standards selected.
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -334,19 +496,6 @@ export function CompanyDetailView({
           </h3>
 
           <div className="space-y-3">
-            {company.safety_rating && (
-              <div className="border border-border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground block">
-                    Safety Rating
-                  </label>
-                  <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                    {company.safety_rating}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
             {company.digital_maturity && (
               <div className="border border-border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors">
                 <div className="space-y-2">
@@ -355,19 +504,6 @@ export function CompanyDetailView({
                   </label>
                   <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                     {company.digital_maturity}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            {company.market_position && (
-              <div className="border border-border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground block">
-                    Market Position
-                  </label>
-                  <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                    {company.market_position}
                   </Badge>
                 </div>
               </div>
@@ -515,26 +651,6 @@ export function CompanyDetailView({
 
       {/* Additional Details */}
       <div className="space-y-6">
-        {company.equipment && (
-          <div>
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <Wrench className="h-5 w-5" />
-              Equipment
-            </h3>
-            <p className="text-muted-foreground">{company.equipment}</p>
-          </div>
-        )}
-
-        {company.certifications && (
-          <div>
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <FileText className="h-5 w-5" />
-              Certifications
-            </h3>
-            <p className="text-muted-foreground">{company.certifications}</p>
-          </div>
-        )}
-
         {company.past_projects && (
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">

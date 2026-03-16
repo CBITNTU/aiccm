@@ -212,6 +212,7 @@ export type Database = {
           created_at: string;
           id: string;
           name: string;
+          parent_id: string | null;
           updated_at: string;
         };
         Insert: {
@@ -219,6 +220,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           name: string;
+          parent_id?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -226,9 +228,130 @@ export type Database = {
           created_at?: string;
           id?: string;
           name?: string;
+          parent_id?: string | null;
           updated_at?: string;
         };
         Relationships: [];
+      };
+      markets: {
+        Row: {
+          id: string;
+          name: string;
+          parent_id: string | null;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          parent_id?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          parent_id?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      company_markets: {
+        Row: {
+          company_id: string;
+          market_id: string;
+          created_at: string;
+        };
+        Insert: {
+          company_id: string;
+          market_id: string;
+          created_at?: string;
+        };
+        Update: {
+          company_id?: string;
+          market_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "company_markets_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "company_markets_market_id_fkey";
+            columns: ["market_id"];
+            isOneToOne: false;
+            referencedRelation: "markets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      standards_ref: {
+        Row: {
+          id: string;
+          name: string;
+          parent_id: string | null;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          parent_id?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          parent_id?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      company_standards: {
+        Row: {
+          company_id: string;
+          standard_id: string;
+          created_at: string;
+        };
+        Insert: {
+          company_id: string;
+          standard_id: string;
+          created_at?: string;
+        };
+        Update: {
+          company_id?: string;
+          standard_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "company_standards_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "company_standards_standard_id_fkey";
+            columns: ["standard_id"];
+            isOneToOne: false;
+            referencedRelation: "standards_ref";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       matching_results: {
         Row: {

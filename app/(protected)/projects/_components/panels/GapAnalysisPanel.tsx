@@ -152,7 +152,7 @@ export function GapAnalysisPanel({
 
   const handleAddToCompanyProfile = async () => {
     if (!company) return;
-    const existing = company.key_capabilities ?? "";
+    const existing = company.keyCapabilities ?? "";
     const existingLines = existing
       .split("\n")
       .map((l) => l.trim())
@@ -172,7 +172,7 @@ export function GapAnalysisPanel({
     try {
       await updateCompany.mutateAsync({
         companyId: company.id,
-        updates: { key_capabilities: updated },
+        updates: { keyCapabilities: updated },
       });
       toast.success("Company profile updated");
       setMovedToYours([]);
@@ -483,7 +483,7 @@ export function GapAnalysisPanel({
             className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm"
           >
             <p className="font-medium mb-2">
-              Add to {company.company_name}&apos;s profile?
+              Add to {company.companyName}&apos;s profile?
             </p>
             <ul className="mb-3 space-y-1 text-muted-foreground">
               {movedToYours.map((c, i) => (

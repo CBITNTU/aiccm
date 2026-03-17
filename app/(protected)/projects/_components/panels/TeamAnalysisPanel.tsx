@@ -111,7 +111,7 @@ export function TeamAnalysisPanel({
         tender: {
           title: tender.title,
           description: tender.description,
-          buyer_name: tender.buyer_name || tender.buyer,
+          buyerName: tender.buyerName || tender.buyer,
           value: tender.value,
           region: tender.region || tender.location,
         },

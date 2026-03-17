@@ -159,6 +159,11 @@ export async function PUT(
       status: "status",
       name: "name",
       description: "description",
+      targetTenderId: "targetTenderId",
+      gapAnalysis: "gapAnalysis",
+      teamAnalysis: "teamAnalysis",
+      recommendedPartners: "recommendedPartners",
+      // Legacy snake_case support
       target_tender_id: "targetTenderId",
       gap_analysis: "gapAnalysis",
       team_analysis: "teamAnalysis",

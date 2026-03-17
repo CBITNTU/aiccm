@@ -10,7 +10,7 @@ interface TeamContactsCardProps {
 
 export function TeamContactsCard({ teamMembers }: TeamContactsCardProps) {
   const membersWithContact = teamMembers.filter(
-    (m) => m.companies?.contact_email || m.companies?.location,
+    (m) => m.companies?.contactEmail || m.companies?.location,
   );
 
   if (membersWithContact.length === 0) {
@@ -34,23 +34,23 @@ export function TeamContactsCard({ teamMembers }: TeamContactsCardProps) {
             >
               <div className="flex-1 space-y-1">
                 <p className="font-medium">
-                  {member.companies?.company_name || "Unknown Company"}
+                  {member.companies?.companyName || "Unknown Company"}
                 </p>
-                {member.companies?.contact_email && (
+                {member.companies?.contactEmail && (
                   <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                     <Mail className="h-3.5 w-3.5 shrink-0" />
                     <a
-                      href={`mailto:${member.companies.contact_email}`}
+                      href={`mailto:${member.companies.contactEmail}`}
                       className="hover:underline"
                     >
-                      {member.companies.contact_email}
+                      {member.companies.contactEmail}
                     </a>
                   </p>
                 )}
-                {member.companies?.contact_phone && (
+                {member.companies?.contactPhone && (
                   <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5 shrink-0" />
-                    {member.companies.contact_phone}
+                    {member.companies.contactPhone}
                   </p>
                 )}
                 {member.companies?.location && (

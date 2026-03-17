@@ -153,8 +153,8 @@ export const api = {
   createProject: (data: {
     name: string;
     description?: string;
-    target_tender_id?: string | null;
-    company_id: string;
+    targetTenderId?: string | null;
+    companyId: string;
   }) =>
     apiCall<{ project: unknown }>("create-project", {
       body: data,
@@ -299,25 +299,25 @@ export const api = {
     projectId: string;
     company: {
       id: string;
-      company_name: string;
-      key_capabilities?: string | null;
+      companyName: string;
+      keyCapabilities?: string | null;
       certifications?: string | null;
-      past_projects?: string | null;
+      pastProjects?: string | null;
       description?: string | null;
     };
     tender: {
       title: string;
       description?: string;
-      buyer_name?: string;
+      buyerName?: string;
       value?: number;
       region?: string;
     };
     teamMembers: {
       companies?: {
-        company_name: string;
-        key_capabilities?: string | null;
+        companyName: string;
+        keyCapabilities?: string | null;
         certifications?: string | null;
-        past_projects?: string | null;
+        pastProjects?: string | null;
         description?: string | null;
       } | null;
     }[];

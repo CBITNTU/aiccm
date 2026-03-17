@@ -110,7 +110,7 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
           </div>
           <div>
             <span className="text-sm text-muted-foreground">Created</span>
-            <p className="font-medium">{formatDate(project.created_at)}</p>
+            <p className="font-medium">{formatDate(project.createdAt)}</p>
           </div>
         </div>
       </motion.div>
@@ -169,7 +169,7 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                     <span className="truncate">
-                      {tender.buyer_name || tender.buyer || "Not specified"}
+                      {tender.buyerName || tender.buyer || "Not specified"}
                     </span>
                   </div>
 
@@ -243,7 +243,7 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
             id: tender.id,
             title: tender.title,
             description: tender.description ?? null,
-            buyer: tender.buyer_name || tender.buyer || "",
+            buyer: tender.buyerName || tender.buyer || "",
             location: tender.location || tender.region || null,
             status: null,
             publicationDate: null,

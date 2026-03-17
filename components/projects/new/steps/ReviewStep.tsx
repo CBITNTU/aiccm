@@ -127,8 +127,8 @@ export function ReviewStep({
       const project = await createProject.mutateAsync({
         name: projectName,
         description: projectDescription || undefined,
-        target_tender_id: selectedTenderId,
-        lead_company_id: leadCompanyId,
+        targetTenderId: selectedTenderId,
+        leadCompanyId: leadCompanyId,
       });
 
       // Add selected companies as members

@@ -108,8 +108,8 @@ export function ProjectSummaryStep({
       const result = await api.createProject({
         name: projectName,
         description: projectDescription || undefined,
-        target_tender_id: selectedTenderId,
-        company_id: leadCompanyId,
+        targetTenderId: selectedTenderId,
+        companyId: leadCompanyId,
       });
 
       const project = result.project as { id: string };

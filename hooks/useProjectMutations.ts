@@ -12,16 +12,16 @@ import type {
 interface CreateProjectInput {
   name: string;
   description?: string;
-  target_tender_id?: string | null;
-  lead_company_id: string;
+  targetTenderId?: string | null;
+  leadCompanyId: string;
 }
 
 interface CompanyLike {
   id: string;
-  company_name: string;
-  key_capabilities?: string | null;
+  companyName: string;
+  keyCapabilities?: string | null;
   certifications?: string | null;
-  past_projects?: string | null;
+  pastProjects?: string | null;
   description?: string | null;
   postcode?: string | null;
 }
@@ -29,17 +29,17 @@ interface CompanyLike {
 interface Tender {
   title: string;
   description?: string;
-  buyer_name?: string;
+  buyerName?: string;
   value?: number;
   region?: string;
 }
 
 interface TeamMember {
   companies?: {
-    company_name: string;
-    key_capabilities?: string | null;
+    companyName: string;
+    keyCapabilities?: string | null;
     certifications?: string | null;
-    past_projects?: string | null;
+    pastProjects?: string | null;
     description?: string | null;
   } | null;
 }
@@ -53,14 +53,14 @@ export function useCreateProject() {
       const result = await api.createProject({
         name: input.name,
         description: input.description,
-        target_tender_id: input.target_tender_id,
-        company_id: input.lead_company_id,
+        targetTenderId: input.targetTenderId,
+        companyId: input.leadCompanyId,
       });
       return result.project as Record<string, unknown>;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["projects", variables.lead_company_id],
+        queryKey: ["projects", variables.leadCompanyId],
       });
     },
   });
@@ -147,9 +147,9 @@ export function useRunGapAnalysis() {
           const scored = companies
             .filter((c) => c.id !== company.id)
             .map((c) => {
-              const capText = (c.key_capabilities || "").toLowerCase();
+              const capText = (c.keyCapabilities || "").toLowerCase();
               const certText = (c.certifications || "").toLowerCase();
-              const projText = (c.past_projects || "").toLowerCase();
+              const projText = (c.pastProjects || "").toLowerCase();
               const descText = (c.description || "").toLowerCase();
               const allText = `${capText} ${certText} ${projText} ${descText}`;
 
@@ -177,8 +177,8 @@ export function useRunGapAnalysis() {
 
               return {
                 id: c.id,
-                company_name: c.company_name,
-                key_capabilities: c.key_capabilities || "Not specified",
+                companyName: c.companyName,
+                keyCapabilities: c.keyCapabilities || "Not specified",
                 certifications: c.certifications || "Not specified",
                 location: c.postcode || "Not specified",
                 relevanceScore,
@@ -213,8 +213,8 @@ export function useRunGapAnalysis() {
 
       // Save gap analysis to database via API
       await api.updateProject(projectId, {
-        gap_analysis: gapAnalysisData,
-        recommended_partners: recommendations,
+        gapAnalysis: gapAnalysisData,
+        recommendedPartners: recommendations,
       });
 
       return {
@@ -253,10 +253,10 @@ export function useRunTeamAnalysis() {
         projectId,
         company: {
           id: company.id,
-          company_name: company.company_name,
-          key_capabilities: company.key_capabilities,
+          companyName: company.companyName,
+          keyCapabilities: company.keyCapabilities,
           certifications: company.certifications,
-          past_projects: company.past_projects,
+          pastProjects: company.pastProjects,
           description: company.description,
         },
         tender,
@@ -295,7 +295,7 @@ export function useUpdateGapAnalysis() {
       // Fetch current gap_analysis to merge
       const details = await api.getProjectDetails(projectId);
       const existing =
-        (details.project.gap_analysis as Record<string, unknown>) || {};
+        (details.project.gapAnalysis as Record<string, unknown>) || {};
       const updated: Record<string, unknown> = {
         ...existing,
         companyCompetencies,
@@ -303,7 +303,7 @@ export function useUpdateGapAnalysis() {
         coveragePercentage,
       };
 
-      await api.updateProject(projectId, { gap_analysis: updated });
+      await api.updateProject(projectId, { gapAnalysis: updated });
 
       return { projectId, gapAnalysis: updated };
     },
@@ -335,7 +335,7 @@ export function useUpdateTeamAnalysis() {
       // Fetch current team_analysis to merge
       const details = await api.getProjectDetails(projectId);
       const existing =
-        (details.project.team_analysis as Record<string, unknown>) || {};
+        (details.project.teamAnalysis as Record<string, unknown>) || {};
       const updated: Record<string, unknown> = {
         ...existing,
         companyCompetencies,
@@ -343,7 +343,7 @@ export function useUpdateTeamAnalysis() {
         coveragePercentage,
       };
 
-      await api.updateProject(projectId, { team_analysis: updated });
+      await api.updateProject(projectId, { teamAnalysis: updated });
 
       return { projectId, teamAnalysis: updated };
     },
@@ -435,11 +435,11 @@ export function useUpdateProjectTender() {
       tenderId: string | null;
     }) => {
       await api.updateProject(projectId, {
-        target_tender_id: tenderId,
+        targetTenderId: tenderId,
         // Clear analysis when tender changes since it's no longer valid
-        gap_analysis: null,
-        team_analysis: null,
-        recommended_partners: null,
+        gapAnalysis: null,
+        teamAnalysis: null,
+        recommendedPartners: null,
       });
       return { projectId, tenderId };
     },

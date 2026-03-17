@@ -74,7 +74,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   } = useProjectDetails(projectId);
 
   const { data: leadCompany } = useCompanyById(
-    details?.project.lead_company_id ?? null,
+    details?.project.leadCompanyId ?? null,
   );
 
   const updateStatus = useUpdateProjectStatus();

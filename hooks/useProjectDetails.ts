@@ -14,7 +14,7 @@ export interface Tender {
   id: string;
   title: string;
   buyer: string;
-  buyer_name?: string;
+  buyerName?: string;
   location?: string;
   region?: string;
   deadline?: string;
@@ -28,25 +28,25 @@ export interface Tender {
 
 export interface TeamMember {
   id: string;
-  vo_id: string;
-  company_id: string;
+  voId: string;
+  companyId: string;
   role: string;
-  created_at: string;
-  joined_at: string | null;
-  invitation_status?: string | null;
-  invitation_sent_at?: string | null;
-  invitation_responded_at?: string | null;
-  invitation_message?: string | null;
+  createdAt: string;
+  joinedAt: string | null;
+  invitationStatus?: string | null;
+  invitationSentAt?: string | null;
+  invitationRespondedAt?: string | null;
+  invitationMessage?: string | null;
   companies: {
     id: string;
-    company_name: string;
-    key_capabilities?: string | null;
+    companyName: string;
+    keyCapabilities?: string | null;
     postcode?: string | null;
     location?: string | null;
-    contact_email?: string | null;
-    contact_phone?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
     certifications?: string | null;
-    past_projects?: string | null;
+    pastProjects?: string | null;
     description?: string | null;
   } | null;
 }
@@ -89,9 +89,9 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
     project,
     tender,
     teamMembers,
-    gapAnalysis: project.gap_analysis || null,
-    teamAnalysis: project.team_analysis || null,
-    recommendedPartners: project.recommended_partners || [],
+    gapAnalysis: project.gapAnalysis || null,
+    teamAnalysis: project.teamAnalysis || null,
+    recommendedPartners: project.recommendedPartners || [],
     tenderMatchResult,
     isOwner,
   };

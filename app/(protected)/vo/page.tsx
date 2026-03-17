@@ -84,8 +84,8 @@ interface TeamAnalysis extends ProjectAnalysis {
 
 interface RecommendedPartner {
   id: string;
-  company_name: string;
-  key_capabilities: string;
+  companyName: string;
+  keyCapabilities: string;
   certifications: string;
   location: string;
   relevanceScore: number;
@@ -105,34 +105,34 @@ interface Tender {
   reference_number?: string;
   region?: string;
   value?: number;
-  buyer_name?: string;
+  buyerName?: string;
 }
 
 interface Project {
   id: string;
   name: string;
   description?: string;
-  lead_company_id: string;
-  target_tender_id?: string;
+  leadCompanyId: string;
+  targetTenderId?: string;
   status: string;
-  gap_analysis?: GapAnalysis;
-  team_analysis?: TeamAnalysis;
-  recommended_partners?: RecommendedPartner[];
+  gapAnalysis?: GapAnalysis;
+  teamAnalysis?: TeamAnalysis;
+  recommendedPartners?: RecommendedPartner[];
   tenders?: Tender;
 }
 
 interface TeamMember {
   id: string;
-  company_id: string;
+  companyId: string;
   role: string;
   companies?: {
-    company_name: string;
-    key_capabilities?: string | null;
+    companyName: string;
+    keyCapabilities?: string | null;
     postcode?: string | null;
     location?: string | null;
-    contact_email?: string | null;
+    contactEmail?: string | null;
     certifications?: string | null;
-    past_projects?: string | null;
+    pastProjects?: string | null;
     description?: string | null;
   } | null;
 }
@@ -263,7 +263,7 @@ export default function ConsultingPage() {
 
       if (
         ownerCompany &&
-        project.lead_company_id !== ownerCompany.id
+        project.leadCompanyId !== ownerCompany.id
       ) {
         toast.error(
           "Project does not belong to the selected company. Please select the correct company.",
@@ -271,23 +271,23 @@ export default function ConsultingPage() {
         return;
       }
 
-      if (project.gap_analysis) {
-        setGapAnalysis(project.gap_analysis);
+      if (project.gapAnalysis) {
+        setGapAnalysis(project.gapAnalysis);
       }
-      if (project.team_analysis) {
-        setTeamAnalysis(project.team_analysis);
+      if (project.teamAnalysis) {
+        setTeamAnalysis(project.teamAnalysis);
       }
-      if (project.recommended_partners) {
-        setRecommendedPartners(project.recommended_partners || []);
+      if (project.recommendedPartners) {
+        setRecommendedPartners(project.recommendedPartners || []);
       }
 
       setTeamMembers((data.teamMembers as unknown as TeamMember[]) || []);
 
       // Load tender if associated
       const currentProject = projects.find((p) => p.id === voId) || selectedProject;
-      if (currentProject?.target_tender_id) {
+      if (currentProject?.targetTenderId) {
         try {
-          const tenderData = await api.getTender(currentProject.target_tender_id);
+          const tenderData = await api.getTender(currentProject.targetTenderId);
           setTender(tenderData.tender as unknown as Tender);
         } catch {
           setTender(null);
@@ -325,10 +325,10 @@ export default function ConsultingPage() {
         const dirData = await api.getDirectory({ limit: 100 });
         const companies = (dirData.companies || []) as unknown as {
           id: string;
-          company_name: string;
-          key_capabilities?: string | null;
+          companyName: string;
+          keyCapabilities?: string | null;
           certifications?: string | null;
-          past_projects?: string | null;
+          pastProjects?: string | null;
           description?: string | null;
           postcode?: string | null;
         }[];
@@ -337,9 +337,9 @@ export default function ConsultingPage() {
           const scored = companies
             .filter((c) => c.id !== company.id)
             .map((c) => {
-              const capText = (c.key_capabilities || "").toLowerCase();
+              const capText = (c.keyCapabilities || "").toLowerCase();
               const certText = (c.certifications || "").toLowerCase();
-              const projText = (c.past_projects || "").toLowerCase();
+              const projText = (c.pastProjects || "").toLowerCase();
               const descText = (c.description || "").toLowerCase();
               const allText = `${capText} ${certText} ${projText} ${descText}`;
 
@@ -365,8 +365,8 @@ export default function ConsultingPage() {
 
               return {
                 id: c.id,
-                company_name: c.company_name,
-                key_capabilities: c.key_capabilities || "Not specified",
+                companyName: c.companyName,
+                keyCapabilities: c.keyCapabilities || "Not specified",
                 certifications: c.certifications || "Not specified",
                 location: c.postcode || "Not specified",
                 relevanceScore,
@@ -392,8 +392,8 @@ export default function ConsultingPage() {
 
       // Save gap analysis to database via API
       await api.updateProject(voId, {
-        gap_analysis: gapAnalysisData,
-        recommended_partners: recommendations,
+        gapAnalysis: gapAnalysisData,
+        recommendedPartners: recommendations,
       });
 
       const partnerCount = recommendations.length;
@@ -427,26 +427,26 @@ export default function ConsultingPage() {
         projectId: voId,
         company: {
           id: company.id,
-          company_name: company.company_name,
-          key_capabilities: company.key_capabilities,
+          companyName: company.companyName,
+          keyCapabilities: company.keyCapabilities,
           certifications: company.certifications,
-          past_projects: company.past_projects,
+          pastProjects: company.pastProjects,
           description: company.description,
         },
         tender: {
           title: tenderData.title,
           description: tenderData.description,
-          buyer_name: tenderData.buyer_name || tenderData.buyer,
+          buyerName: tenderData.buyerName || tenderData.buyer,
           value: tenderData.value,
           region: tenderData.region || tenderData.location,
         },
         teamMembers: members.map((m) => ({
           companies: m.companies
             ? {
-                company_name: m.companies.company_name,
-                key_capabilities: m.companies.key_capabilities,
+                companyName: m.companies.companyName,
+                keyCapabilities: m.companies.keyCapabilities,
                 certifications: m.companies.certifications,
-                past_projects: m.companies.past_projects,
+                pastProjects: m.companies.pastProjects,
                 description: m.companies.description,
               }
             : null,
@@ -518,7 +518,7 @@ export default function ConsultingPage() {
       return;
     }
 
-    if (selectedProject.lead_company_id !== ownerCompany.id) {
+    if (selectedProject.leadCompanyId !== ownerCompany.id) {
       toast.error(
         "Company mismatch: This project belongs to a different company.",
       );
@@ -526,7 +526,7 @@ export default function ConsultingPage() {
     }
 
     try {
-      const data = await api.getCompany(selectedProject.lead_company_id);
+      const data = await api.getCompany(selectedProject.leadCompanyId);
       const leadCompany = data.company;
       if (!leadCompany) {
         toast.error("Failed to load company information");
@@ -548,7 +548,7 @@ export default function ConsultingPage() {
       return;
     }
 
-    if (selectedProject.lead_company_id !== ownerCompany.id) {
+    if (selectedProject.leadCompanyId !== ownerCompany.id) {
       toast.error(
         "Company mismatch: This project belongs to a different company.",
       );
@@ -556,7 +556,7 @@ export default function ConsultingPage() {
     }
 
     try {
-      const data = await api.getCompany(selectedProject.lead_company_id);
+      const data = await api.getCompany(selectedProject.leadCompanyId);
       const leadCompany = data.company;
       if (!leadCompany) {
         toast.error("Failed to load company information");
@@ -828,7 +828,7 @@ export default function ConsultingPage() {
                                 {selectedProject.name}
                                 {ownerCompany && (
                                   <span className="text-muted-foreground text-sm ml-2">
-                                    ({ownerCompany.company_name})
+                                    ({ownerCompany.companyName})
                                   </span>
                                 )}
                               </span>
@@ -848,7 +848,7 @@ export default function ConsultingPage() {
                                 </span>
                                 {ownerCompany && (
                                   <span className="text-xs text-muted-foreground">
-                                    Lead: {ownerCompany.company_name}
+                                    Lead: {ownerCompany.companyName}
                                   </span>
                                 )}
                               </div>
@@ -1043,10 +1043,10 @@ export default function ConsultingPage() {
                             <Building2 className="h-5 w-5 text-muted-foreground" />
                             <div>
                               <p className="font-medium">
-                                {member.companies?.company_name}
+                                {member.companies?.companyName}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {member.companies?.key_capabilities?.substring(
+                                {member.companies?.keyCapabilities?.substring(
                                   0,
                                   100,
                                 )}
@@ -1077,7 +1077,7 @@ export default function ConsultingPage() {
                   id: tender.id,
                   title: tender.title,
                   description: tender.description ?? null,
-                  buyer: tender.buyer_name || tender.buyer || "",
+                  buyer: tender.buyerName || tender.buyer || "",
                   location: tender.location || tender.region || null,
                   status: null,
                   publicationDate: null,

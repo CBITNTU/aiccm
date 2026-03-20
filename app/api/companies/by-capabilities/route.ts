@@ -107,22 +107,22 @@ export async function POST(request: NextRequest) {
         const textSearchResults = await db
           .select({
             id: companies.id,
-            company_name: companies.companyName,
-            companies_house_number: companies.companiesHouseNumber,
-            contact_email: companies.contactEmail,
-            contact_phone: companies.contactPhone,
+            companyName: companies.companyName,
+            companiesHouseNumber: companies.companiesHouseNumber,
+            contactEmail: companies.contactEmail,
+            contactPhone: companies.contactPhone,
             postcode: companies.postcode,
             address: companies.address,
             description: companies.description,
-            website_url: companies.websiteUrl,
-            key_capabilities: companies.keyCapabilities,
+            websiteUrl: companies.websiteUrl,
+            keyCapabilities: companies.keyCapabilities,
             certifications: companies.certifications,
             status: companies.status,
-            is_system_company: companies.isSystemCompany,
+            isSystemCompany: companies.isSystemCompany,
             latitude: companies.latitude,
             longitude: companies.longitude,
-            created_at: companies.createdAt,
-            updated_at: companies.updatedAt,
+            createdAt: companies.createdAt,
+            updatedAt: companies.updatedAt,
           })
           .from(companies)
           .where(and(eq(companies.status, "active"), or(...orConditions)))
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         if (textSearchResults.length > 0) {
           const filteredResults = textSearchResults.filter((company) => {
             const desc = (company.description || "").toLowerCase();
-            const keyCaps = (company.key_capabilities || "").toLowerCase();
+            const keyCaps = (company.keyCapabilities || "").toLowerCase();
             const combined = `${desc} ${keyCaps}`;
 
             const keywordMatches = searchKeywords.filter((keyword) =>
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
             });
 
             const companiesArray = Array.from(uniqueMap.values()).toSorted(
-              (a, b) => a.company_name.localeCompare(b.company_name),
+              (a, b) => a.companyName.localeCompare(b.companyName),
             );
 
             const companiesWithCapabilities = await Promise.all(
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
     });
 
     const companiesArray = Array.from(uniqueCompanies.values()).toSorted(
-      (a, b) => a.company_name.localeCompare(b.company_name),
+      (a, b) => a.companyName.localeCompare(b.companyName),
     );
 
     const companiesWithCapabilities = await Promise.all(
@@ -287,8 +287,8 @@ async function applyLocationAndRespond(
   const distanceByCompany: Record<string, number> = {};
 
   for (const row of data) {
-    if (row.distance_miles != null) {
-      distanceByCompany[row.id] = row.distance_miles;
+    if (row.distanceMiles != null) {
+      distanceByCompany[row.id] = row.distanceMiles;
     }
   }
 

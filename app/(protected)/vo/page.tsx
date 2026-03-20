@@ -98,11 +98,11 @@ interface Tender {
   buyer: string;
   location?: string;
   deadline?: string;
-  budget_min?: number;
-  budget_max?: number;
+  budgetMin?: number;
+  budgetMax?: number;
   description?: string;
-  external_id?: string;
-  reference_number?: string;
+  externalId?: string;
+  referenceNumber?: string;
   region?: string;
   value?: number;
   buyerName?: string;
@@ -1082,9 +1082,9 @@ export default function ConsultingPage() {
                   status: null,
                   publicationDate: null,
                   deadline: tender.deadline ?? null,
-                  budgetMin: tender.budget_min ?? null,
-                  budgetMax: tender.budget_max ?? tender.value ?? null,
-                  referenceNumber: tender.reference_number ?? null,
+                  budgetMin: tender.budgetMin ?? null,
+                  budgetMax: tender.budgetMax ?? tender.value ?? null,
+                  referenceNumber: tender.referenceNumber ?? null,
                   cpvCodes: null,
                   aiSummary: null,
                   aiCapabilityTaxonomy: null,

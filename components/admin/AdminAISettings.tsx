@@ -32,9 +32,9 @@ export function AdminAISettings() {
         if (!res.ok) throw new Error("Failed to load");
         const data = await res.json();
         if (cancelled) return;
-        setDefaultModel(data.default_ai_model ?? "gpt-5-nano");
+        setDefaultModel(data.defaultAiModel ?? "gpt-5-nano");
         setDefaultReasoningEffort(
-          (data.default_reasoning_effort as ReasoningOption) ?? "default",
+          (data.defaultReasoningEffort as ReasoningOption) ?? "default",
         );
       } catch (e) {
         if (!cancelled) {
@@ -58,8 +58,8 @@ export function AdminAISettings() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          default_ai_model: defaultModel,
-          default_reasoning_effort: defaultReasoningEffort,
+          defaultAiModel: defaultModel,
+          defaultReasoningEffort: defaultReasoningEffort,
         }),
       });
       const data = await res.json();

@@ -24,7 +24,7 @@ interface Capability {
   id: string;
   name: string;
   category: string | null;
-  parent_id?: string | null;
+  parentId?: string | null;
 }
 
 interface TreeNode {
@@ -154,9 +154,9 @@ export function CapabilityTreeSelector({
     fetchCapabilities();
   }, []);
 
-  // Build tree from parent_id when present; otherwise group by category
+  // Build tree from parentId when present; otherwise group by category
   const hasParentId = useMemo(
-    () => capabilities.some((c) => c.parent_id != null && c.parent_id !== ""),
+    () => capabilities.some((c) => c.parentId != null && c.parentId !== ""),
     [capabilities],
   );
 
@@ -169,7 +169,7 @@ export function CapabilityTreeSelector({
     const roots: TreeNode[] = [];
     capabilities.forEach((c) => {
       const node = byId.get(c.id)!;
-      const parentId = c.parent_id ?? null;
+      const parentId = c.parentId ?? null;
       if (!parentId || !byId.has(parentId)) {
         roots.push(node);
       } else {

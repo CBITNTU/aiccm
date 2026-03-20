@@ -26,7 +26,7 @@ interface TaxonomyNode {
   name: string;
   level: number;
   description: string | null;
-  parent_id: string | null;
+  parentId: string | null;
   children: TaxonomyNode[];
 }
 
@@ -48,7 +48,7 @@ export function TaxonomyTreeSelector({
         name: tax.name,
         level: tax.level,
         description: tax.description,
-        parent_id: tax.parent_id,
+        parentId: tax.parentId,
         children: buildChildren(tax.id),
       }));
     };
@@ -62,13 +62,13 @@ export function TaxonomyTreeSelector({
           name: tax.name,
           level: tax.level,
           description: tax.description,
-          parent_id: tax.parent_id,
+          parentId: tax.parentId,
           children: level3.map((child) => ({
             id: child.id,
             name: child.name,
             level: child.level,
             description: child.description,
-            parent_id: child.parent_id,
+            parentId: child.parentId,
             children: [],
           })),
         };
@@ -131,7 +131,7 @@ export function TaxonomyTreeSelector({
         let filtered = list.filter((tid) => tid !== id);
 
         // Remove all children
-        const children = taxonomies.filter((t) => t.parent_id === id);
+        const children = taxonomies.filter((t) => t.parentId === id);
         for (const child of children) {
           filtered = removeTaxonomyAndChildren(child.id, filtered);
         }

@@ -13,12 +13,11 @@ export async function GET(request: NextRequest) {
       throw new Error("Profile not found");
     }
 
-    // Return shape matching what the frontend expects (snake_case keys)
     return apiResponse({
-      approval_status: profile.approvalStatus,
-      onboarding_completed_at: profile.onboardingCompletedAt?.toISOString() ?? null,
-      first_name: profile.firstName,
-      last_name: profile.lastName,
+      approvalStatus: profile.approvalStatus,
+      onboardingCompletedAt: profile.onboardingCompletedAt?.toISOString() ?? null,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
     });
   } catch (error) {
     return handleApiError(error);

@@ -93,7 +93,7 @@ export default function MyCompanyPage() {
             <Card key={company.id} className="opacity-80">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{company.company_name}</CardTitle>
+                  <CardTitle className="text-lg">{company.companyName}</CardTitle>
                   <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">
                     <Clock className="w-3 h-3 mr-1" />
                     Pending
@@ -133,7 +133,7 @@ export default function MyCompanyPage() {
               My Company
             </h1>
             <p className="text-muted-foreground">
-              Manage and view details for {company.company_name}
+              Manage and view details for {company.companyName}
             </p>
           </div>
           <div className="flex gap-2">
@@ -183,7 +183,7 @@ export default function MyCompanyPage() {
                 >
                   {formatCompanyStatus(company.status ?? null)}
                 </Badge>
-                {company.is_system_company && (
+                {company.isSystemCompany && (
                   <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">Verified</Badge>
                 )}
               </div>
@@ -203,22 +203,22 @@ export default function MyCompanyPage() {
                   <span>{company.postcode}</span>
                 </div>
               )}
-              {company.website_url && (
+              {company.websiteUrl && (
                 <div className="flex items-center gap-2 text-sm">
                   <Globe className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="truncate">{company.website_url}</span>
+                  <span className="truncate">{company.websiteUrl}</span>
                 </div>
               )}
-              {company.contact_email && (
+              {company.contactEmail && (
                 <div className="flex items-center gap-2 text-sm">
                   <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="truncate">{company.contact_email}</span>
+                  <span className="truncate">{company.contactEmail}</span>
                 </div>
               )}
-              {company.contact_phone && (
+              {company.contactPhone && (
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span>{company.contact_phone}</span>
+                  <span>{company.contactPhone}</span>
                 </div>
               )}
             </div>
@@ -227,9 +227,9 @@ export default function MyCompanyPage() {
         </Card>
 
         {/* Financial Data Card */}
-        {company.financial_data &&
-          typeof company.financial_data === "object" &&
-          Object.keys(company.financial_data).length > 0 && (
+        {company.financialData &&
+          typeof company.financialData === "object" &&
+          Object.keys(company.financialData).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -238,7 +238,7 @@ export default function MyCompanyPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {Object.entries(company.financial_data)
+                {Object.entries(company.financialData)
                   .slice(0, 6)
                   .map(([key, field]) => (
                     <div
@@ -264,19 +264,19 @@ export default function MyCompanyPage() {
           )}
 
         {/* Capabilities Card */}
-        {(company.key_capabilities || company.certifications) && (
+        {(company.keyCapabilities || company.certifications) && (
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Capabilities & Certifications</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {company.key_capabilities && (
+              {company.keyCapabilities && (
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Key Capabilities</h4>
                   <p className="text-sm text-muted-foreground">
-                    {Array.isArray(company.key_capabilities)
-                      ? company.key_capabilities.join(", ")
-                      : company.key_capabilities}
+                    {Array.isArray(company.keyCapabilities)
+                      ? company.keyCapabilities.join(", ")
+                      : company.keyCapabilities}
                   </p>
                 </div>
               )}
@@ -310,7 +310,7 @@ export default function MyCompanyPage() {
                 <CardContent className="flex items-center justify-between py-4">
                   <div className="flex items-center gap-3">
                     <Building2 className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">{pending.company_name}</span>
+                    <span className="font-medium">{pending.companyName}</span>
                   </div>
                   <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">
                     <Clock className="w-3 h-3 mr-1" />

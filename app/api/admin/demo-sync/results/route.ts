@@ -24,21 +24,21 @@ export async function GET(request: NextRequest) {
     const result = await db
       .select({
         id: demoMatchingResults.id,
-        created_at: demoMatchingResults.createdAt,
-        batch_label: demoMatchingResults.batchLabel,
-        company_id: demoMatchingResults.companyId,
-        tender_id: demoMatchingResults.tenderId,
-        model_used: demoMatchingResults.modelUsed,
-        overall_score: demoMatchingResults.overallScore,
-        capability_score: demoMatchingResults.capabilityScore,
-        experience_score: demoMatchingResults.experienceScore,
-        location_score: demoMatchingResults.locationScore,
-        certification_score: demoMatchingResults.certificationScore,
-        match_reasons: demoMatchingResults.matchReasons,
-        improvement_suggestions: demoMatchingResults.improvementSuggestions,
-        ai_analysis: demoMatchingResults.aiAnalysis,
-        tender_title: tenders.title,
-        company_name: companies.companyName,
+        createdAt: demoMatchingResults.createdAt,
+        batchLabel: demoMatchingResults.batchLabel,
+        companyId: demoMatchingResults.companyId,
+        tenderId: demoMatchingResults.tenderId,
+        modelUsed: demoMatchingResults.modelUsed,
+        overallScore: demoMatchingResults.overallScore,
+        capabilityScore: demoMatchingResults.capabilityScore,
+        experienceScore: demoMatchingResults.experienceScore,
+        locationScore: demoMatchingResults.locationScore,
+        certificationScore: demoMatchingResults.certificationScore,
+        matchReasons: demoMatchingResults.matchReasons,
+        improvementSuggestions: demoMatchingResults.improvementSuggestions,
+        aiAnalysis: demoMatchingResults.aiAnalysis,
+        tenderTitle: tenders.title,
+        companyName: companies.companyName,
       })
       .from(demoMatchingResults)
       .leftJoin(tenders, eq(tenders.id, demoMatchingResults.tenderId))
@@ -47,8 +47,8 @@ export async function GET(request: NextRequest) {
 
     const rows = result.map((row) => ({
       ...row,
-      tender_title: row.tender_title ?? row.tender_id,
-      company_name: row.company_name ?? row.company_id,
+      tenderTitle: row.tenderTitle ?? row.tenderId,
+      companyName: row.companyName ?? row.companyId,
     }));
 
     await logApiEvent(request, {

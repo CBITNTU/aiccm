@@ -20,21 +20,21 @@ import { DirectoryResultsHeader } from "@/components/directory/DirectoryResultsH
 type PublicCompany = Pick<
   Company,
   | "id"
-  | "company_name"
+  | "companyName"
   | "description"
-  | "key_capabilities"
+  | "keyCapabilities"
   | "postcode"
   | "certifications"
-  | "past_projects"
-  | "is_system_company"
+  | "pastProjects"
+  | "isSystemCompany"
   | "status"
-  | "digital_maturity"
-  | "ai_competencies"
-  | "ai_capabilities"
-  | "ai_analysis"
-  | "created_at"
-  | "updated_at"
-  | "user_id"
+  | "digitalMaturity"
+  | "aiCompetencies"
+  | "aiCapabilities"
+  | "aiAnalysis"
+  | "createdAt"
+  | "updatedAt"
+  | "userId"
 >;
 
 const defaultFilters: DirectoryFiltersState = {

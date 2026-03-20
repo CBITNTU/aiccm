@@ -10,8 +10,8 @@ export type DefaultReasoningEffort =
   | "xhigh";
 
 export interface PlatformAISettings {
-  default_ai_model: string;
-  default_reasoning_effort: DefaultReasoningEffort;
+  defaultAiModel: string;
+  defaultReasoningEffort: DefaultReasoningEffort;
 }
 
 const KEYS = {
@@ -40,8 +40,8 @@ export async function getPlatformAISettings(): Promise<PlatformAISettings> {
 
   const map = new Map(rows.map((r) => [r.key, r.value]));
   cached = {
-    default_ai_model: map.get(KEYS.default_ai_model) ?? "gpt-5-nano",
-    default_reasoning_effort:
+    defaultAiModel: map.get(KEYS.default_ai_model) ?? "gpt-5-nano",
+    defaultReasoningEffort:
       (map.get(KEYS.default_reasoning_effort) as DefaultReasoningEffort) ??
       "default",
   };
@@ -55,12 +55,16 @@ export async function getPlatformAISettings(): Promise<PlatformAISettings> {
 export async function setPlatformAISettings(
   updates: Partial<PlatformAISettings>,
 ): Promise<void> {
+  const keyMap: Record<string, string> = {
+    defaultAiModel: KEYS.default_ai_model,
+    defaultReasoningEffort: KEYS.default_reasoning_effort,
+  };
   const entries = Object.entries(updates).filter(
     (e): e is [keyof PlatformAISettings, string] =>
-      e[0] in KEYS && typeof e[1] === "string",
+      e[0] in keyMap && typeof e[1] === "string",
   );
   for (const [key, value] of entries) {
-    await upsertPlatformSetting(key, value);
+    await upsertPlatformSetting(keyMap[key], value);
   }
   cached = null;
 }

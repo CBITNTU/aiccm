@@ -18,7 +18,7 @@ const analyzeTenderInputSchema = z.object({
     title: z.string().min(1).max(500),
     description: z.string().max(10000).optional(),
     buyer: z.string().max(500),
-    cpv_codes: z.array(z.string()).optional(),
+    cpvCodes: z.array(z.string()).optional(),
     location: z.string().max(200).optional(),
   }),
   tenderId: z.string().uuid().optional(),
@@ -31,7 +31,7 @@ function buildTenderAnalysisPrompt(
   return `Tender Title: ${tenderData.title}
 Description: ${tenderData.description || "Not provided"}
 Buyer: ${tenderData.buyer}
-${tenderData.cpv_codes ? `CPV Codes: ${tenderData.cpv_codes.join(", ")}` : ""}
+${tenderData.cpvCodes ? `CPV Codes: ${tenderData.cpvCodes.join(", ")}` : ""}
 ${tenderData.location ? `Location: ${tenderData.location}` : ""}
 
 Available taxonomy categories: ${taxonomyList}

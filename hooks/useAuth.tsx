@@ -11,10 +11,10 @@ import {
 import { authClient } from "@/lib/auth-client";
 
 interface ProfileData {
-  approval_status: string | null;
-  onboarding_completed_at: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  approvalStatus: string | null;
+  onboardingCompletedAt: string | null;
+  firstName: string | null;
+  lastName: string | null;
 }
 
 interface AuthUser {
@@ -145,14 +145,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   const isOnboarding = useMemo(() => {
-    return !!user && !profile?.onboarding_completed_at;
+    return !!user && !profile?.onboardingCompletedAt;
   }, [user, profile]);
 
   const isPendingApproval = useMemo(() => {
     return (
       !!user &&
-      !!profile?.onboarding_completed_at &&
-      profile?.approval_status === "pending"
+      !!profile?.onboardingCompletedAt &&
+      profile?.approvalStatus === "pending"
     );
   }, [user, profile]);
 

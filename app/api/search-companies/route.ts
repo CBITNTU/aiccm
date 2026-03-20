@@ -9,8 +9,8 @@ import { eq, and, ilike, asc } from "drizzle-orm";
 
 export interface CompanySearchResult {
   id: string;
-  company_name: string;
-  has_admin: boolean;
+  companyName: string;
+  hasAdmin: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
 
         return {
           id: company.id,
-          company_name: company.companyName,
-          has_admin: adminCheck.length > 0,
+          companyName: company.companyName,
+          hasAdmin: adminCheck.length > 0,
         };
       }),
     );

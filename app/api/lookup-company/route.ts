@@ -24,8 +24,8 @@ interface LookupCompanyResponse {
   };
   existingCompany?: {
     id: string;
-    company_name: string;
-    has_admin: boolean;
+    companyName: string;
+    hasAdmin: boolean;
   };
 }
 
@@ -158,8 +158,8 @@ export async function POST(request: NextRequest) {
         errorCode: "DUPLICATE",
         existingCompany: {
           id: existingCompany.id,
-          company_name: existingCompany.companyName,
-          has_admin: adminCheck.length > 0,
+          companyName: existingCompany.companyName,
+          hasAdmin: adminCheck.length > 0,
         },
       });
     }

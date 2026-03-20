@@ -8,40 +8,72 @@ import { createCompany, createCompanyMember } from "@/lib/db/queries";
 import { z } from "zod";
 
 const createCompanyProfileSchema = z.object({
-  company_name: z.string().min(1),
+  companyName: z.string().min(1).optional(),
+  company_name: z.string().min(1).optional(),
+  companiesHouseNumber: z.string().optional().nullable(),
   companies_house_number: z.string().optional().nullable(),
+  websiteUrl: z.string().optional().nullable(),
   website_url: z.string().optional().nullable(),
+  contactPerson: z.string().optional().nullable(),
   contact_person: z.string().optional().nullable(),
+  contactEmail: z.string().optional().nullable(),
   contact_email: z.string().optional().nullable(),
+  contactPhone: z.string().optional().nullable(),
   contact_phone: z.string().optional().nullable(),
+  consentDataFetch: z.boolean().optional(),
   consent_data_fetch: z.boolean().optional(),
   description: z.string().optional().nullable(),
+  keyCapabilities: z.string().optional().nullable(),
   key_capabilities: z.string().optional().nullable(),
   certifications: z.string().optional().nullable(),
   equipment: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   postcode: z.string().optional().nullable(),
+  systemExtracted: z.unknown().optional(),
   system_extracted: z.unknown().optional(),
+  humanVerified: z.unknown().optional(),
   human_verified: z.unknown().optional(),
+  financialData: z.unknown().optional(),
   financial_data: z.unknown().optional(),
+  complianceData: z.unknown().optional(),
   compliance_data: z.unknown().optional(),
   status: z.string().optional(),
+  operationLocations: z.unknown().optional(),
   operation_locations: z.unknown().optional(),
+  pastProjects: z.string().optional().nullable(),
   past_projects: z.string().optional().nullable(),
-});
+}).refine(
+  (data) => !!(data.companyName || data.company_name),
+  { message: "companyName is required", path: ["companyName"] },
+);
 
 export async function POST(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
     const body = await validateBody(request, createCompanyProfileSchema);
 
+    const companyName = (body.companyName ?? body.company_name)!;
+    const companiesHouseNumber = body.companiesHouseNumber ?? body.companies_house_number;
+    const websiteUrl = body.websiteUrl ?? body.website_url;
+    const contactPerson = body.contactPerson ?? body.contact_person;
+    const contactEmail = body.contactEmail ?? body.contact_email;
+    const contactPhone = body.contactPhone ?? body.contact_phone;
+    const consentDataFetch = body.consentDataFetch ?? body.consent_data_fetch;
+    const keyCapabilities = body.keyCapabilities ?? body.key_capabilities;
+    const systemExtracted = body.systemExtracted ?? body.system_extracted;
+    const humanVerified = body.humanVerified ?? body.human_verified;
+    const financialData = body.financialData ?? body.financial_data;
+    const complianceData = body.complianceData ?? body.compliance_data;
+    const operationLocations = body.operationLocations ?? body.operation_locations;
+    const pastProjects = body.pastProjects ?? body.past_projects;
+
     const duplicateFilters = [];
-    if (body.company_name?.trim()) {
-      duplicateFilters.push(ilike(companies.companyName, body.company_name.trim()));
+    if (companyName?.trim()) {
+      duplicateFilters.push(ilike(companies.companyName, companyName.trim()));
     }
-    if (body.companies_house_number?.trim()) {
+    if (companiesHouseNumber?.trim()) {
       duplicateFilters.push(
-        eq(companies.companiesHouseNumber, body.companies_house_number.trim()),
+        eq(companies.companiesHouseNumber, companiesHouseNumber.trim()),
       );
     }
 
@@ -66,26 +98,26 @@ export async function POST(request: NextRequest) {
 
     const company = await createCompany({
       userId: user.id,
-      companyName: body.company_name.trim(),
-      companiesHouseNumber: body.companies_house_number?.trim() || null,
-      websiteUrl: body.website_url?.trim() || null,
-      contactPerson: body.contact_person?.trim() || null,
-      contactEmail: body.contact_email?.trim() || null,
-      contactPhone: body.contact_phone?.trim() || null,
-      consentDataFetch: body.consent_data_fetch ?? false,
+      companyName: companyName.trim(),
+      companiesHouseNumber: companiesHouseNumber?.trim() || null,
+      websiteUrl: websiteUrl?.trim() || null,
+      contactPerson: contactPerson?.trim() || null,
+      contactEmail: contactEmail?.trim() || null,
+      contactPhone: contactPhone?.trim() || null,
+      consentDataFetch: consentDataFetch ?? false,
       description: body.description || null,
-      keyCapabilities: body.key_capabilities || null,
+      keyCapabilities: keyCapabilities || null,
       certifications: body.certifications || null,
       equipment: body.equipment || null,
       address: body.address || null,
       postcode: body.postcode || null,
-      systemExtracted: body.system_extracted ?? {},
-      humanVerified: body.human_verified ?? {},
-      financialData: body.financial_data ?? {},
-      complianceData: body.compliance_data ?? {},
+      systemExtracted: systemExtracted ?? {},
+      humanVerified: humanVerified ?? {},
+      financialData: financialData ?? {},
+      complianceData: complianceData ?? {},
       status: body.status || "active",
-      operationLocations: body.operation_locations ?? [],
-      pastProjects: body.past_projects || null,
+      operationLocations: operationLocations ?? [],
+      pastProjects: pastProjects || null,
     });
 
     await createCompanyMember({

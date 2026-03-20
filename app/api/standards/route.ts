@@ -8,8 +8,8 @@ import { asc, eq, inArray } from "drizzle-orm";
 export interface StandardNode {
   id: string;
   name: string;
-  parent_id: string | null;
-  sort_order: number;
+  parentId: string | null;
+  sortOrder: number;
 }
 
 /** Normalise for industry/market name matching (lowercase, trim). */
@@ -82,8 +82,8 @@ export async function GET(request: NextRequest) {
       .select({
         id: standardsRef.id,
         name: standardsRef.name,
-        parent_id: standardsRef.parentId,
-        sort_order: standardsRef.sortOrder,
+        parentId: standardsRef.parentId,
+        sortOrder: standardsRef.sortOrder,
       })
       .from(standardsRef)
       .orderBy(asc(standardsRef.sortOrder), asc(standardsRef.name));
@@ -98,12 +98,12 @@ export async function GET(request: NextRequest) {
     list.forEach((n) => byId.set(n.id, n));
     const allowedIds = new Set<string>();
     list.forEach((s) => {
-      if (!s.parent_id) {
+      if (!s.parentId) {
         const industryNorm = norm(s.name);
         const match = marketNamesNorm.some((mn) => industryMatchesMarket(industryNorm, mn));
         if (match) allowedIds.add(s.id);
       } else {
-        const parent = byId.get(s.parent_id);
+        const parent = byId.get(s.parentId);
         if (parent) {
           const industryNorm = norm(parent.name);
           const match = marketNamesNorm.some((mn) => industryMatchesMarket(industryNorm, mn));

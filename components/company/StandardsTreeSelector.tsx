@@ -18,8 +18,8 @@ import {
 export interface StandardNode {
   id: string;
   name: string;
-  parent_id: string | null;
-  sort_order: number;
+  parentId: string | null;
+  sortOrder: number;
 }
 
 interface StandardsTreeSelectorProps {
@@ -39,16 +39,16 @@ function buildTree(nodes: StandardNode[]): TreeNode[] {
   const roots: TreeNode[] = [];
   nodes.forEach((n) => {
     const node = byId.get(n.id)!;
-    if (!n.parent_id) {
+    if (!n.parentId) {
       roots.push(node);
     } else {
-      const parent = byId.get(n.parent_id);
+      const parent = byId.get(n.parentId);
       if (parent) parent.children.push(node);
       else roots.push(node);
     }
   });
-  roots.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
-  roots.forEach((r) => r.children.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)));
+  roots.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  roots.forEach((r) => r.children.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)));
   return roots;
 }
 

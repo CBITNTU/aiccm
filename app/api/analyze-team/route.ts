@@ -31,10 +31,10 @@ function buildTeamAnalysisPrompt(
   const teamMembersText = allCompanies
     .map(
       (c, idx) => `
-${idx + 1}. ${c?.company_name} ${idx === 0 ? "(Lead)" : "(Partner)"}
-   - Capabilities: ${c?.key_capabilities || "Not specified"}
+${idx + 1}. ${c?.companyName} ${idx === 0 ? "(Lead)" : "(Partner)"}
+   - Capabilities: ${c?.keyCapabilities || "Not specified"}
    - Certifications: ${c?.certifications || "None"}
-   - Past Projects: ${c?.past_projects || "None"}
+   - Past Projects: ${c?.pastProjects || "None"}
    - Description: ${c?.description || "None"}`,
     )
     .join("\n");
@@ -43,7 +43,7 @@ ${idx + 1}. ${c?.company_name} ${idx === 0 ? "(Lead)" : "(Partner)"}
 
 Tender: ${tender.title}
 Description: ${tender.description || "Not provided"}
-Buyer: ${tender.buyer_name || "Not specified"}
+Buyer: ${tender.buyerName || "Not specified"}
 Value: \u00A3${tender.value?.toLocaleString() || "Not specified"}
 Location: ${tender.region || "UK"}
 

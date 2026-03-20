@@ -124,7 +124,7 @@ export const api = {
       title: string;
       description?: string;
       buyer: string;
-      cpv_codes?: string[];
+      cpvCodes?: string[];
       location?: string;
     },
     tenderId?: string,
@@ -138,13 +138,15 @@ export const api = {
   matchTenders: (companyId?: string) =>
     apiCall<{
       message: string;
-      analyzed_count: number;
+      analyzedCount: number;
       results: {
-        tender_id: string;
-        tender_title: string;
-        overall_score: number;
+        tenderId: string;
+        tenderTitle: string;
+        overallScore: number;
       }[];
-      up_to_date?: boolean;
+      upToDate?: boolean;
+      batchId?: string;
+      totalTenders?: number;
     }>("match-tenders", {
       body: companyId ? { companyId } : {},
     }),
@@ -351,7 +353,7 @@ export const api = {
       taxonomies: {
         id: string;
         name: string;
-        parent_id: string | null;
+        parentId: string | null;
         level: number;
         description: string | null;
       }[];
@@ -403,12 +405,12 @@ export const api = {
 
   getMarkets: () =>
     apiCall<{
-      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      markets: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>("markets", { method: "GET" }),
 
   getStandards: (companyId?: string) =>
     apiCall<{
-      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(
       companyId ? `standards?companyId=${encodeURIComponent(companyId)}` : "standards",
       { method: "GET" },
@@ -416,12 +418,12 @@ export const api = {
 
   getCompanyMarkets: (companyId: string) =>
     apiCall<{
-      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      markets: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(`companies/${companyId}/markets`, { method: "GET" }),
 
   syncMarkets: (companyId: string, marketIds: string[]) =>
     apiCall<{
-      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      markets: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(`companies/${companyId}/markets`, {
       method: "PUT",
       body: { marketIds },
@@ -429,12 +431,12 @@ export const api = {
 
   getCompanyStandards: (companyId: string) =>
     apiCall<{
-      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(`companies/${companyId}/standards`, { method: "GET" }),
 
   syncStandards: (companyId: string, standardIds: string[]) =>
     apiCall<{
-      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(`companies/${companyId}/standards`, {
       method: "PUT",
       body: { standardIds },
@@ -623,7 +625,7 @@ export const api = {
   toggleBookmark: (resultId: string, isBookmarked: boolean) =>
     apiCall<{ result: Record<string, unknown> }>(
       `matching-results/${resultId}/bookmark`,
-      { method: "PUT", body: { is_bookmarked: isBookmarked } },
+      { method: "PUT", body: { isBookmarked } },
     ),
 
   // Projects
@@ -672,10 +674,10 @@ export const api = {
     apiCall<{
       invitations: {
         id: string;
-        vo_id: string;
-        company_id: string;
-        invitation_status: string;
-        invitation_sent_at: string | null;
+        voId: string;
+        companyId: string;
+        invitationStatus: string;
+        invitationSentAt: string | null;
         project: {
           id: string;
           name: string;
@@ -693,7 +695,7 @@ export const api = {
           title: string;
           buyer: string;
           deadline: string | null;
-          budget_max: number | null;
+          budgetMax: number | null;
         } | null;
       }[];
     }>("projects/invitations", { method: "GET" }),
@@ -712,9 +714,9 @@ export const api = {
     apiCall<{
       invitation: {
         id: string;
-        vo_id: string;
-        company_id: string;
-        invitation_status: string;
+        voId: string;
+        companyId: string;
+        invitationStatus: string;
         projectName: string;
         projectDescription: string | null;
         leadCompanyName: string;
@@ -755,9 +757,7 @@ export const api = {
         const companyName =
           typeof companies?.companyName === "string"
             ? companies.companyName
-            : typeof companies?.company_name === "string"
-              ? companies.company_name
-              : undefined;
+            : undefined;
 
         return {
           ...normalizedResult,

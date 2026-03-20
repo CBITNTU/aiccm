@@ -17,9 +17,9 @@ import { toast } from "sonner";
 
 interface Company {
   id: string;
-  company_name: string;
+  companyName: string;
   postcode?: string | null;
-  created_at?: string;
+  createdAt?: string;
   [key: string]: unknown;
 }
 
@@ -393,7 +393,7 @@ export function ProjectCreationWizard({
                     onProjectNameChange={setProjectName}
                     onProjectDescriptionChange={setProjectDescription}
                     leadCompanyId={leadCompanyId}
-                    leadCompanyName={userCompanies.find(c => c.id === leadCompanyId)?.company_name || "Your Company"}
+                    leadCompanyName={userCompanies.find(c => c.id === leadCompanyId)?.companyName || "Your Company"}
                     onProjectCreated={handleProjectCreated}
                     onBack={handleBack}
                   />

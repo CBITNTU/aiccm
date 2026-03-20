@@ -64,13 +64,13 @@ export async function GET(request: NextRequest) {
         pageSize: limit,
       });
 
-      totalCount = rows.length > 0 ? Number(rows[0].total_count) : 0;
+      totalCount = rows.length > 0 ? Number(rows[0].totalCount) : 0;
       totalPages = Math.ceil(totalCount / limit);
 
       companiesData = rows;
       for (const row of rows) {
-        if (row.distance_miles != null) {
-          distanceByCompany[row.id] = row.distance_miles;
+        if (row.distanceMiles != null) {
+          distanceByCompany[row.id] = row.distanceMiles;
         }
       }
     } else {

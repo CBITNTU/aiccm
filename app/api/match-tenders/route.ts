@@ -129,19 +129,19 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     };
 
     return {
-      overall_score: Math.max(0, Math.min(100, weightedTotal)),
-      capability_score: Math.max(0, Math.min(100, capabilityScore)),
-      experience_score: Math.max(0, Math.min(100, experienceScore)),
-      location_score: Math.max(0, Math.min(100, locationScore)),
-      certification_score: Math.max(0, Math.min(100, certificationScore)),
-      match_reasons: parsed.matchReasons.length > 0 ? parsed.matchReasons : ["Limited match - review details"],
-      improvement_suggestions: parsed.improvementSuggestions.length > 0 ? parsed.improvementSuggestions : ["Profile alignment could be improved"],
-      ai_analysis: {
+      overallScore: Math.max(0, Math.min(100, weightedTotal)),
+      capabilityScore: Math.max(0, Math.min(100, capabilityScore)),
+      experienceScore: Math.max(0, Math.min(100, experienceScore)),
+      locationScore: Math.max(0, Math.min(100, locationScore)),
+      certificationScore: Math.max(0, Math.min(100, certificationScore)),
+      matchReasons: parsed.matchReasons.length > 0 ? parsed.matchReasons : ["Limited match - review details"],
+      improvementSuggestions: parsed.improvementSuggestions.length > 0 ? parsed.improvementSuggestions : ["Profile alignment could be improved"],
+      aiAnalysis: {
         summary: parsed.aiAnalysis || "Match analysis completed",
         strengths: parsed.matchReasons,
         weaknesses: parsed.improvementSuggestions,
         recommendations: parsed.improvementSuggestions.length > 0 ? parsed.improvementSuggestions : ["Continue building relevant capabilities"],
-        score_explanations: finalScoreExplanations,
+        scoreExplanations: finalScoreExplanations,
       },
     };
   } catch (error) {
@@ -157,19 +157,19 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     }
 
     return {
-      overall_score: fallbackOverall,
-      capability_score: fallbackCapability,
-      experience_score: fallbackExperience,
-      location_score: fallbackLocation,
-      certification_score: fallbackCertification,
-      match_reasons: ["AI analysis unavailable - manual review recommended"],
-      improvement_suggestions: ["Unable to generate suggestions"],
-      ai_analysis: {
+      overallScore: fallbackOverall,
+      capabilityScore: fallbackCapability,
+      experienceScore: fallbackExperience,
+      locationScore: fallbackLocation,
+      certificationScore: fallbackCertification,
+      matchReasons: ["AI analysis unavailable - manual review recommended"],
+      improvementSuggestions: ["Unable to generate suggestions"],
+      aiAnalysis: {
         summary: "AI analysis failed - please review manually",
         strengths: [],
         weaknesses: ["Analysis unavailable"],
         recommendations: ["Manual review required"],
-        score_explanations: { capability: "Analysis unavailable", experience: "Analysis unavailable", location: "Analysis unavailable", certification: "Analysis unavailable" },
+        scoreExplanations: { capability: "Analysis unavailable", experience: "Analysis unavailable", location: "Analysis unavailable", certification: "Analysis unavailable" },
       },
     };
   }
@@ -282,17 +282,17 @@ export async function POST(request: NextRequest) {
     if (tenderResults.length === 0) {
       return apiResponse({
         message: "All tenders are up to date - no new tenders to analyze",
-        analyzed_count: 0,
-        up_to_date: true,
+        analyzedCount: 0,
+        upToDate: true,
       });
     }
 
     console.log(`Found ${tenderResults.length} tenders to analyze`);
 
     const platformAi = await getPlatformAISettings();
-    const metadata: Record<string, unknown> = { model: platformAi.default_ai_model };
-    if (platformAi.default_reasoning_effort !== "default") {
-      metadata.reasoningEffort = platformAi.default_reasoning_effort;
+    const metadata: Record<string, unknown> = { model: platformAi.defaultAiModel };
+    if (platformAi.defaultReasoningEffort !== "default") {
+      metadata.reasoningEffort = platformAi.defaultReasoningEffort;
     }
 
     const jobs = tenderResults.map((tender) => ({
@@ -334,8 +334,8 @@ export async function POST(request: NextRequest) {
 
       return apiResponse({
         message: "Matching already in progress",
-        batch_id: existingBatch.id,
-        total_tenders: existingBatch.totalJobs,
+        batchId: existingBatch.id,
+        totalTenders: existingBatch.totalJobs,
         status: "already_running",
       });
     }
@@ -382,9 +382,9 @@ export async function POST(request: NextRequest) {
 
     return apiResponse({
       message: "Tender matching started",
-      batch_id: batchId,
-      total_tenders: tenderResults.length,
-      queued_jobs: jobIds.length,
+      batchId: batchId,
+      totalTenders: tenderResults.length,
+      queuedJobs: jobIds.length,
     });
   } catch (error) {
     console.error("Error in match-tenders:", error);

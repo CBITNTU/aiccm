@@ -37,36 +37,37 @@ export async function nearbyCompanies(params: {
     )`,
   );
 
-  return result.rows as Array<{
-    id: string;
-    company_name: string;
-    description: string | null;
-    key_capabilities: string | null;
-    postcode: string | null;
-    certifications: string | null;
-    equipment: string | null;
-    past_projects: string | null;
-    is_system_company: boolean;
-    status: string | null;
-    market_position: string | null;
-    safety_rating: string | null;
-    digital_maturity: string | null;
-    ai_competencies: unknown;
-    ai_capabilities: unknown;
-    ai_analysis: unknown;
-    latitude: number | null;
-    longitude: number | null;
-    created_at: string;
-    updated_at: string;
-    user_id: string | null;
-    address: string | null;
-    companies_house_number: string | null;
-    contact_email: string | null;
-    contact_phone: string | null;
-    website_url: string | null;
-    distance_miles: number | null;
-    total_count: number;
-  }>;
+  type RawRow = Record<string, unknown>;
+  return (result.rows as RawRow[]).map((r) => ({
+    id: r.id as string,
+    companyName: r.company_name as string,
+    description: r.description as string | null,
+    keyCapabilities: r.key_capabilities as string | null,
+    postcode: r.postcode as string | null,
+    certifications: r.certifications as string | null,
+    equipment: r.equipment as string | null,
+    pastProjects: r.past_projects as string | null,
+    isSystemCompany: r.is_system_company as boolean,
+    status: r.status as string | null,
+    marketPosition: r.market_position as string | null,
+    safetyRating: r.safety_rating as string | null,
+    digitalMaturity: r.digital_maturity as string | null,
+    aiCompetencies: r.ai_competencies,
+    aiCapabilities: r.ai_capabilities,
+    aiAnalysis: r.ai_analysis,
+    latitude: r.latitude as number | null,
+    longitude: r.longitude as number | null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+    userId: r.user_id as string | null,
+    address: r.address as string | null,
+    companiesHouseNumber: r.companies_house_number as string | null,
+    contactEmail: r.contact_email as string | null,
+    contactPhone: r.contact_phone as string | null,
+    websiteUrl: r.website_url as string | null,
+    distanceMiles: r.distance_miles as number | null,
+    totalCount: r.total_count as number,
+  }));
 }
 
 /**
@@ -152,10 +153,11 @@ RETURNING completed_jobs, failed_jobs, total_jobs, status`,
   if (!result.rows || result.rows.length === 0) {
     return null;
   }
-  return result.rows[0] as {
-    completed_jobs: number;
-    failed_jobs: number;
-    total_jobs: number;
-    status: string;
+  const raw = result.rows[0] as Record<string, unknown>;
+  return {
+    completedJobs: raw.completed_jobs as number,
+    failedJobs: raw.failed_jobs as number,
+    totalJobs: raw.total_jobs as number,
+    status: raw.status as string,
   };
 }

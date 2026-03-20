@@ -73,12 +73,12 @@ export function OrgSwitcher({
       <div className="flex items-center gap-2 min-w-0">
         <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
           <span className="text-[10px] font-semibold text-primary">
-            {selectedOrg?.company_name?.charAt(0)?.toUpperCase() || "?"}
+            {selectedOrg?.companyName?.charAt(0)?.toUpperCase() || "?"}
           </span>
         </div>
         <div className="min-w-0 text-left">
           <p className="text-sm font-medium truncate leading-tight">
-            {selectedOrg?.company_name || "No organization"}
+            {selectedOrg?.companyName || "No organization"}
           </p>
           {selectedOrg?.status && (
             <p className="text-[10px] text-muted-foreground leading-tight">
@@ -100,12 +100,12 @@ export function OrgSwitcher({
             className="w-8 h-8 p-0 mx-auto flex items-center justify-center"
           >
             <span className="text-xs font-semibold">
-              {selectedOrg?.company_name?.charAt(0)?.toUpperCase() || "?"}
+              {selectedOrg?.companyName?.charAt(0)?.toUpperCase() || "?"}
             </span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="right" sideOffset={10}>
-          {selectedOrg?.company_name || "No organization"}
+          {selectedOrg?.companyName || "No organization"}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -136,7 +136,7 @@ export function OrgSwitcher({
                   {companies.map((company) => (
                     <CommandItem
                       key={company.id}
-                      value={company.company_name ?? company.id}
+                      value={company.companyName ?? company.id}
                       onSelect={() => {
                         setSelectedOrg(company.id);
                         setOpen(false);
@@ -145,11 +145,11 @@ export function OrgSwitcher({
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <div className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <span className="text-[9px] font-semibold text-primary">
-                            {company.company_name?.charAt(0)?.toUpperCase()}
+                            {company.companyName?.charAt(0)?.toUpperCase()}
                           </span>
                         </div>
                         <span className="truncate text-sm">
-                          {company.company_name}
+                          {company.companyName}
                         </span>
                       </div>
                       <Check
@@ -170,18 +170,18 @@ export function OrgSwitcher({
                   {pendingCompanies.map((company) => (
                     <CommandItem
                       key={company.id}
-                      value={company.company_name ?? company.id}
+                      value={company.companyName ?? company.id}
                       disabled
                       className="opacity-50"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <div className="w-5 h-5 rounded bg-muted flex items-center justify-center flex-shrink-0">
                           <span className="text-[9px] font-semibold text-muted-foreground">
-                            {company.company_name?.charAt(0)?.toUpperCase()}
+                            {company.companyName?.charAt(0)?.toUpperCase()}
                           </span>
                         </div>
                         <span className="truncate text-sm">
-                          {company.company_name}
+                          {company.companyName}
                         </span>
                       </div>
                       <Badge

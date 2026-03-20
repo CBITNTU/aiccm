@@ -585,7 +585,7 @@ async function updateBatchProgress(
     }
 
     console.log(
-      `Atomically updated batch ${batchId}: ${result.completed_jobs}/${result.total_jobs} completed, ${result.failed_jobs} failed, status: ${result.status}`,
+      `Atomically updated batch ${batchId}: ${result.completedJobs}/${result.totalJobs} completed, ${result.failedJobs} failed, status: ${result.status}`,
     );
 
     // If batch is completed/failed, cancel all remaining jobs in this batch

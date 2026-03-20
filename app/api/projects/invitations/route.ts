@@ -86,17 +86,17 @@ export async function GET(request: NextRequest) {
               title: tenderRows[0].title,
               buyer: tenderRows[0].buyer,
               deadline: tenderRows[0].deadline,
-              budget_max: tenderRows[0].budgetMax,
+              budgetMax: tenderRows[0].budgetMax,
             }
           : null;
       }
 
       invitations.push({
         id: member.id,
-        vo_id: member.voId,
-        company_id: member.companyId,
-        invitation_status: member.invitationStatus,
-        invitation_sent_at: member.invitationSentAt,
+        voId: member.voId,
+        companyId: member.companyId,
+        invitationStatus: member.invitationStatus,
+        invitationSentAt: member.invitationSentAt,
         project: {
           id: vo.id,
           name: vo.name,

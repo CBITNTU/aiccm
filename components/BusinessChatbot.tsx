@@ -17,9 +17,9 @@ interface Message {
 }
 
 interface CompanyData {
-  company_name?: string;
+  companyName?: string;
   description?: string;
-  key_capabilities?: string;
+  keyCapabilities?: string;
   certifications?: string;
   equipment?: string;
 }
@@ -58,9 +58,9 @@ export function BusinessChatbot({ companyData }: BusinessChatbotProps) {
       Company Context: ${
         companyData
           ? `
-      Company: ${companyData.company_name}
+      Company: ${companyData.companyName}
       Industry: ${companyData.description}
-      Capabilities: ${companyData.key_capabilities}
+      Capabilities: ${companyData.keyCapabilities}
       Certifications: ${companyData.certifications}
       Equipment: ${companyData.equipment}
       `

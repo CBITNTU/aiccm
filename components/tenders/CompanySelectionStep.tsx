@@ -26,21 +26,21 @@ import { toast } from "sonner";
 
 interface Company {
   id: string;
-  company_name: string;
-  companies_house_number?: string | null;
-  contact_email?: string | null;
-  contact_phone?: string | null;
+  companyName: string;
+  companiesHouseNumber?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
   postcode?: string | null;
   address?: string | null;
   description?: string | null;
-  website_url?: string | null;
-  key_capabilities?: string | null;
+  websiteUrl?: string | null;
+  keyCapabilities?: string | null;
   certifications?: string | null;
   status?: string | null;
-  user_id?: string | null;
-  is_system_company?: boolean | null;
-  created_at?: string;
-  updated_at?: string;
+  userId?: string | null;
+  isSystemCompany?: boolean | null;
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: unknown;
 }
 
@@ -113,10 +113,10 @@ export function CompanySelectionStep({
   const filteredCompanies = companies.filter((company) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      company.company_name.toLowerCase().includes(searchLower) ||
+      company.companyName.toLowerCase().includes(searchLower) ||
       company.description?.toLowerCase().includes(searchLower) ||
       company.postcode?.toLowerCase().includes(searchLower) ||
-      company.contact_email?.toLowerCase().includes(searchLower)
+      company.contactEmail?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -232,7 +232,7 @@ export function CompanySelectionStep({
                             className="cursor-pointer"
                           >
                             <h3 className="font-semibold text-lg mb-1">
-                              {company.company_name}
+                              {company.companyName}
                             </h3>
                           </label>
 
@@ -266,12 +266,12 @@ export function CompanySelectionStep({
                                 <span>{company.postcode}</span>
                               </div>
                             )}
-                            {company.contact_email && (
+                            {company.contactEmail && (
                               <div>
                                 <span className="text-muted-foreground">
                                   Email:{" "}
                                 </span>
-                                <span>{company.contact_email}</span>
+                                <span>{company.contactEmail}</span>
                               </div>
                             )}
                             {company.certifications && (
@@ -334,7 +334,7 @@ export function CompanySelectionStep({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="w-5 h-5" />
-              {selectedCompanyDetail?.company_name}
+              {selectedCompanyDetail?.companyName}
             </DialogTitle>
           </DialogHeader>
 
@@ -358,32 +358,32 @@ export function CompanySelectionStep({
                     </p>
                   </div>
                 )}
-                {selectedCompanyDetail.contact_email && (
+                {selectedCompanyDetail.contactEmail && (
                   <div>
                     <h4 className="font-semibold mb-1">Email</h4>
                     <p className="text-sm text-muted-foreground">
-                      {selectedCompanyDetail.contact_email}
+                      {selectedCompanyDetail.contactEmail}
                     </p>
                   </div>
                 )}
-                {selectedCompanyDetail.contact_phone && (
+                {selectedCompanyDetail.contactPhone && (
                   <div>
                     <h4 className="font-semibold mb-1">Phone</h4>
                     <p className="text-sm text-muted-foreground">
-                      {selectedCompanyDetail.contact_phone}
+                      {selectedCompanyDetail.contactPhone}
                     </p>
                   </div>
                 )}
-                {selectedCompanyDetail.website_url && (
+                {selectedCompanyDetail.websiteUrl && (
                   <div>
                     <h4 className="font-semibold mb-1">Website</h4>
                     <a
-                      href={selectedCompanyDetail.website_url}
+                      href={selectedCompanyDetail.websiteUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-primary hover:underline flex items-center gap-1"
                     >
-                      {selectedCompanyDetail.website_url}
+                      {selectedCompanyDetail.websiteUrl}
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -399,11 +399,11 @@ export function CompanySelectionStep({
                 </div>
               )}
 
-              {selectedCompanyDetail.key_capabilities && (
+              {selectedCompanyDetail.keyCapabilities && (
                 <div>
                   <h4 className="font-semibold mb-2">Key Capabilities</h4>
                   <p className="text-sm text-muted-foreground">
-                    {selectedCompanyDetail.key_capabilities}
+                    {selectedCompanyDetail.keyCapabilities}
                   </p>
                 </div>
               )}

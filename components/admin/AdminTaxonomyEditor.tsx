@@ -59,7 +59,7 @@ type Capability = {
   id: string;
   name: string;
   category: string | null;
-  parent_id?: string | null;
+  parentId?: string | null;
 };
 
 interface TreeNode {
@@ -201,7 +201,7 @@ const AdminTaxonomyEditor = () => {
   const [formData, setFormData] = useState({
     name: "",
     category: "",
-    parent_id: "",
+    parentId: "",
   });
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -245,7 +245,7 @@ const AdminTaxonomyEditor = () => {
         id: c.id as string,
         name: c.name as string,
         category: c.category as string | null,
-        parent_id: c.parent_id as string | null | undefined,
+        parentId: c.parentId as string | null | undefined,
       }));
 
       setCapabilities(validCapabilities);
@@ -258,7 +258,7 @@ const AdminTaxonomyEditor = () => {
   };
 
   const hasParentId = capabilities.some(
-    (c) => c.parent_id != null && c.parent_id !== "",
+    (c) => c.parentId != null && c.parentId !== "",
   );
 
   const tree = (() => {
@@ -270,7 +270,7 @@ const AdminTaxonomyEditor = () => {
     const roots: TreeNode[] = [];
     capabilities.forEach((c) => {
       const node = byId.get(c.id)!;
-      const parentId = c.parent_id ?? null;
+      const parentId = c.parentId ?? null;
       if (!parentId || !byId.has(parentId)) roots.push(node);
       else byId.get(parentId)!.children.push(node);
     });
@@ -305,7 +305,7 @@ const AdminTaxonomyEditor = () => {
     setFormData({
       name: "",
       category: firstCat,
-      parent_id: "",
+      parentId: "",
     });
     setIsCreateDialogOpen(true);
   };
@@ -315,7 +315,7 @@ const AdminTaxonomyEditor = () => {
     setFormData({
       name: capability.name,
       category: capability.category ?? "",
-      parent_id: capability.parent_id ?? "",
+      parentId: capability.parentId ?? "",
     });
     setIsEditDialogOpen(true);
   };
@@ -342,8 +342,8 @@ const AdminTaxonomyEditor = () => {
         return;
       }
       const category = formData.category.trim() || null;
-      const parent_id = formData.parent_id.trim() || null;
-      if (!category && !parent_id) {
+      const parentId = formData.parentId.trim() || null;
+      if (!category && !parentId) {
         toast.error("Either category or parent must be set");
         return;
       }
@@ -352,7 +352,7 @@ const AdminTaxonomyEditor = () => {
         await api.adminUpdateCapability(editingCapability.id, {
           name: formData.name.trim(),
           category,
-          parent_id,
+          parentId,
         });
         toast.success("Capability updated successfully");
         setIsEditDialogOpen(false);
@@ -361,13 +361,13 @@ const AdminTaxonomyEditor = () => {
         await api.adminCreateCapability({
           name: formData.name.trim(),
           category,
-          parent_id,
+          parentId,
         });
         toast.success("Capability created successfully");
         setIsCreateDialogOpen(false);
       }
 
-      setFormData({ name: "", category: categories[0] ?? "", parent_id: "" });
+      setFormData({ name: "", category: categories[0] ?? "", parentId: "" });
       setEditingCapability(null);
       await fetchCapabilities();
     } catch (error: any) {
@@ -742,11 +742,11 @@ const AdminTaxonomyEditor = () => {
             <div>
               <Label>Parent (optional)</Label>
               <Select
-                value={formData.parent_id || "none"}
+                value={formData.parentId || "none"}
                 onValueChange={(v) =>
                   setFormData({
                     ...formData,
-                    parent_id: v === "none" ? "" : v,
+                    parentId: v === "none" ? "" : v,
                   })
                 }
               >
@@ -826,11 +826,11 @@ const AdminTaxonomyEditor = () => {
             <div>
               <Label>Parent (optional)</Label>
               <Select
-                value={formData.parent_id || "none"}
+                value={formData.parentId || "none"}
                 onValueChange={(v) =>
                   setFormData({
                     ...formData,
-                    parent_id: v === "none" ? "" : v,
+                    parentId: v === "none" ? "" : v,
                   })
                 }
               >

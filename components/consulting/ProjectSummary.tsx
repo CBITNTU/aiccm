@@ -18,14 +18,14 @@ interface ProjectSummaryProps {
     buyer: string;
     location?: string;
     deadline?: string;
-    budget_min?: number;
-    budget_max?: number;
-    external_id?: string;
-    reference_number?: string;
+    budgetMin?: number;
+    budgetMax?: number;
+    externalId?: string;
+    referenceNumber?: string;
     status?: string | null;
   };
   ownerCompany: {
-    company_name: string;
+    companyName: string;
   } | null;
   onCardClick?: () => void;
 }
@@ -36,10 +36,10 @@ export function ProjectSummary({
   onCardClick,
 }: ProjectSummaryProps) {
   // Generate external URL using the same pattern as TenderViewDialog
-  const externalUrl = tender.external_id
-    ? `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`
-    : tender.reference_number
-      ? `https://www.find-tender.service.gov.uk/Notice/${tender.reference_number}?origin=SearchResults`
+  const externalUrl = tender.externalId
+    ? `https://www.find-tender.service.gov.uk/Notice/${tender.externalId}?origin=SearchResults&p=1`
+    : tender.referenceNumber
+      ? `https://www.find-tender.service.gov.uk/Notice/${tender.referenceNumber}?origin=SearchResults`
       : `https://www.contractsfinder.service.gov.uk/notice/${tender.id}`;
 
   return (
@@ -80,7 +80,7 @@ export function ProjectSummary({
               </div>
             </div>
           )}
-          {tender.budget_min && tender.budget_max && (
+          {tender.budgetMin && tender.budgetMax && (
             <div>
               <div className="text-sm text-muted-foreground mb-1">
                 Budget Range
@@ -88,8 +88,8 @@ export function ProjectSummary({
               <div className="flex items-center gap-2">
                 <PoundSterling className="h-4 w-4" />
                 <span className="font-medium">
-                  £{tender.budget_min.toLocaleString()} - £
-                  {tender.budget_max.toLocaleString()}
+                  £{tender.budgetMin.toLocaleString()} - £
+                  {tender.budgetMax.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -98,7 +98,7 @@ export function ProjectSummary({
             <div className="text-sm text-muted-foreground mb-1">
               Lead Company
             </div>
-            <div className="font-medium">{ownerCompany?.company_name}</div>
+            <div className="font-medium">{ownerCompany?.companyName}</div>
           </div>
         </div>
         <Button

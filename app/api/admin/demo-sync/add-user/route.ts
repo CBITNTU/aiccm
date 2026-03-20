@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (!isAdmin) return apiError("Forbidden: Superadmin access required", 403);
 
     const body = await request.json().catch(() => ({}));
-    const platformDefault = (await getPlatformAISettings()).default_ai_model;
+    const platformDefault = (await getPlatformAISettings()).defaultAiModel;
     const model = (body.model ?? platformDefault) as MatchingModelId;
     const matchCount = Math.min(
       100,

@@ -69,9 +69,9 @@ export async function GET(request: NextRequest) {
     return apiResponse({
       invitation: {
         id: member.id,
-        vo_id: member.voId,
-        company_id: member.companyId,
-        invitation_status: member.invitationStatus,
+        voId: member.voId,
+        companyId: member.companyId,
+        invitationStatus: member.invitationStatus,
         projectName: vo.name,
         projectDescription: vo.description,
         leadCompanyName: leadCompany?.companyName || "Unknown",

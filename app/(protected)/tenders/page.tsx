@@ -171,7 +171,7 @@ export default function TendersPage() {
                   Matching for:
                 </span>
                 <span className="text-sm font-medium">
-                  {selectedOrg.company_name}
+                  {selectedOrg.companyName}
                 </span>
               </div>
             )}

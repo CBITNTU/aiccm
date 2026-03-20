@@ -7,7 +7,7 @@ import { queryKeys } from "@/lib/queryKeys";
 export interface Taxonomy {
   id: string;
   name: string;
-  parent_id: string | null;
+  parentId: string | null;
   level: number;
   description: string | null;
 }
@@ -30,10 +30,10 @@ export function useTaxonomies() {
   const getLevel1 = () => taxonomies.filter((t) => t.level === 1);
 
   const getLevel2 = (parentId: string | null) =>
-    taxonomies.filter((t) => t.level === 2 && t.parent_id === parentId);
+    taxonomies.filter((t) => t.level === 2 && t.parentId === parentId);
 
   const getLevel3 = (parentId: string | null) =>
-    taxonomies.filter((t) => t.level === 3 && t.parent_id === parentId);
+    taxonomies.filter((t) => t.level === 3 && t.parentId === parentId);
 
   const getTaxonomyById = (id: string | null) =>
     taxonomies.find((t) => t.id === id);

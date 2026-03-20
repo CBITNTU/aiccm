@@ -8,8 +8,8 @@ import { asc } from "drizzle-orm";
 export interface MarketNode {
   id: string;
   name: string;
-  parent_id: string | null;
-  sort_order: number;
+  parentId: string | null;
+  sortOrder: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
       .select({
         id: markets.id,
         name: markets.name,
-        parent_id: markets.parentId,
-        sort_order: markets.sortOrder,
+        parentId: markets.parentId,
+        sortOrder: markets.sortOrder,
       })
       .from(markets)
       .orderBy(asc(markets.sortOrder), asc(markets.name));

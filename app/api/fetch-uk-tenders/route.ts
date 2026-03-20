@@ -33,6 +33,29 @@ interface TenderData {
   source?: string;
 }
 
+function toFeedRecord(t: TenderData) {
+  return {
+    id: t.id,
+    ocid: t.ocid,
+    referenceNumber: t.reference_number,
+    title: t.title,
+    buyer: t.buyer,
+    cpvCodes: t.cpv_codes,
+    description: t.description,
+    budgetMin: t.budget_min,
+    budgetMax: t.budget_max,
+    location: t.location,
+    deadline: t.deadline,
+    status: t.status,
+    publicationDate: t.publication_date,
+    contactInfo: t.contact_info,
+    requirements: t.requirements,
+    documents: t.documents,
+    externalId: t.external_id,
+    source: t.source,
+  };
+}
+
 type TenderInsert = typeof tenders.$inferInsert;
 
 function mapTenderToInsert(tender: TenderData): TenderInsert {
@@ -465,7 +488,7 @@ export async function POST(request: NextRequest) {
       );
 
       return apiResponse({
-        tenders: filteredTenders,
+        tenders: filteredTenders.map(toFeedRecord),
         total: filteredTenders.length,
         totalFetched: tendersData.length,
         actuallyImported: actuallyImported,
@@ -499,7 +522,7 @@ export async function POST(request: NextRequest) {
     }
 
     return apiResponse({
-      tenders: filteredTenders,
+      tenders: filteredTenders.map(toFeedRecord),
       total: filteredTenders.length,
       totalFetched: tendersData.length,
       hasMore: !!nextCursor && isAdmin,

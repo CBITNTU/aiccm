@@ -33,11 +33,11 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { is_bookmarked } = body as { is_bookmarked: boolean };
+    const isBookmarked = body.isBookmarked ?? body.is_bookmarked;
 
     const data = await db
       .update(matchingResults)
-      .set({ isBookmarked: is_bookmarked })
+      .set({ isBookmarked })
       .where(eq(matchingResults.id, resultId))
       .returning({ id: matchingResults.id, isBookmarked: matchingResults.isBookmarked });
 

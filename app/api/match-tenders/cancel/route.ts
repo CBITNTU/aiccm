@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
 
     return apiResponse({
       message: "Matching cancelled successfully",
-      batch_id: batchId,
-      cancelled_jobs: cancelledCount,
+      batchId: batchId,
+      cancelledJobs: cancelledCount,
     });
   } catch (error) {
     console.error("Error cancelling matching:", error);

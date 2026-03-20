@@ -127,7 +127,7 @@ export function CompanySelector({
             {selectedCompany ? (
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
-                {selectedCompany.company_name}
+                {selectedCompany.companyName}
               </div>
             ) : (
               "Select a company"
@@ -140,7 +140,7 @@ export function CompanySelector({
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
                 <div>
-                  <div className="font-medium">{company.company_name}</div>
+                  <div className="font-medium">{company.companyName}</div>
                   <div className="text-xs text-muted-foreground">
                     {company.status}
                   </div>

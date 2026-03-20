@@ -16,9 +16,6 @@ interface ProjectRequest {
   description?: string;
   targetTenderId?: string | null;
   companyId: string;
-  // Legacy snake_case support
-  target_tender_id?: string | null;
-  company_id?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -33,8 +30,8 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as ProjectRequest;
     const name = body.name;
     const description = body.description;
-    const target_tender_id = body.targetTenderId ?? body.target_tender_id;
-    const company_id = body.companyId ?? body.company_id ?? "";
+    const target_tender_id = body.targetTenderId;
+    const company_id = body.companyId ?? "";
 
     // Validate and sanitize project name
     const trimmedName = name?.trim();

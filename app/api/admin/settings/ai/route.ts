@@ -59,31 +59,33 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const updates: {
-      default_ai_model?: string;
-      default_reasoning_effort?: DefaultReasoningEffort;
+      defaultAiModel?: string;
+      defaultReasoningEffort?: DefaultReasoningEffort;
     } = {};
 
-    if (body.default_ai_model != null) {
-      const v = String(body.default_ai_model).trim();
+    // Accept both camelCase and legacy snake_case from clients
+    const rawModel = body.defaultAiModel ?? body.default_ai_model;
+    const rawEffort = body.defaultReasoningEffort ?? body.default_reasoning_effort;
+
+    if (rawModel != null) {
+      const v = String(rawModel).trim();
       if (!VALID_MODELS.includes(v)) {
         return apiError(
-          `Invalid default_ai_model; supported: ${VALID_MODELS.join(", ")}`,
+          `Invalid defaultAiModel; supported: ${VALID_MODELS.join(", ")}`,
           400,
         );
       }
-      updates.default_ai_model = v;
+      updates.defaultAiModel = v;
     }
-    if (body.default_reasoning_effort != null) {
-      const v = String(
-        body.default_reasoning_effort,
-      ).trim() as DefaultReasoningEffort;
+    if (rawEffort != null) {
+      const v = String(rawEffort).trim() as DefaultReasoningEffort;
       if (!VALID_EFFORTS.includes(v)) {
         return apiError(
-          `Invalid default_reasoning_effort; supported: ${VALID_EFFORTS.join(", ")}`,
+          `Invalid defaultReasoningEffort; supported: ${VALID_EFFORTS.join(", ")}`,
           400,
         );
       }
-      updates.default_reasoning_effort = v;
+      updates.defaultReasoningEffort = v;
     }
 
     if (Object.keys(updates).length === 0) {

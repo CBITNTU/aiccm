@@ -51,49 +51,28 @@ export const tenderInputSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   buyerName: z.string().optional(),
-  buyer_name: z.string().optional(),
   value: z.number().optional(),
   region: z.string().optional(),
-}).transform((data) => ({
-  ...data,
-  buyer_name: data.buyerName ?? data.buyer_name,
-}));
+});
 
 export const companyInputSchema = z.object({
   id: z.string(),
-  companyName: z.string().optional(),
-  company_name: z.string().optional(),
+  companyName: z.string().optional().default(""),
   keyCapabilities: z.string().nullable().optional(),
-  key_capabilities: z.string().nullable().optional(),
   certifications: z.string().nullable().optional(),
   pastProjects: z.string().nullable().optional(),
-  past_projects: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
-}).transform((data) => ({
-  ...data,
-  company_name: data.companyName ?? data.company_name ?? "",
-  key_capabilities: data.keyCapabilities ?? data.key_capabilities,
-  past_projects: data.pastProjects ?? data.past_projects,
-}));
+});
 
 export const teamMemberInputSchema = z.object({
   companies: z
     .object({
-      companyName: z.string().optional(),
-      company_name: z.string().optional(),
+      companyName: z.string().optional().default(""),
       keyCapabilities: z.string().nullable().optional(),
-      key_capabilities: z.string().nullable().optional(),
       certifications: z.string().nullable().optional(),
       pastProjects: z.string().nullable().optional(),
-      past_projects: z.string().nullable().optional(),
       description: z.string().nullable().optional(),
     })
-    .transform((data) => ({
-      ...data,
-      company_name: data.companyName ?? data.company_name ?? "",
-      key_capabilities: data.keyCapabilities ?? data.key_capabilities,
-      past_projects: data.pastProjects ?? data.past_projects,
-    }))
     .nullable()
     .optional(),
 });

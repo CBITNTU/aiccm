@@ -52,14 +52,14 @@ export async function GET(request: NextRequest) {
     }).catch(() => {});
 
     return apiResponse({
-      batch_id: batchId,
-      total_jobs: batchStatus.totalJobs,
-      completed_jobs: batchStatus.completedJobs,
-      failed_jobs: batchStatus.failedJobs,
+      batchId: batchId,
+      totalJobs: batchStatus.totalJobs,
+      completedJobs: batchStatus.completedJobs,
+      failedJobs: batchStatus.failedJobs,
       status: batchStatus.status,
-      progress_percent: progressPercent,
-      created_at: batchStatus.createdAt,
-      updated_at: batchStatus.updatedAt,
+      progressPercent: progressPercent,
+      createdAt: batchStatus.createdAt,
+      updatedAt: batchStatus.updatedAt,
     });
   } catch (error) {
     console.error("Error fetching matching progress:", error);

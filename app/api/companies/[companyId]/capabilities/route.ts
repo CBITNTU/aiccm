@@ -73,6 +73,10 @@ export async function PUT(
     const body = await request.json();
     const { capabilityIds } = body as { capabilityIds: string[] };
 
+    if (!Array.isArray(capabilityIds) || capabilityIds.length > 500) {
+      return apiResponse({ error: "capabilityIds must be an array with at most 500 items" }, 400);
+    }
+
     // Get current capability IDs
     const current = await db
       .select({ capabilityId: companyCapabilities.capabilityId })

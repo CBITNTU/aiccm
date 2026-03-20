@@ -6,6 +6,7 @@ import {
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import { getCompanyMemberRole } from "@/lib/db/queries";
 import {
   geocodeLocation,
   buildCompanyGeoQuery,
@@ -100,10 +101,16 @@ export async function PUT(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    // Only owner or member can update
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
+    // Only owner, admin member, or superadmin can update
+    const [memberRole, isSuperadmin] = await Promise.all([
+      getCompanyMemberRole(user.id, companyId),
+      checkSuperadminRole(user.id),
+    ]);
+    if (!memberRole && !isSuperadmin) {
       throw new AuthError("No access to this company");
+    }
+    if (memberRole && memberRole !== "admin" && !isSuperadmin) {
+      throw new AuthError("Only company admins can update company details");
     }
 
     const body = await request.json();

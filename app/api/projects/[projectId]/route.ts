@@ -170,6 +170,14 @@ export async function PUT(
       recommended_partners: "recommendedPartners",
     };
 
+    // Validate status if provided
+    if ("status" in body) {
+      const validStatuses = ["draft", "active", "completed", "archived"];
+      if (!validStatuses.includes(body.status)) {
+        throw new AuthError("Invalid project status");
+      }
+    }
+
     const updates: Partial<typeof virtualOrganizations.$inferInsert> = {};
     for (const [bodyKey, dbKey] of Object.entries(fieldMap)) {
       if (bodyKey in body) {

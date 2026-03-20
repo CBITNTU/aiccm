@@ -313,6 +313,33 @@ export async function getApprovedMembership(userId: string, companyId: string) {
 }
 
 /**
+ * Get a user's role in a company. Returns "admin" for the company owner,
+ * or the member's role if they are an approved member, or null if no access.
+ */
+export async function getCompanyMemberRole(
+  userId: string,
+  companyId: string,
+): Promise<string | null> {
+  // Check ownership first — owners are treated as admin
+  const ownerId = await getCompanyOwner(companyId);
+  if (ownerId === userId) return "admin";
+
+  // Check approved team membership
+  const result = await db
+    .select({ role: companyMembers.role })
+    .from(companyMembers)
+    .where(
+      and(
+        eq(companyMembers.companyId, companyId),
+        eq(companyMembers.userId, userId),
+        eq(companyMembers.status, "approved"),
+      ),
+    )
+    .limit(1);
+  return result[0]?.role ?? null;
+}
+
+/**
  * Get all company IDs owned by a user.
  */
 export async function getOwnedCompanyIds(userId: string): Promise<string[]> {

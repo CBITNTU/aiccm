@@ -17,6 +17,11 @@ export async function POST(request: NextRequest) {
       return apiError("First name, last name, and job title are required", 400);
     }
 
+    // Validate field lengths
+    if (firstName.length > 255 || lastName.length > 255 || jobTitle.length > 255 || (phone && phone.length > 50)) {
+      return apiError("Field length exceeds maximum allowed", 400);
+    }
+
     // Update the profile via Drizzle (local Postgres)
     const updated = await updateProfileByUserId(user.id, {
       firstName: firstName.trim(),

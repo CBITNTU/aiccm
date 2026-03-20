@@ -15,7 +15,7 @@ import {
 } from "@/lib/utils/invite-token";
 import { createTeamInvitation } from "@/lib/db/queries";
 import { db } from "@/lib/db";
-import { userRoles, companyMembers, companies, profiles, teamInvitations } from "@/lib/db/schema/app";
+import { companyMembers, companies, profiles, teamInvitations } from "@/lib/db/schema/app";
 import { eq, and, ilike, desc } from "drizzle-orm";
 
 export interface CreateInvitationRequest {
@@ -50,17 +50,6 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-
-    // Check if user is SME owner
-    const userRoleResult = await db
-      .select({ role: userRoles.role })
-      .from(userRoles)
-      .where(and(eq(userRoles.userId, user.id), eq(userRoles.role, "sme-owner")))
-      .limit(1);
-
-    if (!userRoleResult[0]) {
-      return apiError("Only SME owners can invite team members", 403);
-    }
 
     // Check if user is admin of this company
     const membershipResult = await db
@@ -216,8 +205,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Create invitation error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return apiError("Internal server error", 500);
   }
 }
 
@@ -234,17 +222,6 @@ export async function GET(request: NextRequest) {
 
     if (!companyId) {
       return apiError("Company ID is required", 400);
-    }
-
-    // Check if user is SME owner
-    const userRoleResult = await db
-      .select({ role: userRoles.role })
-      .from(userRoles)
-      .where(and(eq(userRoles.userId, user.id), eq(userRoles.role, "sme-owner")))
-      .limit(1);
-
-    if (!userRoleResult[0]) {
-      return apiError("Only SME owners can view invitations", 403);
     }
 
     // Check if user is admin of this company
@@ -286,8 +263,7 @@ export async function GET(request: NextRequest) {
     return apiResponse({ invitations: enrichedInvitations });
   } catch (error) {
     console.error("Get invitations error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return apiError("Internal server error", 500);
   }
 }
 
@@ -322,17 +298,6 @@ export async function DELETE(request: NextRequest) {
       return apiError("Invitation not found", 404);
     }
 
-    // Check if user is SME owner
-    const userRoleResult = await db
-      .select({ role: userRoles.role })
-      .from(userRoles)
-      .where(and(eq(userRoles.userId, user.id), eq(userRoles.role, "sme-owner")))
-      .limit(1);
-
-    if (!userRoleResult[0]) {
-      return apiError("Only SME owners can cancel invitations", 403);
-    }
-
     // Check if user is admin of this company
     const membershipResult = await db
       .select({ role: companyMembers.role, status: companyMembers.status })
@@ -364,7 +329,6 @@ export async function DELETE(request: NextRequest) {
     return apiResponse({ success: true, message: "Invitation cancelled" });
   } catch (error) {
     console.error("Cancel invitation error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return apiError("Internal server error", 500);
   }
 }

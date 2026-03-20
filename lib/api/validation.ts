@@ -166,6 +166,5 @@ export function handleApiError(error: unknown) {
   }
 
   console.error("Unhandled API error:", error);
-  const message = error instanceof Error ? error.message : "Unknown error";
-  return apiError(message, 500);
+  return apiError("Internal server error", 500);
 }

@@ -56,6 +56,10 @@ export async function PUT(
     const body = await request.json();
     const { taxonomyIds }: { taxonomyIds: string[] } = body;
 
+    if (!Array.isArray(taxonomyIds) || taxonomyIds.length > 500) {
+      return apiResponse({ error: "taxonomyIds must be an array with at most 500 items" }, 400);
+    }
+
     // Get current taxonomies
     const current = await db
       .select({ taxonomyId: companyTaxonomies.taxonomyId })

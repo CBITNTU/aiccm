@@ -217,36 +217,21 @@ Return existing = array of capability IDs from the list.`;
     })
     .where(eq(companies.id, companyId));
 
-  // Also populate the company_capabilities junction table for filtering
-  // First, delete existing capability links for this company
-  try {
-    await db
+  // Atomically replace capability links in the junction table
+  await db.transaction(async (tx) => {
+    await tx
       .delete(companyCapabilities)
       .where(eq(companyCapabilities.companyId, companyId));
-  } catch (deleteError) {
-    console.warn(
-      `Failed to delete existing capabilities for company ${companyId}:`,
-      deleteError,
-    );
-  }
 
-  // Insert new capability links
-  if (uniqueIds.length > 0) {
-    try {
-      await db.insert(companyCapabilities).values(
+    if (uniqueIds.length > 0) {
+      await tx.insert(companyCapabilities).values(
         uniqueIds.map((capabilityId) => ({
           companyId,
           capabilityId,
         })),
       );
-  
-    } catch (insertError) {
-      console.error(
-        `Failed to insert capability links for company ${companyId}:`,
-        insertError,
-      );
     }
-  }
+  });
 
   return uniqueIds;
 }
@@ -392,34 +377,21 @@ Respond with a summary and 2-5 capability IDs from the list above.`;
     .where(eq(companies.id, companyId));
   console.log("[CompanyAI:summary-taxonomy] DB save — summary + taxonomy updated for company", companyId);
 
-  // Also populate the company_capabilities junction table
-  try {
-    await db
+  // Atomically replace capability links in the junction table
+  await db.transaction(async (tx) => {
+    await tx
       .delete(companyCapabilities)
       .where(eq(companyCapabilities.companyId, companyId));
-  } catch (deleteError) {
-    console.warn(
-      `Failed to delete existing capabilities for company ${companyId}:`,
-      deleteError,
-    );
-  }
 
-  // Insert new capability links
-  if (uniqueIds.length > 0) {
-    try {
-      await db.insert(companyCapabilities).values(
+    if (uniqueIds.length > 0) {
+      await tx.insert(companyCapabilities).values(
         uniqueIds.map((capabilityId) => ({
           companyId,
           capabilityId,
         })),
       );
-    } catch (insertError) {
-      console.error(
-        `Failed to insert capability links for company ${companyId}:`,
-        insertError,
-      );
     }
-  }
+  });
 
   return { summary, taxonomy: uniqueIds };
 }

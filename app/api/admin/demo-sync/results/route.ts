@@ -1,13 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- demo_matching_results not in generated Supabase types */
 import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
   checkSuperadminRole,
-  createAdminClient,
   apiResponse,
   apiError,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { eq, asc } from "drizzle-orm";
+import { demoMatchingResults, tenders, companies } from "@/lib/db/schema";
 
 /**
  * GET /api/admin/demo-sync/results
@@ -20,46 +21,35 @@ export async function GET(request: NextRequest) {
     const isAdmin = await checkSuperadminRole(user.id);
     if (!isAdmin) return apiError("Forbidden: Superadmin access required", 403);
 
-    const supabase = createAdminClient();
-    const { data, error } = await (supabase as any)
-      .from("demo_matching_results")
-      .select(
-        `
-        id,
-        created_at,
-        batch_label,
-        company_id,
-        tender_id,
-        model_used,
-        overall_score,
-        capability_score,
-        experience_score,
-        location_score,
-        certification_score,
-        match_reasons,
-        improvement_suggestions,
-        ai_analysis,
-        tenders(title),
-        companies(company_name)
-      `,
-      )
-      .order("created_at", { ascending: true });
+    const result = await db
+      .select({
+        id: demoMatchingResults.id,
+        createdAt: demoMatchingResults.createdAt,
+        batchLabel: demoMatchingResults.batchLabel,
+        companyId: demoMatchingResults.companyId,
+        tenderId: demoMatchingResults.tenderId,
+        modelUsed: demoMatchingResults.modelUsed,
+        overallScore: demoMatchingResults.overallScore,
+        capabilityScore: demoMatchingResults.capabilityScore,
+        experienceScore: demoMatchingResults.experienceScore,
+        locationScore: demoMatchingResults.locationScore,
+        certificationScore: demoMatchingResults.certificationScore,
+        matchReasons: demoMatchingResults.matchReasons,
+        improvementSuggestions: demoMatchingResults.improvementSuggestions,
+        aiAnalysis: demoMatchingResults.aiAnalysis,
+        tenderTitle: tenders.title,
+        companyName: companies.companyName,
+      })
+      .from(demoMatchingResults)
+      .leftJoin(tenders, eq(tenders.id, demoMatchingResults.tenderId))
+      .leftJoin(companies, eq(companies.id, demoMatchingResults.companyId))
+      .orderBy(asc(demoMatchingResults.createdAt));
 
-    if (error)
-      return apiError(
-        "Failed to fetch demo results: " + String(error.message),
-        500,
-      );
-
-    const rows = (data ?? []).map((row: any) => {
-      const tender = row.tenders ?? row.tender;
-      const company = row.companies ?? row.company;
-      return {
-        ...row,
-        tender_title: tender?.title ?? row.tender_id,
-        company_name: company?.company_name ?? row.company_id,
-      };
-    });
+    const rows = result.map((row) => ({
+      ...row,
+      tenderTitle: row.tenderTitle ?? row.tenderId,
+      companyName: row.companyName ?? row.companyId,
+    }));
 
     await logApiEvent(request, {
       actionType: "admin_demo_sync_results",

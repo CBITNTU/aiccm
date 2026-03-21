@@ -92,9 +92,9 @@ function TokenInvitationView({ token }: { token: string }) {
   const router = useRouter();
   const [invitation, setInvitation] = useState<{
     id: string;
-    vo_id: string;
-    company_id: string;
-    invitation_status: string;
+    voId: string;
+    companyId: string;
+    invitationStatus: string;
     projectName: string;
     projectDescription: string | null;
     leadCompanyName: string;
@@ -152,14 +152,14 @@ function TokenInvitationView({ token }: { token: string }) {
 
   // Already responded
   if (
-    invitation.invitation_status === "accepted" ||
-    invitation.invitation_status === "rejected"
+    invitation.invitationStatus === "accepted" ||
+    invitation.invitationStatus === "rejected"
   ) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12">
         <Card>
           <CardContent className="py-12 text-center">
-            {invitation.invitation_status === "accepted" ? (
+            {invitation.invitationStatus === "accepted" ? (
               <>
                 <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
                 <h3 className="text-lg font-medium mb-2">
@@ -170,7 +170,7 @@ function TokenInvitationView({ token }: { token: string }) {
                   <strong>{invitation.projectName}</strong>.
                 </p>
                 <Link
-                  href={`/projects?projectId=${invitation.vo_id}`}
+                  href={`/projects?projectId=${invitation.voId}`}
                 >
                   <Button>View Project</Button>
                 </Link>
@@ -216,7 +216,7 @@ function TokenInvitationView({ token }: { token: string }) {
         message: rejectMessage || undefined,
       });
       toast.success("Invitation declined.");
-      setInvitation({ ...invitation, invitation_status: "rejected" });
+      setInvitation({ ...invitation, invitationStatus: "rejected" });
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to decline invitation",

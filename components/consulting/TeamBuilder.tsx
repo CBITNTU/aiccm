@@ -54,11 +54,11 @@ interface TeamAnalysis {
 
 interface TeamMember {
   id: string;
-  company_id: string;
+  companyId: string;
   role: string;
   companies?: {
-    company_name: string;
-    key_capabilities?: string | null;
+    companyName: string;
+    keyCapabilities?: string | null;
     postcode?: string | null;
     location?: string | null;
   } | null;
@@ -155,11 +155,11 @@ export function TeamBuilder({
               {members.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell className="font-medium">
-                    {member.companies?.company_name}
+                    {member.companies?.companyName}
                   </TableCell>
                   <TableCell>{getRoleBadge(member.role)}</TableCell>
                   <TableCell className="max-w-xs truncate">
-                    {member.companies?.key_capabilities || "N/A"}
+                    {member.companies?.keyCapabilities || "N/A"}
                   </TableCell>
                   <TableCell>
                     {member.companies?.postcode ||
@@ -179,7 +179,7 @@ export function TeamBuilder({
                             <AlertDialogTitle>Remove Partner</AlertDialogTitle>
                             <AlertDialogDescription>
                               Are you sure you want to remove{" "}
-                              {member.companies?.company_name} from the team?
+                              {member.companies?.companyName} from the team?
                               This action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
@@ -402,7 +402,7 @@ export function TeamBuilder({
         open={searchDialogOpen}
         onOpenChange={setSearchDialogOpen}
         onAddCompany={onAddCompany}
-        excludeCompanyIds={members.map((m) => m.company_id)}
+        excludeCompanyIds={members.map((m) => m.companyId)}
       />
     </Card>
   );

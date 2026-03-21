@@ -24,11 +24,11 @@ import { AlertTriangle } from "lucide-react";
 interface User {
   id: string;
   email: string;
-  created_at: string;
-  last_sign_in_at: string;
+  createdAt: string;
+  lastSignInAt: string;
   role?: "superadmin" | "sme-owner";
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export default function AdminUsersPage() {
@@ -75,19 +75,19 @@ export default function AdminUsersPage() {
       // Create a map of user roles
       const roleMap = new Map<string, string>();
       roles?.forEach((role) => {
-        roleMap.set(role.user_id as string, role.role as string);
+        roleMap.set(role.userId as string, role.role as string);
       });
 
       const formattedUsers: User[] =
         profiles?.map((profile) => ({
-          id: profile.user_id as string,
+          id: profile.userId as string,
           email: (profile.email as string) || "",
-          first_name: (profile.first_name as string) || undefined,
-          last_name: (profile.last_name as string) || undefined,
-          created_at: profile.created_at as string,
-          last_sign_in_at: profile.created_at as string,
+          firstName: (profile.firstName as string) || undefined,
+          lastName: (profile.lastName as string) || undefined,
+          createdAt: profile.createdAt as string,
+          lastSignInAt: profile.createdAt as string,
           role:
-            (roleMap.get(profile.user_id as string) as
+            (roleMap.get(profile.userId as string) as
               | "superadmin"
               | "sme-owner") || "sme-owner",
         })) || [];
@@ -151,7 +151,7 @@ export default function AdminUsersPage() {
   const filteredUsers = users.filter(
     (u) =>
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${u.first_name} ${u.last_name}`
+      `${u.firstName} ${u.lastName}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase()),
   );
@@ -245,8 +245,8 @@ export default function AdminUsersPage() {
                     <TableRow key={userData.id}>
                       <TableCell>
                         <div className="font-medium">
-                          {userData.first_name && userData.last_name
-                            ? `${userData.first_name} ${userData.last_name}`
+                          {userData.firstName && userData.lastName
+                            ? `${userData.firstName} ${userData.lastName}`
                             : "No name"}
                         </div>
                       </TableCell>
@@ -266,7 +266,7 @@ export default function AdminUsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(userData.created_at).toLocaleDateString()}
+                        {new Date(userData.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">

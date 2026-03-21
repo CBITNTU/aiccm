@@ -91,8 +91,8 @@ export function ProjectCreationDialog({
       const result = await api.createProject({
         name: formData.name,
         description: formData.description || undefined,
-        target_tender_id: selectedTender?.id || null,
-        company_id: companyId,
+        targetTenderId: selectedTender?.id || null,
+        companyId: companyId,
       });
 
       const project = result.project as { id: string };

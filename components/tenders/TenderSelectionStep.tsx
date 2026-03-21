@@ -16,19 +16,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
+import type { TenderRecord } from "@/lib/api/types";
 
-interface Tender {
-  id: string;
-  title: string;
-  buyer: string;
-  deadline: string | null;
-  status: string | null;
-  location: string | null;
-  budget_min: number | null;
-  budget_max: number | null;
-  description: string | null;
-  reference_number: string | null;
-}
+type Tender = TenderRecord;
 
 interface TenderSelectionStepProps {
   selectedTenderId: string | null;
@@ -67,7 +57,7 @@ export function TenderSelectionStep({
       tender.buyer?.toLowerCase().includes(searchLower) ||
       tender.description?.toLowerCase().includes(searchLower) ||
       tender.location?.toLowerCase().includes(searchLower) ||
-      tender.reference_number?.toLowerCase().includes(searchLower)
+      tender.referenceNumber?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -171,9 +161,9 @@ export function TenderSelectionStep({
                               <h3 className="font-semibold text-lg mb-1">
                                 {tender.title}
                               </h3>
-                              {tender.reference_number && (
+                            {tender.referenceNumber && (
                                 <p className="text-xs text-muted-foreground mb-2">
-                                  Ref: {tender.reference_number}
+                                  Ref: {tender.referenceNumber}
                                 </p>
                               )}
                               {tender.description && (
@@ -227,7 +217,7 @@ export function TenderSelectionStep({
                                 </span>
                               </div>
                             )}
-                            {(tender.budget_min || tender.budget_max) && (
+                            {(tender.budgetMin || tender.budgetMax) && (
                               <div className="flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">
@@ -235,8 +225,8 @@ export function TenderSelectionStep({
                                 </span>
                                 <span className="font-medium">
                                   {formatBudget(
-                                    tender.budget_min,
-                                    tender.budget_max,
+                                    tender.budgetMin,
+                                    tender.budgetMax,
                                   )}
                                 </span>
                               </div>

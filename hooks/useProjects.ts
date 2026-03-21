@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 
 export type ProjectStatus = "active" | "completed" | "archived";
 
@@ -18,14 +18,14 @@ export interface Project {
   id: string;
   name: string;
   description: string | null;
-  lead_company_id: string;
-  target_tender_id: string | null;
+  leadCompanyId: string;
+  targetTenderId: string | null;
   status: string;
-  created_at: string;
-  updated_at: string;
-  gap_analysis: GapAnalysis | null;
-  team_analysis: TeamAnalysis | null;
-  recommended_partners: RecommendedPartner[] | null;
+  createdAt: string;
+  updatedAt: string;
+  gapAnalysis: GapAnalysis | null;
+  teamAnalysis: TeamAnalysis | null;
+  recommendedPartners: RecommendedPartner[] | null;
   tenders: Tender | null;
   userRole?: "owner" | "member";
 }
@@ -60,8 +60,8 @@ export interface TeamAnalysis {
 
 export interface RecommendedPartner {
   id: string;
-  company_name: string;
-  key_capabilities: string;
+  companyName: string;
+  keyCapabilities: string;
   certifications: string;
   location: string;
   relevanceScore: number;
@@ -87,11 +87,9 @@ export function useProjects(companyId: string | null, filter: ProjectStatus) {
 }
 
 // Hook to get user's companies (owned + member of)
-type Company = Database["public"]["Tables"]["companies"]["Row"];
-
 async function fetchUserCompanies(): Promise<Company[]> {
   const data = await api.getMyCompanies();
-  return data.companies as unknown as Company[];
+  return data.companies;
 }
 
 export function useUserCompanies(userId: string | null) {

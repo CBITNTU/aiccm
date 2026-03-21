@@ -1,11 +1,14 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { virtualOrganizations, voMembers, companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function POST(
   request: NextRequest,
@@ -14,18 +17,18 @@ export async function POST(
   try {
     const { user } = await requireAuth(request);
     const { projectId } = await params;
-    const supabase = createAdminClient();
 
     // Verify project ownership
-    const { data: project } = await supabase
-      .from("virtual_organizations")
-      .select("lead_company_id")
-      .eq("id", projectId)
-      .single();
+    const projectRows = await db
+      .select({ leadCompanyId: virtualOrganizations.leadCompanyId })
+      .from(virtualOrganizations)
+      .where(eq(virtualOrganizations.id, projectId))
+      .limit(1);
 
+    const project = projectRows[0];
     if (!project) throw new AuthError("Project not found");
 
-    const hasAccess = await isCompanyMember(user.id, project.lead_company_id);
+    const hasAccess = await isCompanyMember(user.id, project.leadCompanyId);
     if (!hasAccess) {
       throw new AuthError("No access to this project");
     }
@@ -38,34 +41,41 @@ export async function POST(
     }
 
     // Verify the company exists
-    const { data: company } = await supabase
-      .from("companies")
-      .select("id")
-      .eq("id", companyId)
-      .single();
+    const companyRows = await db
+      .select({ id: companies.id })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
 
-    if (!company) {
+    if (!companyRows[0]) {
       throw new AuthError("Company not found");
     }
 
-    const { data, error } = await supabase
-      .from("vo_members")
-      .insert({
-        vo_id: projectId,
-        company_id: companyId,
+    // Insert new member
+    const insertedRows = await db
+      .insert(voMembers)
+      .values({
+        voId: projectId,
+        companyId: companyId,
         role: "invited",
       })
-      .select(
-        `
-        *,
-        companies:company_id (*)
-      `,
-      )
-      .single();
+      .returning();
 
-    if (error) throw error;
+    const inserted = insertedRows[0];
 
-    return apiResponse({ member: data });
+    // Fetch company data to return with the member
+    const companyData = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
+
+    const member = {
+      ...inserted,
+      companies: companyData[0] || null,
+    };
+
+    return apiResponse({ member });
   } catch (error) {
     return handleApiError(error);
   }

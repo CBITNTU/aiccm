@@ -52,21 +52,21 @@ type ReasoningEffortOption =
 
 interface DemoRow {
   id: string;
-  created_at: string;
-  batch_label: string;
-  company_id: string;
-  tender_id: string;
-  model_used: string;
-  overall_score: number | null;
-  capability_score: number | null;
-  experience_score: number | null;
-  location_score: number | null;
-  certification_score: number | null;
-  match_reasons: string[] | null;
-  improvement_suggestions: string[] | null;
-  ai_analysis: unknown;
-  tender_title?: string;
-  company_name?: string;
+  createdAt: string;
+  batchLabel: string;
+  companyId: string;
+  tenderId: string;
+  modelUsed: string;
+  overallScore: number | null;
+  capabilityScore: number | null;
+  experienceScore: number | null;
+  locationScore: number | null;
+  certificationScore: number | null;
+  matchReasons: string[] | null;
+  improvementSuggestions: string[] | null;
+  aiAnalysis: unknown;
+  tenderTitle?: string;
+  companyName?: string;
 }
 
 export function AdminDemoSync() {
@@ -405,13 +405,13 @@ export function AdminDemoSync() {
                 </TableHeader>
                 <TableBody>
                   {results.map((row) => {
-                    const aiAnalysis = row.ai_analysis as {
+                    const aiAnalysis = row.aiAnalysis as {
                       analysis?: string;
                     } | null;
                     const summary =
                       aiAnalysis?.analysis ??
-                      (Array.isArray(row.match_reasons)
-                        ? row.match_reasons.join("; ")
+                      (Array.isArray(row.matchReasons)
+                        ? row.matchReasons.join("; ")
                         : "-");
                     const isExpanded = expandedId === row.id;
                     return (
@@ -419,31 +419,31 @@ export function AdminDemoSync() {
                         <TableCell>
                           <Badge
                             variant={
-                              row.batch_label === "User A"
+                              row.batchLabel === "User A"
                                 ? "default"
                                 : "secondary"
                             }
                           >
-                            {row.batch_label}
+                            {row.batchLabel}
                           </Badge>
                         </TableCell>
                         <TableCell
                           className="max-w-[200px] truncate"
-                          title={row.tender_title ?? row.tender_id}
+                          title={row.tenderTitle ?? row.tenderId}
                         >
-                          {row.tender_title ?? row.tender_id}
+                          {row.tenderTitle ?? row.tenderId}
                         </TableCell>
                         <TableCell
                           className="max-w-[150px] truncate"
-                          title={row.company_name ?? row.company_id}
+                          title={row.companyName ?? row.companyId}
                         >
-                          {row.company_name ?? row.company_id}
+                          {row.companyName ?? row.companyId}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {row.overall_score ?? "-"}
+                          {row.overallScore ?? "-"}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{row.model_used}</Badge>
+                          <Badge variant="outline">{row.modelUsed}</Badge>
                         </TableCell>
                         <TableCell className="max-w-[280px]">
                           <span className="line-clamp-2 text-sm">
@@ -477,11 +477,11 @@ export function AdminDemoSync() {
                     .map((row) => (
                       <div key={row.id} className="space-y-2 text-sm">
                         <p className="font-medium">
-                          Raw AI output (batch: {row.batch_label}, model:{" "}
-                          {row.model_used})
+                          Raw AI output (batch: {row.batchLabel}, model:{" "}
+                          {row.modelUsed})
                         </p>
                         <pre className="whitespace-pre-wrap wrap-break-word rounded bg-background p-3 text-xs max-h-[300px] overflow-auto">
-                          {JSON.stringify(row.ai_analysis, null, 2)}
+                          {JSON.stringify(row.aiAnalysis, null, 2)}
                         </pre>
                       </div>
                     ))}

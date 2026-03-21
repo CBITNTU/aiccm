@@ -14,27 +14,27 @@ import { TenderMatchCard } from "./TenderMatchCard";
 
 interface MatchingResult {
   id: string;
-  tender_id: string;
-  company_id: string;
-  overall_score: number;
-  capability_score: number;
-  experience_score: number;
-  location_score: number;
-  certification_score: number;
-  match_reasons: string[];
-  improvement_suggestions: string[];
-  ai_analysis: Record<string, unknown>;
-  is_bookmarked: boolean;
-  is_applied: boolean;
-  created_at: string;
+  tenderId: string;
+  companyId: string;
+  overallScore: number;
+  capabilityScore: number;
+  experienceScore: number;
+  locationScore: number;
+  certificationScore: number;
+  matchReasons: string[] | null;
+  improvementSuggestions: string[];
+  aiAnalysis: Record<string, unknown>;
+  isBookmarked: boolean;
+  isApplied: boolean;
+  createdAt: string;
   tenders: {
     title: string;
     buyer: string;
     description: string;
     location: string;
     deadline: string;
-    budget_min: number;
-    budget_max: number;
+    budgetMin: number;
+    budgetMax: number;
     status: string;
   };
 }
@@ -168,7 +168,7 @@ export function SavedTenders({
               key={result.id}
               result={result}
               onViewDetails={() => {
-                router.push(`/tenders/${result.tender_id}?companyId=${result.company_id}`);
+                router.push(`/tenders/${result.tenderId}?companyId=${result.companyId}`);
               }}
               onBookmark={() => removeBookmark(result.id)}
               onDelete={() => removeBookmark(result.id)}

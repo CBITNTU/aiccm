@@ -20,9 +20,9 @@ export const companyPrefillSchema = z.object({
     .array(
       z.object({
         name: z.string(),
-        issuer: z.string().optional(),
-        certId: z.string().optional(),
-        validUntil: z.string().optional(),
+        issuer: z.string().nullable(),
+        certId: z.string().nullable(),
+        validUntil: z.string().nullable(),
         confidence: z.number().min(0).max(1),
         evidence: evidenceSource,
       }),
@@ -32,9 +32,9 @@ export const companyPrefillSchema = z.object({
     .array(
       z.object({
         name: z.string(),
-        model: z.string().optional(),
-        capacity: z.string().optional(),
-        notes: z.string().optional(),
+        model: z.string().nullable(),
+        capacity: z.string().nullable(),
+        notes: z.string().nullable(),
         confidence: z.number().min(0).max(1),
         evidence: evidenceSource,
       }),
@@ -49,20 +49,20 @@ export const companyPrefillSchema = z.object({
   address: confidenceField(z.string()).describe("Registered address"),
   financial: z
     .object({
-      employees: confidenceField(z.number()).optional(),
-      netAssets: confidenceField(z.number()).optional(),
-      totalAssets: confidenceField(z.number()).optional(),
-      totalLiabilities: confidenceField(z.number()).optional(),
-      cash: confidenceField(z.number()).optional(),
-      debtRatio: confidenceField(z.number()).optional(),
+      employees: confidenceField(z.number()).nullable(),
+      netAssets: confidenceField(z.number()).nullable(),
+      totalAssets: confidenceField(z.number()).nullable(),
+      totalLiabilities: confidenceField(z.number()).nullable(),
+      cash: confidenceField(z.number()).nullable(),
+      debtRatio: confidenceField(z.number()).nullable(),
     })
     .describe("Financial data"),
   compliance: z
     .object({
-      accountsFiled: confidenceField(z.string()).optional(),
-      accountsDue: confidenceField(z.string()).optional(),
-      confirmationStatement: confidenceField(z.string()).optional(),
-      activeCharges: confidenceField(z.number()).optional(),
+      accountsFiled: confidenceField(z.string()).nullable(),
+      accountsDue: confidenceField(z.string()).nullable(),
+      confirmationStatement: confidenceField(z.string()).nullable(),
+      activeCharges: confidenceField(z.number()).nullable(),
     })
     .describe("Compliance information"),
 });

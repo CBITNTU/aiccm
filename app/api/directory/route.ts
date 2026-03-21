@@ -1,15 +1,18 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   handleApiError,
   sanitizeLikeParam,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies, companyTaxonomies, taxonomies, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
+import { eq, and, or, ilike, inArray, asc, count, sql } from "drizzle-orm";
+import { nearbyCompanies } from "@/lib/db/raw";
 
 export async function GET(request: NextRequest) {
   try {
     await requireAuth(request);
-    const supabase = createAdminClient();
 
     const url = new URL(request.url);
     const search = url.searchParams.get("search") || "";
@@ -30,155 +33,178 @@ export async function GET(request: NextRequest) {
     if (taxonomyIds) {
       const ids = taxonomyIds.split(",").filter(Boolean);
       if (ids.length > 0) {
-        const { data: companyIds, error } = await supabase
-          .from("company_taxonomies")
-          .select("company_id")
-          .in("taxonomy_id", ids);
+        const taxResults = await db
+          .select({ companyId: companyTaxonomies.companyId })
+          .from(companyTaxonomies)
+          .where(inArray(companyTaxonomies.taxonomyId, ids));
 
-        if (error) throw error;
-
-        if (companyIds && companyIds.length > 0) {
-          filteredCompanyIds = [
-            ...new Set(companyIds.map((c) => c.company_id)),
-          ];
+        if (taxResults.length > 0) {
+          filteredCompanyIds = [...new Set(taxResults.map((c) => c.companyId))];
         } else {
           return apiResponse({ companies: [], totalCount: 0, page, totalPages: 0 });
         }
       }
     }
 
-    let companies: Record<string, unknown>[] = [];
+    let companiesData: Record<string, unknown>[] = [];
     let totalCount: number;
     let totalPages: number;
     const distanceByCompany: Record<string, number> = {};
 
     if (hasLocation) {
-      // Use PostGIS RPC — distance calculation, radius filter, sorting, and
-      // pagination all happen in the database via spatial index.
       const safeSearch = sanitizeLikeParam(search) || null;
 
-      const { data, error } = await supabase.rpc("nearby_companies", {
-        user_lat: userLat,
-        user_lng: userLng,
-        radius_miles: radiusMiles,
-        search_text: safeSearch,
-        company_ids: filteredCompanyIds,
-        page_num: page,
-        page_size: limit,
+      const rows = await nearbyCompanies({
+        userLat: userLat!,
+        userLng: userLng!,
+        radiusMiles,
+        searchText: safeSearch,
+        companyIds: filteredCompanyIds,
+        pageNum: page,
+        pageSize: limit,
       });
 
-      if (error) throw error;
-
-      const rows = (data || []) as Record<string, unknown>[];
-      totalCount = rows.length > 0 ? Number(rows[0].total_count) : 0;
+      totalCount = rows.length > 0 ? Number(rows[0].totalCount) : 0;
       totalPages = Math.ceil(totalCount / limit);
 
-      companies = rows;
+      companiesData = rows;
       for (const row of rows) {
-        if (row.distance_miles != null) {
-          distanceByCompany[row.id as string] = row.distance_miles as number;
+        if (row.distanceMiles != null) {
+          distanceByCompany[row.id] = row.distanceMiles;
         }
       }
     } else {
       // Standard query — alphabetical, DB-paginated
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + limit - 1;
+      const offset = (page - 1) * limit;
 
-      let query = supabase
-        .from("companies")
-        .select(
-          `id, company_name, description, key_capabilities, postcode,
-           certifications, past_projects, is_system_company,
-           status, digital_maturity,
-           ai_competencies, ai_capabilities, ai_analysis,
-           latitude, longitude,
-           created_at, updated_at, user_id`,
-          { count: "exact" },
-        )
-        .eq("status", "active");
+      const conditions = [eq(companies.status, "active")];
 
       if (filteredCompanyIds) {
-        query = query.in("id", filteredCompanyIds);
+        conditions.push(inArray(companies.id, filteredCompanyIds));
       }
 
       const safeSearch = sanitizeLikeParam(search);
       if (safeSearch) {
-        query = query.or(
-          `company_name.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`,
+        conditions.push(
+          or(
+            ilike(companies.companyName, `%${safeSearch}%`),
+            ilike(companies.description, `%${safeSearch}%`),
+          )!,
         );
       }
 
-      query = query.order("company_name").range(startIndex, endIndex);
+      const whereClause = and(...conditions);
 
-      const { data, error, count } = await query;
-      if (error) throw error;
+      const [countResult, data] = await Promise.all([
+        db.select({ count: count() }).from(companies).where(whereClause),
+        db
+          .select({
+            id: companies.id,
+            companyName: companies.companyName,
+            description: companies.description,
+            keyCapabilities: companies.keyCapabilities,
+            postcode: companies.postcode,
+            certifications: companies.certifications,
+            equipment: companies.equipment,
+            pastProjects: companies.pastProjects,
+            isSystemCompany: companies.isSystemCompany,
+            status: companies.status,
+            marketPosition: companies.marketPosition,
+            safetyRating: companies.safetyRating,
+            digitalMaturity: companies.digitalMaturity,
+            aiCompetencies: companies.aiCompetencies,
+            aiCapabilities: companies.aiCapabilities,
+            aiAnalysis: companies.aiAnalysis,
+            latitude: companies.latitude,
+            longitude: companies.longitude,
+            createdAt: companies.createdAt,
+            updatedAt: companies.updatedAt,
+            userId: companies.userId,
+          })
+          .from(companies)
+          .where(whereClause)
+          .orderBy(asc(companies.companyName))
+          .limit(limit)
+          .offset(offset),
+      ]);
 
-      companies = data || [];
-      totalCount = count || 0;
+      companiesData = data;
+      totalCount = countResult[0]?.count || 0;
       totalPages = Math.ceil(totalCount / limit);
     }
 
-    // Fetch taxonomies, markets, and standards for returned companies
-    const companyIds = companies.map((c) => c.id as string);
-    const taxonomiesByCompany: Record<string, { id: string; name: string }[]> = {};
-    const marketsByCompany: Record<string, { id: string; name: string }[]> = {};
-    const standardsByCompany: Record<string, { id: string; name: string }[]> = {};
+    // Fetch taxonomies for returned companies
+    const companyIds = companiesData.map((c) => (c.id as string) || (c as { id: string }).id);
+    let taxonomiesByCompany: Record<string, { id: string; name: string }[]> = {};
+    let marketsByCompany: Record<string, { id: string; name: string }[]> = {};
+    let standardsByCompany: Record<string, { id: string; name: string }[]> = {};
 
     if (companyIds.length > 0) {
-      const { data: taxData } = await supabase
-        .from("company_taxonomies")
-        .select("company_id, taxonomy_id, taxonomies(id, name)")
-        .in("company_id", companyIds);
+      const taxData = await db
+        .select({
+          companyId: companyTaxonomies.companyId,
+          taxonomyId: taxonomies.id,
+          taxonomyName: taxonomies.name,
+        })
+        .from(companyTaxonomies)
+        .innerJoin(taxonomies, eq(companyTaxonomies.taxonomyId, taxonomies.id))
+        .where(inArray(companyTaxonomies.companyId, companyIds));
 
-      if (taxData) {
-        for (const ct of taxData) {
-          const taxonomy = ct.taxonomies as { id: string; name: string } | null;
-          if (!taxonomy?.name) continue;
-          if (!taxonomiesByCompany[ct.company_id]) {
-            taxonomiesByCompany[ct.company_id] = [];
-          }
-          taxonomiesByCompany[ct.company_id].push({
-            id: taxonomy.id,
-            name: taxonomy.name,
-          });
+      taxonomiesByCompany = {};
+      for (const ct of taxData) {
+        if (!ct.taxonomyName) continue;
+        if (!taxonomiesByCompany[ct.companyId]) {
+          taxonomiesByCompany[ct.companyId] = [];
         }
+        taxonomiesByCompany[ct.companyId].push({
+          id: ct.taxonomyId,
+          name: ct.taxonomyName,
+        });
       }
 
-      const { data: marketsData } = await supabase
-        .from("company_markets")
-        .select("company_id, markets(id, name)")
-        .in("company_id", companyIds);
+      // Fetch markets for all returned companies
+      const marketsData = await db
+        .select({
+          companyId: companyMarkets.companyId,
+          marketId: markets.id,
+          marketName: markets.name,
+        })
+        .from(companyMarkets)
+        .innerJoin(markets, eq(companyMarkets.marketId, markets.id))
+        .where(inArray(companyMarkets.companyId, companyIds));
 
-      if (marketsData) {
-        for (const cm of marketsData) {
-          const market = cm.markets as { id: string; name: string } | null;
-          if (!market?.name) continue;
-          if (!marketsByCompany[cm.company_id]) {
-            marketsByCompany[cm.company_id] = [];
-          }
-          marketsByCompany[cm.company_id].push({ id: market.id, name: market.name });
+      marketsByCompany = {};
+      for (const row of marketsData) {
+        if (!row.marketName) continue;
+        if (!marketsByCompany[row.companyId]) {
+          marketsByCompany[row.companyId] = [];
         }
+        marketsByCompany[row.companyId].push({ id: row.marketId, name: row.marketName });
       }
 
-      const { data: standardsData } = await supabase
-        .from("company_standards")
-        .select("company_id, standards_ref(id, name)")
-        .in("company_id", companyIds);
+      // Fetch standards for all returned companies
+      const standardsData = await db
+        .select({
+          companyId: companyStandards.companyId,
+          standardId: standardsRef.id,
+          standardName: standardsRef.name,
+        })
+        .from(companyStandards)
+        .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+        .where(inArray(companyStandards.companyId, companyIds));
 
-      if (standardsData) {
-        for (const cs of standardsData) {
-          const standard = cs.standards_ref as { id: string; name: string } | null;
-          if (!standard?.name) continue;
-          if (!standardsByCompany[cs.company_id]) {
-            standardsByCompany[cs.company_id] = [];
-          }
-          standardsByCompany[cs.company_id].push({ id: standard.id, name: standard.name });
+      standardsByCompany = {};
+      for (const row of standardsData) {
+        if (!row.standardName) continue;
+        if (!standardsByCompany[row.companyId]) {
+          standardsByCompany[row.companyId] = [];
         }
+        standardsByCompany[row.companyId].push({ id: row.standardId, name: row.standardName });
       }
     }
 
     return apiResponse({
-      companies,
+      companies: companiesData,
       taxonomiesByCompany,
       marketsByCompany,
       standardsByCompany,

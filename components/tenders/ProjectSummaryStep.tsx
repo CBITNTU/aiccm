@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 interface Company {
   id: string;
-  company_name: string;
+  companyName: string;
   postcode?: string | null;
   [key: string]: unknown;
 }
@@ -108,8 +108,8 @@ export function ProjectSummaryStep({
       const result = await api.createProject({
         name: projectName,
         description: projectDescription || undefined,
-        target_tender_id: selectedTenderId,
-        company_id: leadCompanyId,
+        targetTenderId: selectedTenderId,
+        companyId: leadCompanyId,
       });
 
       const project = result.project as { id: string };
@@ -229,7 +229,7 @@ export function ProjectSummaryStep({
                 >
                   <Building2 className="w-5 h-5 text-muted-foreground" />
                   <div className="flex-1">
-                    <p className="font-medium">{company.company_name}</p>
+                    <p className="font-medium">{company.companyName}</p>
                     {company.postcode && (
                       <p className="text-sm text-muted-foreground">
                         {company.postcode}

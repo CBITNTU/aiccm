@@ -1,42 +1,62 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- batch_jobs/processing_queue not in generated Supabase types */
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createApiClient, apiResponse, apiError } from "@/lib/api";
+import { getAuthenticatedUser, checkSuperadminRole, apiResponse, apiError } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { processingQueue, batchJobs } from "@/lib/db/schema/app";
+import { eq, desc } from "drizzle-orm";
+
+async function requireAdmin(request: NextRequest) {
+  const { user } = await getAuthenticatedUser(request);
+  if (!user) {
+    return null;
+  }
+  const isAdmin = await checkSuperadminRole(user.id);
+  return isAdmin ? user : null;
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const user = await requireAdmin(request);
+    if (!user) {
+      return apiError("Unauthorized", 401);
+    }
 
     // Get job counts by status
-    const { data: pendingJobs } = await supabase
-      .from("processing_queue" as any)
-      .select("id", { count: "exact" })
-      .eq("status", "pending");
+    const [allJobs, activeBatches, recentJobs] = await Promise.all([
+      db.select({ status: processingQueue.status }).from(processingQueue),
+      db
+        .select({
+          id: batchJobs.id,
+          companyId: batchJobs.companyId,
+          status: batchJobs.status,
+          totalJobs: batchJobs.totalJobs,
+          completedJobs: batchJobs.completedJobs,
+          failedJobs: batchJobs.failedJobs,
+          createdAt: batchJobs.createdAt,
+          updatedAt: batchJobs.updatedAt,
+        })
+        .from(batchJobs)
+        .where(eq(batchJobs.status, "processing"))
+        .orderBy(desc(batchJobs.createdAt))
+        .limit(10),
+      db
+        .select({
+          id: processingQueue.id,
+          jobType: processingQueue.jobType,
+          status: processingQueue.status,
+          batchId: processingQueue.batchId,
+          createdAt: processingQueue.createdAt,
+          startedAt: processingQueue.startedAt,
+          completedAt: processingQueue.completedAt,
+          errorMessage: processingQueue.errorMessage,
+        })
+        .from(processingQueue)
+        .orderBy(desc(processingQueue.updatedAt))
+        .limit(50),
+    ]);
 
-    const { data: processingJobs } = await supabase
-      .from("processing_queue" as any)
-      .select("id", { count: "exact" })
-      .eq("status", "processing");
-
-    // Get active batches with details
-    const { data: activeBatches } = await supabase
-      .from("batch_jobs" as any)
-      .select(
-        "id, company_id, status, total_jobs, completed_jobs, failed_jobs, created_at, updated_at",
-      )
-      .eq("status", "processing")
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    // Get recent jobs (last 50)
-    const { data: recentJobs } = await supabase
-      .from("processing_queue" as any)
-      .select(
-        "id, job_type, status, batch_id, created_at, started_at, completed_at, error_message",
-      )
-      .order("updated_at", { ascending: false })
-      .limit(50);
+    const pendingCount = allJobs.filter((j) => j.status === "pending").length;
+    const processingCount = allJobs.filter((j) => j.status === "processing").length;
 
     // Get environment info for debugging
     const envInfo = {
@@ -46,23 +66,12 @@ export async function GET(request: NextRequest) {
       hasCronSecret: !!process.env.CRON_SECRET,
     };
 
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Optional auth
-    }
-
     await logApiEvent(request, {
       actionType: "queue_status_viewed",
-      userId: userId || undefined,
+      userId: user.id,
       details: {
-        pending: pendingJobs?.length || 0,
-        processing: processingJobs?.length || 0,
+        pending: pendingCount,
+        processing: processingCount,
       },
     }).catch(() => {});
 
@@ -70,11 +79,11 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
       environment: envInfo,
       queue: {
-        pending: pendingJobs?.length || 0,
-        processing: processingJobs?.length || 0,
+        pending: pendingCount,
+        processing: processingCount,
       },
-      active_batches: activeBatches || [],
-      recent_jobs: recentJobs || [],
+      active_batches: activeBatches,
+      recent_jobs: recentJobs,
     });
   } catch (error) {
     console.error("Error fetching queue status:", error);
@@ -88,15 +97,18 @@ export async function GET(request: NextRequest) {
 // POST to manually trigger the worker
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const user = await requireAdmin(request);
+    if (!user) {
+      return apiError("Unauthorized", 401);
+    }
 
     // Check if there are pending jobs
-    const { data: pendingJobs } = await supabase
-      .from("processing_queue" as any)
-      .select("id", { count: "exact" })
-      .eq("status", "pending");
+    const pendingJobs = await db
+      .select({ id: processingQueue.id })
+      .from(processingQueue)
+      .where(eq(processingQueue.status, "pending"));
 
-    const pendingCount = pendingJobs?.length || 0;
+    const pendingCount = pendingJobs.length;
 
     if (pendingCount === 0) {
       return apiResponse({
@@ -107,21 +119,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine the base URL
-    const baseUrl = process.env.PLATFORM_URL
-      ? process.env.PLATFORM_URL
-      : "http://localhost:3000";
+    const baseUrl = process.env.PLATFORM_URL || "http://localhost:3000";
 
     console.log(`🚀 Manually triggering worker at ${baseUrl}/api/queue/worker`);
     console.log(`📊 Pending jobs: ${pendingCount}`);
 
-    // Trigger the worker
+    // Trigger the worker with secret header for internal auth
+    const triggerHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (process.env.CRON_SECRET) {
+      triggerHeaders["x-queue-secret"] = process.env.CRON_SECRET;
+    }
+
     const workerResponse = await fetch(`${baseUrl}/api/queue/worker`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: triggerHeaders,
       body: JSON.stringify({
         batchSize: 50,
         continuous: true,
-        concurrency: 10, // Lower concurrency for production
+        concurrency: 10,
       }),
     });
 
@@ -132,20 +147,9 @@ export async function POST(request: NextRequest) {
       workerResult = { error: "Failed to parse response" };
     }
 
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Optional auth
-    }
-
     await logApiEvent(request, {
       actionType: "queue_status_viewed",
-      userId: userId || undefined,
+      userId: user.id,
       details: {
         pending: pendingCount,
         triggered: true,

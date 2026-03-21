@@ -11,11 +11,11 @@ export async function getPlatformModel(): Promise<{
   reasoningEffort: string | undefined;
 }> {
   const settings = await getPlatformAISettings();
-  const modelId = settings.default_ai_model;
+  const modelId = settings.defaultAiModel;
   const reasoningEffort =
-    settings.default_reasoning_effort === "default"
+    settings.defaultReasoningEffort === "default"
       ? undefined
-      : settings.default_reasoning_effort;
+      : settings.defaultReasoningEffort;
 
   return {
     model: resolveModel(modelId),

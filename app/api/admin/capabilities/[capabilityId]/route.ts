@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient, checkSuperadminRole } from "@/lib/api";
+import { apiResponse, checkSuperadminRole } from "@/lib/api";
 import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companyCapabilitiesRef } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function PUT(
   request: NextRequest,
@@ -12,19 +15,19 @@ export async function PUT(
     if (!isAdmin) throw new AuthError("Admin access required");
 
     const { capabilityId } = await params;
-    const supabase = createAdminClient();
     const body = await request.json();
 
-    const { data, error } = await supabase
-      .from("company_capabilities_ref")
-      .update(body)
-      .eq("id", capabilityId)
-      .select()
-      .single();
+    const result = await db
+      .update(companyCapabilitiesRef)
+      .set(body)
+      .where(eq(companyCapabilitiesRef.id, capabilityId))
+      .returning();
 
-    if (error) throw error;
+    if (result.length === 0) {
+      throw new Error("Capability not found");
+    }
 
-    return apiResponse({ capability: data });
+    return apiResponse({ capability: result[0] });
   } catch (error) {
     return handleApiError(error);
   }
@@ -40,14 +43,10 @@ export async function DELETE(
     if (!isAdmin) throw new AuthError("Admin access required");
 
     const { capabilityId } = await params;
-    const supabase = createAdminClient();
 
-    const { error } = await supabase
-      .from("company_capabilities_ref")
-      .delete()
-      .eq("id", capabilityId);
-
-    if (error) throw error;
+    await db
+      .delete(companyCapabilitiesRef)
+      .where(eq(companyCapabilitiesRef.id, capabilityId));
 
     return apiResponse({ success: true });
   } catch (error) {

@@ -1,54 +1,33 @@
 import { NextRequest } from "next/server";
 import { after } from "next/server";
-import {
-  createAdminClient,
-  createApiClient,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
+import { apiResponse, apiError, getAuthenticatedUser } from "@/lib/api";
 import type { PlatformStats } from "@/lib/api/types";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { companies, tenders, matchingResults, virtualOrganizations } from "@/lib/db/schema/app";
+import { count } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     console.log("Fetching platform statistics...");
 
-    const supabase = createAdminClient();
-
     const [companiesRes, tendersRes, matchesRes, projectsRes] =
       await Promise.all([
-        supabase.from("companies").select("*", { count: "exact", head: true }),
-        supabase.from("tenders").select("*", { count: "exact", head: true }),
-        supabase
-          .from("matching_results")
-          .select("*", { count: "exact", head: true }),
-        supabase
-          .from("virtual_organizations")
-          .select("*", { count: "exact", head: true }),
+        db.select({ count: count() }).from(companies),
+        db.select({ count: count() }).from(tenders),
+        db.select({ count: count() }).from(matchingResults),
+        db.select({ count: count() }).from(virtualOrganizations),
       ]);
 
-    console.log("Companies count:", companiesRes.count);
-    console.log("Tenders count:", tendersRes.count);
-    console.log("Matches count:", matchesRes.count);
-    console.log("Projects count:", projectsRes.count);
-
     const stats: PlatformStats = {
-      companies: companiesRes.count || 0,
-      tenders: tendersRes.count || 0,
-      matches: matchesRes.count || 0,
-      projects: projectsRes.count || 0,
+      companies: companiesRes[0]?.count || 0,
+      tenders: tendersRes[0]?.count || 0,
+      matches: matchesRes[0]?.count || 0,
+      projects: projectsRes[0]?.count || 0,
     };
 
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Optional auth
-    }
+    const { user } = await getAuthenticatedUser(request);
+    const userId = user?.id;
 
     after(() =>
       logApiEvent(request, {

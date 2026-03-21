@@ -7,21 +7,25 @@ import {
   useContext,
   useCallback,
   useMemo,
-  useRef,
 } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 
 interface ProfileData {
-  approval_status: string | null;
-  onboarding_completed_at: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  approvalStatus: string | null;
+  onboardingCompletedAt: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+interface AuthUser {
+  id: string;
+  email: string;
+  emailVerified: boolean;
 }
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
+  session: unknown;
   loading: boolean;
   profile: ProfileData | null;
   isOnboarding: boolean;
@@ -49,36 +53,37 @@ export const useAuth = () => {
   return context;
 };
 
-// Use singleton client - createClient() returns the same instance
-const supabase = createClient();
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: sessionData, isPending } = authClient.useSession();
   const [profile, setProfile] = useState<ProfileData | null>(null);
 
-  // Track if component is mounted to prevent state updates after unmount
-  const mountedRef = useRef(true);
+  const user = useMemo<AuthUser | null>(() => {
+    const currentUser = sessionData?.user;
+    if (!currentUser) return null;
+    return {
+      id: currentUser.id,
+      email: currentUser.email,
+      emailVerified: !!currentUser.emailVerified,
+    };
+  }, [sessionData?.user]);
+
+  const session = sessionData?.session ?? null;
+  const loading = isPending;
+  const activeProfile = user ? profile : null;
 
   const signOut = useCallback(async () => {
     try {
-      // Clear any local storage
       if (typeof window !== "undefined") {
         localStorage.clear();
         sessionStorage.clear();
       }
 
-      await supabase.auth.signOut({ scope: "global" });
+      await authClient.signOut();
+      setProfile(null);
 
-      setUser(null);
-      setSession(null);
-
-      // Force full page reload to clear all state
       window.location.replace("/");
     } catch (error) {
       console.error("Error signing out:", error);
-      // Still redirect even if there's an error
       window.location.replace("/");
     }
   }, []);
@@ -90,17 +95,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.from("profiles") as any)
-        .select("approval_status, onboarding_completed_at")
-        .eq("user_id", user.id)
-        .single();
-
-      if (error) {
-        console.error("Error refreshing profile:", error);
-        setProfile(null);
-      } else {
+      const res = await fetch("/api/profile/me");
+      if (res.ok) {
+        const data = await res.json();
         setProfile(data);
+      } else {
+        setProfile(null);
       }
     } catch (err) {
       console.error("Error refreshing profile:", err);
@@ -108,56 +108,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user]);
 
-  // Initialize auth state - get session first, then set up listener
-  useEffect(() => {
-    mountedRef.current = true;
-
-    // Get initial session FIRST to avoid race condition
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (!mountedRef.current) return;
-
-      if (error) {
-        console.error("Error getting initial session:", error);
-        setSession(null);
-        setUser(null);
-      } else {
-        console.log("Initial session:", session?.user?.id);
-        setSession(session);
-        setUser(session?.user ?? null);
-      }
-      setLoading(false);
-    });
-
-    // Then set up listener for subsequent auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mountedRef.current) return;
-
-      console.log("Auth state change:", event, session?.user?.id);
-
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      // Handle sign out event specifically
-      if (event === "SIGNED_OUT") {
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-      }
-    });
-
-    return () => {
-      mountedRef.current = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // Fetch profile data when user changes - with abort controller
+  // Fetch profile data when user changes
   useEffect(() => {
     if (!user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear profile when user logs out
-      setProfile(null);
       return;
     }
 
@@ -165,22 +118,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const fetchProfile = async () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase.from("profiles") as any)
-          .select(
-            "approval_status, onboarding_completed_at, first_name, last_name",
-          )
-          .eq("user_id", user.id)
-          .single()
-          .abortSignal(abortController.signal);
+        const res = await fetch("/api/profile/me", {
+          signal: abortController.signal,
+        });
 
         if (abortController.signal.aborted) return;
 
-        if (error) {
-          console.error("Error fetching profile:", error);
-          setProfile(null);
-        } else {
+        if (res.ok) {
+          const data = await res.json();
           setProfile(data);
+        } else {
+          setProfile(null);
         }
       } catch (err) {
         if (abortController.signal.aborted) return;
@@ -196,16 +144,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [user]);
 
-  // Computed flags for onboarding and pending approval states
   const isOnboarding = useMemo(() => {
-    return !!user && !profile?.onboarding_completed_at;
+    return !!user && !profile?.onboardingCompletedAt;
   }, [user, profile]);
 
   const isPendingApproval = useMemo(() => {
     return (
       !!user &&
-      !!profile?.onboarding_completed_at &&
-      profile?.approval_status === "pending"
+      !!profile?.onboardingCompletedAt &&
+      profile?.approvalStatus === "pending"
     );
   }, [user, profile]);
 
@@ -215,7 +162,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         session,
         loading,
-        profile,
+        profile: activeProfile,
         isOnboarding,
         isPendingApproval,
         signOut,

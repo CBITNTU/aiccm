@@ -11,12 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Building2 } from "lucide-react";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface CompanySelectorProps {
   selectedCompanyId?: string | null;
@@ -46,7 +44,7 @@ export function CompanySelector({
 
       try {
         const data = await api.getMyCompanies();
-        setCompanies((data.companies as unknown as Company[]) || []);
+        setCompanies(data.companies || []);
       } catch (error) {
         console.error("Error fetching companies:", error);
         setCompanies([]);
@@ -129,7 +127,7 @@ export function CompanySelector({
             {selectedCompany ? (
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
-                {selectedCompany.company_name}
+                {selectedCompany.companyName}
               </div>
             ) : (
               "Select a company"
@@ -142,7 +140,7 @@ export function CompanySelector({
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
                 <div>
-                  <div className="font-medium">{company.company_name}</div>
+                  <div className="font-medium">{company.companyName}</div>
                   <div className="text-xs text-muted-foreground">
                     {company.status}
                   </div>

@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
   checkSuperadminRole,
-  createAdminClient,
   apiResponse,
   apiError,
 } from "@/lib/api";
@@ -10,6 +9,9 @@ import { enqueueBatch } from "@/lib/services/queueService";
 import { getPlatformAISettings } from "@/lib/platformSettings";
 import type { MatchingModelId } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { companies, tenders } from "@/lib/db/schema/app";
+import { inArray } from "drizzle-orm";
 
 const DEFAULT_MATCH_COUNT = 50;
 
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (!isAdmin) return apiError("Forbidden: Superadmin access required", 403);
 
     const body = await request.json().catch(() => ({}));
-    const platformDefault = (await getPlatformAISettings()).default_ai_model;
+    const platformDefault = (await getPlatformAISettings()).defaultAiModel;
     const model = (body.model ?? platformDefault) as MatchingModelId;
     const matchCount = Math.min(
       100,
@@ -49,22 +51,21 @@ export async function POST(request: NextRequest) {
         ? (body.reasoningEffort as (typeof validEfforts)[number])
         : undefined;
 
-    const supabase = createAdminClient();
+    // Get first company
+    const companyRows = await db
+      .select({ id: companies.id })
+      .from(companies)
+      .limit(1);
+    if (!companyRows[0]) return apiError("No company found for demo", 500);
+    const companyId = companyRows[0].id;
 
-    const { data: companyRow } = await supabase
-      .from("companies")
-      .select("id")
-      .limit(1)
-      .single();
-    if (!companyRow) return apiError("No company found for demo", 500);
-    const companyId = (companyRow as { id: string }).id;
-
-    const { data: tenders } = await supabase
-      .from("tenders")
-      .select("id")
-      .in("status", ["open", "closing_soon"])
+    // Get open tenders
+    const tenderRows = await db
+      .select({ id: tenders.id })
+      .from(tenders)
+      .where(inArray(tenders.status, ["open", "closing_soon"]))
       .limit(matchCount);
-    const tenderIds = ((tenders ?? []) as { id: string }[]).map((t) => t.id);
+    const tenderIds = tenderRows.map((t) => t.id);
     if (tenderIds.length === 0)
       return apiError("No open tenders found for demo", 500);
 

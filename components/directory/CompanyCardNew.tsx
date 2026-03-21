@@ -9,29 +9,27 @@ import {
   ChevronUp,
   Sparkles,
 } from "lucide-react";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
   Company,
   | "id"
-  | "company_name"
+  | "companyName"
   | "description"
-  | "key_capabilities"
+  | "keyCapabilities"
   | "postcode"
   | "certifications"
-  | "past_projects"
-  | "is_system_company"
+  | "pastProjects"
+  | "isSystemCompany"
   | "status"
-  | "digital_maturity"
-  | "ai_competencies"
-  | "ai_capabilities"
-  | "ai_analysis"
-  | "created_at"
-  | "updated_at"
-  | "user_id"
+  | "digitalMaturity"
+  | "aiCompetencies"
+  | "aiCapabilities"
+  | "aiAnalysis"
+  | "createdAt"
+  | "updatedAt"
+  | "userId"
 >;
 
 interface CompanyCardNewProps {
@@ -52,7 +50,7 @@ export function CompanyCardNew({
 
   // Get capabilities from AI analysis or manual input
   const getCapabilities = (): string[] => {
-    const aiAnalysis = company.ai_analysis as {
+    const aiAnalysis = company.aiAnalysis as {
       coreCompetencies?: string[];
     } | null;
 
@@ -62,14 +60,14 @@ export function CompanyCardNew({
     ) {
       return aiAnalysis.coreCompetencies;
     }
-    if (company.ai_competencies && Array.isArray(company.ai_competencies)) {
-      return company.ai_competencies as string[];
+    if (company.aiCompetencies && Array.isArray(company.aiCompetencies)) {
+      return company.aiCompetencies as string[];
     }
-    if (company.ai_capabilities && Array.isArray(company.ai_capabilities)) {
-      return company.ai_capabilities as string[];
+    if (company.aiCapabilities && Array.isArray(company.aiCapabilities)) {
+      return company.aiCapabilities as string[];
     }
-    if (company.key_capabilities) {
-      return company.key_capabilities.split(",").map((cap) => cap.trim());
+    if (company.keyCapabilities) {
+      return company.keyCapabilities.split(",").map((cap) => cap.trim());
     }
     return [];
   };
@@ -87,14 +85,14 @@ export function CompanyCardNew({
       {/* Header: Name + Verified badge */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="font-semibold text-base text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-          {company.company_name}
+          {company.companyName}
         </h3>
-        {company.user_id ? (
+        {company.userId ? (
           <Badge className="shrink-0 gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
             <BadgeCheck className="h-3 w-3" />
             Verified
           </Badge>
-        ) : company.is_system_company ? (
+        ) : company.isSystemCompany ? (
           <Badge className="shrink-0 gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
             <Sparkles className="h-3 w-3" />
             AI Generated

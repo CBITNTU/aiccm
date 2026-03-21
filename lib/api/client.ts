@@ -1,5 +1,13 @@
 // Frontend API client for calling Next.js API routes
 // This will be used in Phase 2 (frontend migration) to replace supabase.functions.invoke()
+import type { CompanyRecord, MatchingResultRecord } from "@/lib/api/types";
+import type { FetchUKTendersResponse, TenderFeedRecord } from "@/lib/api/types";
+import {
+  normalizeCompanyRecord,
+  normalizeMatchingResultRecord,
+  normalizeTenderMatchRecord,
+  normalizeTenderRecord,
+} from "@/lib/api/types";
 
 export class ApiError extends Error {
   status: number;
@@ -116,7 +124,7 @@ export const api = {
       title: string;
       description?: string;
       buyer: string;
-      cpv_codes?: string[];
+      cpvCodes?: string[];
       location?: string;
     },
     tenderId?: string,
@@ -130,13 +138,15 @@ export const api = {
   matchTenders: (companyId?: string) =>
     apiCall<{
       message: string;
-      analyzed_count: number;
+      analyzedCount: number;
       results: {
-        tender_id: string;
-        tender_title: string;
-        overall_score: number;
+        tenderId: string;
+        tenderTitle: string;
+        overallScore: number;
       }[];
-      up_to_date?: boolean;
+      upToDate?: boolean;
+      batchId?: string;
+      totalTenders?: number;
     }>("match-tenders", {
       body: companyId ? { companyId } : {},
     }),
@@ -145,8 +155,8 @@ export const api = {
   createProject: (data: {
     name: string;
     description?: string;
-    target_tender_id?: string | null;
-    company_id: string;
+    targetTenderId?: string | null;
+    companyId: string;
   }) =>
     apiCall<{ project: unknown }>("create-project", {
       body: data,
@@ -207,17 +217,11 @@ export const api = {
       budgetMax?: number;
     };
   }) =>
-    apiCall<{
-      tenders: unknown[];
-      total: number;
-      totalFetched: number;
-      actuallyImported?: number;
-      hasMore: boolean;
-      nextCursor?: string;
-      isAdmin?: boolean;
-      source: string;
-      duplicatesSkipped?: number;
-    }>("fetch-uk-tenders", {
+    apiCall<
+      FetchUKTendersResponse & {
+        actuallyImported?: number;
+      }
+    >("fetch-uk-tenders", {
       body: options || {},
     }),
 
@@ -252,7 +256,7 @@ export const api = {
     languages?: string[];
   }) =>
     apiCall<{
-      tenders: unknown[];
+      tenders: TenderFeedRecord[];
       total: number;
       totalFetched: number;
       actuallyImported?: number;
@@ -297,25 +301,25 @@ export const api = {
     projectId: string;
     company: {
       id: string;
-      company_name: string;
-      key_capabilities?: string | null;
+      companyName: string;
+      keyCapabilities?: string | null;
       certifications?: string | null;
-      past_projects?: string | null;
+      pastProjects?: string | null;
       description?: string | null;
     };
     tender: {
       title: string;
       description?: string;
-      buyer_name?: string;
+      buyerName?: string;
       value?: number;
       region?: string;
     };
     teamMembers: {
       companies?: {
-        company_name: string;
-        key_capabilities?: string | null;
+        companyName: string;
+        keyCapabilities?: string | null;
         certifications?: string | null;
-        past_projects?: string | null;
+        pastProjects?: string | null;
         description?: string | null;
       } | null;
     }[];
@@ -349,7 +353,7 @@ export const api = {
       taxonomies: {
         id: string;
         name: string;
-        parent_id: string | null;
+        parentId: string | null;
         level: number;
         description: string | null;
       }[];
@@ -359,20 +363,31 @@ export const api = {
   getMyCompanies: () =>
     apiCall<{ companies: Record<string, unknown>[] }>("companies/mine", {
       method: "GET",
-    }),
+    }).then((data) => ({
+      ...data,
+      companies: data.companies.map((company) => normalizeCompanyRecord(company)),
+    })),
 
   getCompany: (companyId: string) =>
     apiCall<{
       company: Record<string, unknown>;
       isOwner: boolean;
       capabilities: { id: string; name: string; category: string }[];
-    }>(`companies/${companyId}`, { method: "GET" }),
+      markets: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
+    }>(`companies/${companyId}`, { method: "GET" }).then((data) => ({
+      ...data,
+      company: normalizeCompanyRecord(data.company),
+    })),
 
   updateCompany: (companyId: string, updates: Record<string, unknown>) =>
     apiCall<{ company: Record<string, unknown> }>(`companies/${companyId}`, {
       method: "PUT",
       body: updates,
-    }),
+    }).then((data) => ({
+      ...data,
+      company: normalizeCompanyRecord(data.company),
+    })),
 
   getCompanyCapabilities: (companyId: string) =>
     apiCall<{
@@ -390,12 +405,12 @@ export const api = {
 
   getMarkets: () =>
     apiCall<{
-      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      markets: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>("markets", { method: "GET" }),
 
   getStandards: (companyId?: string) =>
     apiCall<{
-      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(
       companyId ? `standards?companyId=${encodeURIComponent(companyId)}` : "standards",
       { method: "GET" },
@@ -403,12 +418,12 @@ export const api = {
 
   getCompanyMarkets: (companyId: string) =>
     apiCall<{
-      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      markets: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(`companies/${companyId}/markets`, { method: "GET" }),
 
   syncMarkets: (companyId: string, marketIds: string[]) =>
     apiCall<{
-      markets: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      markets: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(`companies/${companyId}/markets`, {
       method: "PUT",
       body: { marketIds },
@@ -416,12 +431,12 @@ export const api = {
 
   getCompanyStandards: (companyId: string) =>
     apiCall<{
-      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(`companies/${companyId}/standards`, { method: "GET" }),
 
   syncStandards: (companyId: string, standardIds: string[]) =>
     apiCall<{
-      standards: { id: string; name: string; parent_id: string | null; sort_order: number }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>(`companies/${companyId}/standards`, {
       method: "PUT",
       body: { standardIds },
@@ -434,19 +449,12 @@ export const api = {
       isOwner: boolean;
       taxonomies: { id: string; name: string }[];
       capabilities: { id: string; name: string; category: string | null }[];
-      markets: {
-        id: string;
-        name: string;
-        parent_id: string | null;
-        parent_name: string | null;
-      }[];
-      standards: {
-        id: string;
-        name: string;
-        parent_id: string | null;
-        parent_name: string | null;
-      }[];
-    }>(`directory/${companyId}`, { method: "GET" }),
+      markets: { id: string; name: string; parentId: string | null }[];
+      standards: { id: string; name: string; parentId: string | null }[];
+    }>(`directory/${companyId}`, { method: "GET" }).then((data) => ({
+      ...data,
+      company: normalizeCompanyRecord(data.company),
+    })),
 
   // Directory
   getDirectory: (params: {
@@ -480,7 +488,29 @@ export const api = {
         ...(params.lng != null && { lng: params.lng }),
         ...(params.radiusMiles != null && { radiusMiles: params.radiusMiles }),
       },
-    }),
+    }).then((data) => ({
+      ...data,
+      companies: data.companies.map((company) => normalizeCompanyRecord(company)),
+    })),
+
+  // Onboarding
+  checkCompanyDuplicate: (params: {
+    companyName: string;
+    companiesHouseNumber?: string;
+  }) =>
+    apiCall<{ exists: boolean; company?: Pick<CompanyRecord, "id" | "companyName"> }>(
+      "companies/check-duplicate",
+      { method: "GET", params },
+    ),
+
+  createOnboardingCompanyProfile: (data: Record<string, unknown>) =>
+    apiCall<{ success: boolean; company: CompanyRecord }>("onboarding/company-profile", {
+      method: "POST",
+      body: data,
+    }).then((response) => ({
+      ...response,
+      company: normalizeCompanyRecord(response.company as unknown as Record<string, unknown>),
+    })),
 
   // Tenders
   searchTenders: (params: {
@@ -521,19 +551,28 @@ export const api = {
         ...(params.page && { page: params.page }),
         ...(params.pageSize && { pageSize: params.pageSize }),
       },
-    }),
+    }).then((data) => ({
+      ...data,
+      tenders: data.tenders.map((tender) => normalizeTenderRecord(tender)),
+    })),
 
   getTender: (tenderId: string) =>
     apiCall<{
       tender: Record<string, unknown>;
       taxonomies: { id: string; name: string }[];
-    }>(`tenders/${tenderId}`, { method: "GET" }),
+    }>(`tenders/${tenderId}`, { method: "GET" }).then((data) => ({
+      ...data,
+      tender: normalizeTenderRecord(data.tender),
+    })),
 
   getTenderMatch: (tenderId: string, companyId: string) =>
     apiCall<{ match: Record<string, unknown> | null }>(
       `tenders/${tenderId}/match`,
       { method: "GET", params: { companyId } },
-    ),
+    ).then((data) => ({
+      ...data,
+      match: data.match ? normalizeTenderMatchRecord(data.match) : null,
+    })),
 
   // Matching results
   getMatchingResults: (params?: {
@@ -573,7 +612,10 @@ export const api = {
           ...(params?.pageSize && { pageSize: params.pageSize }),
         },
       },
-    ),
+    ).then((data) => ({
+      ...data,
+      results: data.results.map((result) => normalizeMatchingResultRecord(result)),
+    })),
 
   deleteMatchingResult: (resultId: string) =>
     apiCall<{ success: boolean }>(`matching-results/${resultId}`, {
@@ -583,7 +625,7 @@ export const api = {
   toggleBookmark: (resultId: string, isBookmarked: boolean) =>
     apiCall<{ result: Record<string, unknown> }>(
       `matching-results/${resultId}/bookmark`,
-      { method: "PUT", body: { is_bookmarked: isBookmarked } },
+      { method: "PUT", body: { isBookmarked } },
     ),
 
   // Projects
@@ -632,10 +674,10 @@ export const api = {
     apiCall<{
       invitations: {
         id: string;
-        vo_id: string;
-        company_id: string;
-        invitation_status: string;
-        invitation_sent_at: string | null;
+        voId: string;
+        companyId: string;
+        invitationStatus: string;
+        invitationSentAt: string | null;
         project: {
           id: string;
           name: string;
@@ -653,7 +695,7 @@ export const api = {
           title: string;
           buyer: string;
           deadline: string | null;
-          budget_max: number | null;
+          budgetMax: number | null;
         } | null;
       }[];
     }>("projects/invitations", { method: "GET" }),
@@ -672,9 +714,9 @@ export const api = {
     apiCall<{
       invitation: {
         id: string;
-        vo_id: string;
-        company_id: string;
-        invitation_status: string;
+        voId: string;
+        companyId: string;
+        invitationStatus: string;
         projectName: string;
         projectDescription: string | null;
         leadCompanyName: string;
@@ -707,13 +749,33 @@ export const api = {
         projects: number;
       };
       recentMatches: Record<string, unknown>[];
-    }>("dashboard", { method: "GET" }),
+    }>("dashboard", { method: "GET" }).then((data) => ({
+      ...data,
+      recentMatches: data.recentMatches.map((result) => {
+        const normalizedResult = normalizeMatchingResultRecord(result);
+        const companies = result.companies as Record<string, unknown> | null | undefined;
+        const companyName =
+          typeof companies?.companyName === "string"
+            ? companies.companyName
+            : undefined;
+
+        return {
+          ...normalizedResult,
+          companies: companyName ? { companyName } : undefined,
+        } satisfies MatchingResultRecord & {
+          companies?: { companyName?: string };
+        };
+      }),
+    })),
 
   // Admin - Companies
   adminListCompanies: () =>
     apiCall<{ companies: Record<string, unknown>[] }>("admin/companies", {
       method: "GET",
-    }),
+    }).then((data) => ({
+      ...data,
+      companies: data.companies.map((company) => normalizeCompanyRecord(company)),
+    })),
 
   adminDeleteCompany: (companyId: string) =>
     apiCall<{ success: boolean }>(`admin/companies/${companyId}`, {
@@ -805,7 +867,10 @@ export const api = {
       params: {
         ...(params?.search && { search: params.search }),
       },
-    }),
+    }).then((data) => ({
+      ...data,
+      tenders: data.tenders.map((tender) => normalizeTenderRecord(tender)),
+    })),
 
   // Companies by capabilities
   getCompaniesByCapabilities: (data: {

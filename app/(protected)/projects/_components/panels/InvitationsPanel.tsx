@@ -28,7 +28,7 @@ interface InvitationsPanelProps {
 type InvitationStatus = "pending" | "sent" | "accepted" | "rejected";
 
 function getInvitationStatusBadge(member: TeamMember) {
-  const status = member.invitation_status as
+  const status = member.invitationStatus as
     | InvitationStatus
     | null
     | undefined;
@@ -53,7 +53,7 @@ function getInvitationStatusBadge(member: TeamMember) {
         </Badge>
       );
     case "rejected": {
-      const message = member.invitation_message;
+      const message = member.invitationMessage;
       return (
         <div className="flex items-center gap-2">
           <Badge
@@ -97,7 +97,7 @@ export function InvitationsPanel({
 
   // Members that can receive invitations (pending or sent for resend)
   const sendableMembers = invitableMembers.filter((m) => {
-    const status = m.invitation_status;
+    const status = m.invitationStatus;
     return !status || status === "pending" || status === "sent";
   });
 
@@ -144,7 +144,7 @@ export function InvitationsPanel({
   };
 
   const selectAll = () => {
-    setSelectedPartners(sendableMembers.map((m) => m.company_id));
+    setSelectedPartners(sendableMembers.map((m) => m.companyId));
   };
 
   const deselectAll = () => {
@@ -197,7 +197,7 @@ export function InvitationsPanel({
       {/* Partner list */}
       <div className="space-y-2">
         {invitableMembers.map((member, index) => {
-          const status = member.invitation_status;
+          const status = member.invitationStatus;
           const isSendable =
             !status || status === "pending" || status === "sent";
 
@@ -213,28 +213,28 @@ export function InvitationsPanel({
                 ${
                   isSendable
                     ? `cursor-pointer ${
-                        selectedPartners.includes(member.company_id)
+                        selectedPartners.includes(member.companyId)
                           ? "border-primary bg-primary/5"
                           : "hover:border-primary/50"
                       }`
                     : "opacity-75"
                 }
               `}
-              onClick={() => isSendable && togglePartner(member.company_id)}
+              onClick={() => isSendable && togglePartner(member.companyId)}
             >
               <div className="flex items-center gap-3">
                 {isSendable && (
                   <Checkbox
-                    checked={selectedPartners.includes(member.company_id)}
-                    onCheckedChange={() => togglePartner(member.company_id)}
+                    checked={selectedPartners.includes(member.companyId)}
+                    onCheckedChange={() => togglePartner(member.companyId)}
                   />
                 )}
                 <div>
                   <div className="font-medium">
-                    {member.companies?.company_name || "Unknown Company"}
+                    {member.companies?.companyName || "Unknown Company"}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {member.companies?.contact_email || "No email available"}
+                    {member.companies?.contactEmail || "No email available"}
                   </div>
                 </div>
               </div>

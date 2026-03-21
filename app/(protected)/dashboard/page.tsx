@@ -39,7 +39,7 @@ export default function DashboardPage() {
     matchingResults: dashboardData?.stats.matchingResults ?? 0,
     companies: dashboardData?.stats.companies ?? 0,
     projects: dashboardData?.stats.projects ?? 0,
-    recentMatches: (dashboardData?.recentMatches as unknown as MatchingResult[]) ?? [],
+    recentMatches: dashboardData?.recentMatches ?? [],
   };
 
   const [companyAnalysis, setCompanyAnalysis] =
@@ -62,16 +62,16 @@ export default function DashboardPage() {
 
   // Load stored analysis when company changes
   useEffect(() => {
-    if (enrichedCompany?.ai_analysis) {
+    if (enrichedCompany?.aiAnalysis) {
       queueMicrotask(() =>
         setCompanyAnalysis(
-          enrichedCompany.ai_analysis as unknown as CompanyAnalysis,
+          enrichedCompany.aiAnalysis as unknown as CompanyAnalysis,
         ),
       );
     } else {
       queueMicrotask(() => setCompanyAnalysis(null));
     }
-  }, [enrichedCompany?.id, enrichedCompany?.ai_analysis]);
+  }, [enrichedCompany?.id, enrichedCompany?.aiAnalysis]);
 
   const isAnalyzing = analyzeCompanyMutation.isPending;
 
@@ -113,7 +113,7 @@ export default function DashboardPage() {
   const displayCompany = enrichedCompany ?? selectedOrg;
 
   const filteredMatches = selectedOrg
-    ? stats.recentMatches.filter((match) => match.company_id === selectedOrg.id)
+    ? stats.recentMatches.filter((match) => match.companyId === selectedOrg.id)
     : stats.recentMatches;
 
   if (loading) {
@@ -135,7 +135,7 @@ export default function DashboardPage() {
       {displayCompany && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <PerformanceBenchmarkCard
-            companyName={displayCompany.company_name || ""}
+            companyName={displayCompany.companyName || ""}
             companyAnalysis={companyAnalysis}
             radarData={radarData}
             isAnalyzing={isAnalyzing}
@@ -154,7 +154,7 @@ export default function DashboardPage() {
       {filteredMatches.length > 0 && (
         <RecentMatchesSection
           matches={filteredMatches}
-          companyName={selectedOrg?.company_name || undefined}
+          companyName={selectedOrg?.companyName || undefined}
           onViewDetails={(match) => {
             setSelectedMatch(match);
             setDialogOpen(true);
@@ -177,10 +177,10 @@ export default function DashboardPage() {
         companyData={
           selectedOrg
             ? {
-                company_name: selectedOrg.company_name || undefined,
+                companyName: selectedOrg.companyName || undefined,
                 description: selectedOrg.description || undefined,
-                key_capabilities: Array.isArray(selectedOrg.key_capabilities)
-                  ? selectedOrg.key_capabilities.join(", ")
+                keyCapabilities: Array.isArray(selectedOrg.keyCapabilities)
+                  ? (selectedOrg.keyCapabilities as unknown as string[]).join(", ")
                   : undefined,
                 certifications: Array.isArray(selectedOrg.certifications)
                   ? selectedOrg.certifications.join(", ")

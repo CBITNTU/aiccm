@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import {
   Card,
   CardContent,
@@ -61,8 +61,6 @@ import {
   useUpdateCompany,
   useAnalyzeCompany,
 } from "@/hooks/useCompanyMutations";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface Certification {
   name: string;
@@ -139,13 +137,13 @@ export default function CompanyDetailPage() {
     const fetchCompanyData = async () => {
       try {
         const data = await api.getCompany(companyId);
-        setCompanyData(data.company as unknown as Company);
+        setCompanyData(data.company);
         setIsOwner(data.isOwner);
         setCompanyCapabilities(data.capabilities);
 
-        const company = data.company as Record<string, unknown>;
-        if (company.ai_analysis) {
-          setAnalysis(company.ai_analysis as Record<string, unknown>);
+        const company = data.company as unknown as Record<string, unknown>;
+        if (company.aiAnalysis) {
+          setAnalysis(company.aiAnalysis as Record<string, unknown>);
         }
       } catch (error) {
         console.error("Error fetching company data:", error);
@@ -169,10 +167,10 @@ export default function CompanyDetailPage() {
         companyId: companyData.id,
         updates: {
           description: editedDescription,
-          key_capabilities: editedCapabilities,
+          keyCapabilities: editedCapabilities,
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Overview updated successfully");
       setIsEditingOverview(false);
     } catch (error) {
@@ -188,14 +186,14 @@ export default function CompanyDetailPage() {
       const result = await updateCompanyMutation.mutateAsync({
         companyId: companyData.id,
         updates: {
-          company_name: editedCompanyName.trim(),
+          companyName: editedCompanyName.trim(),
           postcode: editedLocation.trim(),
-          contact_email: editedEmail.trim(),
-          website_url: editedWebsite.trim(),
-          contact_phone: editedPhone.trim(),
+          contactEmail: editedEmail.trim(),
+          websiteUrl: editedWebsite.trim(),
+          contactPhone: editedPhone.trim(),
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Company information updated successfully");
       setIsEditingBasicInfo(false);
     } catch (error) {
@@ -211,10 +209,10 @@ export default function CompanyDetailPage() {
       const result = await updateCompanyMutation.mutateAsync({
         companyId: companyData.id,
         updates: {
-          operation_locations: editedOperationLocations,
+          operationLocations: editedOperationLocations,
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Operation locations updated");
       setIsEditingOperationLocations(false);
     } catch (error) {
@@ -233,7 +231,7 @@ export default function CompanyDetailPage() {
           certifications: JSON.stringify(editedCertifications),
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Certifications updated successfully");
       setIsEditingCertifications(false);
     } catch (error) {
@@ -249,10 +247,10 @@ export default function CompanyDetailPage() {
       const result = await updateCompanyMutation.mutateAsync({
         companyId: companyData.id,
         updates: {
-          past_projects: JSON.stringify(editedProjects),
+          pastProjects: JSON.stringify(editedProjects),
         },
       });
-      setCompanyData(result.company as unknown as Company);
+      setCompanyData(result.company);
       toast.success("Projects updated successfully");
       setIsEditingProjects(false);
     } catch (error) {
@@ -272,7 +270,7 @@ export default function CompanyDetailPage() {
 
         // Refresh company data and capabilities via API
         const refreshed = await api.getCompany(companyData.id);
-        setCompanyData(refreshed.company as unknown as Company);
+        setCompanyData(refreshed.company);
         setCompanyCapabilities(refreshed.capabilities);
 
         toast.success(
@@ -338,10 +336,10 @@ export default function CompanyDetailPage() {
 
   try {
     if (
-      companyData.operation_locations &&
-      Array.isArray(companyData.operation_locations)
+      companyData.operationLocations &&
+      Array.isArray(companyData.operationLocations)
     ) {
-      operationLocations = companyData.operation_locations as string[];
+      operationLocations = companyData.operationLocations as string[];
     }
     // Pre-tick from organization details: if no saved locations but company has Location (address/postcode), suggest so they appear pre-ticked
     if (operationLocations.length === 0) {
@@ -356,9 +354,9 @@ export default function CompanyDetailPage() {
   }
 
   try {
-    if (companyData.past_projects) {
+    if (companyData.pastProjects) {
       // Try parsing as JSON first
-      const parsed = JSON.parse(companyData.past_projects);
+      const parsed = JSON.parse(companyData.pastProjects);
       if (Array.isArray(parsed)) {
         pastProjects = parsed;
       } else {
@@ -369,10 +367,10 @@ export default function CompanyDetailPage() {
   } catch {
     // If JSON parse fails, treat as plain text (semicolon-separated)
     if (
-      companyData.past_projects &&
-      typeof companyData.past_projects === "string"
+      companyData.pastProjects &&
+      typeof companyData.pastProjects === "string"
     ) {
-      const items = companyData.past_projects
+      const items = companyData.pastProjects
         .split(";")
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
@@ -384,12 +382,12 @@ export default function CompanyDetailPage() {
     }
   }
 
-  const financialData = companyData.financial_data as Record<
+  const financialData = companyData.financialData as Record<
     string,
     { value: number; confidence: number }
   > | null;
 
-  const aiCompetencies = companyData.ai_competencies as string[] | null;
+  const aiCompetencies = companyData.aiCompetencies as string[] | null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -424,14 +422,14 @@ export default function CompanyDetailPage() {
                     />
                     <p className="text-muted-foreground text-sm">
                       Companies House:{" "}
-                      {companyData.companies_house_number && (
+                      {companyData.companiesHouseNumber && (
                         <a
-                          href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companies_house_number}`}
+                          href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companiesHouseNumber}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
                         >
-                          {companyData.companies_house_number}
+                          {companyData.companiesHouseNumber}
                         </a>
                       )}
                     </p>
@@ -439,18 +437,18 @@ export default function CompanyDetailPage() {
                 ) : (
                   <>
                     <CardTitle className="text-2xl font-bold text-foreground">
-                      {companyData.company_name}
+                      {companyData.companyName}
                     </CardTitle>
                     <p className="text-muted-foreground">
                       Companies House:{" "}
-                      {companyData.companies_house_number ? (
+                      {companyData.companiesHouseNumber ? (
                         <a
-                          href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companies_house_number}`}
+                          href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companiesHouseNumber}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
                         >
-                          {companyData.companies_house_number}
+                          {companyData.companiesHouseNumber}
                         </a>
                       ) : (
                         <span className="italic">Not available</span>
@@ -468,11 +466,11 @@ export default function CompanyDetailPage() {
                     variant="outline"
                     onClick={() => {
                       setIsEditingBasicInfo(true);
-                      setEditedCompanyName(companyData.company_name);
+                      setEditedCompanyName(companyData.companyName);
                       setEditedLocation(companyData.postcode || "");
-                      setEditedEmail(companyData.contact_email || "");
-                      setEditedWebsite(companyData.website_url || "");
-                      setEditedPhone(companyData.contact_phone || "");
+                      setEditedEmail(companyData.contactEmail || "");
+                      setEditedWebsite(companyData.websiteUrl || "");
+                      setEditedPhone(companyData.contactPhone || "");
                     }}
                   >
                     <Edit2 className="w-4 h-4 mr-2" />
@@ -529,14 +527,14 @@ export default function CompanyDetailPage() {
                   placeholder="Website URL"
                   type="url"
                 />
-              ) : companyData.website_url ? (
+              ) : companyData.websiteUrl ? (
                 <a
-                  href={companyData.website_url}
+                  href={companyData.websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline truncate"
                 >
-                  {companyData.website_url}
+                  {companyData.websiteUrl}
                 </a>
               ) : (
                 <span className="text-muted-foreground italic">
@@ -556,7 +554,7 @@ export default function CompanyDetailPage() {
                 />
               ) : (
                 <span className="text-foreground truncate">
-                  {companyData.contact_email || "Not specified"}
+                  {companyData.contactEmail || "Not specified"}
                 </span>
               )}
             </div>
@@ -572,7 +570,7 @@ export default function CompanyDetailPage() {
                 />
               ) : (
                 <span className="text-foreground">
-                  {companyData.contact_phone || "Not specified"}
+                  {companyData.contactPhone || "Not specified"}
                 </span>
               )}
             </div>
@@ -661,7 +659,7 @@ export default function CompanyDetailPage() {
                     onClick={() => {
                       setIsEditingOverview(true);
                       setEditedDescription(companyData.description || "");
-                      setEditedCapabilities(companyData.key_capabilities || "");
+                      setEditedCapabilities(companyData.keyCapabilities || "");
                     }}
                   >
                     <Edit2 className="w-4 h-4 mr-2" />
@@ -717,7 +715,7 @@ export default function CompanyDetailPage() {
                     />
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      {companyData.key_capabilities
+                      {companyData.keyCapabilities
                         ?.split(",")
                         .map((cap, idx) => (
                           <Badge key={idx} variant="secondary">
@@ -760,7 +758,7 @@ export default function CompanyDetailPage() {
             )}
 
             {/* Business Insights */}
-            {companyData.digital_maturity && (
+            {companyData.digitalMaturity && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -774,7 +772,7 @@ export default function CompanyDetailPage() {
                       Digital Maturity
                     </span>
                     <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                      {companyData.digital_maturity}
+                      {companyData.digitalMaturity}
                     </Badge>
                   </div>
                 </CardContent>
@@ -987,9 +985,9 @@ export default function CompanyDetailPage() {
                       />
                       {operationLocations.length > 0 &&
                         !(
-                          companyData.operation_locations &&
-                          Array.isArray(companyData.operation_locations) &&
-                          (companyData.operation_locations as string[]).length >
+                          companyData.operationLocations &&
+                          Array.isArray(companyData.operationLocations) &&
+                          (companyData.operationLocations as string[]).length >
                             0
                         ) && (
                           <p className="text-sm text-muted-foreground mt-2">
@@ -1171,7 +1169,7 @@ export default function CompanyDetailPage() {
           <div className="space-y-6">
             <TeamMembersCard
               companyId={companyId}
-              companyName={companyData.company_name}
+              companyName={companyData.companyName}
               variant="full"
               isSmeOwner={isOwner}
               currentUserId={user?.id}

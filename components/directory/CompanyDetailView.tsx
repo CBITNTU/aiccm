@@ -30,29 +30,27 @@ import {
 } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
   Company,
   | "id"
-  | "company_name"
+  | "companyName"
   | "description"
-  | "key_capabilities"
+  | "keyCapabilities"
   | "postcode"
   | "certifications"
-  | "past_projects"
-  | "is_system_company"
+  | "pastProjects"
+  | "isSystemCompany"
   | "status"
-  | "digital_maturity"
-  | "ai_competencies"
-  | "ai_capabilities"
-  | "ai_analysis"
-  | "created_at"
-  | "updated_at"
-  | "user_id"
-  | "website_url"
+  | "digitalMaturity"
+  | "aiCompetencies"
+  | "aiCapabilities"
+  | "aiAnalysis"
+  | "createdAt"
+  | "updatedAt"
+  | "userId"
+  | "websiteUrl"
 >;
 
 interface CompanyAnalysis {
@@ -161,7 +159,7 @@ function TaxonomyTree({
 
 // Type guard to check if company has full contact fields
 function isFullCompany(comp: PublicCompany | Company): comp is Company {
-  return "contact_email" in comp;
+  return "contactEmail" in comp;
 }
 
 export function CompanyDetailView({
@@ -180,11 +178,11 @@ export function CompanyDetailView({
 
   // Use explicit prop if provided (server-fetched pages), otherwise compute from auth
   const isOwner =
-    isOwnerProp !== undefined ? isOwnerProp : user?.id === company.user_id;
+    isOwnerProp !== undefined ? isOwnerProp : user?.id === company.userId;
 
   const loadStoredAnalysis = () => {
-    if (company.ai_analysis) {
-      setAnalysis(company.ai_analysis as unknown as CompanyAnalysis);
+    if (company.aiAnalysis) {
+      setAnalysis(company.aiAnalysis as unknown as CompanyAnalysis);
     } else {
       setAnalysis(null);
     }
@@ -250,7 +248,7 @@ export function CompanyDetailView({
       {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-start mb-2">
-          <h1 className="text-2xl font-bold">{company.company_name}</h1>
+          <h1 className="text-2xl font-bold">{company.companyName}</h1>
           <div className="flex items-center gap-2 flex-wrap">
             {!isOwner && user && (
               <Button
@@ -270,12 +268,12 @@ export function CompanyDetailView({
                 {analysis.performanceBenchmark.overallScore}/100
               </Badge>
             )}
-            {company.user_id ? (
+            {company.userId ? (
               <Badge className="gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
                 <BadgeCheck className="h-3 w-3" />
                 Verified
               </Badge>
-            ) : company.is_system_company ? (
+            ) : company.isSystemCompany ? (
               <Badge className="gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
                 <Sparkles className="h-3 w-3" />
                 AI Generated
@@ -327,17 +325,17 @@ export function CompanyDetailView({
                     ) {
                       fallback = analysis.coreCompetencies;
                     } else if (
-                      company.ai_competencies &&
-                      Array.isArray(company.ai_competencies)
+                      company.aiCompetencies &&
+                      Array.isArray(company.aiCompetencies)
                     ) {
-                      fallback = company.ai_competencies as string[];
+                      fallback = company.aiCompetencies as string[];
                     } else if (
-                      company.ai_capabilities &&
-                      Array.isArray(company.ai_capabilities)
+                      company.aiCapabilities &&
+                      Array.isArray(company.aiCapabilities)
                     ) {
-                      fallback = company.ai_capabilities as string[];
-                    } else if (company.key_capabilities) {
-                      fallback = company.key_capabilities
+                      fallback = company.aiCapabilities as string[];
+                    } else if (company.keyCapabilities) {
+                      fallback = company.keyCapabilities
                         .split(",")
                         .map((cap) => cap.trim());
                     }
@@ -432,42 +430,42 @@ export function CompanyDetailView({
               </div>
             )}
 
-            {company.website_url && (
+            {company.websiteUrl && (
               <div className="flex items-center gap-3">
                 <Globe className="h-4 w-4 text-primary" />
                 <a
-                  href={company.website_url}
+                  href={company.websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
                 >
-                  {company.website_url}
+                  {company.websiteUrl}
                 </a>
               </div>
             )}
 
             {isOwner && isFullCompany(company) ? (
               <>
-                {company.contact_email && (
+                {company.contactEmail && (
                   <div className="flex items-center gap-3">
                     <Mail className="h-4 w-4 text-primary" />
                     <a
-                      href={`mailto:${company.contact_email}`}
+                      href={`mailto:${company.contactEmail}`}
                       className="text-primary hover:underline"
                     >
-                      {company.contact_email}
+                      {company.contactEmail}
                     </a>
                   </div>
                 )}
 
-                {company.contact_phone && (
+                {company.contactPhone && (
                   <div className="flex items-center gap-3">
                     <Phone className="h-4 w-4 text-primary" />
                     <a
-                      href={`tel:${company.contact_phone}`}
+                      href={`tel:${company.contactPhone}`}
                       className="text-primary hover:underline"
                     >
-                      {company.contact_phone}
+                      {company.contactPhone}
                     </a>
                   </div>
                 )}
@@ -479,10 +477,10 @@ export function CompanyDetailView({
               </div>
             )}
 
-            {isFullCompany(company) && company.companies_house_number && (
+            {isFullCompany(company) && company.companiesHouseNumber && (
               <div className="flex items-center gap-3">
                 <Building2 className="h-4 w-4 text-primary" />
-                <span>Companies House: {company.companies_house_number}</span>
+                <span>Companies House: {company.companiesHouseNumber}</span>
               </div>
             )}
           </div>
@@ -496,14 +494,14 @@ export function CompanyDetailView({
           </h3>
 
           <div className="space-y-3">
-            {company.digital_maturity && (
+            {company.digitalMaturity && (
               <div className="border border-border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground block">
                     Digital Maturity
                   </label>
                   <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
-                    {company.digital_maturity}
+                    {company.digitalMaturity}
                   </Badge>
                 </div>
               </div>
@@ -651,13 +649,13 @@ export function CompanyDetailView({
 
       {/* Additional Details */}
       <div className="space-y-6">
-        {company.past_projects && (
+        {company.pastProjects && (
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <Building2 className="h-5 w-5" />
               Past Projects
             </h3>
-            <p className="text-muted-foreground">{company.past_projects}</p>
+            <p className="text-muted-foreground">{company.pastProjects}</p>
           </div>
         )}
       </div>

@@ -20,7 +20,7 @@ import { toast } from "sonner";
 
 interface Company {
   id: string;
-  company_name: string;
+  companyName: string;
   postcode?: string | null;
   [key: string]: unknown;
 }

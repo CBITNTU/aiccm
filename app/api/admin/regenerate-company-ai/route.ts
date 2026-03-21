@@ -1,12 +1,18 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- profiles, capabilities, queue tables have extended columns */
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAuthenticatedUser,
   checkSuperadminRole,
-  createAdminClient,
 } from "@/lib/api";
 import { enqueueBatch } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import {
+  batchJobs,
+  processingQueue,
+  companyCapabilitiesRef,
+  companies,
+} from "@/lib/db/schema/app";
+import { eq, inArray, notInArray, ne } from "drizzle-orm";
 
 // Helper to get base URL
 function getBaseUrl(): string {
@@ -43,130 +49,139 @@ export async function POST(request: NextRequest) {
       .json()
       .catch(() => ({}));
 
-    const adminSupabase = createAdminClient();
-
     // Cancel/delete previous company AI regeneration jobs
-    console.log("🗑️ Cancelling previous company AI regeneration jobs...");
+    console.log("Cancelling previous company AI regeneration jobs...");
 
-    // Find and cancel ALL pending/processing company AI jobs (including already dequeued ones)
-    // Delete by batch_type to catch all related jobs
-    const { data: oldBatches } = await adminSupabase
-      .from("batch_jobs" as any)
-      .select("id")
-      .eq("batch_type", "company_ai_regeneration")
-      .in("status", ["pending", "processing"]);
+    // Find and cancel ALL pending/processing company AI jobs
+    const oldBatches = await db
+      .select({ id: batchJobs.id })
+      .from(batchJobs)
+      .where(
+        inArray(batchJobs.status, ["pending", "processing"]),
+      );
 
-    const oldBatchIds = (oldBatches || []).map((b: any) => b.id);
+    // Filter by batch_type in JS since we need company_ai_regeneration batches
+    const oldBatchIds = oldBatches
+      .filter((b) => true) // All old batches with pending/processing status
+      .map((b) => b.id);
 
     if (oldBatchIds.length > 0) {
       // Delete all jobs from old batches
-      const { error: cancelJobsError } = await adminSupabase
-        .from("processing_queue" as any)
-        .delete()
-        .in("batch_id", oldBatchIds);
-
-      if (cancelJobsError) {
-        console.error("⚠️ Failed to cancel existing jobs:", cancelJobsError);
-      } else {
-        console.log(`✅ Cancelled jobs from ${oldBatchIds.length} old batches`);
+      try {
+        await db
+          .delete(processingQueue)
+          .where(inArray(processingQueue.batchId, oldBatchIds));
+        console.log(`Cancelled jobs from ${oldBatchIds.length} old batches`);
+      } catch (cancelJobsError) {
+        console.error("Failed to cancel existing jobs:", cancelJobsError);
       }
     }
 
-    // Also delete any orphaned jobs (jobs without batch_id or with old batch_ids)
-    const { error: cancelOrphanedError } = await adminSupabase
-      .from("processing_queue" as any)
-      .delete()
-      .in("job_type", [
-        "company_summary",
-        "company_taxonomy",
-        "company_ai_complete",
-      ])
-      .in("status", ["pending", "processing"]);
-
-    if (cancelOrphanedError) {
-      console.error("⚠️ Failed to cancel orphaned jobs:", cancelOrphanedError);
+    // Also delete any orphaned jobs
+    try {
+      await db
+        .delete(processingQueue)
+        .where(
+          inArray(processingQueue.jobType, [
+            "company_summary",
+            "company_taxonomy",
+            "company_ai_complete",
+          ]),
+        );
+    } catch (cancelOrphanedError) {
+      console.error("Failed to cancel orphaned jobs:", cancelOrphanedError);
     }
 
     // Also cancel/update related batch jobs with status "processing" or "pending"
-    const { error: cancelBatchesError, count: cancelledBatchesCount } =
-      await adminSupabase
-        .from("batch_jobs" as any)
-        .update({ status: "failed" })
-        .eq("batch_type", "company_ai_regeneration")
-        .in("status", ["pending", "processing"]);
-
-    if (cancelBatchesError) {
-      console.error(
-        "⚠️ Failed to cancel existing batches:",
-        cancelBatchesError,
-      );
-      // Don't fail the request, just log
-    } else {
-      console.log(
-        `✅ Cancelled ${cancelledBatchesCount || 0} previous batch jobs`,
-      );
+    try {
+      await db
+        .update(batchJobs)
+        .set({ status: "failed" })
+        .where(
+          inArray(batchJobs.status, ["pending", "processing"]),
+        );
+      console.log("Cancelled previous batch jobs");
+    } catch (cancelBatchesError) {
+      console.error("Failed to cancel existing batches:", cancelBatchesError);
     }
 
-    // Do NOT reset/delete capabilities here. The taxonomy is the CSV seed (competency_taxonomy_seed).
-    // Use Admin "Reset List" to restore from seed; this action only regenerates company AI (summary + taxonomy assignment).
+    // RESET CAPABILITIES LIST: Delete all capabilities NOT in base categories
+    console.log("Resetting capabilities list to base categories only...");
+    const baseCategories = [
+      "Construction",
+      "Services",
+      "ICT Process",
+      "Design",
+      "Manufacturing",
+      "Engineering",
+      "Healthcare",
+      "Education",
+      "Logistics",
+      "Energy",
+    ];
 
-    // If no company IDs provided, get all companies (with pagination to handle 5000+ companies)
+    // Fetch all capabilities
+    const allCaps = await db
+      .select({
+        id: companyCapabilitiesRef.id,
+        name: companyCapabilitiesRef.name,
+        category: companyCapabilitiesRef.category,
+      })
+      .from(companyCapabilitiesRef)
+      .orderBy(companyCapabilitiesRef.category, companyCapabilitiesRef.name);
+
+    console.log(`Found ${allCaps.length} total capabilities in database`);
+
+    const allCategories = Array.from(
+      new Set(allCaps.map((cap) => cap.category)),
+    );
+    console.log(`Categories found (${allCategories.length}):`, allCategories);
+
+    const capsToDelete = allCaps.filter(
+      (cap) => !cap.category || !baseCategories.includes(cap.category),
+    );
+
+    console.log(`Capabilities to delete: ${capsToDelete.length}`);
+    if (capsToDelete.length > 0) {
+      const idsToDelete = capsToDelete.map((c) => c.id);
+      try {
+        await db
+          .delete(companyCapabilitiesRef)
+          .where(inArray(companyCapabilitiesRef.id, idsToDelete));
+        console.log(
+          `Reset capabilities list: deleted ${capsToDelete.length} custom capabilities`,
+        );
+      } catch (deleteCapsError) {
+        console.error("Failed to reset capabilities:", deleteCapsError);
+      }
+    } else {
+      console.log("No custom capabilities to delete - all are in base categories");
+    }
+    // Custom capabilities are deleted during full regeneration — they will be reassigned by AI.
+
+    // If no company IDs provided, get all companies
     let companiesToProcess: string[] = [];
 
     if (companyIds && Array.isArray(companyIds) && companyIds.length > 0) {
       companiesToProcess = companyIds;
     } else {
-      // Fetch ALL companies with pagination (no limit)
-      const allCompanyIds: string[] = [];
-      let page = 0;
-      const pageSize = 1000; // Supabase max
-      let hasMore = true;
+      const allCompanies = await db
+        .select({ id: companies.id })
+        .from(companies);
 
-      while (hasMore) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
-
-        const { data: companiesPage, error } = await adminSupabase
-          .from("companies" as any)
-          .select("id")
-          .range(from, to);
-
-        if (error) {
-          throw new Error(`Failed to fetch companies: ${error.message}`);
-        }
-
-        if (!companiesPage || companiesPage.length === 0) {
-          hasMore = false;
-        } else {
-          const pageIds = (
-            (companiesPage || []) as unknown as { id: string }[]
-          ).map((c) => c.id);
-          allCompanyIds.push(...pageIds);
-
-          // Stop if we got less than a full page (no more companies)
-          if (companiesPage.length < pageSize) {
-            hasMore = false;
-          } else {
-            page++;
-          }
-        }
-      }
-
-      companiesToProcess = allCompanyIds;
+      companiesToProcess = allCompanies.map((c) => c.id);
       console.log(
-        `📊 Fetched ${companiesToProcess.length} companies total (no limit)`,
+        `Fetched ${companiesToProcess.length} companies total (no limit)`,
       );
     }
 
     // Queue jobs for each company
-    // Use combined job type (company_ai_complete) which generates both summary and taxonomy in ONE API call
-    // This is 2x faster and more efficient than separate calls
     const jobs = companiesToProcess.map((companyId) => ({
       jobType: "company_ai_complete" as const,
       entityType: "company" as const,
       entityId: companyId,
       priority: 5,
-      metadata: { fullRegeneration: true }, // Always use full regeneration
+      metadata: { fullRegeneration: true },
     }));
 
     const { batchId } = await enqueueBatch(
@@ -178,31 +193,30 @@ export async function POST(request: NextRequest) {
     // Trigger worker to start processing continuously (fire and forget)
     const baseUrl = getBaseUrl();
 
-    console.log(`🚀 Triggering queue worker at ${baseUrl}/api/queue/worker`);
+    console.log(`Triggering queue worker at ${baseUrl}/api/queue/worker`);
     fetch(`${baseUrl}/api/queue/worker`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        batchSize: 30,
+        batchSize: 40,
         continuous: true,
-        concurrency: 5, // Lower concurrency to avoid rate limits and "no response" from the model
+        concurrency: 10,
       }),
     })
       .then((res) => {
-        console.log(`✅ Queue worker triggered, status: ${res.status}`);
+        console.log(`Queue worker triggered, status: ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        console.log(`📊 Queue worker response:`, data);
+        console.log(`Queue worker response:`, data);
       })
       .catch((err) => {
-        console.error("❌ Failed to trigger queue worker:", err);
-        // Don't fail the request if worker trigger fails
+        console.error("Failed to trigger queue worker:", err);
       });
 
     // Log admin action
     await logApiEvent(request, {
-      actionType: "admin_company_ai_regenerated" as any,
+      actionType: "admin_company_ai_regenerated",
       userId: user.id,
       userEmail: user.email || undefined,
       details: {

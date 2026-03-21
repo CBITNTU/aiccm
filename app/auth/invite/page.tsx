@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -70,10 +70,8 @@ function InvitePageContent() {
 
       try {
         // Check if user is already logged in
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const session = await authClient.getSession();
+        const user = session.data?.user;
 
         if (user) {
           setIsLoggedIn(true);
@@ -144,13 +142,12 @@ function InvitePageContent() {
       }
 
       // Sign in the user automatically
-      const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const signInResult = await authClient.signIn.email({
         email: invitation!.email!,
         password: formData.password,
       });
 
-      if (signInError) {
+      if (signInResult.error) {
         // If sign-in fails, redirect to auth page with message
         toast.success("Account created! Please sign in to continue.");
         router.push(

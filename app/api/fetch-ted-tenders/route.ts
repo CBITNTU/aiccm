@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
-  createAdminClient,
   apiResponse,
   apiError,
   checkSuperadminRole,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { Database } from "@/lib/supabase/types";
+import { db } from "@/lib/db";
+import { tenders } from "@/lib/db/schema/app";
+import { inArray } from "drizzle-orm";
 
 const TED_API_BASE = "https://api.ted.europa.eu/v3";
 
@@ -25,11 +26,57 @@ interface TenderData {
   deadline: string | null;
   status: string;
   publication_date: string;
-  contact_info: unknown;
-  requirements?: unknown;
-  documents?: unknown;
+  contact_info: Record<string, unknown> | null;
+  requirements?: Record<string, unknown>;
+  documents?: Record<string, unknown>;
   external_id?: string;
   source?: string;
+}
+
+function toFeedRecord(t: TenderData) {
+  return {
+    id: t.id,
+    ocid: t.ocid,
+    referenceNumber: t.reference_number,
+    title: t.title,
+    buyer: t.buyer,
+    cpvCodes: t.cpv_codes,
+    description: t.description,
+    budgetMin: t.budget_min,
+    budgetMax: t.budget_max,
+    location: t.location,
+    deadline: t.deadline,
+    status: t.status,
+    publicationDate: t.publication_date,
+    contactInfo: t.contact_info,
+    requirements: t.requirements,
+    documents: t.documents,
+    externalId: t.external_id,
+    source: t.source,
+  };
+}
+
+type TenderInsert = typeof tenders.$inferInsert;
+
+function mapTenderToInsert(tender: TenderData): TenderInsert {
+  return {
+    referenceNumber: tender.reference_number,
+    title: tender.title,
+    buyer: tender.buyer,
+    cpvCodes: tender.cpv_codes,
+    description: tender.description,
+    budgetMin: tender.budget_min,
+    budgetMax: tender.budget_max,
+    location: tender.location,
+    deadline: tender.deadline ? new Date(tender.deadline) : null,
+    status: tender.status,
+    publicationDate: tender.publication_date
+      ? new Date(tender.publication_date)
+      : new Date(),
+    contactInfo: tender.contact_info,
+    requirements: tender.requirements,
+    documents: tender.documents,
+  };
 }
 
 // TED API may return fields as arrays or strings; normalize to string/array safely
@@ -116,7 +163,7 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
 
   const buyer = extractLocalised(notice["buyer-name"]) || "Unknown Buyer";
 
-  // Extract location — deduplicate since TED returns one per lot
+  // Extract location -- deduplicate since TED returns one per lot
   const locationCodes = [
     ...new Set([
       ...toArray(notice["place-of-performance-country-lot"]),
@@ -125,7 +172,7 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
   ];
   const location = locationCodes.length > 0 ? locationCodes.join(", ") : "EU";
 
-  // Extract CPV codes — deduplicate since TED returns one per lot
+  // Extract CPV codes -- deduplicate since TED returns one per lot
   const cpvCodes: string[] = [
     ...new Set([
       ...toArray(notice["main-classification-lot"]),
@@ -142,7 +189,7 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
     ? Math.floor(estimatedValue[1] * 100)
     : null;
 
-  // Extract dates — TED returns arrays (one per lot); pick the first valid one
+  // Extract dates -- TED returns arrays (one per lot); pick the first valid one
   const publicationDate =
     parseTEDDate(notice["publication-date"]) || new Date().toISOString();
   const deadlineDate = parseTEDDate(notice["deadline-date-lot"]) || undefined;
@@ -211,16 +258,8 @@ async function fetchFromTEDAPI(
   hasMore: boolean;
   nextToken?: string;
 }> {
-  // Note: Search API does NOT require authentication according to documentation
-  // But we'll keep the API key check for other potential uses
-
   const url = `${TED_API_BASE}/notices/search`;
 
-  // Build query string for date filtering
-  // TED API expert query syntax: dates in YYYYMMDD, field names use hyphens (e.g. publication-date).
-  // Bare "*" is invalid; use a date range or other TERM expression.
-
-  // Helper function to convert date to YYYYMMDD format
   const formatDateForTED = (dateStr: string): string => {
     const date = new Date(dateStr);
     const year = date.getFullYear();
@@ -229,7 +268,6 @@ async function fetchFromTEDAPI(
     return `${year}${month}${day}`;
   };
 
-  // TED expert query does NOT accept bare "*". Must use a TERM e.g. date range (YYYYMMDD).
   const DEFAULT_FROM = "19900101";
   const queryParts: string[] = [];
 
@@ -245,8 +283,6 @@ async function fetchFromTEDAPI(
     queryParts.push(`publication-date >= ${DEFAULT_FROM}`);
   }
 
-  // Language filter: e.g. ["ENG"] → official-language = ENG
-  // Multiple: ["ENG","FRA"] → (official-language = ENG OR official-language = FRA)
   if (languages.length > 0) {
     const langClauses = languages.map((l) => `official-language = ${l.toUpperCase()}`);
     queryParts.push(
@@ -282,17 +318,16 @@ async function fetchFromTEDAPI(
   const requestBody: Record<string, unknown> = {
     query: builtQuery,
     fields,
-    limit: Math.min(limit, 250), // Max 250 per TED Search API (Swagger)
-    scope: "ALL", // ALL to maximise results (ACTIVE often returns 0)
-    checkQuerySyntax: false, // Must be false: when true, TED API returns 0 notices despite valid query
-    paginationMode: "ITERATION", // Use iteration for consistent cursor-based paging
-    onlyLatestVersions: true, // Only get latest versions
+    limit: Math.min(limit, 250),
+    scope: "ALL",
+    checkQuerySyntax: false,
+    paginationMode: "ITERATION",
+    onlyLatestVersions: true,
   };
 
   if (iterationNextToken) {
     requestBody.iterationNextToken = iterationNextToken;
   }
-  // Iteration mode uses token only; no page. (Page is for PAGE_NUMBER mode.)
 
   console.log("[TED] query=", builtQuery, "| never * | Admin:", isAdmin, "Page:", page);
   console.log("TED API Request Body:", JSON.stringify(requestBody, null, 2));
@@ -320,7 +355,6 @@ async function fetchFromTEDAPI(
     });
 
     if (response.status === 429) {
-      // Consume the body to release the connection before retrying
       await response.text().catch(() => {});
       const retryAfter = response.headers.get("Retry-After");
       const waitSeconds = retryAfter
@@ -379,13 +413,11 @@ async function fetchFromTEDAPI(
     iterationNextToken?: string;
   };
 
-  // Extract notices from response
   const notices = (data.notices || []) as Array<Record<string, unknown>>;
   const total = data.totalNoticeCount ?? notices.length;
   let nextToken = data.iterationNextToken;
   let hasMore = !!nextToken || notices.length >= limit;
 
-  // If TED returns 0 notices, do not return a token—stop pagination so we don't loop forever.
   if (notices.length === 0) {
     nextToken = undefined;
     hasMore = false;
@@ -459,56 +491,44 @@ export async function POST(request: NextRequest) {
 
     // If admin is importing, also save to database with duplicate prevention
     if (adminImport && isAdmin && notices.length > 0) {
-      const supabase = createAdminClient();
-
-      const tendersToInsert = notices.map((tender) => ({
-        reference_number: tender.reference_number,
-        title: tender.title,
-        buyer: tender.buyer,
-        cpv_codes: tender.cpv_codes,
-        description: tender.description,
-        budget_min: tender.budget_min,
-        budget_max: tender.budget_max,
-        location: tender.location,
-        deadline: tender.deadline,
-        status: tender.status,
-        publication_date: tender.publication_date,
-        contact_info: tender.contact_info,
-        requirements: tender.requirements,
-        documents: tender.documents,
-      }));
+      const tendersToInsert: TenderInsert[] = notices.map(mapTenderToInsert);
 
       // Check for existing tenders to avoid duplicates
-      const { data: existingTenders } = await supabase
-        .from("tenders")
-        .select("reference_number, id")
-        .in(
-          "reference_number",
-          tendersToInsert.map((t) => t.reference_number),
-        );
+      const refNumbers = tendersToInsert.map((t) => t.referenceNumber).filter(Boolean) as string[];
+      let existingRefs = new Map<string | null, string>();
 
-      const existingRefs = new Map(
-        existingTenders?.map((t) => [t.reference_number, t.id]) || [],
-      );
+      if (refNumbers.length > 0) {
+        const existingTenders = await db
+          .select({ referenceNumber: tenders.referenceNumber, id: tenders.id })
+          .from(tenders)
+          .where(inArray(tenders.referenceNumber, refNumbers));
+
+        existingRefs = new Map(
+          existingTenders.map((t) => [t.referenceNumber, t.id]),
+        );
+      }
+
       const newTenders = tendersToInsert.filter(
-        (t) => !existingRefs.has(t.reference_number),
+        (t) => !existingRefs.has(t.referenceNumber ?? null),
       );
       const duplicatesCount = tendersToInsert.length - newTenders.length;
 
       if (newTenders.length > 0) {
-        const { data: insertedTenders, error: insertError } = await supabase
-          .from("tenders")
-          .upsert(
-            newTenders as unknown as Database["public"]["Tables"]["tenders"]["Insert"][],
-            { onConflict: "reference_number" },
-          )
-          .select(
-            "id, reference_number, title, description, buyer, cpv_codes, location",
-          );
+        try {
+          const insertedTenders = await db
+            .insert(tenders)
+            .values(newTenders)
+            .onConflictDoNothing()
+            .returning({
+              id: tenders.id,
+              referenceNumber: tenders.referenceNumber,
+              title: tenders.title,
+              description: tenders.description,
+              buyer: tenders.buyer,
+              cpvCodes: tenders.cpvCodes,
+              location: tenders.location,
+            });
 
-        if (insertError) {
-          console.error("Error importing tenders:", insertError);
-        } else {
           console.log(
             `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`,
           );
@@ -524,15 +544,13 @@ export async function POST(request: NextRequest) {
               duplicatesSkipped: duplicatesCount,
               totalFetched: notices.length,
             },
-          }).catch(() => {}); // Don't fail if logging fails
+          }).catch(() => {});
 
           // Queue AI processing jobs for new tenders
           if (insertedTenders && insertedTenders.length > 0) {
             const { enqueueBatch } =
               await import("@/lib/services/queueService");
-            const tenderIds = (
-              (insertedTenders as unknown as { id: string }[]) || []
-            ).map((t) => t.id);
+            const tenderIds = insertedTenders.map((t) => t.id);
 
             const jobs = tenderIds.map((tenderId) => ({
               jobType: "tender_ai_complete" as const,
@@ -548,9 +566,10 @@ export async function POST(request: NextRequest) {
               );
             } catch (queueError) {
               console.error("Failed to queue AI processing jobs:", queueError);
-              // Don't fail the import if queueing fails
             }
           }
+        } catch (insertError) {
+          console.error("Error importing tenders:", insertError);
         }
       } else {
         console.log(
@@ -558,11 +577,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Return actual imported count
       const actuallyImported = newTenders.length;
 
       return apiResponse({
-        tenders: notices,
+        tenders: notices.map(toFeedRecord),
         total: notices.length,
         totalFetched: notices.length,
         actuallyImported: actuallyImported,
@@ -580,7 +598,7 @@ export async function POST(request: NextRequest) {
     }
 
     return apiResponse({
-      tenders: notices,
+      tenders: notices.map(toFeedRecord),
       total: notices.length,
       totalFetched: notices.length,
       hasMore: hasMore && isAdmin,

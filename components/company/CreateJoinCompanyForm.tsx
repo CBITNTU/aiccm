@@ -29,8 +29,8 @@ import { api } from "@/lib/api/client";
 
 interface CompanySearchResult {
   id: string;
-  company_name: string;
-  has_admin: boolean;
+  companyName: string;
+  hasAdmin: boolean;
 }
 
 interface CreateJoinCompanyFormProps {
@@ -95,8 +95,8 @@ export function CreateJoinCompanyForm({
   // Found existing company state (when duplicate detected during lookup)
   const [foundExistingCompany, setFoundExistingCompany] = useState<{
     id: string;
-    company_name: string;
-    has_admin: boolean;
+    companyName: string;
+    hasAdmin: boolean;
   } | null>(null);
   const [foundCompanyMessage, setFoundCompanyMessage] = useState("");
 
@@ -158,8 +158,8 @@ export function CreateJoinCompanyForm({
           ...prev,
           selectedCompany: {
             id: c.id as string,
-            company_name: (c.company_name as string) ?? "",
-            has_admin: false,
+            companyName: (c.companyName as string) ?? "",
+            hasAdmin: false,
           },
         }));
       } catch {
@@ -174,7 +174,7 @@ export function CreateJoinCompanyForm({
   const handleSelectCompany = (company: CompanySearchResult) => {
     setJoinForm({
       ...joinForm,
-      searchQuery: company.company_name,
+      searchQuery: company.companyName,
       selectedCompany: company,
     });
     setShowDropdown(false);
@@ -228,8 +228,8 @@ export function CreateJoinCompanyForm({
         // Company exists in database - offer to join
         setFoundExistingCompany({
           id: data.existingCompany.id,
-          company_name: data.existingCompany.company_name,
-          has_admin: data.existingCompany.has_admin,
+          companyName: data.existingCompany.companyName,
+          hasAdmin: data.existingCompany.hasAdmin,
         });
         setLookupState({ status: "idle" });
         return;
@@ -280,7 +280,7 @@ export function CreateJoinCompanyForm({
         body: JSON.stringify({
           action: "join",
           companyId: foundExistingCompany.id,
-          companyName: foundExistingCompany.company_name,
+          companyName: foundExistingCompany.companyName,
           message: foundCompanyMessage.trim() || undefined,
         }),
       });
@@ -292,7 +292,7 @@ export function CreateJoinCompanyForm({
       }
 
       toast.success("Request submitted!", {
-        description: `Your request to join "${foundExistingCompany.company_name}" has been sent.`,
+        description: `Your request to join "${foundExistingCompany.companyName}" has been sent.`,
       });
 
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
@@ -300,7 +300,7 @@ export function CreateJoinCompanyForm({
       onSuccess?.({
         action: "join",
         companyId: foundExistingCompany.id,
-        companyName: foundExistingCompany.company_name,
+        companyName: foundExistingCompany.companyName,
       });
     } catch (error) {
       console.error("Error joining company:", error);
@@ -384,7 +384,7 @@ export function CreateJoinCompanyForm({
         body: JSON.stringify({
           action: "join",
           companyId: joinForm.selectedCompany.id,
-          companyName: joinForm.selectedCompany.company_name,
+          companyName: joinForm.selectedCompany.companyName,
           message: joinForm.message.trim() || undefined,
         }),
       });
@@ -396,7 +396,7 @@ export function CreateJoinCompanyForm({
       }
 
       toast.success("Request submitted!", {
-        description: `Your request to join "${joinForm.selectedCompany.company_name}" has been sent.`,
+        description: `Your request to join "${joinForm.selectedCompany.companyName}" has been sent.`,
       });
 
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
@@ -404,7 +404,7 @@ export function CreateJoinCompanyForm({
       onSuccess?.({
         action: "join",
         companyId: joinForm.selectedCompany.id,
-        companyName: joinForm.selectedCompany.company_name,
+        companyName: joinForm.selectedCompany.companyName,
       });
     } catch (error) {
       console.error("Error joining company:", error);
@@ -457,11 +457,11 @@ export function CreateJoinCompanyForm({
                     </div>
 
                     <h3 className="text-lg font-semibold text-amber-200 mb-1">
-                      {foundExistingCompany.company_name}
+                      {foundExistingCompany.companyName}
                     </h3>
                     <p className="text-sm text-amber-200">
                       This company is already on our platform.
-                      {foundExistingCompany.has_admin
+                      {foundExistingCompany.hasAdmin
                         ? " An administrator can approve your request to join."
                         : " This company doesn't have an administrator yet."}
                     </p>
@@ -832,9 +832,9 @@ export function CreateJoinCompanyForm({
                           onClick={() => handleSelectCompany(company)}
                         >
                           <span className="font-medium">
-                            {company.company_name}
+                            {company.companyName}
                           </span>
-                          {company.has_admin && (
+                          {company.hasAdmin && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <Users className="w-3 h-3" />
                               Has members
@@ -864,7 +864,7 @@ export function CreateJoinCompanyForm({
                     <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="font-medium text-green-800 dark:text-green-200">
-                        {joinForm.selectedCompany.company_name}
+                        {joinForm.selectedCompany.companyName}
                       </p>
                       <p className="text-xs text-green-600 dark:text-green-400">
                         Selected company

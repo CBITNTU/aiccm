@@ -1,35 +1,49 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
-import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { apiResponse } from "@/lib/api";
+import { requireAuth, handleApiError, sanitizeLikeParam } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { tenders } from "@/lib/db/schema/app";
+import { inArray, asc, ilike, or, and } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     await requireAuth(request);
-    const supabase = createAdminClient();
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 
-    let query = supabase
-      .from("tenders")
-      .select(
-        "id, title, buyer, deadline, status, location, budget_min, budget_max, description, reference_number",
-      )
-      .in("status", ["open", "closing_soon"])
-      .order("deadline", { ascending: true })
-      .limit(100);
+    const conditions = [inArray(tenders.status, ["open", "closing_soon"])];
 
     if (search?.trim()) {
-      query = query.or(
-        `title.ilike.%${search}%,buyer.ilike.%${search}%,description.ilike.%${search}%`,
+      const safeSearch = `%${sanitizeLikeParam(search)}%`;
+      conditions.push(
+        or(
+          ilike(tenders.title, safeSearch),
+          ilike(tenders.buyer, safeSearch),
+          ilike(tenders.description, safeSearch),
+        )!,
       );
     }
 
-    const { data, error } = await query;
+    const data = await db
+      .select({
+        id: tenders.id,
+        title: tenders.title,
+        buyer: tenders.buyer,
+        deadline: tenders.deadline,
+        status: tenders.status,
+        location: tenders.location,
+        budgetMin: tenders.budgetMin,
+        budgetMax: tenders.budgetMax,
+        description: tenders.description,
+        referenceNumber: tenders.referenceNumber,
+      })
+      .from(tenders)
+      .where(and(...conditions))
+      .orderBy(asc(tenders.deadline))
+      .limit(100);
 
-    if (error) throw error;
-
-    return apiResponse({ tenders: data || [] });
+    return apiResponse({ tenders: data });
   } catch (error) {
     return handleApiError(error);
   }

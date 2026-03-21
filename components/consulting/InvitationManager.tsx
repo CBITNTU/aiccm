@@ -15,11 +15,11 @@ import { Badge } from "@/components/ui/badge";
 
 interface TeamMember {
   id: string;
-  company_id: string;
+  companyId: string;
   role: string;
   companies?: {
-    company_name: string;
-    contact_email?: string | null;
+    companyName: string;
+    contactEmail?: string | null;
   } | null;
 }
 
@@ -91,15 +91,15 @@ export function InvitationManager({
               >
                 <div className="flex items-center gap-3">
                   <Checkbox
-                    checked={selectedPartners.includes(member.company_id)}
-                    onCheckedChange={() => togglePartner(member.company_id)}
+                    checked={selectedPartners.includes(member.companyId)}
+                    onCheckedChange={() => togglePartner(member.companyId)}
                   />
                   <div>
                     <div className="font-medium">
-                      {member.companies?.company_name}
+                      {member.companies?.companyName}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {member.companies?.contact_email || "No email available"}
+                      {member.companies?.contactEmail || "No email available"}
                     </div>
                   </div>
                 </div>

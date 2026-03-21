@@ -21,26 +21,10 @@ import {
 } from "lucide-react";
 import { formatCpvCode } from "@/lib/cpvCodes";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
-
-interface Tender {
-  id: string;
-  title: string;
-  description?: string | null;
-  buyer: string;
-  location?: string | null;
-  status?: string | null;
-  publication_date?: string | null;
-  deadline?: string | null;
-  budget_min?: number | null;
-  budget_max?: number | null;
-  reference_number?: string | null;
-  cpv_codes?: string[] | null;
-  ai_summary?: string | null;
-  ai_capability_taxonomy?: string[] | null;
-}
+import type { TenderRecord } from "@/lib/api/types";
 
 interface TenderViewDialogProps {
-  tender: Tender | null;
+  tender: TenderRecord | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreateProject?: (tenderId: string) => void;
@@ -90,9 +74,9 @@ export function TenderViewDialog({
             <div className="flex-1">
               <DialogTitle className="text-xl">{tender.title}</DialogTitle>
               <DialogDescription className="mt-2">
-                {tender.reference_number && (
+                {tender.referenceNumber && (
                   <span className="text-sm">
-                    Ref: {tender.reference_number}
+                    Ref: {tender.referenceNumber}
                   </span>
                 )}
               </DialogDescription>
@@ -130,8 +114,8 @@ export function TenderViewDialog({
               <div>
                 <p className="text-xs text-muted-foreground">Published</p>
                 <p className="font-medium">
-                  {tender.publication_date
-                    ? formatDate(tender.publication_date)
+                  {tender.publicationDate
+                    ? formatDate(tender.publicationDate)
                     : "Not specified"}
                 </p>
               </div>
@@ -152,7 +136,7 @@ export function TenderViewDialog({
               <div>
                 <p className="text-xs text-muted-foreground">Budget</p>
                 <p className="font-medium">
-                  {formatBudget(tender.budget_min, tender.budget_max)}
+                  {formatBudget(tender.budgetMin, tender.budgetMax)}
                 </p>
               </div>
             </div>
@@ -161,7 +145,7 @@ export function TenderViewDialog({
           <Separator />
 
           {/* AI Summary (if available) */}
-          {tender.ai_summary && (
+          {tender.aiSummary && (
             <>
               <div>
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
@@ -169,7 +153,7 @@ export function TenderViewDialog({
                   AI Summary
                 </h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                  {tender.ai_summary}
+                  {tender.aiSummary}
                 </p>
               </div>
               <Separator />
@@ -185,7 +169,7 @@ export function TenderViewDialog({
           </div>
 
           {/* CPV Codes */}
-          {tender.cpv_codes && tender.cpv_codes.length > 0 && (
+          {tender.cpvCodes && tender.cpvCodes.length > 0 && (
             <>
               <Separator />
               <div>
@@ -194,7 +178,7 @@ export function TenderViewDialog({
                   CPV Codes
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {tender.cpv_codes.map((code) => {
+                  {tender.cpvCodes.map((code) => {
                     const cpv = formatCpvCode(code);
                     return (
                       <Badge key={code} variant="outline">
@@ -223,10 +207,10 @@ export function TenderViewDialog({
               </Button>
             )}
             <div className="flex gap-2 ml-auto">
-              {tender.reference_number && (
+              {tender.referenceNumber && (
                 <Button asChild variant="outline">
                   <a
-                    href={`https://www.find-tender.service.gov.uk/Notice/${tender.reference_number}?origin=SearchResults`}
+                    href={`https://www.find-tender.service.gov.uk/Notice/${tender.referenceNumber}?origin=SearchResults`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

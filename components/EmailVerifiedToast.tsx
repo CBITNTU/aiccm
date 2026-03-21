@@ -12,8 +12,8 @@ export function EmailVerifiedToast() {
 
   useEffect(() => {
     if (emailVerified === "true") {
-      toast.success("Email verified successfully!", {
-        description: "Your email address has been verified. Thank you!",
+      toast.success("Email verified!", {
+        description: "You can now continue with your profile setup.",
         duration: 5000,
       });
 

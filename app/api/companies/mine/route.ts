@@ -1,88 +1,95 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies, companyMembers, companyJoinRequests } from "@/lib/db/schema/app";
+import { eq, and, inArray, desc } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
-    const supabase = createAdminClient();
 
     // Fetch owned companies
-    const { data: ownedCompanies, error: ownedError } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+    const ownedCompanies = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.userId, user.id))
+      .orderBy(desc(companies.createdAt));
 
-    if (ownedError) throw ownedError;
-
-    const ownedIds = new Set((ownedCompanies || []).map((c) => c.id));
+    const ownedIds = new Set(ownedCompanies.map((c) => c.id));
 
     // Fetch approved memberships
-    const { data: memberships } = await supabase
-      .from("company_members")
-      .select("company_id")
-      .eq("user_id", user.id)
-      .eq("status", "approved");
+    const memberships = await db
+      .select({ companyId: companyMembers.companyId })
+      .from(companyMembers)
+      .where(
+        and(
+          eq(companyMembers.userId, user.id),
+          eq(companyMembers.status, "approved"),
+        ),
+      );
 
     // Fetch member companies (excluding owned)
-    let memberCompanies: typeof ownedCompanies = [];
-    if (memberships && memberships.length > 0) {
-      const memberCompanyIds = memberships
-        .map((m) => m.company_id)
-        .filter((id) => !ownedIds.has(id));
+    let memberCompanies: (typeof companies.$inferSelect)[] = [];
+    const memberCompanyIds = memberships
+      .map((m) => m.companyId)
+      .filter((id) => !ownedIds.has(id));
 
-      if (memberCompanyIds.length > 0) {
-        const { data } = await supabase
-          .from("companies")
-          .select("*")
-          .in("id", memberCompanyIds);
-        memberCompanies = data || [];
-      }
+    if (memberCompanyIds.length > 0) {
+      memberCompanies = await db
+        .select()
+        .from(companies)
+        .where(inArray(companies.id, memberCompanyIds));
     }
 
-    // Fetch pending join requests
-    const { data: pendingJoinRequests } = await supabase
-      .from("company_join_requests")
-      .select("company_id, status, companies(*)")
-      .eq("user_id", user.id)
-      .in("status", ["pending", "approved_by_admin"]);
+    // Fetch pending join requests with company data
+    const pendingJoinRequests = await db
+      .select({
+        companyId: companyJoinRequests.companyId,
+        status: companyJoinRequests.status,
+        company: companies,
+      })
+      .from(companyJoinRequests)
+      .innerJoin(companies, eq(companyJoinRequests.companyId, companies.id))
+      .where(
+        and(
+          eq(companyJoinRequests.userId, user.id),
+          inArray(companyJoinRequests.status, ["pending", "approved_by_admin"]),
+        ),
+      );
 
-    const memberIds = new Set((memberCompanies || []).map((c) => c.id));
+    const memberIds = new Set(memberCompanies.map((c) => c.id));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pendingCompanies: any[] = [];
-    if (pendingJoinRequests) {
-      for (const request of pendingJoinRequests) {
-        const companyData = request.companies;
-        if (
-          companyData &&
-          !ownedIds.has((companyData as { id: string }).id) &&
-          !memberIds.has((companyData as { id: string }).id)
-        ) {
-          pendingCompanies.push({
-            ...companyData,
-            membershipStatus: "pending_join",
-            joinRequestStatus: request.status,
-          });
-        }
+    for (const req of pendingJoinRequests) {
+      if (
+        req.company &&
+        !ownedIds.has(req.company.id) &&
+        !memberIds.has(req.company.id)
+      ) {
+        pendingCompanies.push({
+          ...req.company,
+          membershipStatus: "pending_join",
+          joinRequestStatus: req.status,
+        });
       }
     }
 
     // Combine with membership status
-    const companies = [
-      ...(ownedCompanies || []).map((c) => ({
+    const allCompanies = [
+      ...ownedCompanies.map((c) => ({
         ...c,
         membershipStatus: "owner" as const,
       })),
-      ...(memberCompanies || []).map((c) => ({
+      ...memberCompanies.map((c) => ({
         ...c,
         membershipStatus: "member" as const,
       })),
       ...pendingCompanies,
     ];
 
-    return apiResponse({ companies });
+    return apiResponse({ companies: allCompanies });
   } catch (error) {
     return handleApiError(error);
   }

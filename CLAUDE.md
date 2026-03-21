@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TNDRX is a construction and consulting tender matching platform built with Next.js, React, TypeScript, and Supabase. The application facilitates matching companies with relevant tenders, managing consulting projects (VO - Virtual Organizations), and providing AI-powered business intelligence.
+TNDRX is a construction and consulting tender matching platform built with Next.js, React, TypeScript, PostgreSQL, Better-Auth, and Drizzle ORM. The application facilitates matching companies with relevant tenders, managing consulting projects (VO - Virtual Organizations), and providing AI-powered business intelligence.
 
 Key features:
 
@@ -13,7 +13,7 @@ Key features:
 - Virtual Organization (VO) consulting project management
 - CPV (Common Procurement Vocabulary) code-based taxonomy
 - Geographic coverage analysis (UK-focused)
-- Real-time tender feeds with OpenAI-powered analysis
+- Real-time tender feeds with AI-powered analysis
 
 ## Development Commands
 
@@ -34,17 +34,19 @@ npm run start
 npm run lint
 ```
 
-### Supabase Commands
+### Database Commands
 
 ```bash
-# Local development
-npm run supabase:start    # Start local Supabase
-npm run supabase:stop     # Stop local Supabase
-npm run supabase:db-push  # Push migrations to local database
+# Local PostgreSQL (Docker)
+npm run docker:up          # Start local PostgreSQL
+npm run docker:down        # Stop local PostgreSQL
 
-# Production
-npm run supabase:link:prod   # Link to production Supabase project (run once)
-npm run supabase:db-push:prod # Push migrations to production database
+# Drizzle ORM
+npm run db:generate        # Generate migrations from schema changes
+npm run db:migrate         # Run migrations
+npm run db:push            # Push schema directly (dev shortcut)
+npm run db:studio          # Open Drizzle Studio (visual DB browser)
+npm run db:reset-local:drizzle  # Reset local DB
 ```
 
 ## Architecture
@@ -53,11 +55,12 @@ npm run supabase:db-push:prod # Push migrations to production database
 
 - **Frontend**: Next.js 16 + React 19 + TypeScript
 - **UI Framework**: shadcn/ui components + Radix UI primitives + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Auth) + Next.js API Routes
-- **Auth**: @supabase/ssr for server-side authentication
+- **Backend**: PostgreSQL + Better-Auth + Drizzle ORM + Next.js API Routes
+- **Auth**: Better-Auth with Drizzle adapter
+- **ORM**: Drizzle ORM (node-postgres driver)
 - **State Management**: TanStack Query (React Query)
 - **Routing**: Next.js App Router
-- **AI Integration**: OpenAI API (optional user-provided key)
+- **AI Integration**: Vercel AI SDK (`ai` package) with OpenAI, Google, and DeepSeek providers
 - **Maps**: Leaflet
 
 ### Project Structure
@@ -68,6 +71,12 @@ app/                     # Next.js App Router
 ├── page.tsx             # Landing page
 ├── globals.css          # Global styles
 ├── api/                 # Next.js API Routes
+│   ├── auth/
+│   │   ├── [...all]/route.ts  # Better-Auth API handler
+│   │   └── signup/route.ts    # Custom signup (creates profile + role)
+│   └── queue/           # Job queue endpoints
+│       ├── cron/route.ts      # Cron trigger for production
+│       └── worker/route.ts    # Worker endpoint
 ├── auth/                # Authentication pages
 │   └── page.tsx         # Login/signup page
 ├── (protected)/         # Route group for authenticated pages
@@ -114,22 +123,42 @@ hooks/                   # Custom React hooks
 └── useMatchingProgress.ts # Matching progress polling
 
 lib/                     # Utilities
-├── supabase/            # Supabase client (browser + server)
-│   ├── server.ts        # Server-side client (API routes + server components)
-│   └── client.ts        # Client-side client (auth only!)
+├── auth.ts              # Better-Auth server config
+├── auth-client.ts       # Better-Auth client (signIn, signUp, signOut, useSession)
+├── auth/
+│   └── middleware.ts     # Session validation middleware
+├── db/                  # Database (Drizzle ORM)
+│   ├── index.ts         # Connection pool (pg) + Drizzle instance
+│   ├── queries.ts       # Reusable query helpers
+│   ├── raw.ts           # Raw SQL for complex queries
+│   └── schema/          # Drizzle schema definitions
+│       ├── auth.ts      # Better-Auth tables (user, session, account, verification)
+│       ├── app.ts       # Application tables (companies, tenders, etc.)
+│       └── index.ts     # Re-exports
+├── ai/                  # AI integration
+│   ├── generate.ts      # Rate-limited generateObject/generateText wrappers
+│   ├── models.ts        # Model registry and resolution
+│   └── provider.ts      # Platform model configuration
+├── services/            # Business logic services
+│   ├── queueService.ts  # Job queue (processing_queue table)
+│   ├── jobProcessor.ts  # Job execution logic
+│   ├── devQueuePoller.ts# Dev-mode auto-poller (started via instrumentation.ts)
+│   ├── companyAIService.ts    # AI company analysis
+│   └── tenderMatchingService.ts # AI tender matching
 ├── api/                 # API utilities
-│   ├── index.ts         # apiResponse, apiError, getAuthenticatedUser, createAdminClient
+│   ├── index.ts         # apiResponse, apiError, getAuthenticatedUser, checkSuperadminRole
 │   ├── client.ts        # Typed API client for frontend (api.*)
 │   └── validation.ts    # requireAuth, validateBody, handleApiError helpers
 ├── queryKeys.ts         # Centralized React Query cache key factory
-├── email/               # Email utilities
+├── email/               # Email utilities (Resend)
 ├── cpvCodes.ts          # CPV code taxonomy
 └── utils.ts             # General utilities
 
-supabase/                # Supabase backend (database only)
-├── migrations/          # Database migrations
-└── config.toml          # Supabase configuration
+drizzle/                 # Drizzle ORM
+├── migrations/          # Generated SQL migrations
+└── drizzle.config.ts    # Drizzle Kit configuration (in project root)
 
+instrumentation.ts       # Next.js instrumentation — starts dev queue poller
 middleware.ts            # Auth middleware for route protection
 ```
 
@@ -137,18 +166,22 @@ middleware.ts            # Auth middleware for route protection
 
 **Authentication Flow**:
 
-- Uses @supabase/ssr for server-side authentication
-- `middleware.ts` handles route protection at the edge
+- Uses Better-Auth with `drizzleAdapter` for PostgreSQL
+- `middleware.ts` calls `betterAuthUpdateSession()` from `lib/auth/middleware.ts`
+- Session stored in `better-auth.session_token` cookie
+- Plugins: `organization()`, `admin()`, `nextCookies()`
+- Email/password auth with bcryptjs hashing, email verification via Resend
+- Client-side: `authClient` from `lib/auth-client.ts` exports `signIn`, `signUp`, `signOut`, `useSession`
+- `app/api/auth/[...all]/route.ts` handles Better-Auth API routes
+- Custom signup at `app/api/auth/signup/route.ts` (creates profile + role)
 - `(protected)` route group contains all authenticated pages
-- Server components can access session via `createClient()` from `lib/supabase/server.ts`
-- Client-side Supabase client (`lib/supabase/client.ts`) is used **only for auth** (login, signup, session). Never use it for data queries
-- Always check for company existence before redirecting to dashboard
 
 **Data Flow (Client-Side Architecture)**:
 
-- **No direct Supabase access from client components** for data queries — use the typed `api` client from `lib/api/client.ts`
+- **No direct database access from client components** — use the typed `api` client from `lib/api/client.ts`
 - All data operations go through Next.js API routes (`app/api/`)
-- API routes use `requireAuth()` + `createAdminClient()` for server-side Supabase access
+- API routes use `requireAuth()` for session validation (calls `auth.api.getSession()`) and `db` from `lib/db` for queries
+- Authorization checks via helpers in `lib/api/validation.ts` (e.g., `isCompanyMember()`, `getUserCompanyIds()`) and `lib/db/queries.ts`
 - TanStack Query hooks in `hooks/` handle caching, refetching, and cache invalidation
 - Centralized query key factory in `lib/queryKeys.ts` ensures consistent cache keys
 - Mutation hooks invalidate related query keys on success for automatic UI updates
@@ -170,7 +203,7 @@ middleware.ts            # Auth middleware for route protection
 **Tender Matching Algorithm**:
 
 - Matching based on CPV code overlap, location, and company capabilities
-- AI analysis (optional) provides match reasoning and recommendations
+- AI analysis provides match reasoning and recommendations
 - Results include match percentage, relevance score, and gap analysis
 
 **Virtual Organization (VO) System**:
@@ -180,51 +213,46 @@ middleware.ts            # Auth middleware for route protection
 - Team builder suggests partner companies based on complementary skills
 - Coverage maps show geographic distribution of team capabilities
 
-### Database Schema (Key Tables)
+### Database Schema
 
-**companies**:
+Schema is defined in Drizzle format under `lib/db/schema/`. Tables use snake_case in the database and camelCase in Drizzle TypeScript definitions.
 
-- Core company profile data
-- AI-analyzed fields: `ai_capabilities`, `ai_competencies`, `ai_strengths`, `ai_recommendations`
-- Human verification data: `human_verified` (overrides AI analysis)
-- System-extracted data: `system_extracted` (from Companies House API)
-- User-controlled flag: `is_system_company` (for admin-managed companies)
+**Auth tables** (`lib/db/schema/auth.ts` — managed by Better-Auth):
 
-**company_taxonomies**:
+- `user`, `session`, `account`, `verification`
 
-- Links companies to CPV codes
-- Many-to-many relationship
+**App tables** (`lib/db/schema/app.ts`):
 
-**tenders**:
+- **companies** — Core company profile data, AI-analyzed fields (`aiCapabilities`, `aiCompetencies`, `aiStrengths`, `aiRecommendations`), human verification, system-extracted data
+- **companyTaxonomies** — Links companies to CPV codes (many-to-many)
+- **companyMembers** — Team membership (owner, admin, member roles)
+- **teamInvitations** — Pending team invitations
+- **companyJoinRequests** — Requests to join a company
+- **tenders** — Tender opportunities with CPV codes, deadlines, contract values, status
+- **tenderMatchingResults** — Computed matches between tenders and companies
+- **voProjects** — Virtual Organization consulting projects (planning → active → completed → archived)
+- **voProjectCompanies** — Many-to-many link between VO projects and companies
+- **processingQueue** — Job queue for async processing
+- **batchJobs** — Batch operation tracking
+- **events** — Event log
+- **profiles** — User profiles with roles
+- **performanceBenchmarks** — Company performance data
 
-- Tender opportunities data
-- Includes CPV codes, deadlines, contract values
-- Status tracking (active, expired, awarded)
+### Services & Job Queue
 
-**tender_matching_results**:
-
-- Stores computed matches between tenders and companies
-- Match scores, relevance percentages, AI-generated reasoning
-
-**vo_projects**:
-
-- Virtual Organization consulting projects
-- Status workflow: planning → active → completed → archived
-- Stores team composition and gap analysis results
-
-**vo_project_companies**:
-
-- Many-to-many link between VO projects and companies
-- Tracks invitation status and roles
+- `lib/services/queueService.ts` — enqueue/dequeue jobs from the `processingQueue` table
+- `lib/services/jobProcessor.ts` — executes jobs (company analysis, tender matching, etc.)
+- **Dev mode**: `instrumentation.ts` starts a polling loop (`lib/services/devQueuePoller.ts`) that processes jobs automatically
+- **Production**: external cron hits `/api/queue/cron` which triggers `/api/queue/worker` to process pending jobs
 
 ### Environment Variables
 
 **Local development** (`.env.local`):
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/tndrx
+BETTER_AUTH_SECRET=<your-secret>
+BETTER_AUTH_URL=http://localhost:3000
 OPENAI_API_KEY=<your-openai-key>
 RESEND_API_KEY=<your-resend-key>
 PLATFORM_EMAIL_FROM="noreply@example.com"
@@ -235,9 +263,9 @@ PLATFORM_URL=http://localhost:3000
 **Production** (`.env.production`):
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<production-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<production-service-role-key>
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>
+BETTER_AUTH_SECRET=<production-secret>
+BETTER_AUTH_URL=https://yourdomain.com
 OPENAI_API_KEY=<your-openai-key>
 RESEND_API_KEY=<your-resend-key>
 PLATFORM_EMAIL_FROM="noreply@yourdomain.com"
@@ -255,23 +283,18 @@ Note: For Vercel deployment, environment variables are configured in the Vercel 
 
 ### Important Implementation Notes
 
-**OpenAI Integration**:
+**AI Integration**:
 
-- API key provided by users through `OpenAIKeyDialog` component
-- Stored in localStorage as `openai_api_key`
-- Optional feature: app functions without it but lacks AI-powered analysis
-- Used for: company analysis, tender matching reasoning, chatbot
+- Uses Vercel AI SDK (`ai` package) with multiple providers: `@ai-sdk/openai`, `@ai-sdk/google`, `@ai-sdk/deepseek`
+- API keys configured server-side via environment variables
+- `lib/ai/generate.ts` provides rate-limited `aiGenerateObject()` and `aiGenerateText()` wrappers
+- Used for: company analysis, tender matching reasoning, performance benchmarks
 
 **Component Updates**:
 
 - UI components in `components/ui/` are from shadcn/ui
 - These can be regenerated or updated via shadcn CLI
 - Do not manually edit unless customization is needed
-
-**Supabase Types**:
-
-- Types are imported from `@supabase/supabase-js`
-- Regenerate after schema changes with Supabase CLI
 
 **Routing (Next.js App Router)**:
 
@@ -302,19 +325,20 @@ Note: For Vercel deployment, environment variables are configured in the Vercel 
 
 ```typescript
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
-    const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("user_id", user.id);
-    if (error) throw error;
-    return apiResponse({ companies: data });
+    const result = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.userId, user.id));
+    return apiResponse({ companies: result });
   } catch (error) {
     return handleApiError(error);
   }
@@ -324,8 +348,7 @@ export async function POST(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
     const body = await request.json();
-    const supabase = createAdminClient();
-    // Your logic here
+    // Your logic here using db.insert(), db.update(), etc.
     return apiResponse({ success: true });
   } catch (error) {
     return handleApiError(error);
@@ -333,17 +356,18 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-**Querying Supabase (Server Component)**:
+**Querying the Database (Server Component)**:
 
 ```typescript
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export default async function Page() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("companies")
-    .select("*")
-    .eq("user_id", userId);
+  const result = await db
+    .select()
+    .from(companies)
+    .where(eq(companies.userId, userId));
   // ...
 }
 ```
@@ -401,7 +425,7 @@ export function useUpdateCompany() {
 
 **Adding a new data query (end-to-end)**:
 
-1. Add API route in `app/api/[endpoint]/route.ts` using `requireAuth` + `createAdminClient`
+1. Add API route in `app/api/[endpoint]/route.ts` using `requireAuth` + `db` from `lib/db`
 2. Add typed method to the `api` object in `lib/api/client.ts`
 3. Add query key to `lib/queryKeys.ts`
 4. Create query hook in `hooks/use[Domain].ts` using `queryKeys` and `api`
@@ -438,11 +462,11 @@ npm run deploy:prod  # Deploy to Vercel production
 **Database Migrations**:
 
 ```bash
-# First time: link to production Supabase project
-npm run supabase:link:prod
+# Generate migration from schema changes
+npm run db:generate
 
-# Push migrations to production
-npm run supabase:db-push:prod
+# Apply migrations to database
+npm run db:migrate
 ```
 
 **Manual Build**:

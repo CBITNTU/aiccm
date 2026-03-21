@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
@@ -55,7 +55,7 @@ const overviewStats = [
     value: 89,
     change: +7,
     icon: FileText,
-    color: "text-secondary",
+    color: "text-primary",
   },
   {
     label: "Consulting Teams",
@@ -142,6 +142,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState(tabFromUrl || "overview");
   const { isAdmin, loading: roleLoading } = useUserRole();
   const router = useRouter();
+  const hasRedirectedRef = useRef(false);
 
   // Sync tab with URL parameter
   useEffect(() => {
@@ -153,9 +154,10 @@ export default function AdminPage() {
 
   // Check admin access
   useEffect(() => {
-    if (!roleLoading && !isAdmin) {
+    if (!roleLoading && !isAdmin && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
       toast.error("Superadmin access required");
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
   }, [isAdmin, roleLoading, router]);
 

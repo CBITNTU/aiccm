@@ -33,14 +33,14 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
           <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
             <span className="text-sm font-medium">Company Name</span>
             <span className="text-sm">
-              {company.company_name}
+              {company.companyName}
             </span>
           </div>
 
           {/* Financial Data */}
-          {company.financial_data &&
+          {company.financialData &&
             Object.keys(
-              company.financial_data as Record<string, unknown>,
+              company.financialData as Record<string, unknown>,
             ).length > 0 && (
               <>
                 <Separator className="my-2" />
@@ -49,7 +49,7 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
                     Financial Information
                   </h4>
                   {Object.entries(
-                    company.financial_data as Record<
+                    company.financialData as Record<
                       string,
                       { value: number | string }
                     >,

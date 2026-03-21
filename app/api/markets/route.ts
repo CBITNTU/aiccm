@@ -1,28 +1,32 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { markets } from "@/lib/db/schema/app";
+import { asc } from "drizzle-orm";
 
 export interface MarketNode {
   id: string;
   name: string;
-  parent_id: string | null;
-  sort_order: number;
+  parentId: string | null;
+  sortOrder: number;
 }
 
 export async function GET(request: NextRequest) {
   try {
     await requireAuth(request);
-    const supabase = createAdminClient();
 
-    const { data, error } = await supabase
-      .from("markets")
-      .select("id, name, parent_id, sort_order")
-      .order("sort_order")
-      .order("name");
+    const data = await db
+      .select({
+        id: markets.id,
+        name: markets.name,
+        parentId: markets.parentId,
+        sortOrder: markets.sortOrder,
+      })
+      .from(markets)
+      .orderBy(asc(markets.sortOrder), asc(markets.name));
 
-    if (error) throw error;
-
-    return apiResponse({ markets: (data || []) as MarketNode[] });
+    return apiResponse({ markets: data as MarketNode[] });
   } catch (error) {
     return handleApiError(error);
   }

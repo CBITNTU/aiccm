@@ -50,27 +50,27 @@ export type TeamAnalysisResponse = z.infer<typeof teamAnalysisResponseSchema>;
 export const tenderInputSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
-  buyer_name: z.string().optional(),
+  buyerName: z.string().optional(),
   value: z.number().optional(),
   region: z.string().optional(),
 });
 
 export const companyInputSchema = z.object({
   id: z.string(),
-  company_name: z.string(),
-  key_capabilities: z.string().nullable().optional(),
+  companyName: z.string().optional().default(""),
+  keyCapabilities: z.string().nullable().optional(),
   certifications: z.string().nullable().optional(),
-  past_projects: z.string().nullable().optional(),
+  pastProjects: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
 });
 
 export const teamMemberInputSchema = z.object({
   companies: z
     .object({
-      company_name: z.string(),
-      key_capabilities: z.string().nullable().optional(),
+      companyName: z.string().optional().default(""),
+      keyCapabilities: z.string().nullable().optional(),
       certifications: z.string().nullable().optional(),
-      past_projects: z.string().nullable().optional(),
+      pastProjects: z.string().nullable().optional(),
       description: z.string().nullable().optional(),
     })
     .nullable()

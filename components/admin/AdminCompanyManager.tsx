@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,8 +22,6 @@ import {
 import { Search, Trash2, Building2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-type Company = Database["public"]["Tables"]["companies"]["Row"];
-
 export function AdminCompanyManager() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
@@ -38,7 +36,7 @@ export function AdminCompanyManager() {
   useEffect(() => {
     const filtered = companies.filter(
       (company) =>
-        company.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        company.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (company.description &&
           company.description.toLowerCase().includes(searchTerm.toLowerCase())),
     );
@@ -48,7 +46,7 @@ export function AdminCompanyManager() {
   const fetchCompanies = async () => {
     try {
       const data = await api.adminListCompanies();
-      setCompanies((data.companies as unknown as Company[]) || []);
+      setCompanies(data.companies || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast.error("Failed to load companies");
@@ -74,8 +72,8 @@ export function AdminCompanyManager() {
     }
   };
 
-  const systemCompanies = filteredCompanies.filter((c) => c.is_system_company);
-  const userCompanies = filteredCompanies.filter((c) => !c.is_system_company);
+  const systemCompanies = filteredCompanies.filter((c) => c.isSystemCompany);
+  const userCompanies = filteredCompanies.filter((c) => !c.isSystemCompany);
 
   if (loading) {
     return (
@@ -139,7 +137,7 @@ export function AdminCompanyManager() {
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
                   <div className="flex-1">
-                    <div className="font-medium">{company.company_name}</div>
+                    <div className="font-medium">{company.companyName}</div>
                     <div className="text-sm text-muted-foreground">
                       {company.postcode}{" "}
                       {company.description
@@ -166,7 +164,7 @@ export function AdminCompanyManager() {
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                           Are you sure you want to delete{" "}
-                          <strong>{company.company_name}</strong>? This action
+                          <strong>{company.companyName}</strong>? This action
                           cannot be undone and will remove all associated data.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -176,7 +174,7 @@ export function AdminCompanyManager() {
                           onClick={() =>
                             handleDeleteCompany(
                               company.id,
-                              company.company_name,
+                              company.companyName,
                             )
                           }
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -218,7 +216,7 @@ export function AdminCompanyManager() {
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
                   <div className="flex-1">
-                    <div className="font-medium">{company.company_name}</div>
+                    <div className="font-medium">{company.companyName}</div>
                     <div className="text-sm text-muted-foreground">
                       {company.postcode} • Status: {company.status}
                     </div>
@@ -242,7 +240,7 @@ export function AdminCompanyManager() {
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                           Are you sure you want to delete{" "}
-                          <strong>{company.company_name}</strong>? This action
+                          <strong>{company.companyName}</strong>? This action
                           cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -252,7 +250,7 @@ export function AdminCompanyManager() {
                           onClick={() =>
                             handleDeleteCompany(
                               company.id,
-                              company.company_name,
+                              company.companyName,
                             )
                           }
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

@@ -8,9 +8,7 @@ import {
   useUpdateProjectStatus,
   useDeleteProject,
 } from "@/hooks/useProjectMutations";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,7 +74,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   } = useProjectDetails(projectId);
 
   const { data: leadCompany } = useCompanyById(
-    details?.project.lead_company_id ?? null,
+    details?.project.leadCompanyId ?? null,
   );
 
   const updateStatus = useUpdateProjectStatus();
@@ -176,7 +174,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
   const gapScore =
     teamMembers.length <= 1
-      ? (derivedGapCoverage ?? tenderMatchResult?.overall_score)
+      ? (derivedGapCoverage ?? tenderMatchResult?.overallScore)
       : derivedGapCoverage;
   const teamScore = teamAnalysis?.coveragePercentage;
   const teamCount = teamMembers.length;

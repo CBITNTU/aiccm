@@ -1,6 +1,14 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { handleApiError, ValidationError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import {
+  voMembers,
+  virtualOrganizations,
+  companies,
+  tenders,
+} from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,76 +19,63 @@ export async function GET(request: NextRequest) {
       throw new ValidationError("token is required");
     }
 
-    const supabase = createAdminClient();
-
     // Look up invitation by token
-    const { data: memberRow, error } = await supabase
-      .from("vo_members")
-      .select(
-        `
-        *,
-        virtual_organizations:vo_id (
-          id,
-          name,
-          description,
-          lead_company_id,
-          target_tender_id
-        )
-      `,
-      )
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .eq("invitation_token" as any, token)
-      .single();
+    const memberRows = await db
+      .select({
+        member: voMembers,
+        vo: {
+          id: virtualOrganizations.id,
+          name: virtualOrganizations.name,
+          description: virtualOrganizations.description,
+          leadCompanyId: virtualOrganizations.leadCompanyId,
+          targetTenderId: virtualOrganizations.targetTenderId,
+        },
+      })
+      .from(voMembers)
+      .innerJoin(virtualOrganizations, eq(voMembers.voId, virtualOrganizations.id))
+      .where(eq(voMembers.invitationToken, token))
+      .limit(1);
 
-    const member = memberRow as (typeof memberRow) & {
-      invitation_status: string | null;
-      invitation_sent_at: string | null;
-    } | null;
-
-    if (error || !member || !memberRow) {
+    const row = memberRows[0];
+    if (!row) {
       throw new ValidationError("Invalid or expired invitation token");
     }
 
-    const vo = member.virtual_organizations as unknown as {
-      id: string;
-      name: string;
-      description: string | null;
-      lead_company_id: string;
-      target_tender_id: string | null;
-    } | null;
-
-    if (!vo) {
-      throw new ValidationError("Project not found");
-    }
+    const { member, vo } = row;
 
     // Get lead company name
-    const { data: leadCompany } = await supabase
-      .from("companies")
-      .select("company_name, contact_email")
-      .eq("id", vo.lead_company_id)
-      .single();
+    const leadCompanyRows = await db
+      .select({
+        companyName: companies.companyName,
+        contactEmail: companies.contactEmail,
+      })
+      .from(companies)
+      .where(eq(companies.id, vo.leadCompanyId))
+      .limit(1);
+
+    const leadCompany = leadCompanyRows[0];
 
     // Get tender title if linked
     let tenderTitle: string | null = null;
-    if (vo.target_tender_id) {
-      const { data: tender } = await supabase
-        .from("tenders")
-        .select("title")
-        .eq("id", vo.target_tender_id)
-        .single();
-      tenderTitle = tender?.title || null;
+    if (vo.targetTenderId) {
+      const tenderRows = await db
+        .select({ title: tenders.title })
+        .from(tenders)
+        .where(eq(tenders.id, vo.targetTenderId))
+        .limit(1);
+      tenderTitle = tenderRows[0]?.title || null;
     }
 
     return apiResponse({
       invitation: {
         id: member.id,
-        vo_id: member.vo_id,
-        company_id: member.company_id,
-        invitation_status: member.invitation_status,
+        voId: member.voId,
+        companyId: member.companyId,
+        invitationStatus: member.invitationStatus,
         projectName: vo.name,
         projectDescription: vo.description,
-        leadCompanyName: leadCompany?.company_name || "Unknown",
-        leadCompanyContact: leadCompany?.contact_email || null,
+        leadCompanyName: leadCompany?.companyName || "Unknown",
+        leadCompanyContact: leadCompany?.contactEmail || null,
         tenderTitle,
       },
     });

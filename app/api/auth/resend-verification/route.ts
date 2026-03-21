@@ -1,97 +1,38 @@
 import { NextRequest } from "next/server";
-import {
-  createAdminClient,
-  createApiClient,
-  apiResponse,
-  apiError,
-} from "@/lib/api";
-import {
-  sendEmail,
-  getVerificationResendEmailSubject,
-  getVerificationResendEmailHtml,
-  getPlatformUrl,
-} from "@/lib/email";
+import { auth } from "@/lib/auth";
+import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { user as authUsersTable } from "@/lib/db/schema/auth";
+import { eq } from "drizzle-orm";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the current user from the session
-    const supabase = await createApiClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return apiError("Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
+    const authUser = await db
+      .select({ emailVerified: authUsersTable.emailVerified })
+      .from(authUsersTable)
+      .where(eq(authUsersTable.id, user.id))
+      .limit(1);
 
     // Check if already verified
-    if (user.email_confirmed_at) {
+    if (authUser[0]?.emailVerified) {
       return apiError("Email is already verified", 400);
     }
 
-    if (!user.email) {
-      return apiError("No email address found", 400);
-    }
-
-    // Get user's name from profile
-    const adminClient = createAdminClient();
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("first_name, last_name")
-      .eq("user_id", user.id)
-      .single();
-
-    const userName = profile
-      ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim()
-      : "User";
-
-    // Generate a magic link - this works for existing users
-    // When clicked, it will log them in and confirm their email
-    const { data: linkData, error: linkError } =
-      await adminClient.auth.admin.generateLink({
-        type: "magiclink",
-        email: user.email,
-        options: {
-          redirectTo: getPlatformUrl("/auth/callback"),
-        },
-      });
-
-    if (linkError || !linkData?.properties?.action_link) {
-      console.error("Failed to generate verification link:", linkError);
-      return apiError("Failed to generate verification link", 500);
-    }
-
-    // Send the verification email via Resend
-    const emailResult = await sendEmail({
-      to: user.email,
-      subject: getVerificationResendEmailSubject(),
-      html: getVerificationResendEmailHtml({
-        userName,
-        verificationLink: linkData.properties.action_link,
-      }),
+    // Send verification email via Better Auth
+    await auth.api.sendVerificationEmail({
+      body: {
+        email: user.email!,
+        callbackURL: "/auth/callback",
+      },
     });
-
-    if (!emailResult.success) {
-      console.error("Failed to send verification email:", emailResult.error);
-      await logApiEvent(request, {
-        actionType: "email_verification_resent",
-        userId: user.id,
-        userEmail: user.email || undefined,
-        status: "error",
-        errorMessage:
-          typeof emailResult.error === "string"
-            ? emailResult.error
-            : String(emailResult.error),
-      }).catch(() => {});
-      return apiError("Failed to send verification email", 500);
-    }
 
     await logApiEvent(request, {
       actionType: "email_verification_resent",
       userId: user.id,
-      userEmail: user.email || undefined,
+      userEmail: user.email,
     }).catch(() => {});
 
     return apiResponse({

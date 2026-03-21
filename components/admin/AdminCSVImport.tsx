@@ -25,17 +25,17 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface CSVRow {
-  company_name: string;
-  companies_house_number?: string;
-  contact_email?: string;
-  contact_phone?: string;
+  companyName: string;
+  companiesHouseNumber?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   postcode?: string;
   description?: string;
-  website_url?: string;
-  key_capabilities?: string;
+  websiteUrl?: string;
+  keyCapabilities?: string;
   certifications?: string;
-  full_address?: string;
-  sic_codes?: string;
+  fullAddress?: string;
+  sicCodes?: string;
   [key: string]: string | undefined;
 }
 
@@ -169,7 +169,7 @@ export function AdminCSVImport() {
     const rows: CSVRow[] = [];
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i]);
-      const row: CSVRow = { company_name: "" };
+      const row: CSVRow = { companyName: "" };
 
       headers.forEach((header, index) => {
         let value = (values[index] || "").replace(/^"|"$/g, "").trim();
@@ -186,28 +186,28 @@ export function AdminCSVImport() {
           header === "company_name" ||
           header === "name"
         ) {
-          row.company_name = value;
+          row.companyName = value;
         } else if (
           header === "companynumber" ||
           header === "companies_house_number" ||
           header === "company_number" ||
           header === "ch_number"
         ) {
-          row.companies_house_number = value;
+          row.companiesHouseNumber = value;
         } else if (header === "email" || header === "contact_email") {
-          row.contact_email = value;
+          row.contactEmail = value;
         } else if (
           header === "phone" ||
           header === "contact_phone" ||
           header === "telephone"
         ) {
-          row.contact_phone = value;
+          row.contactPhone = value;
         } else if (
           header === "full_address" ||
           header === "fulladdress" ||
           header === "address"
         ) {
-          row.full_address = value;
+          row.fullAddress = value;
           // Extract postcode from full address
           const postcode = extractPostcode(value);
           if (postcode && !row.postcode) {
@@ -222,13 +222,13 @@ export function AdminCSVImport() {
           header === "website_url" ||
           header === "url"
         ) {
-          row.website_url = value;
+          row.websiteUrl = value;
         } else if (
           header === "raw_capabilities" ||
           header === "capabilities" ||
           header === "key_capabilities"
         ) {
-          row.key_capabilities = value;
+          row.keyCapabilities = value;
         } else if (header === "certifications" || header === "certs") {
           row.certifications = value;
         } else if (
@@ -236,15 +236,15 @@ export function AdminCSVImport() {
           header.startsWith("sic_code")
         ) {
           // Collect SIC codes
-          if (!row.sic_codes) {
-            row.sic_codes = value;
+          if (!row.sicCodes) {
+            row.sicCodes = value;
           } else {
-            row.sic_codes += `, ${value}`;
+            row.sicCodes += `, ${value}`;
           }
         }
       });
 
-      if (row.company_name) {
+      if (row.companyName) {
         rows.push(row);
       }
     }
@@ -329,34 +329,34 @@ export function AdminCSVImport() {
         try {
           // Extract postcode from full address if not already set
           let postcode = company.postcode;
-          if (!postcode && company.full_address) {
-            postcode = extractPostcode(company.full_address);
+          if (!postcode && company.fullAddress) {
+            postcode = extractPostcode(company.fullAddress);
           }
 
           // Build description with SIC codes if available
           let description = company.description || "";
-          if (company.sic_codes) {
+          if (company.sicCodes) {
             if (description) {
-              description += `\n\nSIC Codes: ${company.sic_codes}`;
+              description += `\n\nSIC Codes: ${company.sicCodes}`;
             } else {
-              description = `SIC Codes: ${company.sic_codes}`;
+              description = `SIC Codes: ${company.sicCodes}`;
             }
           }
 
           // Build company data for import
           const companyData: Record<string, unknown> = {
-            company_name: company.company_name,
-            companies_house_number: company.companies_house_number || null,
-            contact_email: company.contact_email || null,
-            contact_phone: company.contact_phone || null,
+            companyName: company.companyName,
+            companiesHouseNumber: company.companiesHouseNumber || null,
+            contactEmail: company.contactEmail || null,
+            contactPhone: company.contactPhone || null,
             postcode: postcode || null,
-            address: company.full_address || null,
+            address: company.fullAddress || null,
             description: description || null,
-            website_url: company.website_url || null,
-            key_capabilities: company.key_capabilities || null,
+            websiteUrl: company.websiteUrl || null,
+            keyCapabilities: company.keyCapabilities || null,
             certifications: company.certifications || null,
-            user_id: null,
-            is_system_company: true,
+            userId: null,
+            isSystemCompany: true,
             status: "active",
           };
 
@@ -370,34 +370,34 @@ export function AdminCSVImport() {
             if (updateExisting) {
               // Update existing company fields
               const updateData: Record<string, unknown> = {};
-              if (company.contact_email)
-                updateData.contact_email = company.contact_email;
-              if (company.contact_phone)
-                updateData.contact_phone = company.contact_phone;
+              if (company.contactEmail)
+                updateData.contactEmail = company.contactEmail;
+              if (company.contactPhone)
+                updateData.contactPhone = company.contactPhone;
               if (postcode) updateData.postcode = postcode;
-              if (company.full_address)
-                updateData.address = company.full_address;
+              if (company.fullAddress)
+                updateData.address = company.fullAddress;
               if (description) updateData.description = description;
-              if (company.website_url)
-                updateData.website_url = company.website_url;
-              if (company.key_capabilities)
-                updateData.key_capabilities = company.key_capabilities;
+              if (company.websiteUrl)
+                updateData.websiteUrl = company.websiteUrl;
+              if (company.keyCapabilities)
+                updateData.keyCapabilities = company.keyCapabilities;
 
               if (Object.keys(updateData).length > 0) {
                 try {
                   await api.adminUpdateCompany(companyId, updateData);
                 } catch (updateError) {
                   console.warn(
-                    `Failed to update company ${company.company_name}:`,
+                    `Failed to update company ${company.companyName}:`,
                     updateError,
                   );
                 }
               }
 
               // Smart mapping: Parse and sync capabilities
-              if (company.key_capabilities && capabilitiesRef.length > 0) {
+              if (company.keyCapabilities && capabilitiesRef.length > 0) {
                 const csvCapabilities = parseCapabilities(
-                  company.key_capabilities,
+                  company.keyCapabilities,
                 );
                 const matchedCapabilityIds: string[] = [];
 
@@ -414,7 +414,7 @@ export function AdminCSVImport() {
                     await api.syncCapabilities(companyId, matchedCapabilityIds);
                   } catch (linkError) {
                     console.warn(
-                      `Failed to sync capabilities for ${company.company_name}:`,
+                      `Failed to sync capabilities for ${company.companyName}:`,
                       linkError,
                     );
                   }
@@ -435,12 +435,12 @@ export function AdminCSVImport() {
                 });
                 if (!response.ok) {
                   console.warn(
-                    `Failed to queue AI jobs for ${company.company_name}`,
+                    `Failed to queue AI jobs for ${company.companyName}`,
                   );
                 }
               } catch (queueError) {
                 console.warn(
-                  `Failed to queue AI jobs for ${company.company_name}:`,
+                  `Failed to queue AI jobs for ${company.companyName}:`,
                   queueError,
                 );
               }
@@ -460,12 +460,12 @@ export function AdminCSVImport() {
                 });
                 if (!response.ok) {
                   console.warn(
-                    `Failed to queue taxonomy job for ${company.company_name}`,
+                    `Failed to queue taxonomy job for ${company.companyName}`,
                   );
                 }
               } catch (queueError) {
                 console.warn(
-                  `Failed to queue taxonomy job for ${company.company_name}:`,
+                  `Failed to queue taxonomy job for ${company.companyName}:`,
                   queueError,
                 );
               }
@@ -477,8 +477,8 @@ export function AdminCSVImport() {
 
           // New company was inserted successfully
           // Smart mapping: Parse and sync capabilities
-          if (company.key_capabilities && capabilitiesRef.length > 0) {
-            const csvCapabilities = parseCapabilities(company.key_capabilities);
+          if (company.keyCapabilities && capabilitiesRef.length > 0) {
+            const csvCapabilities = parseCapabilities(company.keyCapabilities);
             const matchedCapabilityIds: string[] = [];
 
             for (const csvCap of csvCapabilities) {
@@ -494,7 +494,7 @@ export function AdminCSVImport() {
                 await api.syncCapabilities(companyId, matchedCapabilityIds);
               } catch (linkError) {
                 console.warn(
-                  `Failed to link capabilities for ${company.company_name}:`,
+                  `Failed to link capabilities for ${company.companyName}:`,
                   linkError,
                 );
                 // Don't fail the import, just log the warning
@@ -515,12 +515,12 @@ export function AdminCSVImport() {
               });
               if (!response.ok) {
                 console.warn(
-                  `Failed to queue AI jobs for ${company.company_name}`,
+                  `Failed to queue AI jobs for ${company.companyName}`,
                 );
               }
             } catch (queueError) {
               console.warn(
-                `Failed to queue AI jobs for ${company.company_name}:`,
+                `Failed to queue AI jobs for ${company.companyName}:`,
                 queueError,
               );
               // Don't fail the import if queueing fails
@@ -530,7 +530,7 @@ export function AdminCSVImport() {
           successCount++;
         } catch (err) {
           errorList.push(
-            `${company.company_name}: ${err instanceof Error ? err.message : String(err)}`,
+            `${company.companyName}: ${err instanceof Error ? err.message : String(err)}`,
           );
           setErrorCount(errorList.length);
         }
@@ -678,8 +678,8 @@ export function AdminCSVImport() {
                   key={index}
                   className="grid grid-cols-3 gap-2 text-xs py-1 border-b"
                 >
-                  <div className="font-medium">{row.company_name}</div>
-                  <div>{row.contact_email || row.contact_phone || "-"}</div>
+                  <div className="font-medium">{row.companyName}</div>
+                  <div>{row.contactEmail || row.contactPhone || "-"}</div>
                   <div>{row.postcode || "-"}</div>
                 </div>
               ))}

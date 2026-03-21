@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createApiClient, apiResponse, apiError } from "@/lib/api";
+import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 // This is currently a stub function that returns test data
@@ -9,10 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     let userId: string | undefined;
     try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
+      const { user } = await getAuthenticatedUser(request);
       userId = user?.id;
     } catch {
       // Optional auth

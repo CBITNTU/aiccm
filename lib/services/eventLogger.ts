@@ -1,7 +1,7 @@
-import { createAdminClient } from "@/lib/api";
-import type { Json } from "@/lib/supabase/types";
-
-const supabase = createAdminClient();
+import { db } from "@/lib/db";
+import { events } from "@/lib/db/schema/app";
+import { user } from "@/lib/db/schema/auth";
+import { eq } from "drizzle-orm";
 
 export type EventActionType =
   // Authentication
@@ -63,6 +63,8 @@ export type EventActionType =
   | "admin_demo_sync_results"
   | "admin_onboarding"
   | "admin_edit_pending_company"
+  | "admin_company_ai_regenerated"
+  | "admin_capabilities_reset"
   // Queue/Processing
   | "queue_job_created"
   | "queue_job_completed"
@@ -104,34 +106,31 @@ export async function logEvent(data: EventLogData): Promise<void> {
     let userEmail = data.userEmail;
     if (data.userId && !userEmail) {
       try {
-        const { data: userData } = await supabase.auth.admin.getUserById(
-          data.userId,
-        );
-        userEmail = userData?.user?.email || null;
+        const result = await db
+          .select({ email: user.email })
+          .from(user)
+          .where(eq(user.id, data.userId))
+          .limit(1);
+        userEmail = result[0]?.email || null;
       } catch {
         // Ignore errors fetching user email
       }
     }
 
-    const { error } = await supabase.from("events").insert({
-      action_type: data.actionType,
-      user_id: data.userId || null,
-      user_email: userEmail || null,
-      entity_type: data.entityType || null,
-      entity_id: data.entityId || null,
-      details: (data.details || {}) as Record<string, Json>,
-      ip_address: data.ipAddress || null,
-      user_agent: data.userAgent || null,
-      request_path: data.requestPath || null,
-      request_method: data.requestMethod || null,
+    await db.insert(events).values({
+      actionType: data.actionType,
+      userId: data.userId || null,
+      userEmail: userEmail || null,
+      entityType: data.entityType || null,
+      entityId: data.entityId || null,
+      details: data.details || {},
+      ipAddress: data.ipAddress || null,
+      userAgent: data.userAgent || null,
+      requestPath: data.requestPath || null,
+      requestMethod: data.requestMethod || null,
       status: data.status || "success",
-      error_message: data.errorMessage || null,
+      errorMessage: data.errorMessage || null,
     });
-
-    if (error) {
-      // Log to console but don't throw - event logging should never break the app
-      console.error("Failed to log event:", error, data);
-    }
   } catch (error) {
     // Silently fail - event logging should never break the main flow
     console.error("Error in logEvent:", error);

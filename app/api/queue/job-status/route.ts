@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createApiClient } from "@/lib/api";
+import { getAuthenticatedUser } from "@/lib/api";
 import {
   getBatchStatus,
   getMatchingJobsForCompany,
 } from "@/lib/services/queueService";
+import { isCompanyMember } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function GET(request: NextRequest) {
   try {
+    const { user } = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const batchId = searchParams.get("batchId");
     const companyId = searchParams.get("companyId");
@@ -21,29 +30,20 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Debug logging
-      console.log(`📊 Batch status for ${batchId}:`, {
-        total: batch.totalJobs,
-        completed: batch.completedJobs,
-        failed: batch.failedJobs,
-        status: batch.status,
-        progress: Math.round((batch.completedJobs / batch.totalJobs) * 100),
-      });
-
-      let userId: string | undefined;
-      try {
-        const supabaseAuth = await createApiClient();
-        const {
-          data: { user },
-        } = await supabaseAuth.auth.getUser();
-        userId = user?.id;
-      } catch {
-        // Optional auth
+      // Verify user has access to the company associated with this batch
+      if (batch.companyId) {
+        const hasAccess = await isCompanyMember(user.id, batch.companyId);
+        if (!hasAccess) {
+          return NextResponse.json(
+            { success: false, error: "Forbidden" },
+            { status: 403 },
+          );
+        }
       }
 
       await logApiEvent(request, {
         actionType: "queue_job_status_viewed",
-        userId: userId || undefined,
+        userId: user.id,
         entityType: "batch_job",
         entityId: batchId,
         details: {
@@ -57,22 +57,20 @@ export async function GET(request: NextRequest) {
     }
 
     if (companyId) {
-      const jobs = await getMatchingJobsForCompany(companyId);
-
-      let userId: string | undefined;
-      try {
-        const supabaseAuth = await createApiClient();
-        const {
-          data: { user },
-        } = await supabaseAuth.auth.getUser();
-        userId = user?.id;
-      } catch {
-        // Optional auth
+      // Verify user has access to this company
+      const hasAccess = await isCompanyMember(user.id, companyId);
+      if (!hasAccess) {
+        return NextResponse.json(
+          { success: false, error: "Forbidden" },
+          { status: 403 },
+        );
       }
+
+      const jobs = await getMatchingJobsForCompany(companyId);
 
       await logApiEvent(request, {
         actionType: "queue_job_status_viewed",
-        userId: userId || undefined,
+        userId: user.id,
         entityType: "company",
         entityId: companyId,
         details: { total: jobs.total },

@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
-import {
-  createAdminClient,
-  createApiClient,
-  apiResponse,
-} from "@/lib/api";
+import { apiResponse, getAuthenticatedUser } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { companies, companyMembers } from "@/lib/db/schema/app";
+import { eq, and } from "drizzle-orm";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36";
@@ -25,35 +24,22 @@ interface LookupCompanyResponse {
   };
   existingCompany?: {
     id: string;
-    company_name: string;
-    has_admin: boolean;
+    companyName: string;
+    hasAdmin: boolean;
   };
 }
 
-/**
- * Validates and normalizes a UK company number.
- * Formats: 12345678, SC123456, NI123456, with optional leading zeros
- */
 function normalizeCompanyNumber(companyNumber: string): string | null {
   const clean = companyNumber.replace(/\s/g, "").toUpperCase();
-
-  // Standard 8-digit format
   if (/^\d{1,8}$/.test(clean)) {
     return clean.padStart(8, "0");
   }
-
-  // Scottish (SC) or Northern Ireland (NI) format: 2 letters + 6 digits
   if (/^(SC|NI|OC|SO|NC|NL|R0|IP|SP|IC|SI|NP)\d{6}$/.test(clean)) {
     return clean;
   }
-
   return null;
 }
 
-/**
- * Fetches the Companies House page and extracts basic company information.
- * No AI involved - uses simple HTML parsing.
- */
 async function fetchCompaniesHouseData(companyNumber: string): Promise<{
   found: boolean;
   companyName?: string;
@@ -77,30 +63,21 @@ async function fetchCompaniesHouseData(companyNumber: string): Promise<{
     }
 
     if (!response.ok) {
-      return {
-        found: false,
-        error: `Companies House returned ${response.status}`,
-      };
+      return { found: false, error: `Companies House returned ${response.status}` };
     }
 
     const html = await response.text();
 
-    // Extract company name from <h1> or title
     const nameMatch =
-      html.match(
-        /<h1[^>]*class="[^"]*heading-xlarge[^"]*"[^>]*>([^<]+)<\/h1>/i,
-      ) || html.match(/<title>([^-<]+)/i);
-    const companyName = nameMatch
-      ? nameMatch[1].trim().replace(/\s+/g, " ")
-      : undefined;
+      html.match(/<h1[^>]*class="[^"]*heading-xlarge[^"]*"[^>]*>([^<]+)<\/h1>/i) ||
+      html.match(/<title>([^-<]+)/i);
+    const companyName = nameMatch ? nameMatch[1].trim().replace(/\s+/g, " ") : undefined;
 
-    // Extract company status
     const statusMatch =
       html.match(/<dd[^>]*id="company-status"[^>]*>([^<]+)<\/dd>/i) ||
       html.match(/Company status[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
     const companyStatus = statusMatch ? statusMatch[1].trim() : undefined;
 
-    // Extract registered address
     const addressMatch = html.match(
       /Registered office address[\s\S]*?<dd[^>]*class="[^"]*text[^"]*"[^>]*>([\s\S]*?)<\/dd>/i,
     );
@@ -113,47 +90,24 @@ async function fetchCompaniesHouseData(companyNumber: string): Promise<{
         .trim();
     }
 
-    // Extract company type
-    const typeMatch = html.match(
-      /Company type[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i,
-    );
+    const typeMatch = html.match(/Company type[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
     const companyType = typeMatch ? typeMatch[1].trim() : undefined;
 
     if (!companyName) {
-      return {
-        found: false,
-        error: "Could not parse company data from Companies House",
-      };
+      return { found: false, error: "Could not parse company data from Companies House" };
     }
 
-    return {
-      found: true,
-      companyName,
-      registeredAddress,
-      companyStatus,
-      companyType,
-    };
+    return { found: true, companyName, registeredAddress, companyStatus, companyType };
   } catch (error) {
     console.error("Companies House fetch error:", error);
-    return {
-      found: false,
-      error: "Failed to connect to Companies House",
-    };
+    return { found: false, error: "Failed to connect to Companies House" };
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Unauthenticated lookup is allowed
-    }
+    const { user } = await getAuthenticatedUser(request);
+    const userId = user?.id;
 
     const body: LookupCompanyRequest = await request.json();
     const { companyNumber } = body;
@@ -166,7 +120,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Normalize and validate company number
     const normalizedNumber = normalizeCompanyNumber(companyNumber);
     if (!normalizedNumber) {
       return apiResponse<LookupCompanyResponse>({
@@ -177,23 +130,26 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const supabase = createAdminClient();
-
     // Check for duplicate company in database
-    const { data: existingCompany } = await supabase
-      .from("companies")
-      .select("id, company_name")
-      .eq("companies_house_number", normalizedNumber)
-      .single();
+    const existingResult = await db
+      .select({ id: companies.id, companyName: companies.companyName })
+      .from(companies)
+      .where(eq(companies.companiesHouseNumber, normalizedNumber))
+      .limit(1);
 
+    const existingCompany = existingResult[0];
     if (existingCompany) {
       // Check if company has any approved admins
-      const { data: adminCheck } = await supabase
-        .from("company_members")
-        .select("id")
-        .eq("company_id", existingCompany.id)
-        .eq("role", "admin")
-        .eq("status", "approved")
+      const adminCheck = await db
+        .select({ id: companyMembers.id })
+        .from(companyMembers)
+        .where(
+          and(
+            eq(companyMembers.companyId, existingCompany.id),
+            eq(companyMembers.role, "admin"),
+            eq(companyMembers.status, "approved"),
+          ),
+        )
         .limit(1);
 
       return apiResponse<LookupCompanyResponse>({
@@ -202,8 +158,8 @@ export async function POST(request: NextRequest) {
         errorCode: "DUPLICATE",
         existingCompany: {
           id: existingCompany.id,
-          company_name: existingCompany.company_name,
-          has_admin: (adminCheck?.length ?? 0) > 0,
+          companyName: existingCompany.companyName,
+          hasAdmin: adminCheck.length > 0,
         },
       });
     }
@@ -225,7 +181,6 @@ export async function POST(request: NextRequest) {
       details: { companyNumber: normalizedNumber, found: true },
     }).catch(() => {});
 
-    // Return success with company data
     return apiResponse<LookupCompanyResponse>({
       success: true,
       data: {

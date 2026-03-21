@@ -1,16 +1,20 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse, checkSuperadminRole } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import { getCompanyMemberRole } from "@/lib/db/queries";
 import {
   geocodeLocation,
   buildCompanyGeoQuery,
   isGeocodingEnabled,
 } from "@/lib/geocode";
+import { db } from "@/lib/db";
+import { companies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
@@ -19,66 +23,71 @@ export async function GET(
   try {
     const { user } = await requireAuth(request);
     const { companyId } = await params;
-    const supabase = createAdminClient();
 
-    // Check access
-    const hasAccess = await isCompanyMember(user.id, companyId);
+    // Check access (company member/owner or superadmin)
+    const [hasAccess, isSuperadmin] = await Promise.all([
+      isCompanyMember(user.id, companyId),
+      checkSuperadminRole(user.id),
+    ]);
     if (!hasAccess) {
-      throw new AuthError("No access to this company");
+      if (!isSuperadmin) {
+        throw new AuthError("No access to this company");
+      }
     }
 
-    // Check if owner
-    const { data: ownerCheck } = await supabase
-      .from("companies")
-      .select("user_id")
-      .eq("id", companyId)
-      .single();
-
-    const isOwner = ownerCheck?.user_id === user.id;
-
     // Fetch company
-    const { data, error } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("id", companyId)
-      .single();
+    const companyResult = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
 
-    if (error) throw error;
+    const company = companyResult[0] ?? null;
+    if (!company) {
+      return apiResponse({ error: "Company not found" }, 404);
+    }
 
-    // Fetch capabilities
-    const { data: capabilitiesData } = await supabase
-      .from("company_capabilities")
-      .select("company_capabilities_ref(id, name, category)")
-      .eq("company_id", companyId);
+    const isOwner = company.userId === user.id;
 
-    const capabilities = (capabilitiesData || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cc: any) => cc.company_capabilities_ref)
-      .filter(Boolean);
+    // Fetch capabilities via join
+    const capData = await db
+      .select({
+        id: companyCapabilitiesRef.id,
+        name: companyCapabilitiesRef.name,
+        category: companyCapabilitiesRef.category,
+      })
+      .from(companyCapabilities)
+      .innerJoin(
+        companyCapabilitiesRef,
+        eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id),
+      )
+      .where(eq(companyCapabilities.companyId, companyId));
 
-    // Fetch markets
-    const { data: marketsData } = await supabase
-      .from("company_markets")
-      .select("markets(id, name, parent_id, sort_order)")
-      .eq("company_id", companyId);
+    // Fetch markets via join
+    const marketsData = await db
+      .select({
+        id: markets.id,
+        name: markets.name,
+        parentId: markets.parentId,
+        sortOrder: markets.sortOrder,
+      })
+      .from(companyMarkets)
+      .innerJoin(markets, eq(companyMarkets.marketId, markets.id))
+      .where(eq(companyMarkets.companyId, companyId));
 
-    const markets = (marketsData || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cm: any) => cm.markets)
-      .filter(Boolean);
+    // Fetch standards via join
+    const standardsData = await db
+      .select({
+        id: standardsRef.id,
+        name: standardsRef.name,
+        parentId: standardsRef.parentId,
+        sortOrder: standardsRef.sortOrder,
+      })
+      .from(companyStandards)
+      .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+      .where(eq(companyStandards.companyId, companyId));
 
-    // Fetch standards
-    const { data: standardsData } = await supabase
-      .from("company_standards")
-      .select("standards_ref(id, name, parent_id, sort_order)")
-      .eq("company_id", companyId);
-
-    const standards = (standardsData || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cs: any) => cs.standards_ref)
-      .filter(Boolean);
-
-    return apiResponse({ company: data, isOwner, capabilities, markets, standards });
+    return apiResponse({ company, isOwner, capabilities: capData, markets: marketsData, standards: standardsData });
   } catch (error) {
     return handleApiError(error);
   }
@@ -91,34 +100,40 @@ export async function PUT(
   try {
     const { user } = await requireAuth(request);
     const { companyId } = await params;
-    const supabase = createAdminClient();
 
-    // Only owner or member can update
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
+    // Only owner, admin member, or superadmin can update
+    const [memberRole, isSuperadmin] = await Promise.all([
+      getCompanyMemberRole(user.id, companyId),
+      checkSuperadminRole(user.id),
+    ]);
+    if (!memberRole && !isSuperadmin) {
       throw new AuthError("No access to this company");
+    }
+    if (memberRole && memberRole !== "admin" && !isSuperadmin) {
+      throw new AuthError("Only company admins can update company details");
     }
 
     const body = await request.json();
 
-    // Whitelist allowed fields
-    const allowedFields = [
-      "company_name",
-      "description",
-      "key_capabilities",
-      "postcode",
-      "contact_email",
-      "website_url",
-      "contact_phone",
-      "operation_locations",
-      "certifications",
-      "past_projects",
-    ];
+    // Whitelist allowed fields (use camelCase for Drizzle)
+    const fieldMap: Record<string, keyof typeof companies.$inferInsert> = {
+      company_name: "companyName",
+      description: "description",
+      key_capabilities: "keyCapabilities",
+      postcode: "postcode",
+      contact_email: "contactEmail",
+      website_url: "websiteUrl",
+      contact_phone: "contactPhone",
+      operation_locations: "operationLocations",
+      certifications: "certifications",
+      past_projects: "pastProjects",
+    };
 
-    const updates: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (field in body) {
-        updates[field] = body[field];
+    const updates: Partial<typeof companies.$inferInsert> = {};
+    for (const [snakeField, camelField] of Object.entries(fieldMap)) {
+      if (snakeField in body) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (updates as any)[camelField] = body[snakeField];
       }
     }
 
@@ -137,16 +152,17 @@ export async function PUT(
       }
     }
 
-    const { data, error } = await supabase
-      .from("companies")
-      .update(updates)
-      .eq("id", companyId)
-      .select()
-      .single();
+    const data = await db
+      .update(companies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(companies.id, companyId))
+      .returning();
 
-    if (error) throw error;
+    if (!data[0]) {
+      return apiResponse({ error: "Company not found" }, 404);
+    }
 
-    return apiResponse({ company: data });
+    return apiResponse({ company: data[0] });
   } catch (error) {
     return handleApiError(error);
   }

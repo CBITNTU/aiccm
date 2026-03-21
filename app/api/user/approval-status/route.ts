@@ -1,43 +1,53 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { profiles, companyJoinRequests, companies } from "@/lib/db/schema/app";
+import { eq, desc } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
-    const supabase = createAdminClient();
 
     // Get profile info
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("approval_status, signup_type")
-      .eq("user_id", user.id)
-      .single();
+    const profileResult = await db
+      .select({
+        approvalStatus: profiles.approvalStatus,
+        signupType: profiles.signupType,
+      })
+      .from(profiles)
+      .where(eq(profiles.userId, user.id))
+      .limit(1);
+
+    const profile = profileResult[0] ?? null;
 
     // Check for join request if applicable
-    const { data: joinRequest } = await supabase
-      .from("company_join_requests")
-      .select("status, company_name_requested")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    const joinRequestResult = await db
+      .select({
+        status: companyJoinRequests.status,
+        companyNameRequested: companyJoinRequests.companyNameRequested,
+      })
+      .from(companyJoinRequests)
+      .where(eq(companyJoinRequests.userId, user.id))
+      .orderBy(desc(companyJoinRequests.createdAt))
+      .limit(1);
+
+    const joinRequest = joinRequestResult[0] ?? null;
 
     // Check for owned company name
-    let companyName: string | null = joinRequest?.company_name_requested || null;
+    let companyName: string | null = joinRequest?.companyNameRequested || null;
     if (!companyName) {
-      const { data: company } = await supabase
-        .from("companies")
-        .select("company_name")
-        .eq("user_id", user.id)
-        .limit(1)
-        .single();
-      companyName = company?.company_name || null;
+      const companyResult = await db
+        .select({ companyName: companies.companyName })
+        .from(companies)
+        .where(eq(companies.userId, user.id))
+        .limit(1);
+      companyName = companyResult[0]?.companyName || null;
     }
 
     return apiResponse({
-      approvalStatus: profile?.approval_status || "pending",
-      signupType: profile?.signup_type || null,
+      approvalStatus: profile?.approvalStatus || "pending",
+      signupType: profile?.signupType || null,
       companyName,
       joinRequestStatus: joinRequest?.status || null,
     });

@@ -33,8 +33,8 @@ interface Invitation {
   id: string;
   email: string;
   status: "pending" | "accepted" | "expired" | "cancelled";
-  expires_at: string;
-  created_at: string;
+  expiresAt: string;
+  createdAt: string;
 }
 
 interface PendingInvitationsCardProps {
@@ -118,7 +118,7 @@ export function PendingInvitationsCard({
 
   const getStatusBadge = (invitation: Invitation) => {
     const now = new Date();
-    const expiresAt = new Date(invitation.expires_at);
+    const expiresAt = new Date(invitation.expiresAt);
     const isExpired = expiresAt < now;
 
     if (invitation.status === "accepted") {
@@ -159,14 +159,14 @@ export function PendingInvitationsCard({
   // Filter to show pending invitations
   const pendingInvitations = invitations.filter((inv) => {
     const now = new Date();
-    const expiresAt = new Date(inv.expires_at);
+    const expiresAt = new Date(inv.expiresAt);
     return inv.status === "pending" && expiresAt >= now;
   });
 
   const recentInvitations = invitations
     .filter((inv) => {
       const now = new Date();
-      const expiresAt = new Date(inv.expires_at);
+      const expiresAt = new Date(inv.expiresAt);
       return inv.status !== "pending" || expiresAt < now;
     })
     .slice(0, 5);
@@ -219,7 +219,7 @@ export function PendingInvitationsCard({
                           {invitation.email}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Expires {formatDate(invitation.expires_at)}
+                          Expires {formatDate(invitation.expiresAt)}
                         </p>
                       </div>
                     </div>

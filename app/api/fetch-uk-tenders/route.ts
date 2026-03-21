@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import {
   getAuthenticatedUser,
-  createAdminClient,
   apiResponse,
   apiError,
   checkSuperadminRole,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { Database } from "@/lib/supabase/types";
+import { db } from "@/lib/db";
+import { tenders } from "@/lib/db/schema/app";
+import { inArray } from "drizzle-orm";
 
 const FIND_TENDER_API_BASE = "https://www.find-tender.service.gov.uk/api/1.0";
 
@@ -25,11 +26,64 @@ interface TenderData {
   deadline: string | null;
   status: string;
   publication_date: string;
-  contact_info: unknown;
-  requirements?: unknown;
-  documents?: unknown;
+  contact_info: Record<string, unknown> | null;
+  requirements?: Record<string, unknown>;
+  documents?: Record<string, unknown>;
   external_id?: string;
   source?: string;
+}
+
+function toFeedRecord(t: TenderData) {
+  return {
+    id: t.id,
+    ocid: t.ocid,
+    referenceNumber: t.reference_number,
+    title: t.title,
+    buyer: t.buyer,
+    cpvCodes: t.cpv_codes,
+    description: t.description,
+    budgetMin: t.budget_min,
+    budgetMax: t.budget_max,
+    location: t.location,
+    deadline: t.deadline,
+    status: t.status,
+    publicationDate: t.publication_date,
+    contactInfo: t.contact_info,
+    requirements: t.requirements,
+    documents: t.documents,
+    externalId: t.external_id,
+    source: t.source,
+  };
+}
+
+type TenderInsert = typeof tenders.$inferInsert;
+
+function mapTenderToInsert(tender: TenderData): TenderInsert {
+  return {
+    referenceNumber: tender.reference_number,
+    title: tender.title,
+    buyer: tender.buyer,
+    cpvCodes: tender.cpv_codes,
+    description: tender.description,
+    budgetMin: tender.budget_min,
+    budgetMax: tender.budget_max,
+    location: tender.location,
+    deadline: tender.deadline ? new Date(tender.deadline) : null,
+    status: tender.status,
+    publicationDate: tender.publication_date
+      ? new Date(tender.publication_date)
+      : new Date(),
+    contactInfo: tender.contact_info,
+    requirements: tender.requirements ?? {
+      sectors: tender.cpv_codes,
+      location: tender.location.split(",")[1]?.trim() || "UK",
+      deadline: tender.deadline,
+    },
+    documents: tender.documents ?? {
+      specification_url: `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`,
+      application_url: `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`,
+    },
+  };
 }
 
 // Transform OCDS release data to our tender format
@@ -148,7 +202,6 @@ async function fetchFromFindTenderAPI(
 ): Promise<Record<string, unknown>> {
   const params = new URLSearchParams();
 
-  // For admins, allow unlimited fetching by using maximum API limit
   if (isAdmin) {
     params.append("limit", "100");
   } else {
@@ -161,14 +214,12 @@ async function fetchFromFindTenderAPI(
     params.append("cursor", cursor);
   }
 
-  // Apply date filters if provided
   if (filters?.dateFrom) {
     params.append(
       "updatedFrom",
       new Date(filters.dateFrom as string).toISOString().slice(0, 19),
     );
   } else {
-    // Default to last 30 days if no date filter
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     params.append("updatedFrom", thirtyDaysAgo.toISOString().slice(0, 19));
@@ -193,7 +244,6 @@ async function fetchFromFindTenderAPI(
   });
 
   if (!response.ok) {
-    // Preserve 429 status for rate limiting detection
     if (response.status === 429) {
       const error: Error & { status?: number } = new Error(
         `Rate limited (429): ${response.statusText}. Please wait before retrying.`,
@@ -212,7 +262,6 @@ async function fetchFromFindTenderAPI(
     `Received ${releasesCount} releases from API (Admin: ${isAdmin})`,
   );
 
-  // Log pagination info for debugging
   if (data.links?.next) {
     console.log("Next page available:", data.links.next.href);
   } else {
@@ -271,23 +320,23 @@ export async function POST(request: NextRequest) {
     );
 
     // Transform OCDS releases to our tender format
-    let tenders: TenderData[] = [];
+    let tendersData: TenderData[] = [];
     const releases = ocdsData.releases as
       | Array<Record<string, unknown>>
       | undefined;
     if (releases && releases.length > 0) {
-      tenders = releases.map((release) =>
+      tendersData = releases.map((release) =>
         transformOCDSToTender(release, release.ocid as string),
       );
     }
 
     // Apply additional filters to transformed data
-    let filteredTenders = tenders;
+    let filteredTenders = tendersData;
 
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filteredTenders = tenders.filter(
+      filteredTenders = tendersData.filter(
         (tender) =>
           tender.title.toLowerCase().includes(searchLower) ||
           tender.description.toLowerCase().includes(searchLower) ||
@@ -309,68 +358,49 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `Returning ${filteredTenders.length} tenders from Find a Tender API (admin: ${isAdmin}, total fetched: ${tenders.length})`,
+      `Returning ${filteredTenders.length} tenders from Find a Tender API (admin: ${isAdmin}, total fetched: ${tendersData.length})`,
     );
 
     // If admin is importing, also save to database with duplicate prevention
     if (adminImport && isAdmin && filteredTenders.length > 0) {
-      const supabase = createAdminClient();
-
-      const tendersToInsert = filteredTenders.map((tender) => ({
-        reference_number: tender.reference_number,
-        title: tender.title,
-        buyer: tender.buyer,
-        cpv_codes: tender.cpv_codes,
-        description: tender.description,
-        budget_min: tender.budget_min,
-        budget_max: tender.budget_max,
-        location: tender.location,
-        deadline: tender.deadline,
-        status: tender.status,
-        publication_date: tender.publication_date,
-        contact_info: tender.contact_info,
-        requirements: {
-          sectors: tender.cpv_codes,
-          location: tender.location.split(",")[1]?.trim() || "UK",
-          deadline: tender.deadline,
-        },
-        documents: {
-          specification_url: `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`,
-          application_url: `https://www.find-tender.service.gov.uk/Notice/${tender.external_id}?origin=SearchResults&p=1`,
-        },
-      }));
+      const tendersToInsert: TenderInsert[] = filteredTenders.map(mapTenderToInsert);
 
       // Check for existing tenders to avoid duplicates
-      const { data: existingTenders } = await supabase
-        .from("tenders")
-        .select("reference_number, id")
-        .in(
-          "reference_number",
-          tendersToInsert.map((t) => t.reference_number),
-        );
+      const refNumbers = tendersToInsert.map((t) => t.referenceNumber).filter(Boolean) as string[];
+      let existingRefs = new Map<string | null, string>();
 
-      const existingRefs = new Map(
-        existingTenders?.map((t) => [t.reference_number, t.id]) || [],
-      );
+      if (refNumbers.length > 0) {
+        const existingTenders = await db
+          .select({ referenceNumber: tenders.referenceNumber, id: tenders.id })
+          .from(tenders)
+          .where(inArray(tenders.referenceNumber, refNumbers));
+
+        existingRefs = new Map(
+          existingTenders.map((t) => [t.referenceNumber, t.id]),
+        );
+      }
+
       const newTenders = tendersToInsert.filter(
-        (t) => !existingRefs.has(t.reference_number),
+        (t) => !existingRefs.has(t.referenceNumber ?? null),
       );
       const duplicatesCount = tendersToInsert.length - newTenders.length;
 
       if (newTenders.length > 0) {
-        const { data: insertedTenders, error: insertError } = await supabase
-          .from("tenders")
-          .upsert(
-            newTenders as unknown as Database["public"]["Tables"]["tenders"]["Insert"][],
-            { onConflict: "reference_number" },
-          )
-          .select(
-            "id, reference_number, title, description, buyer, cpv_codes, location",
-          );
+        try {
+          const insertedTenders = await db
+            .insert(tenders)
+            .values(newTenders)
+            .onConflictDoNothing()
+            .returning({
+              id: tenders.id,
+              referenceNumber: tenders.referenceNumber,
+              title: tenders.title,
+              description: tenders.description,
+              buyer: tenders.buyer,
+              cpvCodes: tenders.cpvCodes,
+              location: tenders.location,
+            });
 
-        if (insertError) {
-          console.error("Error importing tenders:", insertError);
-        } else {
           console.log(
             `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`,
           );
@@ -384,9 +414,9 @@ export async function POST(request: NextRequest) {
               source: "find_tender_api",
               importedCount: newTenders.length,
               duplicatesSkipped: duplicatesCount,
-              totalFetched: tenders.length,
+              totalFetched: tendersData.length,
             },
-          }).catch(() => {}); // Don't fail if logging fails
+          }).catch(() => {});
 
           // Queue AI processing jobs for new tenders
           if (insertedTenders && insertedTenders.length > 0) {
@@ -394,12 +424,9 @@ export async function POST(request: NextRequest) {
               `${insertedTenders.length} tenders ready for AI analysis`,
             );
 
-            // Queue summary and taxonomy jobs for each new tender
             const { enqueueBatch } =
               await import("@/lib/services/queueService");
-            const tenderIds = (
-              (insertedTenders as unknown as { id: string }[]) || []
-            ).map((t) => t.id);
+            const tenderIds = insertedTenders.map((t) => t.id);
 
             const jobs = tenderIds.map((tenderId) => ({
               jobType: "tender_ai_complete" as const,
@@ -415,9 +442,10 @@ export async function POST(request: NextRequest) {
               );
             } catch (queueError) {
               console.error("Failed to queue AI processing jobs:", queueError);
-              // Don't fail the import if queueing fails
             }
           }
+        } catch (insertError) {
+          console.error("Error importing tenders:", insertError);
         }
       } else {
         console.log(
@@ -426,14 +454,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Extract pagination info from OCDS response
-      // Note: links.next can be either a string (URL) or an object with href property
       const links = ocdsData.links as
         | Record<string, string | { href?: string }>
         | undefined;
 
       let nextCursor: string | null = null;
 
-      // Handle both cases: links.next as string or as object with href
       const nextUrlString =
         typeof links?.next === "string"
           ? links.next
@@ -452,40 +478,35 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Return actual imported count (newTenders) not filteredTenders
       const actuallyImported = newTenders.length;
 
-      // If we got exactly 100 results (the API limit), there might be more pages
-      // even if nextCursor is not explicitly provided
-      const gotMaxResults = tenders.length >= 100;
+      const gotMaxResults = tendersData.length >= 100;
       const hasMorePages = (!!nextCursor || gotMaxResults) && isAdmin;
 
       console.log(
-        `Pagination: hasMore=${hasMorePages}, nextCursor=${nextCursor}, gotMaxResults=${gotMaxResults}, isAdmin=${isAdmin}, tenders.length=${tenders.length}`,
+        `Pagination: hasMore=${hasMorePages}, nextCursor=${nextCursor}, gotMaxResults=${gotMaxResults}, isAdmin=${isAdmin}, tenders.length=${tendersData.length}`,
       );
 
       return apiResponse({
-        tenders: filteredTenders, // Still return all filtered tenders for display
+        tenders: filteredTenders.map(toFeedRecord),
         total: filteredTenders.length,
-        totalFetched: tenders.length, // Total fetched from API
-        actuallyImported: actuallyImported, // Actually saved to DB
+        totalFetched: tendersData.length,
+        actuallyImported: actuallyImported,
         hasMore: hasMorePages,
         nextCursor: isAdmin ? nextCursor : null,
         isAdmin,
         source: "find_tender_api",
-        duplicatesSkipped: duplicatesCount, // Actual duplicates from DB check
+        duplicatesSkipped: duplicatesCount,
       });
     }
 
     // Extract pagination info from OCDS response (when not importing)
-    // Note: links.next can be either a string (URL) or an object with href property
     const links = ocdsData.links as
       | Record<string, string | { href?: string }>
       | undefined;
 
     let nextCursor: string | null = null;
 
-    // Handle both cases: links.next as string or as object with href
     const nextUrlString =
       typeof links?.next === "string"
         ? links.next
@@ -501,9 +522,9 @@ export async function POST(request: NextRequest) {
     }
 
     return apiResponse({
-      tenders: filteredTenders,
+      tenders: filteredTenders.map(toFeedRecord),
       total: filteredTenders.length,
-      totalFetched: tenders.length,
+      totalFetched: tendersData.length,
       hasMore: !!nextCursor && isAdmin,
       nextCursor: isAdmin ? nextCursor : null,
       isAdmin,

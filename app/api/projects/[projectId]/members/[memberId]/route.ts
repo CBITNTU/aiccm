@@ -1,11 +1,14 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { virtualOrganizations, voMembers } from "@/lib/db/schema/app";
+import { eq, and } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -14,42 +17,38 @@ export async function DELETE(
   try {
     const { user } = await requireAuth(request);
     const { projectId, memberId } = await params;
-    const supabase = createAdminClient();
 
     // Verify project ownership
-    const { data: project } = await supabase
-      .from("virtual_organizations")
-      .select("lead_company_id")
-      .eq("id", projectId)
-      .single();
+    const projectRows = await db
+      .select({ leadCompanyId: virtualOrganizations.leadCompanyId })
+      .from(virtualOrganizations)
+      .where(eq(virtualOrganizations.id, projectId))
+      .limit(1);
 
+    const project = projectRows[0];
     if (!project) throw new AuthError("Project not found");
 
-    const hasAccess = await isCompanyMember(user.id, project.lead_company_id);
+    const hasAccess = await isCompanyMember(user.id, project.leadCompanyId);
     if (!hasAccess) {
       throw new AuthError("No access to this project");
     }
 
     // Prevent deleting the lead company
-    const { data: member } = await supabase
-      .from("vo_members")
-      .select("role")
-      .eq("id", memberId)
-      .eq("vo_id", projectId)
-      .single();
+    const memberRows = await db
+      .select({ role: voMembers.role })
+      .from(voMembers)
+      .where(and(eq(voMembers.id, memberId), eq(voMembers.voId, projectId)))
+      .limit(1);
 
+    const member = memberRows[0];
     if (!member) throw new AuthError("Member not found in this project");
     if (member.role === "lead") {
       throw new AuthError("Cannot remove the lead company from the project");
     }
 
-    const { error } = await supabase
-      .from("vo_members")
-      .delete()
-      .eq("id", memberId)
-      .eq("vo_id", projectId);
-
-    if (error) throw error;
+    await db
+      .delete(voMembers)
+      .where(and(eq(voMembers.id, memberId), eq(voMembers.voId, projectId)));
 
     return apiResponse({ success: true });
   } catch (error) {

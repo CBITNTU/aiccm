@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
@@ -8,6 +8,9 @@ import {
   ValidationError,
 } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { voMembers } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function POST(
   request: NextRequest,
@@ -16,7 +19,6 @@ export async function POST(
   try {
     const { user } = await requireAuth(request);
     const { invitationId } = await params;
-    const supabase = createAdminClient();
 
     const body = await request.json();
     const { action, message } = body;
@@ -26,61 +28,52 @@ export async function POST(
     }
 
     // Fetch the invitation
-    const { data: memberRow, error: memberError } = await supabase
-      .from("vo_members")
-      .select("*")
-      .eq("id", invitationId)
-      .single();
+    const memberRows = await db
+      .select()
+      .from(voMembers)
+      .where(eq(voMembers.id, invitationId))
+      .limit(1);
 
-    if (memberError || !memberRow) {
+    const member = memberRows[0];
+    if (!member) {
       throw new ValidationError("Invitation not found");
     }
 
-    const member = memberRow as typeof memberRow & {
-      invitation_status: string | null;
-    };
-
-    if (member.invitation_status !== "sent") {
+    if (member.invitationStatus !== "sent") {
       throw new ValidationError(
-        `Invitation has already been ${member.invitation_status || "pending"}`,
+        `Invitation has already been ${member.invitationStatus || "pending"}`,
       );
     }
 
     // Verify user belongs to the invited company
-    const hasAccess = await isCompanyMember(user.id, member.company_id);
+    const hasAccess = await isCompanyMember(user.id, member.companyId);
     if (!hasAccess) {
       throw new AuthError("You do not have access to this company");
     }
 
     // Update the invitation
-    const now = new Date().toISOString();
+    const now = new Date();
 
     if (action === "accept") {
-       
-      const { error: updateError } = await supabase
-        .from("vo_members")
-        .update({
+      await db
+        .update(voMembers)
+        .set({
           role: "member",
-          invitation_status: "accepted",
-          invitation_responded_at: now,
-          invitation_message: message || null,
-          joined_at: now,
-        } as Record<string, unknown>)
-        .eq("id", invitationId);
-
-      if (updateError) throw updateError;
+          invitationStatus: "accepted",
+          invitationRespondedAt: now,
+          invitationMessage: message || null,
+          joinedAt: now,
+        })
+        .where(eq(voMembers.id, invitationId));
     } else {
-       
-      const { error: updateError } = await supabase
-        .from("vo_members")
-        .update({
-          invitation_status: "rejected",
-          invitation_responded_at: now,
-          invitation_message: message || null,
-        } as Record<string, unknown>)
-        .eq("id", invitationId);
-
-      if (updateError) throw updateError;
+      await db
+        .update(voMembers)
+        .set({
+          invitationStatus: "rejected",
+          invitationRespondedAt: now,
+          invitationMessage: message || null,
+        })
+        .where(eq(voMembers.id, invitationId));
     }
 
     await logApiEvent(request, {
@@ -92,13 +85,13 @@ export async function POST(
       userEmail: user.email || undefined,
       entityType: "vo_member",
       entityId: invitationId,
-      details: { vo_id: member.vo_id, company_id: member.company_id },
+      details: { vo_id: member.voId, company_id: member.companyId },
     }).catch(() => {});
 
     return apiResponse({
       success: true,
       action,
-      projectId: member.vo_id,
+      projectId: member.voId,
     });
   } catch (error) {
     return handleApiError(error);

@@ -94,7 +94,7 @@ export function TeamBuilderPanel({
   };
 
   // Filter out partners that are already team members
-  const teamCompanyIds = new Set(teamMembers.map((m) => m.company_id));
+  const teamCompanyIds = new Set(teamMembers.map((m) => m.companyId));
   const availablePartners = recommendedPartners.filter(
     (p) => !teamCompanyIds.has(p.id),
   );
@@ -151,11 +151,11 @@ export function TeamBuilderPanel({
                       className="border-b last:border-b-0"
                     >
                       <TableCell className="font-medium">
-                        {member.companies?.company_name || "Unknown"}
+                        {member.companies?.companyName || "Unknown"}
                       </TableCell>
                       <TableCell>{getRoleBadge(member.role)}</TableCell>
                       <TableCell className="hidden md:table-cell max-w-xs truncate text-sm text-muted-foreground">
-                        {member.companies?.key_capabilities || "N/A"}
+                        {member.companies?.keyCapabilities || "N/A"}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-sm">
                         {member.companies?.postcode ||
@@ -181,7 +181,7 @@ export function TeamBuilderPanel({
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                   Are you sure you want to remove{" "}
-                                  {member.companies?.company_name} from the
+                                  {member.companies?.companyName} from the
                                   team?
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
@@ -191,7 +191,7 @@ export function TeamBuilderPanel({
                                   onClick={() =>
                                     handleRemoveMember(
                                       member.id,
-                                      member.companies?.company_name ||
+                                      member.companies?.companyName ||
                                         "Partner",
                                     )
                                   }
@@ -232,7 +232,7 @@ export function TeamBuilderPanel({
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <h5 className="font-semibold">{partner.company_name}</h5>
+                    <h5 className="font-semibold">{partner.companyName}</h5>
                     <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                       <MapPin className="h-3 w-3" />
                       {partner.location}
@@ -306,7 +306,7 @@ export function TeamBuilderPanel({
         open={searchDialogOpen}
         onOpenChange={setSearchDialogOpen}
         onAddCompany={handleAddCompany}
-        excludeCompanyIds={teamMembers.map((m) => m.company_id)}
+        excludeCompanyIds={teamMembers.map((m) => m.companyId)}
       />
     </div>
   );

@@ -1,11 +1,9 @@
 import { NextRequest } from "next/server";
-import {
-  createAdminClient,
-  apiResponse,
-  apiError,
-  getAuthenticatedUser,
-} from "@/lib/api";
+import { apiResponse, apiError, getAuthenticatedUser } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { userRoles, companyMembers, profiles } from "@/lib/db/schema/app";
+import { eq, and, count } from "drizzle-orm";
 
 export interface RemoveMemberRequest {
   memberId: string;
@@ -33,63 +31,75 @@ export async function DELETE(request: NextRequest) {
       return apiError("Member ID and Company ID are required", 400);
     }
 
-    const supabase = createAdminClient();
-
     // Check if user is SME owner
-    const { data: userRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "sme-owner")
-      .single();
+    const userRoleResult = await db
+      .select({ role: userRoles.role })
+      .from(userRoles)
+      .where(and(eq(userRoles.userId, user.id), eq(userRoles.role, "sme-owner")))
+      .limit(1);
 
-    if (!userRole) {
+    if (!userRoleResult[0]) {
       return apiError("Only SME owners can remove team members", 403);
     }
 
     // Check if user is admin of this company
-    const { data: membership } = await supabase
-      .from("company_members")
-      .select("role, status")
-      .eq("company_id", companyId)
-      .eq("user_id", user.id)
-      .single();
+    const membershipResult = await db
+      .select({ role: companyMembers.role, status: companyMembers.status })
+      .from(companyMembers)
+      .where(
+        and(
+          eq(companyMembers.companyId, companyId),
+          eq(companyMembers.userId, user.id),
+        ),
+      )
+      .limit(1);
 
-    if (
-      !membership ||
-      membership.role !== "admin" ||
-      membership.status !== "approved"
-    ) {
+    const membership = membershipResult[0];
+    if (!membership || membership.role !== "admin" || membership.status !== "approved") {
       return apiError("You are not an admin of this company", 403);
     }
 
     // Get the member to be removed
-    const { data: memberToRemove, error: memberError } = await supabase
-      .from("company_members")
-      .select("id, user_id, role, status")
-      .eq("id", memberId)
-      .eq("company_id", companyId)
-      .single();
+    const memberResult = await db
+      .select({
+        id: companyMembers.id,
+        userId: companyMembers.userId,
+        role: companyMembers.role,
+        status: companyMembers.status,
+      })
+      .from(companyMembers)
+      .where(
+        and(
+          eq(companyMembers.id, memberId),
+          eq(companyMembers.companyId, companyId),
+        ),
+      )
+      .limit(1);
 
-    if (memberError || !memberToRemove) {
+    const memberToRemove = memberResult[0];
+    if (!memberToRemove) {
       return apiError("Member not found", 404);
     }
 
     // Cannot remove yourself
-    if (memberToRemove.user_id === user.id) {
+    if (memberToRemove.userId === user.id) {
       return apiError("You cannot remove yourself from the company", 400);
     }
 
     // Check if this would leave the company without admins
     if (memberToRemove.role === "admin") {
-      const { data: adminCount } = await supabase
-        .from("company_members")
-        .select("id", { count: "exact" })
-        .eq("company_id", companyId)
-        .eq("role", "admin")
-        .eq("status", "approved");
+      const adminCountResult = await db
+        .select({ count: count() })
+        .from(companyMembers)
+        .where(
+          and(
+            eq(companyMembers.companyId, companyId),
+            eq(companyMembers.role, "admin"),
+            eq(companyMembers.status, "approved"),
+          ),
+        );
 
-      if (adminCount && adminCount.length <= 1) {
+      if (adminCountResult[0] && adminCountResult[0].count <= 1) {
         return apiError(
           "Cannot remove the only admin. Promote another member to admin first.",
           400,
@@ -98,22 +108,18 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete the member
-    const { error: deleteError } = await supabase
-      .from("company_members")
-      .delete()
-      .eq("id", memberId);
-
-    if (deleteError) {
-      console.error("Error removing member:", deleteError);
-      return apiError("Failed to remove member", 500);
-    }
+    await db.delete(companyMembers).where(eq(companyMembers.id, memberId));
 
     // Also clear invited_to_company_id if set
-    await supabase
-      .from("profiles")
-      .update({ invited_to_company_id: null })
-      .eq("user_id", memberToRemove.user_id)
-      .eq("invited_to_company_id", companyId);
+    await db
+      .update(profiles)
+      .set({ invitedToCompanyId: null })
+      .where(
+        and(
+          eq(profiles.userId, memberToRemove.userId),
+          eq(profiles.invitedToCompanyId, companyId),
+        ),
+      );
 
     await logApiEvent(request, {
       actionType: "company_member_removed",

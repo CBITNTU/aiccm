@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createApiClient } from "@/lib/api";
+import { getAuthenticatedUser, checkSuperadminRole } from "@/lib/api";
 import { getQueueStats } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function GET(request: NextRequest) {
   try {
-    const stats = await getQueueStats();
-
-    let userId: string | undefined;
-    try {
-      const supabaseAuth = await createApiClient();
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Optional auth
+    const { user } = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
     }
+    const isAdmin = await checkSuperadminRole(user.id);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: Superadmin access required" },
+        { status: 403 },
+      );
+    }
+
+    const stats = await getQueueStats();
 
     await logApiEvent(request, {
       actionType: "queue_stats_viewed",
-      userId: userId || undefined,
+      userId: user.id,
     }).catch(() => {});
 
     return NextResponse.json({ success: true, stats });

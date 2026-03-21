@@ -30,12 +30,13 @@ import {
 
 interface User {
   id: string;
+  profileId?: string;
   email: string;
-  created_at: string;
-  last_sign_in_at: string;
+  createdAt: string;
+  lastSignInAt: string;
   role?: "superadmin" | "sme-owner";
-  first_name?: string | null;
-  last_name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
 }
 
 export default function AdminUsers() {
@@ -84,19 +85,20 @@ export default function AdminUsers() {
       const { profiles, roles } = await api.adminListUsers();
 
       const roleMap = new Map(
-        roles?.map((ur: any) => [ur.user_id, ur.role]),
+        roles?.map((ur: any) => [ur.userId, ur.role]),
       );
 
       const formattedUsers: User[] =
         profiles?.map((profile: any) => ({
-          id: profile.user_id,
+          id: profile.userId,
+          profileId: profile.id,
           email: profile.email || "",
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          created_at: profile.created_at,
-          last_sign_in_at: profile.created_at, // Placeholder, ideally from auth.users
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          createdAt: profile.createdAt,
+          lastSignInAt: profile.createdAt, // Placeholder, ideally from auth.users
           role:
-            (roleMap.get(profile.user_id) as "superadmin" | "sme-owner") ||
+            (roleMap.get(profile.userId) as "superadmin" | "sme-owner") ||
             "sme-owner",
         })) || [];
 
@@ -178,7 +180,7 @@ export default function AdminUsers() {
   const filteredUsers = users.filter(
     (u) =>
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${u.first_name} ${u.last_name}`
+      `${u.firstName} ${u.lastName}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase()),
   );
@@ -260,11 +262,11 @@ export default function AdminUsers() {
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((userData) => (
-                  <TableRow key={userData.id}>
+                  <TableRow key={userData.profileId || userData.id}>
                     <TableCell>
                       <div className="font-medium">
-                        {userData.first_name && userData.last_name
-                          ? `${userData.first_name} ${userData.last_name}`
+                        {userData.firstName && userData.lastName
+                          ? `${userData.firstName} ${userData.lastName}`
                           : "No name"}
                       </div>
                     </TableCell>
@@ -287,7 +289,7 @@ export default function AdminUsers() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(userData.created_at).toLocaleDateString()}
+                      {new Date(userData.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
@@ -393,14 +395,14 @@ export default function AdminUsers() {
                     <TableRow key={event.id}>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {event.action_type?.replace(/_/g, " ")}
+                          {event.actionType?.replace(/_/g, " ")}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {event.entity_type && event.entity_id ? (
+                        {event.entityType && event.entityId ? (
                           <span className="text-sm">
-                            {event.entity_type}:{" "}
-                            {event.entity_id.substring(0, 8)}...
+                            {event.entityType}:{" "}
+                            {event.entityId.substring(0, 8)}...
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-sm">
@@ -422,7 +424,7 @@ export default function AdminUsers() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(event.created_at).toLocaleString()}
+                        {new Date(event.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
                         {event.details &&

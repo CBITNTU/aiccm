@@ -9,7 +9,7 @@
 
 | Area                    | Status     | Notes                                                              |
 | ----------------------- | ---------- | ------------------------------------------------------------------ |
-| **Architecture**        | ✅ Good    | Next.js 16, React 19, Supabase, clear app/api/components split     |
+| **Architecture**        | ✅ Good    | Next.js 16, React 19, PostgreSQL, Better-Auth, Drizzle, clear app/api/components split |
 | **Auth & API security** | ✅ Good    | requireAuth/getAuthenticatedUser used widely; admin checks present |
 | **Input validation**    | ⚠️ Partial | Zod used in some routes; not all API routes validate body with Zod |
 | **Event logging**       | ✅ Good    | Central eventLogger with typed actions; used in many routes        |
@@ -22,7 +22,7 @@
 ## 2. Architecture & Stack
 
 - **Framework:** Next.js 16.0.10, React 19.2.1, TypeScript 5.9
-- **Backend:** Supabase (PostgreSQL, Auth, RLS)
+- **Backend:** PostgreSQL + Better-Auth + Drizzle ORM
 - **UI:** shadcn/ui, Radix, Tailwind 4, Framer Motion
 - **Data:** TanStack Query, `lib/api/client.ts` + hooks in `hooks/`
 - **AI:** `ai` SDK, `llmLimiter`, provider-agnostic `aiGenerateObject`-style usage
@@ -44,13 +44,13 @@
 - **Zod:** Used in `analyze-team`, `prefill-company-data`, and similar; `validateBody(request, schema)` in `lib/api/validation.ts`.
 - **SSRF:** `validateUrl()` in validation.ts restricts URLs (HTTPS, no private IPs); used in prefill-company-data.
 - **Sanitization:** `sanitizeTextInput()` exists; not used everywhere. No project-wide sanitization for all string inputs.
-- **Supabase:** Parameterized queries via client; no raw SQL string concatenation observed.
+- **Drizzle:** Parameterized queries via ORM; no raw SQL string concatenation observed.
 
 **Recommendation:** Use Zod (or validateBody) for every POST/PUT body and sanitize/validate query params and path params where they affect behavior.
 
 ### 3.3 Secrets & Env
 
-- Service role key used only in `createAdminClient()` (server-side).
+- DATABASE_URL and BETTER_AUTH_SECRET used server-side only.
 - No secrets in repo; `.env.local` in .gitignore. CLAUDE.md documents required env vars.
 
 ---
@@ -77,7 +77,7 @@
 ## 6. Code Quality
 
 - **Lint:** ESLint (eslint-config-next). No TODO/FIXME/HACK counts run in this audit.
-- **TypeScript:** Strict; Supabase types from `lib/supabase/types`.
+- **TypeScript:** Strict; Drizzle schema types from `lib/db/schema`.
 - **Docs:** CLAUDE.md, PROJECT*STATUS.md, PROJECT_REFERENCE.md, EVENT_LOGGING*\*.md.
 
 ---
@@ -87,7 +87,7 @@
 The following rules were added under `.cursor/rules/` to encode project patterns:
 
 1. **api-conventions.mdc** – Use `apiResponse`/`apiError`, `requireAuth`, validate body with Zod, call `logApiEvent` for significant actions.
-2. **typescript-standards.mdc** – Prefer `async/await`, typed errors, avoid `any`; use Supabase types.
+2. **typescript-standards.mdc** – Prefer `async/await`, typed errors, avoid `any`; use Drizzle schema types.
 3. **react-patterns.mdc** – Functional components, hooks in `hooks/`, TanStack Query for server state, shadcn/ui for UI.
 
 These keep AI assistance aligned with existing patterns and security expectations.

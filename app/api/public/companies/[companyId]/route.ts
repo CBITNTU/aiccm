@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { handleApiError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies, companyTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { eq, and, isNotNull } from "drizzle-orm";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,36 +19,56 @@ export async function GET(
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
-    const supabase = createAdminClient();
-
-    const { data, error } = await supabase
-      .from("companies")
-      .select(
-        `id, company_name, description, key_capabilities, postcode,
-         certifications, past_projects, is_system_company,
-         status, digital_maturity,
-         ai_competencies, ai_capabilities, ai_analysis,
-         created_at, updated_at, website_url`,
+    const companyResult = await db
+      .select({
+        id: companies.id,
+        companyName: companies.companyName,
+        description: companies.description,
+        keyCapabilities: companies.keyCapabilities,
+        postcode: companies.postcode,
+        certifications: companies.certifications,
+        equipment: companies.equipment,
+        pastProjects: companies.pastProjects,
+        isSystemCompany: companies.isSystemCompany,
+        status: companies.status,
+        marketPosition: companies.marketPosition,
+        safetyRating: companies.safetyRating,
+        digitalMaturity: companies.digitalMaturity,
+        aiCompetencies: companies.aiCompetencies,
+        aiCapabilities: companies.aiCapabilities,
+        aiAnalysis: companies.aiAnalysis,
+        createdAt: companies.createdAt,
+        updatedAt: companies.updatedAt,
+        websiteUrl: companies.websiteUrl,
+      })
+      .from(companies)
+      .where(
+        and(
+          eq(companies.id, companyId),
+          eq(companies.status, "active"),
+          isNotNull(companies.userId),
+        ),
       )
-      .eq("id", companyId)
-      .eq("status", "active")
-      .not("user_id", "is", null)
-      .single();
+      .limit(1);
 
-    if (error || !data) {
+    const company = companyResult[0] ?? null;
+    if (!company) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
-    const { data: taxData } = await supabase
-      .from("company_taxonomies")
-      .select("taxonomy_id, taxonomies(id, name)")
-      .eq("company_id", companyId);
+    // Fetch taxonomies via join
+    const taxData = await db
+      .select({
+        id: taxonomies.id,
+        name: taxonomies.name,
+      })
+      .from(companyTaxonomies)
+      .innerJoin(taxonomies, eq(companyTaxonomies.taxonomyId, taxonomies.id))
+      .where(eq(companyTaxonomies.companyId, companyId));
 
-    const taxonomies = (taxData || [])
-      .map((ct) => ct.taxonomies as { id: string; name: string } | null)
-      .filter((t): t is { id: string; name: string } => t !== null && !!t.name);
+    const filteredTaxonomies = taxData.filter((t) => !!t.name);
 
-    return apiResponse({ company: data, taxonomies });
+    return apiResponse({ company, taxonomies: filteredTaxonomies });
   } catch (error) {
     return handleApiError(error);
   }

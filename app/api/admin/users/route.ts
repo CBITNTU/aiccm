@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient, checkSuperadminRole } from "@/lib/api";
+import { apiResponse, checkSuperadminRole } from "@/lib/api";
 import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import { desc } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { profiles, userRoles } from "@/lib/db/schema/app";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,23 +11,16 @@ export async function GET(request: NextRequest) {
     const isAdmin = await checkSuperadminRole(user.id);
     if (!isAdmin) throw new AuthError("Admin access required");
 
-    const supabase = createAdminClient();
-
-    // Fetch all profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*");
-
-    if (profilesError) throw profilesError;
+    // Fetch all profiles, deduplicated by user_id (keep most recent)
+    const allProfiles = await db
+      .selectDistinctOn([profiles.userId])
+      .from(profiles)
+      .orderBy(profiles.userId, desc(profiles.createdAt));
 
     // Fetch all roles
-    const { data: roles, error: rolesError } = await supabase
-      .from("user_roles")
-      .select("*");
+    const allRoles = await db.select().from(userRoles);
 
-    if (rolesError) throw rolesError;
-
-    return apiResponse({ profiles: profiles || [], roles: roles || [] });
+    return apiResponse({ profiles: allProfiles, roles: allRoles });
   } catch (error) {
     return handleApiError(error);
   }

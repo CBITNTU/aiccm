@@ -42,27 +42,27 @@ const DEFAULT_FILTERS: MatchingFiltersState = {
 
 interface MatchingResult {
   id: string;
-  tender_id: string;
-  company_id: string;
-  overall_score: number;
-  capability_score: number;
-  experience_score: number;
-  location_score: number;
-  certification_score: number;
-  match_reasons: string[];
-  improvement_suggestions: string[];
-  ai_analysis: Record<string, unknown>;
-  is_bookmarked: boolean;
-  is_applied: boolean;
-  created_at: string;
+  tenderId: string;
+  companyId: string;
+  overallScore: number;
+  capabilityScore: number;
+  experienceScore: number;
+  locationScore: number;
+  certificationScore: number;
+  matchReasons: string[] | null;
+  improvementSuggestions: string[];
+  aiAnalysis: Record<string, unknown>;
+  isBookmarked: boolean;
+  isApplied: boolean;
+  createdAt: string;
   tenders: {
     title: string;
     buyer: string;
     description: string;
     location: string;
     deadline: string;
-    budget_min: number;
-    budget_max: number;
+    budgetMin: number;
+    budgetMax: number;
     status: string;
   };
 }
@@ -251,7 +251,7 @@ export function TenderMatching({
 
         const data = await response.json();
 
-        if (!data.batch_id || data.total_jobs === undefined) {
+        if (!data.batchId || data.totalJobs === undefined) {
           console.error("Invalid progress response:", data);
           return;
         }
@@ -271,12 +271,12 @@ export function TenderMatching({
         }
 
         const progressData = {
-          batchId: data.batch_id,
-          totalJobs: data.total_jobs || 0,
-          completedJobs: data.completed_jobs || 0,
-          failedJobs: data.failed_jobs || 0,
+          batchId: data.batchId,
+          totalJobs: data.totalJobs || 0,
+          completedJobs: data.completedJobs || 0,
+          failedJobs: data.failedJobs || 0,
           status: data.status || "processing",
-          progressPercent: data.progress_percent || 0,
+          progressPercent: data.progressPercent || 0,
         };
 
         console.log(
@@ -447,39 +447,39 @@ export function TenderMatching({
 
       if (data.status === "already_running") {
         console.log(
-          `ℹ️ Batch ${data.batch_id} already running for this company`,
+          `ℹ️ Batch ${data.batchId} already running for this company`,
         );
         toast.info("Matching already in progress - resuming...");
       } else {
         console.log(
-          `✅ Created new batch: ${data.batch_id} (${data.total_tenders} tenders)`,
+          `✅ Created new batch: ${data.batchId} (${data.totalTenders} tenders)`,
         );
-        toast.success(`Matching started: ${data.total_tenders} tenders queued`);
+        toast.success(`Matching started: ${data.totalTenders} tenders queued`);
       }
 
-      if (data.batch_id && companyId) {
+      if (data.batchId && companyId) {
         const existingBatchId = localStorage.getItem(
           `matching_batch_${companyId}`,
         );
-        if (existingBatchId && existingBatchId !== data.batch_id) {
+        if (existingBatchId && existingBatchId !== data.batchId) {
           console.log(
-            `🔄 Switching from batch ${existingBatchId} to ${data.batch_id}`,
+            `🔄 Switching from batch ${existingBatchId} to ${data.batchId}`,
           );
         }
-        localStorage.setItem(`matching_batch_${companyId}`, data.batch_id);
+        localStorage.setItem(`matching_batch_${companyId}`, data.batchId);
       }
 
       setMatchingProgress({
-        batchId: data.batch_id,
-        totalJobs: data.total_tenders,
+        batchId: data.batchId,
+        totalJobs: data.totalTenders,
         completedJobs: 0,
         failedJobs: 0,
         status: "processing",
         progressPercent: 0,
       });
 
-      if (data.batch_id) {
-        checkMatchingProgress(data.batch_id);
+      if (data.batchId) {
+        checkMatchingProgress(data.batchId);
       }
     } catch (error) {
       console.error("Error starting matching:", error);
@@ -644,11 +644,11 @@ export function TenderMatching({
                 result={result}
                 onViewDetails={() => {
                   router.push(
-                    `/tenders/${result.tender_id}?companyId=${companyId}`,
+                    `/tenders/${result.tenderId}?companyId=${companyId}`,
                   );
                 }}
                 onBookmark={() =>
-                  toggleBookmark(result.id, result.is_bookmarked)
+                  toggleBookmark(result.id, result.isBookmarked)
                 }
                 onDelete={() => deleteResult(result.id)}
                 isDeleting={deleting === result.id}

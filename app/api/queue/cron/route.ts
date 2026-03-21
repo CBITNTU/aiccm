@@ -1,6 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- processing_queue, batch_jobs not in generated types */
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/api";
+import { db } from "@/lib/db";
+import { processingQueue } from "@/lib/db/schema/app";
+import { eq, and, lt, inArray } from "drizzle-orm";
 
 /**
  * Cron endpoint to maintain queue health:
@@ -26,7 +27,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const supabase = createAdminClient();
     const results: {
       stuckJobsReset: number;
       workerTriggered: boolean;
@@ -42,53 +42,49 @@ export async function GET(request: NextRequest) {
     // 1. Find and reset stuck jobs (processing for > STUCK_JOB_TIMEOUT_MINUTES)
     const stuckThreshold = new Date(
       Date.now() - STUCK_JOB_TIMEOUT_MINUTES * 60 * 1000,
-    ).toISOString();
+    );
 
-    const { data: stuckJobs, error: stuckError } = await supabase
-      .from("processing_queue" as any)
-      .update({
+    const stuckJobs = await db
+      .update(processingQueue)
+      .set({
         status: "pending",
-        started_at: null,
-        updated_at: new Date().toISOString(),
-        error_message: `Reset by cron: was stuck in processing for > ${STUCK_JOB_TIMEOUT_MINUTES} minutes`,
+        startedAt: null,
+        updatedAt: new Date(),
+        errorMessage: `Reset by cron: was stuck in processing for > ${STUCK_JOB_TIMEOUT_MINUTES} minutes`,
       })
-      .eq("status", "processing")
-      .lt("started_at", stuckThreshold)
-      .select("id");
+      .where(
+        and(
+          eq(processingQueue.status, "processing"),
+          lt(processingQueue.startedAt, stuckThreshold),
+        ),
+      )
+      .returning({ id: processingQueue.id });
 
-    if (stuckError) {
-      console.error("Error resetting stuck jobs:", stuckError);
-    } else {
-      results.stuckJobsReset = stuckJobs?.length || 0;
-      if (results.stuckJobsReset > 0) {
-        console.log(`🔄 Reset ${results.stuckJobsReset} stuck jobs`);
-      }
+    results.stuckJobsReset = stuckJobs.length;
+    if (results.stuckJobsReset > 0) {
+      console.log(`🔄 Reset ${results.stuckJobsReset} stuck jobs`);
     }
 
     // 2. Check queue stats
-    const { data: stats } = await supabase
-      .from("processing_queue" as any)
-      .select("status");
+    const stats = await db
+      .select({ status: processingQueue.status })
+      .from(processingQueue);
 
-    if (stats) {
-      results.pendingJobs = stats.filter(
-        (j: any) => j.status === "pending",
-      ).length;
-      results.processingJobs = stats.filter(
-        (j: any) => j.status === "processing",
-      ).length;
-    }
+    results.pendingJobs = stats.filter((j) => j.status === "pending").length;
+    results.processingJobs = stats.filter((j) => j.status === "processing").length;
 
     // 3. Trigger worker if there are pending jobs
     if (results.pendingJobs > 0) {
-      const baseUrl = process.env.PLATFORM_URL
-        ? process.env.PLATFORM_URL
-        : "http://localhost:3000";
+      const baseUrl = process.env.PLATFORM_URL || "http://localhost:3000";
 
       try {
+        const workerHeaders: Record<string, string> = { "Content-Type": "application/json" };
+        if (process.env.CRON_SECRET) {
+          workerHeaders["x-queue-secret"] = process.env.CRON_SECRET;
+        }
         const workerResponse = await fetch(`${baseUrl}/api/queue/worker`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: workerHeaders,
           body: JSON.stringify({
             batchSize: 50,
             continuous: true,
@@ -114,18 +110,20 @@ export async function GET(request: NextRequest) {
     // 4. Clean up old completed/failed jobs (older than 7 days)
     const cleanupThreshold = new Date(
       Date.now() - 7 * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    );
 
-    const { error: cleanupError, count: cleanedUp } = await supabase
-      .from("processing_queue" as any)
-      .delete()
-      .in("status", ["completed", "failed"])
-      .lt("completed_at", cleanupThreshold);
+    const cleanedUp = await db
+      .delete(processingQueue)
+      .where(
+        and(
+          inArray(processingQueue.status, ["completed", "failed"]),
+          lt(processingQueue.completedAt, cleanupThreshold),
+        ),
+      )
+      .returning({ id: processingQueue.id });
 
-    if (cleanupError) {
-      console.error("Error cleaning up old jobs:", cleanupError);
-    } else if (cleanedUp && cleanedUp > 0) {
-      console.log(`🧹 Cleaned up ${cleanedUp} old completed/failed jobs`);
+    if (cleanedUp.length > 0) {
+      console.log(`🧹 Cleaned up ${cleanedUp.length} old completed/failed jobs`);
     }
 
     return NextResponse.json({

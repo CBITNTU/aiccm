@@ -23,7 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 interface Company {
   id: string;
-  company_name: string;
+  companyName: string;
   postcode?: string | null;
   [key: string]: unknown;
 }
@@ -127,8 +127,8 @@ export function ReviewStep({
       const project = await createProject.mutateAsync({
         name: projectName,
         description: projectDescription || undefined,
-        target_tender_id: selectedTenderId,
-        lead_company_id: leadCompanyId,
+        targetTenderId: selectedTenderId,
+        leadCompanyId: leadCompanyId,
       });
 
       // Add selected companies as members
@@ -138,7 +138,7 @@ export function ReviewStep({
           await api.addProjectMember(project.id as string, company.id);
         } catch (memberError) {
           console.error("Error adding member:", memberError);
-          failedMembers.push(company.company_name);
+          failedMembers.push(company.companyName);
         }
       }
 
@@ -262,7 +262,7 @@ export function ReviewStep({
               >
                 <Building2 className="w-5 h-5 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="font-medium">{company.company_name}</p>
+                  <p className="font-medium">{company.companyName}</p>
                   {company.postcode && (
                     <p className="text-sm text-muted-foreground">
                       {company.postcode}

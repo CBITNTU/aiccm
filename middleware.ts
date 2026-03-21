@@ -1,8 +1,10 @@
 import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { updateSession as betterAuthUpdateSession } from "@/lib/auth/middleware";
+
+export const runtime = "nodejs";
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  return await betterAuthUpdateSession(request);
 }
 
 export const config = {

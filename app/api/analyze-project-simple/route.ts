@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createAdminClient, apiResponse } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import {
@@ -11,13 +11,16 @@ import {
   validateBody,
   handleApiError,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies, tenders } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 function buildGapAnalysisPrompt(
-  company: { company_name: string; key_capabilities?: string | null; certifications?: string | null; past_projects?: string | null; description?: string | null },
-  tender: { title: string; description?: string | null; buyer?: string | null; budget_min?: number | null; budget_max?: number | null; location?: string | null },
+  company: { companyName: string; keyCapabilities?: string | null; certifications?: string | null; pastProjects?: string | null; description?: string | null },
+  tender: { title: string; description?: string | null; buyer?: string | null; budgetMin?: number | null; budgetMax?: number | null; location?: string | null },
 ): string {
-  const budgetStr = tender.budget_min || tender.budget_max
-    ? `£${tender.budget_min?.toLocaleString() ?? "?"} - £${tender.budget_max?.toLocaleString() ?? "?"}`
+  const budgetStr = tender.budgetMin || tender.budgetMax
+    ? `\u00A3${tender.budgetMin?.toLocaleString() ?? "?"} - \u00A3${tender.budgetMax?.toLocaleString() ?? "?"}`
     : "Not specified";
 
   return `You are a tender analysis expert. Analyze this tender requirement against a single company's capabilities to identify gaps.
@@ -28,10 +31,10 @@ Buyer: ${tender.buyer || "Not specified"}
 Value: ${budgetStr}
 Location: ${tender.location || "UK"}
 
-Company: ${company.company_name}
-- Capabilities: ${company.key_capabilities || "Not specified"}
+Company: ${company.companyName}
+- Capabilities: ${company.keyCapabilities || "Not specified"}
 - Certifications: ${company.certifications || "None"}
-- Past Projects: ${company.past_projects || "None"}
+- Past Projects: ${company.pastProjects || "None"}
 - Description: ${company.description || "None"}
 
 Provide a detailed analysis with:
@@ -54,27 +57,40 @@ export async function POST(request: NextRequest) {
       gapAnalysisRequestSchema,
     );
 
-    const supabase = createAdminClient();
-
     // Fetch company data
-    const { data: company, error: companyError } = await supabase
-      .from("companies")
-      .select("company_name, key_capabilities, certifications, past_projects, description")
-      .eq("id", companyId)
-      .single();
+    const companyRows = await db
+      .select({
+        companyName: companies.companyName,
+        keyCapabilities: companies.keyCapabilities,
+        certifications: companies.certifications,
+        pastProjects: companies.pastProjects,
+        description: companies.description,
+      })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
 
-    if (companyError || !company) {
+    const company = companyRows[0];
+    if (!company) {
       return apiResponse({ error: "Company not found" }, 404);
     }
 
     // Fetch tender data
-    const { data: tender, error: tenderError } = await supabase
-      .from("tenders")
-      .select("title, description, buyer, budget_min, budget_max, location")
-      .eq("id", tenderId)
-      .single();
+    const tenderRows = await db
+      .select({
+        title: tenders.title,
+        description: tenders.description,
+        buyer: tenders.buyer,
+        budgetMin: tenders.budgetMin,
+        budgetMax: tenders.budgetMax,
+        location: tenders.location,
+      })
+      .from(tenders)
+      .where(eq(tenders.id, tenderId))
+      .limit(1);
 
-    if (tenderError || !tender) {
+    const tender = tenderRows[0];
+    if (!tender) {
       return apiResponse({ error: "Tender not found" }, 404);
     }
 

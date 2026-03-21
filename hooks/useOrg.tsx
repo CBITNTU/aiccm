@@ -11,9 +11,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyCompanies } from "@/hooks/useMyCompanies";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+import type { CompanyRecord as Company } from "@/lib/api/types";
 
 type MembershipStatus = "owner" | "member" | "pending_join" | "pending_review";
 
@@ -62,7 +60,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { data: rawCompanies, isLoading } = useMyCompanies(user?.id ?? null);
 
   const allCompanies = useMemo(
-    () => (rawCompanies as unknown as CompanyWithMembership[]) ?? [],
+    () => (rawCompanies as CompanyWithMembership[] | undefined) ?? [],
     [rawCompanies],
   );
 

@@ -321,8 +321,8 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
 
   // Get user display info
   const userDisplayName =
-    profile?.first_name && profile?.last_name
-      ? `${profile.first_name} ${profile.last_name}`
+    profile?.firstName && profile?.lastName
+      ? `${profile.firstName} ${profile.lastName}`
       : user?.email?.split("@")[0] || "User";
   const userEmail = user?.email || "";
   const userInitials = userDisplayName.slice(0, 2).toUpperCase();

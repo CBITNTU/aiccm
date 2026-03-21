@@ -1,9 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- queue, matching result types */
-import { createAdminClient, type MatchingModelId } from "@/lib/api";
+ 
+import { type MatchingModelId } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
-
-const supabase = createAdminClient();
+import { db } from "@/lib/db";
+import { companies, tenders, matchingResults, demoMatchingResults } from "@/lib/db/schema/app";
+import { eq, inArray, sql } from "drizzle-orm";
 
 /** Reasoning effort for GPT-5 models: lower = faster, fewer reasoning tokens. */
 export type ReasoningEffort =
@@ -52,78 +53,86 @@ export async function scoreTenderMatch(
   const isDemo = options?.demo === true;
   const batchLabel = options?.batchLabel ?? "User A";
   // Fetch company data with AI-generated summary and taxonomy
-  const { data: company, error: companyError } = await supabase
-    .from("companies" as any)
-    .select(
-      "company_name, description, ai_summary, ai_capability_taxonomy, key_capabilities, certifications, past_projects, postcode",
-    )
-    .eq("id", companyId)
-    .single();
+  const companyRows = await db
+    .select({
+      companyName: companies.companyName,
+      description: companies.description,
+      aiSummary: companies.aiSummary,
+      aiCapabilityTaxonomy: companies.aiCapabilityTaxonomy,
+      keyCapabilities: companies.keyCapabilities,
+      certifications: companies.certifications,
+      pastProjects: companies.pastProjects,
+      postcode: companies.postcode,
+    })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
 
-  if (companyError || !company) {
-    throw new Error(
-      `Failed to fetch company: ${companyError?.message || "Company not found"}`,
-    );
+  const companyData = companyRows[0];
+  if (!companyData) {
+    throw new Error("Failed to fetch company: Company not found");
   }
 
-  const companyData = company as unknown as {
-    company_name: string | null;
-    description: string | null;
-    ai_summary: string | null;
-    ai_capability_taxonomy: string[] | null;
-    key_capabilities: string | null;
-    certifications: string | null;
-    past_projects: string | null;
-    postcode: string | null;
-  };
+  // DEBUG: Company data summary
+  console.log("\n[DEBUG] Company data for", companyData.companyName);
+  console.log("  description:", companyData.description ? `${companyData.description.trim().length} chars` : "MISSING");
+  console.log("  keyCapabilities:", companyData.keyCapabilities ? `${companyData.keyCapabilities.trim().length} chars` : "MISSING");
+  console.log("  aiCapabilityTaxonomy:", Array.isArray(companyData.aiCapabilityTaxonomy) ? `${(companyData.aiCapabilityTaxonomy as string[]).length} items` : "MISSING");
+  console.log("  certifications:", companyData.certifications ? `${companyData.certifications.trim().length} chars` : "MISSING");
+  console.log("  pastProjects:", companyData.pastProjects ? `${companyData.pastProjects.trim().length} chars` : "MISSING");
+  console.log("  postcode:", companyData.postcode || "MISSING");
+  console.log("  aiSummary:", companyData.aiSummary ? `${String(companyData.aiSummary).length} chars` : "MISSING");
 
   // Fetch tender data with AI-generated summary and taxonomy
-  const { data: tender, error: tenderError } = await supabase
-    .from("tenders" as any)
-    .select(
-      "title, description, ai_summary, ai_capability_taxonomy, buyer, budget_min, budget_max, deadline, location, cpv_codes, requirements",
-    )
-    .eq("id", tenderId)
-    .single();
+  const tenderRows = await db
+    .select({
+      title: tenders.title,
+      description: tenders.description,
+      aiSummary: tenders.aiSummary,
+      aiCapabilityTaxonomy: tenders.aiCapabilityTaxonomy,
+      buyer: tenders.buyer,
+      budgetMin: tenders.budgetMin,
+      budgetMax: tenders.budgetMax,
+      deadline: tenders.deadline,
+      location: tenders.location,
+      cpvCodes: tenders.cpvCodes,
+      requirements: tenders.requirements,
+    })
+    .from(tenders)
+    .where(eq(tenders.id, tenderId))
+    .limit(1);
 
-  if (tenderError || !tender) {
-    throw new Error(
-      `Failed to fetch tender: ${tenderError?.message || "Tender not found"}`,
-    );
+  const tenderData = tenderRows[0];
+  if (!tenderData) {
+    throw new Error("Failed to fetch tender: Tender not found");
   }
 
-  const tenderData = tender as unknown as {
-    title: string | null;
-    description: string | null;
-    ai_summary: string | null;
-    ai_capability_taxonomy: string[] | null;
-    buyer: string | null;
-    budget_min: number | null;
-    budget_max: number | null;
-    deadline: string | null;
-    location: string | null;
-    cpv_codes: string[] | null;
-    requirements: unknown;
-  };
+  // DEBUG: Tender data summary
+  console.log("[DEBUG] Tender data for", tenderData.title);
+  console.log("  description:", tenderData.description ? `${tenderData.description.length} chars` : "MISSING");
+  console.log("  buyer:", tenderData.buyer || "MISSING");
+  console.log("  location:", tenderData.location || "MISSING");
+  console.log("  cpvCodes:", tenderData.cpvCodes?.length ?? 0, "codes");
+  console.log("  budget:", tenderData.budgetMin, "-", tenderData.budgetMax);
 
   // Format budget range
   const budgetRange =
-    tenderData.budget_min || tenderData.budget_max
-      ? `£${tenderData.budget_min ? tenderData.budget_min.toLocaleString() : "?"} - £${tenderData.budget_max ? tenderData.budget_max.toLocaleString() : "?"}`
+    tenderData.budgetMin || tenderData.budgetMax
+      ? `£${tenderData.budgetMin ? tenderData.budgetMin.toLocaleString() : "?"} - £${tenderData.budgetMax ? tenderData.budgetMax.toLocaleString() : "?"}`
       : "Not specified";
 
   // Check data completeness for company
   const hasCapabilities =
     !!(
-      companyData.key_capabilities &&
-      companyData.key_capabilities.trim().length > 10
+      companyData.keyCapabilities &&
+      companyData.keyCapabilities.trim().length > 10
     ) ||
     !!(
-      companyData.ai_capability_taxonomy &&
-      companyData.ai_capability_taxonomy.length > 0
+      companyData.aiCapabilityTaxonomy &&
+      (companyData.aiCapabilityTaxonomy as string[]).length > 0
     );
   const hasExperience = !!(
-    companyData.past_projects && companyData.past_projects.trim().length > 20
+    companyData.pastProjects && companyData.pastProjects.trim().length > 20
   );
   const hasCertifications = !!(
     companyData.certifications && companyData.certifications.trim().length > 5
@@ -142,6 +151,9 @@ export async function scoreTenderMatch(
   ].filter(Boolean).length;
   const _isMinimalData = dataPoints < 3;
   void _isMinimalData;
+
+  // DEBUG: Data completeness flags
+  console.log("[DEBUG] Data completeness:", { hasCapabilities, hasExperience, hasCertifications, hasLocation, hasDescription, dataPoints });
 
   const systemPrompt = `You are an expert at evaluating company-tender matches.
 
@@ -162,11 +174,11 @@ For improvementSuggestions: Provide 2-3 SHORT, ACTIONABLE suggestions for improv
 
 FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate capability 0-100. Then rate certification, experience, location 0-100.`;
 
-  const userPrompt = `Company: ${companyData.company_name || "N/A"}
+  const userPrompt = `Company: ${companyData.companyName || "N/A"}
 ${hasDescription ? `Description: ${companyData.description}` : "Description: NOT PROVIDED"}
-${hasCapabilities ? (companyData.key_capabilities ? `Capabilities: ${companyData.key_capabilities}` : "") : "Capabilities: NOT PROVIDED"}
+${hasCapabilities ? (companyData.keyCapabilities ? `Capabilities: ${companyData.keyCapabilities}` : "") : "Capabilities: NOT PROVIDED"}
 ${hasCertifications ? `Certifications: ${companyData.certifications}` : "Certifications: NOT PROVIDED"}
-${hasExperience ? `Past Projects: ${companyData.past_projects}` : "Past Projects: NOT PROVIDED"}
+${hasExperience ? `Past Projects: ${companyData.pastProjects}` : "Past Projects: NOT PROVIDED"}
 ${hasLocation ? `Location: ${companyData.postcode}` : "Location: NOT PROVIDED"}
 
 Tender: ${tenderData.title || "N/A"}
@@ -174,13 +186,14 @@ Description: ${tenderData.description || "N/A"}
 Buyer: ${tenderData.buyer || "N/A"}
 Budget: ${budgetRange}
 Location: ${tenderData.location || "N/A"}
-${tenderData.cpv_codes && tenderData.cpv_codes.length > 0 ? `CPV Codes: ${tenderData.cpv_codes.join(", ")}` : ""}
+${tenderData.cpvCodes && tenderData.cpvCodes.length > 0 ? `CPV Codes: ${tenderData.cpvCodes.join(", ")}` : ""}
 
 FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate capability 0-100. Then rate certification, experience, location 0-100.`;
 
   // Log the prompt for debugging
   console.log("\n" + "=".repeat(80));
-  console.log(`Matching: ${companyData.company_name} → ${tenderData.title}`);
+  console.log(`Matching: ${companyData.companyName} → ${tenderData.title}`);
+  console.log("[DEBUG] User prompt (first 500 chars):", userPrompt.slice(0, 500));
 
   // Call LLM with rate limiting via aiGenerateObject (rate limiter is built in)
   let score: MatchingScore;
@@ -195,7 +208,15 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       estTokens: 4000,
     });
 
-    console.log(`Got AI response for matching`);
+    // DEBUG: Raw AI response scores
+    console.log("[DEBUG] Raw AI scores:", {
+      capability: parsed.capabilityScore,
+      experience: parsed.experienceScore,
+      certification: parsed.certificationScore,
+      location: parsed.locationScore,
+      aiAnalysis: parsed.aiAnalysis?.slice(0, 200),
+      matchReasons: parsed.matchReasons,
+    });
 
     // Get scores from AI (no overallScore from AI - we calculate it)
     let capabilityScore = Math.max(
@@ -214,18 +235,22 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
 
     // Enforce rules based on data completeness - mark 0 if data is missing
     if (!hasCapabilities) {
+      console.log("[DEBUG] Override: capabilityScore forced to 0 (no capabilities data)");
       capabilityScore = 0;
     }
 
     if (!hasExperience) {
+      console.log("[DEBUG] Override: experienceScore forced to 0 (no experience data)");
       experienceScore = 0;
     }
 
     if (!hasCertifications) {
+      console.log("[DEBUG] Override: certificationScore forced to 0 (no certifications data)");
       certificationScore = 0;
     }
 
     if (!hasLocation) {
+      console.log("[DEBUG] Override: locationScore forced to 0 (no location data)");
       locationScore = 0;
     }
 
@@ -239,7 +264,12 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       overallScore = Math.round(
         certificationScore * 0.5 + experienceScore * 0.4 + locationScore * 0.1,
       );
+    } else {
+      console.log(`[DEBUG] Override: overallScore forced to 0 (capabilityScore ${capabilityScore} < 50)`);
     }
+
+    // DEBUG: Final computed scores
+    console.log("[DEBUG] Final scores:", { overallScore, capabilityScore, experienceScore, certificationScore, locationScore });
 
     const scoreExplanations = parsed.scoreExplanations || {
       capability: "",
@@ -329,59 +359,54 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   const modelUsed = model ?? "platform-default";
 
   if (isDemo) {
-    const { error: insertError } = await supabase
-      .from("demo_matching_results" as any)
-      .insert({
-        batch_label: batchLabel,
-        company_id: companyId,
-        tender_id: tenderId,
-        model_used: modelUsed,
-        overall_score: score.overallScore,
-        capability_score: score.capabilityScore,
-        experience_score: score.experienceScore,
-        location_score: score.locationScore,
-        certification_score: score.certificationScore,
-        match_reasons: score.matchReasons,
-        improvement_suggestions: score.improvementSuggestions,
-        ai_analysis: aiAnalysisPayload,
-      } as any);
-
-    if (insertError) {
-      throw new Error(
-        `Failed to store demo matching result: ${insertError.message}`,
-      );
-    }
+    await db.insert(demoMatchingResults).values({
+      batchLabel: batchLabel!,
+      companyId,
+      tenderId,
+      modelUsed,
+      overallScore: score.overallScore,
+      capabilityScore: score.capabilityScore,
+      experienceScore: score.experienceScore,
+      locationScore: score.locationScore,
+      certificationScore: score.certificationScore,
+      matchReasons: score.matchReasons,
+      improvementSuggestions: score.improvementSuggestions,
+      aiAnalysis: aiAnalysisPayload,
+    });
   } else {
-    const { error: upsertError } = await supabase
-      .from("matching_results" as any)
-      .upsert(
-        {
-          company_id: companyId,
-          tender_id: tenderId,
-          overall_score: score.overallScore,
-          capability_score: score.capabilityScore,
-          experience_score: score.experienceScore,
-          location_score: score.locationScore,
-          certification_score: score.certificationScore,
-          match_reasons: score.matchReasons,
-          improvement_suggestions: score.improvementSuggestions,
-          ai_analysis: aiAnalysisPayload,
-          updated_at: new Date().toISOString(),
-        } as any,
-        {
-          onConflict: "company_id,tender_id",
+    await db
+      .insert(matchingResults)
+      .values({
+        companyId,
+        tenderId,
+        overallScore: score.overallScore,
+        capabilityScore: score.capabilityScore,
+        experienceScore: score.experienceScore,
+        locationScore: score.locationScore,
+        certificationScore: score.certificationScore,
+        matchReasons: score.matchReasons,
+        improvementSuggestions: score.improvementSuggestions,
+        aiAnalysis: aiAnalysisPayload,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [matchingResults.companyId, matchingResults.tenderId],
+        set: {
+          overallScore: score.overallScore,
+          capabilityScore: score.capabilityScore,
+          experienceScore: score.experienceScore,
+          locationScore: score.locationScore,
+          certificationScore: score.certificationScore,
+          matchReasons: score.matchReasons,
+          improvementSuggestions: score.improvementSuggestions,
+          aiAnalysis: aiAnalysisPayload,
+          updatedAt: new Date(),
         },
-      );
-
-    if (upsertError) {
-      throw new Error(
-        `Failed to store matching result: ${upsertError.message}`,
-      );
-    }
+      });
   }
 
   console.log(
-    `Match complete: ${companyData.company_name} → ${tenderData.title} (Score: ${score.overallScore}%)`,
+    `Match complete: ${companyData.companyName} → ${tenderData.title} (Score: ${score.overallScore}%)`,
   );
   return score;
 }
@@ -400,16 +425,12 @@ export async function batchScoreTendersForCompany(
   if (tenderIds && tenderIds.length > 0) {
     tendersToMatch = tenderIds;
   } else {
-    const { data: openTenders, error } = await supabase
-      .from("tenders")
-      .select("id")
-      .in("status", ["open", "closing_soon"]);
+    const openTenders = await db
+      .select({ id: tenders.id })
+      .from(tenders)
+      .where(inArray(tenders.status, ["open", "closing_soon"]));
 
-    if (error) {
-      throw new Error(`Failed to fetch open tenders: ${error.message}`);
-    }
-
-    tendersToMatch = (openTenders || []).map((t: { id: string }) => t.id);
+    tendersToMatch = openTenders.map((t) => t.id);
   }
 
   // Queue matching jobs (this will be handled by the queue service)

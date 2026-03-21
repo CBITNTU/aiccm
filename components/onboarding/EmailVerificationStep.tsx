@@ -31,9 +31,6 @@ export function EmailVerificationStep({
 
         if (data.verified) {
           setIsPolling(false);
-          toast.success("Email verified!", {
-            description: "You can now continue with your profile setup.",
-          });
           onVerified();
         }
       } catch (error) {

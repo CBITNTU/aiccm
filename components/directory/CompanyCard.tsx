@@ -9,29 +9,27 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Mail, Award, Tag } from "lucide-react";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 type PublicCompany = Pick<
   Company,
   | "id"
-  | "company_name"
+  | "companyName"
   | "description"
-  | "key_capabilities"
+  | "keyCapabilities"
   | "postcode"
   | "certifications"
-  | "past_projects"
-  | "is_system_company"
+  | "pastProjects"
+  | "isSystemCompany"
   | "status"
-  | "digital_maturity"
-  | "ai_competencies"
-  | "ai_capabilities"
-  | "ai_analysis"
-  | "created_at"
-  | "updated_at"
-  | "user_id"
+  | "digitalMaturity"
+  | "aiCompetencies"
+  | "aiCapabilities"
+  | "aiAnalysis"
+  | "createdAt"
+  | "updatedAt"
+  | "userId"
 >;
 
 interface CompanyCardProps {
@@ -58,7 +56,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
 
   // Type guard to check if company has all fields (is full Company type)
   const isFullCompany = (comp: PublicCompany | Company): comp is Company => {
-    return "contact_email" in comp;
+    return "contactEmail" in comp;
   };
 
   return (
@@ -68,8 +66,8 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
     >
       <CardHeader>
         <div className="flex justify-between items-start mb-2">
-          <CardTitle className="text-lg">{company.company_name}</CardTitle>
-          {company.is_system_company && (
+          <CardTitle className="text-lg">{company.companyName}</CardTitle>
+          {company.isSystemCompany && (
             <Badge variant="secondary">Verified</Badge>
           )}
         </div>
@@ -96,13 +94,13 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
             {/* Contact information - show generic message for public companies */}
             {isFullCompany(company) ? (
               <>
-                {company.contact_email && (
+                {company.contactEmail && (
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-primary" />
                     <span className="text-primary truncate">
-                      {company.contact_email.length > 20
-                        ? company.contact_email.substring(0, 20) + "..."
-                        : company.contact_email}
+                      {company.contactEmail.length > 20
+                        ? company.contactEmail.substring(0, 20) + "..."
+                        : company.contactEmail}
                     </span>
                   </div>
                 )}
@@ -121,7 +119,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
               // Use AI-generated capabilities if available, otherwise fall back to manual
               let capabilities: string[] = [];
 
-              const aiAnalysis = company.ai_analysis as {
+              const aiAnalysis = company.aiAnalysis as {
                 coreCompetencies?: string[];
               } | null;
               if (
@@ -130,17 +128,17 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
               ) {
                 capabilities = aiAnalysis.coreCompetencies;
               } else if (
-                company.ai_competencies &&
-                Array.isArray(company.ai_competencies)
+                company.aiCompetencies &&
+                Array.isArray(company.aiCompetencies)
               ) {
-                capabilities = company.ai_competencies as string[];
+                capabilities = company.aiCompetencies as string[];
               } else if (
-                company.ai_capabilities &&
-                Array.isArray(company.ai_capabilities)
+                company.aiCapabilities &&
+                Array.isArray(company.aiCapabilities)
               ) {
-                capabilities = company.ai_capabilities as string[];
-              } else if (company.key_capabilities) {
-                capabilities = company.key_capabilities
+                capabilities = company.aiCapabilities as string[];
+              } else if (company.keyCapabilities) {
+                capabilities = company.keyCapabilities
                   .split(",")
                   .map((cap) => cap.trim());
               }

@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import type { CompanyRecord } from "@/lib/api/types";
 import type {
   Project,
   GapAnalysis,
@@ -13,39 +14,39 @@ export interface Tender {
   id: string;
   title: string;
   buyer: string;
-  buyer_name?: string;
+  buyerName?: string;
   location?: string;
   region?: string;
   deadline?: string;
-  budget_min?: number;
-  budget_max?: number;
+  budgetMin?: number;
+  budgetMax?: number;
   value?: number;
   description?: string;
-  external_id?: string;
-  reference_number?: string;
+  externalId?: string;
+  referenceNumber?: string;
 }
 
 export interface TeamMember {
   id: string;
-  vo_id: string;
-  company_id: string;
+  voId: string;
+  companyId: string;
   role: string;
-  created_at: string;
-  joined_at: string | null;
-  invitation_status?: string | null;
-  invitation_sent_at?: string | null;
-  invitation_responded_at?: string | null;
-  invitation_message?: string | null;
+  createdAt: string;
+  joinedAt: string | null;
+  invitationStatus?: string | null;
+  invitationSentAt?: string | null;
+  invitationRespondedAt?: string | null;
+  invitationMessage?: string | null;
   companies: {
     id: string;
-    company_name: string;
-    key_capabilities?: string | null;
+    companyName: string;
+    keyCapabilities?: string | null;
     postcode?: string | null;
     location?: string | null;
-    contact_email?: string | null;
-    contact_phone?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
     certifications?: string | null;
-    past_projects?: string | null;
+    pastProjects?: string | null;
     description?: string | null;
   } | null;
 }
@@ -53,13 +54,13 @@ export interface TeamMember {
 /** Tender match result for lead company + tender (used when project has no partners). */
 export interface TenderMatchResult {
   id: string;
-  overall_score: number | null;
-  capability_score: number | null;
-  experience_score: number | null;
-  location_score: number | null;
-  certification_score: number | null;
-  match_reasons: string[] | null;
-  ai_analysis: { score_explanations?: Record<string, string> } | null;
+  overallScore: number | null;
+  capabilityScore: number | null;
+  experienceScore: number | null;
+  locationScore: number | null;
+  certificationScore: number | null;
+  matchReasons: string[] | null;
+  aiAnalysis: { scoreExplanations?: Record<string, string> } | null;
 }
 
 export interface ProjectDetails {
@@ -88,9 +89,9 @@ async function fetchProjectDetails(projectId: string): Promise<ProjectDetails> {
     project,
     tender,
     teamMembers,
-    gapAnalysis: project.gap_analysis || null,
-    teamAnalysis: project.team_analysis || null,
-    recommendedPartners: project.recommended_partners || [],
+    gapAnalysis: project.gapAnalysis || null,
+    teamAnalysis: project.teamAnalysis || null,
+    recommendedPartners: project.recommendedPartners || [],
     tenderMatchResult,
     isOwner,
   };
@@ -125,7 +126,7 @@ export function useAvailableTenders(enabled = true) {
 // Get lead company details
 async function fetchCompanyById(
   companyId: string,
-): Promise<Record<string, unknown> | null> {
+): Promise<CompanyRecord | null> {
   try {
     const data = await api.getCompany(companyId);
     return data.company;

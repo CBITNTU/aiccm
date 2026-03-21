@@ -7,8 +7,8 @@ import { Plus, MapPin, Award } from "lucide-react";
 
 interface Partner {
   id: string;
-  company_name: string;
-  key_capabilities: string;
+  companyName: string;
+  keyCapabilities: string;
   certifications: string;
   location: string;
   relevanceScore: number;
@@ -54,7 +54,7 @@ export function RecommendedPartners({
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <h4 className="font-semibold">{partner.company_name}</h4>
+                  <h4 className="font-semibold">{partner.companyName}</h4>
                   <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                     <MapPin className="h-3 w-3" />
                     {partner.location}

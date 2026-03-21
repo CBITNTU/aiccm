@@ -1,29 +1,47 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
-import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { matchingResults, companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ resultId: string }> },
 ) {
   try {
-    await requireAuth(request);
+    const { user } = await requireAuth(request);
     const { resultId } = await params;
-    const supabase = createAdminClient();
+
+    // Verify user owns the company associated with this result
+    const result = await db
+      .select({
+        id: matchingResults.id,
+        companyUserId: companies.userId,
+      })
+      .from(matchingResults)
+      .innerJoin(companies, eq(matchingResults.companyId, companies.id))
+      .where(eq(matchingResults.id, resultId))
+      .limit(1);
+
+    if (!result[0]) {
+      return apiError("Result not found", 404);
+    }
+
+    if (result[0].companyUserId !== user.id) {
+      throw new AuthError("No access to this matching result");
+    }
 
     const body = await request.json();
-    const { is_bookmarked } = body as { is_bookmarked: boolean };
+    const isBookmarked = body.isBookmarked ?? body.is_bookmarked;
 
-    const { data, error } = await supabase
-      .from("matching_results")
-      .update({ is_bookmarked })
-      .eq("id", resultId)
-      .select("id, is_bookmarked")
-      .single();
+    const data = await db
+      .update(matchingResults)
+      .set({ isBookmarked })
+      .where(eq(matchingResults.id, resultId))
+      .returning({ id: matchingResults.id, isBookmarked: matchingResults.isBookmarked });
 
-    if (error) throw error;
-
-    return apiResponse({ result: data });
+    return apiResponse({ result: data[0] });
   } catch (error) {
     return handleApiError(error);
   }

@@ -1,60 +1,47 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { after } from "next/server";
+import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { getProfileByUserId, updateProfileByUserId } from "@/lib/db/queries";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get the current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { user } = await requireAuth(request);
 
     const body = await request.json();
     const { firstName, lastName, jobTitle, phone } = body;
 
     // Validate required fields
     if (!firstName?.trim() || !lastName?.trim() || !jobTitle?.trim()) {
-      return NextResponse.json(
-        { error: "First name, last name, and job title are required" },
-        { status: 400 },
-      );
+      return apiError("First name, last name, and job title are required", 400);
     }
 
-    // Update the profile
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        job_title: jobTitle.trim(),
-        phone: phone?.trim() || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
+    // Validate field lengths
+    if (firstName.length > 255 || lastName.length > 255 || jobTitle.length > 255 || (phone && phone.length > 50)) {
+      return apiError("Field length exceeds maximum allowed", 400);
+    }
 
-    if (updateError) {
-      console.error("Profile update error:", updateError);
+    // Update the profile via Drizzle (local Postgres)
+    const updated = await updateProfileByUserId(user.id, {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      jobTitle: jobTitle.trim(),
+      phone: phone?.trim() || null,
+    });
+
+    if (!updated) {
+      console.error("Profile update error: no rows updated");
       after(() =>
         logApiEvent(request, {
           actionType: "profile_updated",
           userId: user.id,
           userEmail: user.email || undefined,
           status: "error",
-          errorMessage: updateError.message,
+          errorMessage: "No rows updated",
         }).catch(() => {}),
       );
-      return NextResponse.json(
-        { error: "Failed to update profile" },
-        { status: 500 },
-      );
+      return apiError("Failed to update profile", 500);
     }
 
     // Log successful profile update (non-blocking)
@@ -69,63 +56,37 @@ export async function POST(request: NextRequest) {
       }).catch(() => {}),
     );
 
-    return NextResponse.json({
+    return apiResponse({
       success: true,
       message: "Profile updated successfully",
     });
   } catch (error) {
-    console.error("Profile update error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { user } = await requireAuth(request);
 
-    // Get the current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // Fetch the profile via Drizzle (local Postgres)
+    const profile = await getProfileByUserId(user.id);
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!profile) {
+      return apiError("Failed to fetch profile", 500);
     }
 
-    // Fetch the profile
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("first_name, last_name, job_title, phone, email")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profileError) {
-      console.error("Profile fetch error:", profileError);
-      return NextResponse.json(
-        { error: "Failed to fetch profile" },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({
+    return apiResponse({
       success: true,
       profile: {
-        firstName: profile?.first_name || "",
-        lastName: profile?.last_name || "",
-        jobTitle: profile?.job_title || "",
-        phone: profile?.phone || "",
-        email: profile?.email || user.email || "",
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        jobTitle: profile.jobTitle || "",
+        phone: profile.phone || "",
+        email: profile.email || user.email || "",
       },
     });
   } catch (error) {
-    console.error("Profile fetch error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }

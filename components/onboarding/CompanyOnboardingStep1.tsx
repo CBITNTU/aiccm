@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
 import { Building2, Loader2 } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
@@ -55,14 +53,10 @@ interface PrefillData {
 }
 
 interface CompanyOnboardingStep1Props {
-  supabase: SupabaseClient<Database>;
   onNext: (data: Step1Data, prefillData: PrefillData | null) => void;
 }
 
-export function CompanyOnboardingStep1({
-  supabase,
-  onNext,
-}: CompanyOnboardingStep1Props) {
+export function CompanyOnboardingStep1({ onNext }: CompanyOnboardingStep1Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<Step1Data>({
     companyName: "",
@@ -122,15 +116,12 @@ export function CompanyOnboardingStep1({
 
     try {
       // Check for duplicate company name/number
-      const { data: existingCompanies } = await supabase
-        .from("companies")
-        .select("id, company_name, companies_house_number")
-        .or(
-          `company_name.ilike.${formData.companyName},companies_house_number.eq.${formData.companiesHouseNumber}`,
-        )
-        .limit(1);
+      const duplicate = await api.checkCompanyDuplicate({
+        companyName: formData.companyName,
+        companiesHouseNumber: formData.companiesHouseNumber || undefined,
+      });
 
-      if (existingCompanies && existingCompanies.length > 0) {
+      if (duplicate.exists) {
         toast.error("Company Already Exists", {
           description:
             "A company with this name or number already exists in the system.",

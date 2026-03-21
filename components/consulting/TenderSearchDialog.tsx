@@ -23,17 +23,9 @@ import {
   FileText,
 } from "lucide-react";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
+import type { TenderRecord } from "@/lib/api/types";
 
-interface Tender {
-  id: string;
-  title: string;
-  buyer: string;
-  deadline: string | null;
-  status: string | null;
-  location?: string | null;
-  budget_max?: number | null;
-  description?: string | null;
-}
+type Tender = TenderRecord;
 
 interface TenderSearchDialogProps {
   open: boolean;
@@ -177,10 +169,10 @@ export function TenderSearchDialog({
                           </span>
                         )}
 
-                        {tender.budget_max && (
+                        {tender.budgetMax && (
                           <span className="flex items-center gap-1">
                             <Banknote className="h-3.5 w-3.5" />
-                            {formatCurrency(tender.budget_max)}
+                            {formatCurrency(tender.budgetMax)}
                           </span>
                         )}
                       </div>

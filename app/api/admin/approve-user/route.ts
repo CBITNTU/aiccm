@@ -1,17 +1,34 @@
 import { NextRequest } from "next/server";
 import {
-  createAdminClient,
   apiResponse,
   apiError,
-  getAuthenticatedUser,
   checkSuperadminRole,
 } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   sendEmail,
   getApprovalNotificationEmailSubject,
   getApprovalNotificationEmailHtml,
 } from "@/lib/email";
+import {
+  updateProfileByUserId,
+  updateCompanyMemberStatus,
+  updateCompanyStatus,
+} from "@/lib/db/queries";
+import { db } from "@/lib/db";
+import {
+  profiles,
+  companies,
+  userRoles,
+  companyJoinRequests,
+  companyMembers,
+} from "@/lib/db/schema/app";
+import { eq, and, desc, inArray } from "drizzle-orm";
+import {
+  fetchCompanySources,
+  runPrefillAI,
+} from "@/lib/services/companyEnrichmentService";
 
 export interface ApproveUserRequest {
   userId: string;
@@ -32,33 +49,27 @@ async function triggerAIPrefill(
     websiteUrl: string | null;
   },
 ) {
-  const supabase = createAdminClient();
-
   try {
-    // Fetch prefill data from external sources
-    const prefillResponse = await fetch(
-      `${process.env.PLATFORM_URL || "http://localhost:3000"}/api/prefill-company-data`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyName: params.companyName,
-          companyNumber: params.companyNumber,
-          websiteUrl: params.websiteUrl,
-        }),
-      },
+    // Fetch and normalize company data directly (no HTTP call needed)
+    const sources = await fetchCompanySources(
+      params.companyName,
+      params.companyNumber,
+      params.websiteUrl,
     );
 
-    if (!prefillResponse.ok) {
-      console.error("Prefill API returned error:", prefillResponse.status);
+    if (!sources.companiesHouseHtml && !sources.endoleHtml && !sources.websiteHtml) {
+      console.error("No external data fetched for prefill. Errors:", sources.errors);
       return;
     }
 
-    const prefillData = await prefillResponse.json();
+    const normalized = await runPrefillAI(
+      params.companyName,
+      params.companyNumber,
+      sources,
+    );
 
     // Apply normalized data to company if available
-    if (prefillData.normalized) {
-      const normalized = prefillData.normalized;
+    if (normalized) {
       const updateData: Record<string, unknown> = {};
 
       // Helper to extract value from structured field {value, confidence, evidence}
@@ -81,28 +92,25 @@ async function triggerAIPrefill(
       const address = extractValue(normalized.address);
       if (address) updateData.address = address;
 
-      const postcode = extractValue(normalized.postcode);
-      if (postcode) updateData.postcode = postcode;
-
       // Capabilities are an array of {value, confidence, evidence} objects
       if (normalized.capabilities?.length) {
         const capabilityValues = normalized.capabilities
-          .map((cap: unknown) => extractValue(cap))
+          .map((cap) => extractValue(cap))
           .filter(Boolean);
         if (capabilityValues.length) {
-          updateData.key_capabilities = capabilityValues.join(", ");
+          updateData.keyCapabilities = capabilityValues.join(", ");
         }
       }
 
       // Certifications - extract just the essential fields for display
       if (normalized.certifications?.length) {
         const cleanCerts = normalized.certifications
-          .map((cert: Record<string, unknown>) => ({
+          .map((cert) => ({
             name: cert.name || "",
             issuer: cert.issuer || "",
             validUntil: cert.validUntil || "",
           }))
-          .filter((cert: { name: string }) => cert.name);
+          .filter((cert) => cert.name);
         if (cleanCerts.length) {
           updateData.certifications = JSON.stringify(cleanCerts);
         }
@@ -111,19 +119,19 @@ async function triggerAIPrefill(
       // Equipment - extract just the essential fields for display
       if (normalized.equipment?.length) {
         const cleanEquipment = normalized.equipment
-          .map((eq: Record<string, unknown>) => ({
-            name: eq.name || "",
-            model: eq.model || "",
-            capacity: eq.capacity || "",
+          .map((item) => ({
+            name: item.name || "",
+            model: item.model || "",
+            capacity: item.capacity || "",
           }))
-          .filter((eq: { name: string }) => eq.name);
+          .filter((item) => item.name);
         if (cleanEquipment.length) {
           updateData.equipment = JSON.stringify(cleanEquipment);
         }
       }
 
       // Store the raw extracted data for reference
-      updateData.system_extracted = JSON.stringify({
+      updateData.systemExtracted = JSON.stringify({
         prefillData: normalized,
         fetchedAt: new Date().toISOString(),
       });
@@ -153,25 +161,24 @@ async function triggerAIPrefill(
         }
 
         if (Object.keys(financialData).length) {
-          updateData.financial_data = JSON.stringify(financialData);
+          updateData.financialData = JSON.stringify(financialData);
         }
       }
 
       // Store compliance data if available
       if (normalized.compliance) {
-        updateData.compliance_data = JSON.stringify(normalized.compliance);
+        updateData.complianceData = JSON.stringify(normalized.compliance);
       }
 
       // Update the company with prefilled data
-      const { error: updateError } = await supabase
-        .from("companies")
-        .update(updateData)
-        .eq("id", companyId);
-
-      if (updateError) {
-        console.error("Error applying prefill data to company:", updateError);
-      } else {
+      try {
+        await db
+          .update(companies)
+          .set(updateData as typeof companies.$inferInsert)
+          .where(eq(companies.id, companyId));
         console.log(`AI prefill applied to company ${companyId}`);
+      } catch (updateError) {
+        console.error("Error applying prefill data to company:", updateError);
       }
     }
   } catch (error) {
@@ -186,11 +193,7 @@ export interface ApproveUserResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (!user) {
-      return apiError(authError || "Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
 
     // Check superadmin role
     const isSuperadmin = await checkSuperadminRole(user.id);
@@ -205,176 +208,171 @@ export async function POST(request: NextRequest) {
       return apiError("User ID is required", 400);
     }
 
-    const supabase = createAdminClient();
+    // Get user profile
+    const profileRows = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.userId, userId))
+      .limit(1);
+    const profile = profileRows[0];
 
-    // Get user profile - use * to avoid issues with missing columns during migration
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    if (profileError || !profile) {
-      console.error("Profile not found:", { userId, profileError });
+    if (!profile) {
+      console.error("Profile not found:", { userId });
       return apiError("User not found", 404);
     }
 
     // Check if user is already approved but has a pending company
-    // This handles the case where approved users create new companies
     let pendingCompany: {
       id: string;
-      company_name: string;
-      companies_house_number: string | null;
-      website_url: string | null;
+      companyName: string;
+      companiesHouseNumber: string | null;
+      websiteUrl: string | null;
     } | null = null;
 
     console.log("Approval check:", {
       userId,
-      approval_status: profile.approval_status,
+      approval_status: profile.approvalStatus,
     });
 
-    if (profile.approval_status === "approved") {
+    if (profile.approvalStatus === "approved") {
       // Check if they have a pending company
-      const { data: companyData, error: companyError } = await supabase
-        .from("companies")
-        .select("id, company_name, companies_house_number, website_url")
-        .eq("user_id", userId)
-        .eq("status", "pending_review")
-        .maybeSingle(); // Use maybeSingle() instead of single() to avoid error if no company
+      const companyRows = await db
+        .select({
+          id: companies.id,
+          companyName: companies.companyName,
+          companiesHouseNumber: companies.companiesHouseNumber,
+          websiteUrl: companies.websiteUrl,
+        })
+        .from(companies)
+        .where(
+          and(
+            eq(companies.userId, userId),
+            eq(companies.status, "pending_review"),
+          ),
+        )
+        .limit(1);
 
       console.log("Pending company check:", {
-        companyData,
-        companyError,
-        hasPendingCompany: !!companyData,
+        companyData: companyRows[0] ?? null,
+        hasPendingCompany: companyRows.length > 0,
       });
 
-      if (companyData) {
-        pendingCompany = companyData;
-        // User is approved but has pending company - we'll handle this in the approval flow
+      if (companyRows[0]) {
+        pendingCompany = companyRows[0];
       } else {
-        // User is approved and has no pending company - can't approve again
         return apiError(
           "User is already approved and has no pending company",
           400,
         );
       }
-    } else if (profile.approval_status !== "pending") {
-      return apiError(`User is already ${profile.approval_status}`, 400);
+    } else if (profile.approvalStatus !== "pending") {
+      return apiError(`User is already ${profile.approvalStatus}`, 400);
     }
 
-    // Get user's role and signup type
-    const { data: userRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .single();
-
-    // Determine signup type based on role and company membership
+    // Determine signup type from profile (reliably set during onboarding)
     let signupType: "individual" | "new-company" | "join-company" | "invited" =
-      "individual";
+      (profile.signupType as "individual" | "new-company" | "join-company" | "invited") || "individual";
     let companyName: string | undefined;
     let invitedToCompanyId: string | null = null;
 
     // Store company details for new-company approvals (for AI prefill)
     let companyDetails: {
       id: string;
-      company_name: string;
-      companies_house_number: string | null;
-      website_url: string | null;
+      companyName: string;
+      companiesHouseNumber: string | null;
+      websiteUrl: string | null;
     } | null = null;
 
-    // Check if user was invited (has invited_to_company_id set OR signup_type is "invited")
-    // We check invited_to_company_id as primary indicator since signup_type column may not exist yet
     console.log("Profile data for approval:", {
       userId,
-      invited_to_company_id: profile.invited_to_company_id,
-      signup_type: profile.signup_type,
-      role: userRole?.role,
+      invited_to_company_id: profile.invitedToCompanyId,
+      signup_type: profile.signupType,
     });
 
-    if (profile.invited_to_company_id) {
-      invitedToCompanyId = profile.invited_to_company_id;
-      const { data: invitedCompany } = await supabase
-        .from("companies")
-        .select("id, company_name")
-        .eq("id", profile.invited_to_company_id)
-        .single();
+    if (profile.invitedToCompanyId) {
+      invitedToCompanyId = profile.invitedToCompanyId;
+      const invitedCompanyRows = await db
+        .select({ id: companies.id, companyName: companies.companyName })
+        .from(companies)
+        .where(eq(companies.id, profile.invitedToCompanyId))
+        .limit(1);
 
-      if (invitedCompany) {
+      if (invitedCompanyRows[0]) {
         signupType = "invited";
-        companyName = invitedCompany.company_name;
+        companyName = invitedCompanyRows[0].companyName;
       }
-    } else if (userRole?.role === "sme-owner") {
-      // Check if they created a company
-      const { data: ownedCompany } = await supabase
-        .from("companies")
-        .select("id, company_name, companies_house_number, website_url")
-        .eq("user_id", userId)
-        .single();
+    } else if (profile.signupType === "new-company") {
+      const ownedCompanyRows = await db
+        .select({
+          id: companies.id,
+          companyName: companies.companyName,
+          companiesHouseNumber: companies.companiesHouseNumber,
+          websiteUrl: companies.websiteUrl,
+        })
+        .from(companies)
+        .where(eq(companies.userId, userId))
+        .limit(1);
 
-      if (ownedCompany) {
+      if (ownedCompanyRows[0]) {
         signupType = "new-company";
-        companyName = ownedCompany.company_name;
-        companyDetails = ownedCompany;
+        companyName = ownedCompanyRows[0].companyName;
+        companyDetails = ownedCompanyRows[0];
       }
-    } else if (userRole?.role === "sme-member") {
-      // Check if they have a join request
-      const { data: joinRequest } = await supabase
-        .from("company_join_requests")
-        .select("company_name_requested")
-        .eq("user_id", userId)
-        .single();
+    } else if (profile.signupType === "join-company") {
+      const joinRequestRows = await db
+        .select({ companyNameRequested: companyJoinRequests.companyNameRequested })
+        .from(companyJoinRequests)
+        .where(eq(companyJoinRequests.userId, userId))
+        .limit(1);
 
-      if (joinRequest) {
+      if (joinRequestRows[0]) {
         signupType = "join-company";
-        companyName = joinRequest.company_name_requested;
+        companyName = joinRequestRows[0].companyNameRequested;
       }
     }
 
     const userName =
-      `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "User";
+      `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "User";
 
     if (approved) {
       // If user is already approved but has a pending company, just approve the company
-      if (profile.approval_status === "approved" && pendingCompany) {
+      if (profile.approvalStatus === "approved" && pendingCompany) {
         console.log("Approving pending company for already-approved user:", {
           userId,
           companyId: pendingCompany.id,
-          companyName: pendingCompany.company_name,
+          companyName: pendingCompany.companyName,
         });
 
         // Approve the company membership
-        const { error: memberError } = await supabase
-          .from("company_members")
-          .update({
-            status: "approved",
-            approved_at: new Date().toISOString(),
-            approved_by: user.id,
-          })
-          .eq("user_id", userId)
-          .eq("status", "pending");
-
-        if (memberError) {
+        try {
+          await updateCompanyMemberStatus(
+            { userId, status: "pending" },
+            {
+              status: "approved",
+              approvedAt: new Date(),
+              approvedBy: user.id,
+            },
+          );
+        } catch (memberError) {
           console.error("Error approving company membership:", memberError);
         }
 
         // Update company status to active
-        const { error: companyError } = await supabase
-          .from("companies")
-          .update({ status: "active" })
-          .eq("id", pendingCompany.id)
-          .eq("status", "pending_review");
+        const updatedCompany = await updateCompanyStatus(
+          { id: pendingCompany.id, status: "pending_review" },
+          { status: "active" },
+        );
 
-        if (companyError) {
-          console.error("Error updating company status:", companyError);
+        if (!updatedCompany) {
+          console.error("Error updating company status: no rows updated");
           return apiError("Failed to approve company", 500);
         }
 
         // Trigger AI prefill in the background
         triggerAIPrefill(pendingCompany.id, {
-          companyName: pendingCompany.company_name,
-          companyNumber: pendingCompany.companies_house_number,
-          websiteUrl: pendingCompany.website_url,
+          companyName: pendingCompany.companyName,
+          companyNumber: pendingCompany.companiesHouseNumber,
+          websiteUrl: pendingCompany.websiteUrl,
         }).catch((err) => {
           console.error("Background AI prefill error:", err);
         });
@@ -388,7 +386,7 @@ export async function POST(request: NextRequest) {
           entityId: pendingCompany.id,
           details: {
             approvedCompanyId: pendingCompany.id,
-            approvedCompanyName: pendingCompany.company_name,
+            approvedCompanyName: pendingCompany.companyName,
             ownerUserId: userId,
             ownerUserName: userName,
           },
@@ -396,51 +394,45 @@ export async function POST(request: NextRequest) {
 
         return apiResponse<ApproveUserResponse>({
           success: true,
-          message: `Company "${pendingCompany.company_name}" has been approved`,
+          message: `Company "${pendingCompany.companyName}" has been approved`,
         });
       }
 
       // Approve the user (only if they're pending)
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          approval_status: "approved",
-          approved_at: new Date().toISOString(),
-          approved_by: user.id,
-        })
-        .eq("user_id", userId);
+      const updatedProfile = await updateProfileByUserId(userId, {
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        approvedBy: user.id,
+      });
 
-      if (updateError) {
-        console.error("Error approving user:", updateError);
+      if (!updatedProfile) {
+        console.error("Error approving user: no rows updated");
         return apiError("Failed to approve user", 500);
       }
 
       // If user created a new company, also approve the company membership
       if (signupType === "new-company") {
-        await supabase
-          .from("company_members")
-          .update({
+        await updateCompanyMemberStatus(
+          { userId, status: "pending" },
+          {
             status: "approved",
-            approved_at: new Date().toISOString(),
-            approved_by: user.id,
-          })
-          .eq("user_id", userId)
-          .eq("status", "pending");
+            approvedAt: new Date(),
+            approvedBy: user.id,
+          },
+        );
 
         // Update company status to active
-        await supabase
-          .from("companies")
-          .update({ status: "active" })
-          .eq("user_id", userId)
-          .eq("status", "pending_review");
+        await updateCompanyStatus(
+          { userId, status: "pending_review" },
+          { status: "active" },
+        );
 
         // Trigger AI prefill in the background (non-blocking)
-        // This will fetch data from Companies House, Endole, and company website
         if (companyDetails) {
           triggerAIPrefill(companyDetails.id, {
-            companyName: companyDetails.company_name,
-            companyNumber: companyDetails.companies_house_number,
-            websiteUrl: companyDetails.website_url,
+            companyName: companyDetails.companyName,
+            companyNumber: companyDetails.companiesHouseNumber,
+            websiteUrl: companyDetails.websiteUrl,
           }).catch((err) => {
             console.error("Background AI prefill error:", err);
           });
@@ -454,28 +446,23 @@ export async function POST(request: NextRequest) {
           invitedToCompanyId,
         });
 
-        const { data: memberUpdate, error: memberError } = await supabase
-          .from("company_members")
-          .update({
+        const memberUpdate = await updateCompanyMemberStatus(
+          { userId, companyId: invitedToCompanyId, status: "pending" },
+          {
             status: "approved",
-            approved_at: new Date().toISOString(),
-            approved_by: user.id,
-          })
-          .eq("user_id", userId)
-          .eq("company_id", invitedToCompanyId)
-          .eq("status", "pending")
-          .select();
+            approvedAt: new Date(),
+            approvedBy: user.id,
+          },
+        );
 
         console.log("Company member update result:", {
           memberUpdate,
-          memberError,
         });
 
         // Clear the invited_to_company_id since they're now approved
-        await supabase
-          .from("profiles")
-          .update({ invited_to_company_id: null })
-          .eq("user_id", userId);
+        await updateProfileByUserId(userId, {
+          invitedToCompanyId: null,
+        });
       } else {
         console.log("Not an invited user or no invitedToCompanyId:", {
           signupType,
@@ -520,16 +507,13 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Reject the user
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          approval_status: "rejected",
-          rejection_reason: rejectionReason || null,
-        })
-        .eq("user_id", userId);
+      const rejectedProfile = await updateProfileByUserId(userId, {
+        approvalStatus: "rejected",
+        rejectionReason: rejectionReason || null,
+      });
 
-      if (updateError) {
-        console.error("Error rejecting user:", updateError);
+      if (!rejectedProfile) {
+        console.error("Error rejecting user: no rows updated");
         return apiError("Failed to reject user", 500);
       }
 
@@ -572,20 +556,14 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Approve user error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }
 
 // GET endpoint to list pending users
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (!user) {
-      return apiError(authError || "Unauthorized", 401);
-    }
+    const { user } = await requireAuth(request);
 
     // Check superadmin role
     const isSuperadmin = await checkSuperadminRole(user.id);
@@ -593,144 +571,161 @@ export async function GET(request: NextRequest) {
       return apiError("Forbidden: Superadmin access required", 403);
     }
 
-    const supabase = createAdminClient();
+    // Get pending users
+    const pendingUsers = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.approvalStatus, "pending"))
+      .orderBy(desc(profiles.createdAt));
 
-    // Get pending users - use * to avoid issues with missing columns during migration
-    const { data: pendingUsers, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("approval_status", "pending")
-      .order("created_at", { ascending: false });
-
-    // Also get approved users who have pending companies (companies with status "pending_review")
-    // These are users who created companies after being approved
-    const { data: pendingCompanies } = await supabase
-      .from("companies")
-      .select(
-        "user_id, id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone, created_at",
-      )
-      .eq("status", "pending_review")
-      .order("created_at", { ascending: false });
+    // Also get approved users who have pending companies
+    const pendingCompanies = await db
+      .select({
+        userId: companies.userId,
+        id: companies.id,
+        companyName: companies.companyName,
+        companiesHouseNumber: companies.companiesHouseNumber,
+        websiteUrl: companies.websiteUrl,
+        contactPerson: companies.contactPerson,
+        contactEmail: companies.contactEmail,
+        contactPhone: companies.contactPhone,
+        createdAt: companies.createdAt,
+      })
+      .from(companies)
+      .where(eq(companies.status, "pending_review"))
+      .orderBy(desc(companies.createdAt));
 
     // Get profiles for users with pending companies
-    const pendingCompanyUserIds = (pendingCompanies || []).map(
-      (c) => c.user_id,
-    );
+    const pendingCompanyUserIds = pendingCompanies
+      .map((c) => c.userId)
+      .filter((id): id is string => id !== null);
+
     let approvedUsersWithPendingCompanies: typeof pendingUsers = [];
 
     if (pendingCompanyUserIds.length > 0) {
-      // Filter out null values to satisfy type requirement for `.in()`
-      const nonNullPendingCompanyUserIds = pendingCompanyUserIds.filter(
-        (id): id is string => id !== null,
-      );
-
-      if (nonNullPendingCompanyUserIds.length > 0) {
-        const { data: approvedUsers } = await supabase
-          .from("profiles")
-          .select("*")
-          .in("user_id", nonNullPendingCompanyUserIds)
-          .eq("approval_status", "approved");
-        approvedUsersWithPendingCompanies = approvedUsers || [];
-      }
-    }
-    if (error) {
-      console.error("Error fetching pending users:", error);
-      return apiError("Failed to fetch pending users", 500);
+      approvedUsersWithPendingCompanies = await db
+        .select()
+        .from(profiles)
+        .where(
+          and(
+            inArray(profiles.userId, pendingCompanyUserIds),
+            eq(profiles.approvalStatus, "approved"),
+          ),
+        );
     }
 
     // Combine pending users and approved users with pending companies
     const allUsersToProcess = [
-      ...(pendingUsers || []),
+      ...pendingUsers,
       ...approvedUsersWithPendingCompanies,
     ];
 
-    // Create a map of company data by user_id for quick lookup
+    // Create a map of company data by userId for quick lookup
     const companyMap = new Map(
-      (pendingCompanies || []).map((c) => [c.user_id, c]),
+      pendingCompanies.map((c) => [c.userId, c]),
     );
 
     // Enrich with role and company info
     const enrichedUsers = await Promise.all(
       allUsersToProcess.map(async (profile) => {
         // Get role
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", profile.user_id)
-          .single();
+        const roleRows = await db
+          .select({ role: userRoles.role })
+          .from(userRoles)
+          .where(eq(userRoles.userId, profile.userId))
+          .limit(1);
+        const roleData = roleRows[0] ?? null;
 
         // Get company info if applicable
         let companyName: string | null = null;
         let signupType: string = "individual";
 
-        // Company details object for new-company signups
         let company: {
           id: string;
-          company_name: string;
-          companies_house_number: string | null;
-          website_url: string | null;
-          contact_person: string | null;
-          contact_email: string | null;
-          contact_phone: string | null;
+          companyName: string;
+          companiesHouseNumber: string | null;
+          websiteUrl: string | null;
+          contactPerson: string | null;
+          contactEmail: string | null;
+          contactPhone: string | null;
         } | null = null;
 
         // Check if user has a pending company (from the map or by query)
-        const pendingCompany = companyMap.get(profile.user_id);
+        const pendingCompany = companyMap.get(profile.userId);
 
         if (pendingCompany) {
-          // User has a pending company - this is a new-company signup
           company = {
             id: pendingCompany.id,
-            company_name: pendingCompany.company_name,
-            companies_house_number: pendingCompany.companies_house_number,
-            website_url: pendingCompany.website_url,
-            contact_person: pendingCompany.contact_person,
-            contact_email: pendingCompany.contact_email,
-            contact_phone: pendingCompany.contact_phone,
+            companyName: pendingCompany.companyName,
+            companiesHouseNumber: pendingCompany.companiesHouseNumber,
+            websiteUrl: pendingCompany.websiteUrl,
+            contactPerson: pendingCompany.contactPerson,
+            contactEmail: pendingCompany.contactEmail,
+            contactPhone: pendingCompany.contactPhone,
           };
-          companyName = pendingCompany.company_name;
+          companyName = pendingCompany.companyName;
           signupType = "new-company";
-        } else if (roleData?.role === "sme-owner") {
-          // Fallback: query for company if not in pending companies map
-          const { data: companyData } = await supabase
-            .from("companies")
-            .select(
-              "id, company_name, companies_house_number, website_url, contact_person, contact_email, contact_phone",
-            )
-            .eq("user_id", profile.user_id)
-            .single();
+        } else if (profile.signupType === "new-company") {
+          const companyRows = await db
+            .select({
+              id: companies.id,
+              companyName: companies.companyName,
+              companiesHouseNumber: companies.companiesHouseNumber,
+              websiteUrl: companies.websiteUrl,
+              contactPerson: companies.contactPerson,
+              contactEmail: companies.contactEmail,
+              contactPhone: companies.contactPhone,
+            })
+            .from(companies)
+            .where(eq(companies.userId, profile.userId))
+            .limit(1);
 
-          if (companyData) {
-            company = companyData;
-            companyName = companyData.company_name;
+          if (companyRows[0]) {
+            company = companyRows[0];
+            companyName = companyRows[0].companyName;
             signupType = "new-company";
           }
-        } else if (roleData?.role === "sme-member") {
+        } else if (profile.signupType === "join-company") {
           // Check for join request first
-          const { data: joinRequest } = await supabase
-            .from("company_join_requests")
-            .select("company_name_requested, status")
-            .eq("user_id", profile.user_id)
-            .single();
+          const joinRequestRows = await db
+            .select({
+              companyNameRequested: companyJoinRequests.companyNameRequested,
+              status: companyJoinRequests.status,
+            })
+            .from(companyJoinRequests)
+            .where(eq(companyJoinRequests.userId, profile.userId))
+            .limit(1);
 
-          if (joinRequest) {
-            companyName = joinRequest.company_name_requested;
+          if (joinRequestRows[0]) {
+            companyName = joinRequestRows[0].companyNameRequested;
             signupType = "join-company";
           } else {
             // Check for invited user (has company_members entry)
-            const { data: memberEntry } = await supabase
-              .from("company_members")
-              .select("company_id, companies:company_id(company_name)")
-              .eq("user_id", profile.user_id)
-              .eq("status", "pending")
-              .single();
+            const memberRows = await db
+              .select({
+                companyId: companyMembers.companyId,
+              })
+              .from(companyMembers)
+              .where(
+                and(
+                  eq(companyMembers.userId, profile.userId),
+                  eq(companyMembers.status, "pending"),
+                ),
+              )
+              .limit(1);
 
-            if (memberEntry && memberEntry.companies) {
-              const companyData = memberEntry.companies as {
-                company_name: string;
-              };
-              companyName = companyData.company_name;
-              signupType = "invited";
+            if (memberRows[0]) {
+              // Get company name
+              const companyRows = await db
+                .select({ companyName: companies.companyName })
+                .from(companies)
+                .where(eq(companies.id, memberRows[0].companyId))
+                .limit(1);
+
+              if (companyRows[0]) {
+                companyName = companyRows[0].companyName;
+                signupType = "invited";
+              }
             }
           }
         }
@@ -740,15 +735,13 @@ export async function GET(request: NextRequest) {
           role: roleData?.role || "individual",
           companyName,
           signupType,
-          company, // Full company details for new-company signups
+          company,
         };
       }),
     );
 
     return apiResponse({ users: enrichedUsers });
   } catch (error) {
-    console.error("Get pending users error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return apiError(message, 500);
+    return handleApiError(error);
   }
 }

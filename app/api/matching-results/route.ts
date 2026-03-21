@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   isCompanyMember,
@@ -7,6 +7,9 @@ import {
   AuthError,
   sanitizeLikeParam,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { matchingResults, tenders } from "@/lib/db/schema/app";
+import { eq, and, or, ne, ilike, gte, lte, asc, desc, count, SQL } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,38 +25,19 @@ export async function GET(request: NextRequest) {
     const quickFilter = url.searchParams.get("quickFilter") || "";
     const sortBy = url.searchParams.get("sortBy") || "overall_score";
     const sortDirection = url.searchParams.get("sortDirection") || "desc";
-    const page = parseInt(url.searchParams.get("page") || "1");
-    const pageSize = parseInt(url.searchParams.get("pageSize") || "25");
+    const page = Math.max(parseInt(url.searchParams.get("page") || "1") || 1, 1);
+    const pageSize = Math.min(Math.max(parseInt(url.searchParams.get("pageSize") || "25") || 25, 1), 100);
 
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize - 1;
+    const offset = (page - 1) * pageSize;
 
-    const supabase = createAdminClient();
+    // Build conditions
+    const conditions: SQL[] = [];
 
-    let query = supabase
-      .from("matching_results")
-      .select(
-        `
-        *,
-        tenders!inner (
-          title,
-          buyer,
-          description,
-          location,
-          deadline,
-          budget_min,
-          budget_max,
-          status
-        )
-      `,
-        { count: "exact" },
-      );
-
-    // Tender status filter (default: exclude closed)
+    // Tender status filter
     if (tenderStatus === "active") {
-      query = query.not("tenders.status", "eq", "closed");
+      conditions.push(ne(tenders.status, "closed"));
     } else if (tenderStatus !== "all") {
-      query = query.eq("tenders.status", tenderStatus);
+      conditions.push(eq(tenders.status, tenderStatus));
     }
 
     if (companyId) {
@@ -61,76 +45,140 @@ export async function GET(request: NextRequest) {
       if (!hasAccess) {
         throw new AuthError("No access to this company");
       }
-      query = query.eq("company_id", companyId);
+      conditions.push(eq(matchingResults.companyId, companyId));
     }
 
     if (bookmarked === "true") {
-      query = query.eq("is_bookmarked", true);
+      conditions.push(eq(matchingResults.isBookmarked, true));
     }
 
     // Keyword search across tender fields
     const safeKeyword = sanitizeLikeParam(keyword);
     if (safeKeyword) {
-      query = query.or(
-        `title.ilike.%${safeKeyword}%,description.ilike.%${safeKeyword}%,buyer.ilike.%${safeKeyword}%,location.ilike.%${safeKeyword}%`,
-        { referencedTable: "tenders" },
+      conditions.push(
+        or(
+          ilike(tenders.title, `%${safeKeyword}%`),
+          ilike(tenders.description, `%${safeKeyword}%`),
+          ilike(tenders.buyer, `%${safeKeyword}%`),
+          ilike(tenders.location, `%${safeKeyword}%`),
+        )!,
       );
     }
 
     // Score range filters
     if (minScore) {
-      query = query.gte("overall_score", parseFloat(minScore));
+      conditions.push(gte(matchingResults.overallScore, parseFloat(minScore)));
     }
     if (maxScore) {
-      query = query.lte("overall_score", parseFloat(maxScore));
+      conditions.push(lte(matchingResults.overallScore, parseFloat(maxScore)));
     }
 
     // Applied/bookmarked filter
     if (showApplied === "applied") {
-      query = query.eq("is_applied", true);
+      conditions.push(eq(matchingResults.isApplied, true));
     } else if (showApplied === "not_applied") {
-      query = query.eq("is_applied", false);
+      conditions.push(eq(matchingResults.isApplied, false));
     } else if (showApplied === "bookmarked") {
-      query = query.eq("is_bookmarked", true);
+      conditions.push(eq(matchingResults.isBookmarked, true));
     }
 
     // Quick filters
     if (quickFilter === "high_score") {
-      query = query.gte("overall_score", 80);
+      conditions.push(gte(matchingResults.overallScore, 80));
     } else if (quickFilter === "urgent") {
       const sevenDaysFromNow = new Date();
       sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-      const today = new Date().toISOString();
-      query = query
-        .gte("tenders.deadline", today)
-        .lte("tenders.deadline", sevenDaysFromNow.toISOString());
+      conditions.push(gte(tenders.deadline, new Date()));
+      conditions.push(lte(tenders.deadline, sevenDaysFromNow));
     } else if (quickFilter === "high_value") {
-      query = query.or(
-        `budget_max.gte.1000000,budget_min.gte.1000000`,
-        { referencedTable: "tenders" },
+      conditions.push(
+        or(
+          gte(tenders.budgetMax, 1000000),
+          gte(tenders.budgetMin, 1000000),
+        )!,
       );
     }
 
-    // Sorting
-    const ascending = sortDirection === "asc";
-    if (
-      ["overall_score", "capability_score", "experience_score", "location_score", "certification_score", "created_at"].includes(sortBy)
-    ) {
-      query = query.order(sortBy, { ascending });
-    } else if (sortBy === "deadline") {
-      query = query.order("deadline", { ascending, referencedTable: "tenders" });
-    } else if (sortBy === "budget") {
-      query = query.order("budget_max", { ascending, referencedTable: "tenders" });
-    } else {
-      query = query.order("overall_score", { ascending: false });
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Determine sort
+    const sortFn = sortDirection === "asc" ? asc : desc;
+    let orderByClause;
+    switch (sortBy) {
+      case "overall_score":
+        orderByClause = sortFn(matchingResults.overallScore);
+        break;
+      case "capability_score":
+        orderByClause = sortFn(matchingResults.capabilityScore);
+        break;
+      case "experience_score":
+        orderByClause = sortFn(matchingResults.experienceScore);
+        break;
+      case "location_score":
+        orderByClause = sortFn(matchingResults.locationScore);
+        break;
+      case "certification_score":
+        orderByClause = sortFn(matchingResults.certificationScore);
+        break;
+      case "created_at":
+        orderByClause = sortFn(matchingResults.createdAt);
+        break;
+      case "deadline":
+        orderByClause = sortFn(tenders.deadline);
+        break;
+      case "budget":
+        orderByClause = sortFn(tenders.budgetMax);
+        break;
+      default:
+        orderByClause = desc(matchingResults.overallScore);
     }
 
-    query = query.range(startIndex, endIndex);
+    const baseQuery = db
+      .select({
+        match: matchingResults,
+        tender: {
+          title: tenders.title,
+          buyer: tenders.buyer,
+          description: tenders.description,
+          location: tenders.location,
+          deadline: tenders.deadline,
+          budgetMin: tenders.budgetMin,
+          budgetMax: tenders.budgetMax,
+          status: tenders.status,
+        },
+      })
+      .from(matchingResults)
+      .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id));
 
-    const { data, error, count } = await query;
-    if (error) throw error;
+    const [countResult, data] = await Promise.all([
+      db
+        .select({ count: count() })
+        .from(matchingResults)
+        .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+        .where(whereClause),
+      baseQuery
+        .where(whereClause)
+        .orderBy(orderByClause)
+        .limit(pageSize)
+        .offset(offset),
+    ]);
 
-    return apiResponse({ results: data || [], totalCount: count || 0 });
+    // Format results to match old Supabase shape
+    const results = data.map((row) => ({
+      ...row.match,
+      tenders: {
+        title: row.tender.title,
+        buyer: row.tender.buyer,
+        description: row.tender.description,
+        location: row.tender.location,
+        deadline: row.tender.deadline,
+        budgetMin: row.tender.budgetMin,
+        budgetMax: row.tender.budgetMax,
+        status: row.tender.status,
+      },
+    }));
+
+    return apiResponse({ results, totalCount: countResult[0]?.count || 0 });
   } catch (error) {
     return handleApiError(error);
   }

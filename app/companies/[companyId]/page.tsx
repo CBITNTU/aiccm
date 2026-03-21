@@ -4,9 +4,6 @@ import { use } from "react";
 import { PublicCompanyBanner } from "@/components/layout/PublicCompanyBanner";
 import { CompanyDetailView } from "@/components/directory/CompanyDetailView";
 import { usePublicCompany } from "@/hooks/usePublicCompany";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 export default function PublicCompanyPage({
   params,
@@ -35,7 +32,7 @@ export default function PublicCompanyPage({
 
         {data && (
           <CompanyDetailView
-            company={data.company as unknown as Company}
+            company={data.company}
             isOwner={false}
           />
         )}

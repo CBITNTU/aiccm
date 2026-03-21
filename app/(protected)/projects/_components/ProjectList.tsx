@@ -171,14 +171,14 @@ function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
     }
   };
 
-  const gapCoverage = project.gap_analysis
+  const gapCoverage = project.gapAnalysis
     ? deriveCoverage(
-        project.gap_analysis.companyCompetencies ?? [],
-        project.gap_analysis.missingCompetencies ?? [],
-        project.gap_analysis.coveragePercentage,
+        project.gapAnalysis.companyCompetencies ?? [],
+        project.gapAnalysis.missingCompetencies ?? [],
+        project.gapAnalysis.coveragePercentage,
       )
     : undefined;
-  const teamCoverage = project.team_analysis?.coveragePercentage;
+  const teamCoverage = project.teamAnalysis?.coveragePercentage;
 
   return (
     <motion.div

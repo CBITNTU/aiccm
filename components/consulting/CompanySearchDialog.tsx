@@ -25,8 +25,8 @@ import { useOrg } from "@/hooks/useOrg";
 
 interface Company {
   id: string;
-  company_name: string;
-  key_capabilities: string | null;
+  companyName: string;
+  keyCapabilities: string | null;
   certifications: string | null;
   postcode: string | null;
 }
@@ -101,8 +101,8 @@ export function CompanySearchDialog({
           const q = searchQuery.toLowerCase();
           filtered = filtered.filter(
             (c) =>
-              c.company_name.toLowerCase().includes(q) ||
-              c.key_capabilities?.toLowerCase().includes(q) ||
+              c.companyName.toLowerCase().includes(q) ||
+              c.keyCapabilities?.toLowerCase().includes(q) ||
               c.postcode?.toLowerCase().includes(q),
           );
         }
@@ -247,7 +247,7 @@ export function CompanySearchDialog({
                     <div className="flex items-start gap-3 mb-2">
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold truncate">
-                          {company.company_name}
+                          {company.companyName}
                         </h4>
                         <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                           <MapPin className="h-3 w-3 flex-shrink-0" />
@@ -280,9 +280,9 @@ export function CompanySearchDialog({
                       </Button>
                     </div>
 
-                    {company.key_capabilities && (
+                    {company.keyCapabilities && (
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                        {company.key_capabilities}
+                        {company.keyCapabilities}
                       </p>
                     )}
 

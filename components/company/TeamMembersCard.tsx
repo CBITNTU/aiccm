@@ -38,12 +38,12 @@ import { InviteTeamMemberDialog } from "./InviteTeamMemberDialog";
 
 interface JoinRequest {
   id: string;
-  user_id: string;
-  company_id: string;
-  company_name_requested: string;
+  userId: string;
+  companyId: string;
+  companyNameRequested: string;
   message: string | null;
   status: string;
-  created_at: string;
+  createdAt: string;
   user: {
     email: string;
     firstName: string | null;
@@ -54,11 +54,11 @@ interface JoinRequest {
 
 interface Member {
   id: string;
-  company_id: string;
-  user_id: string;
+  companyId: string;
+  userId: string;
   role: string;
   status: string;
-  created_at: string;
+  createdAt: string;
   user: {
     email: string;
     firstName: string | null;
@@ -130,12 +130,12 @@ export function TeamMembersCard({
         // Filter by companyId if provided
         const filteredRequests = companyId
           ? (data.requests || []).filter(
-              (r: JoinRequest) => r.company_id === companyId,
+              (r: JoinRequest) => r.companyId === companyId,
             )
           : data.requests || [];
         const filteredMembers = companyId
           ? (data.members || []).filter(
-              (m: Member) => m.company_id === companyId,
+              (m: Member) => m.companyId === companyId,
             )
           : data.members || [];
 
@@ -429,7 +429,7 @@ export function TeamMembersCard({
                             )}
                             <div className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {formatDate(request.created_at)}
+                              {formatDate(request.createdAt)}
                             </div>
                           </div>
                           {request.message && (
@@ -495,7 +495,7 @@ export function TeamMembersCard({
                       "Unknown"
                     : "Unknown";
                   const isAdmin = member.role === "admin";
-                  const isSelf = currentUserId === member.user_id;
+                  const isSelf = currentUserId === member.userId;
                   const isPendingPlatformApproval =
                     member.status === "pending_platform_approval";
                   const adminCount = members.filter(
@@ -556,7 +556,7 @@ export function TeamMembersCard({
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">
                           {isPendingPlatformApproval ? "Requested" : "Joined"}{" "}
-                          {formatDate(member.created_at)}
+                          {formatDate(member.createdAt)}
                         </span>
                         {canRemove && (
                           <Button
@@ -567,7 +567,7 @@ export function TeamMembersCard({
                                 open: true,
                                 memberId: member.id,
                                 name: userName,
-                                userId: member.user_id,
+                                userId: member.userId,
                               })
                             }
                             disabled={actionLoading === member.id}

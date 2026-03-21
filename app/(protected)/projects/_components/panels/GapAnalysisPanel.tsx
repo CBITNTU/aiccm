@@ -34,11 +34,9 @@ import type {
   RecommendedPartner,
   TeamAnalysis,
 } from "@/hooks/useProjects";
-import type { Tender, TeamMember } from "@/hooks/useProjectDetails";
-import type { Database } from "@/lib/supabase/types";
+import type { Tender, TeamMember, TenderMatchResult } from "@/hooks/useProjectDetails";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { deriveCoverage } from "@/lib/utils";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface GapAnalysisPanelProps {
   projectId: string;
@@ -49,15 +47,7 @@ interface GapAnalysisPanelProps {
   recommendedPartners: RecommendedPartner[];
   teamAnalysis?: TeamAnalysis | null;
   /** When team is only lead (no partners), gap is derived from tender match. */
-  tenderMatchResult: {
-    overall_score: number | null;
-    capability_score: number | null;
-    experience_score: number | null;
-    location_score: number | null;
-    certification_score: number | null;
-    match_reasons: string[] | null;
-    ai_analysis: { score_explanations?: Record<string, string> } | null;
-  } | null;
+  tenderMatchResult: TenderMatchResult | null;
 }
 
 export function GapAnalysisPanel({
@@ -162,7 +152,7 @@ export function GapAnalysisPanel({
 
   const handleAddToCompanyProfile = async () => {
     if (!company) return;
-    const existing = company.key_capabilities ?? "";
+    const existing = company.keyCapabilities ?? "";
     const existingLines = existing
       .split("\n")
       .map((l) => l.trim())
@@ -182,7 +172,7 @@ export function GapAnalysisPanel({
     try {
       await updateCompany.mutateAsync({
         companyId: company.id,
-        updates: { key_capabilities: updated },
+        updates: { keyCapabilities: updated },
       });
       toast.success("Company profile updated");
       setMovedToYours([]);
@@ -245,10 +235,10 @@ export function GapAnalysisPanel({
   if (!gapAnalysis) {
     return (
       <div className="py-6">
-        {isSolo && tenderMatchResult?.overall_score != null && (
+        {isSolo && tenderMatchResult?.overallScore != null && (
           <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
             Your tender match for this company and tender:{" "}
-            <strong>{Math.round(tenderMatchResult.overall_score)}%</strong>. Run
+            <strong>{Math.round(tenderMatchResult.overallScore)}%</strong>. Run
             gap analysis below to see competency-level breakdown.
           </div>
         )}
@@ -493,7 +483,7 @@ export function GapAnalysisPanel({
             className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm"
           >
             <p className="font-medium mb-2">
-              Add to {company.company_name}&apos;s profile?
+              Add to {company.companyName}&apos;s profile?
             </p>
             <ul className="mb-3 space-y-1 text-muted-foreground">
               {movedToYours.map((c, i) => (

@@ -8,28 +8,26 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { CompanyDetailView } from "@/components/directory/CompanyDetailView";
-import type { Database } from "@/lib/supabase/types";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
+import type { CompanyRecord as Company } from "@/lib/api/types";
 type PublicCompany = Pick<
   Company,
   | "id"
-  | "company_name"
+  | "companyName"
   | "description"
-  | "key_capabilities"
+  | "keyCapabilities"
   | "postcode"
   | "certifications"
-  | "past_projects"
-  | "is_system_company"
+  | "pastProjects"
+  | "isSystemCompany"
   | "status"
-  | "digital_maturity"
-  | "ai_competencies"
-  | "ai_capabilities"
-  | "ai_analysis"
-  | "created_at"
-  | "updated_at"
-  | "user_id"
-  | "website_url"
+  | "digitalMaturity"
+  | "aiCompetencies"
+  | "aiCapabilities"
+  | "aiAnalysis"
+  | "createdAt"
+  | "updatedAt"
+  | "userId"
+  | "websiteUrl"
 >;
 
 interface CompanyDetailModalProps {
@@ -51,7 +49,7 @@ export function CompanyDetailModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="sr-only">
-          <DialogTitle>{company.company_name}</DialogTitle>
+          <DialogTitle>{company.companyName}</DialogTitle>
           <DialogDescription>
             {company.description ?? "Company details"}
           </DialogDescription>

@@ -55,7 +55,7 @@ export function ProjectInvitationCard({
         message: message || undefined,
       });
       toast.success("Invitation declined.");
-      onResponded?.("reject", invitation.vo_id);
+      onResponded?.("reject", invitation.voId);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to decline invitation",
@@ -120,9 +120,9 @@ export function ProjectInvitationCard({
                   )}
                 </p>
               )}
-              {invitation.tender.budget_max && (
+              {invitation.tender.budgetMax && (
                 <p className="text-sm text-muted-foreground">
-                  Est. Value: £{invitation.tender.budget_max.toLocaleString()}
+                  Est. Value: £{invitation.tender.budgetMax.toLocaleString()}
                 </p>
               )}
             </div>

@@ -25,10 +25,8 @@ import {
 import { toast } from "sonner";
 import type { TeamAnalysis } from "@/hooks/useProjects";
 import type { Tender, TeamMember } from "@/hooks/useProjectDetails";
-import type { Database } from "@/lib/supabase/types";
+import type { CompanyRecord as Company } from "@/lib/api/types";
 import { deriveCoverage } from "@/lib/utils";
-
-type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface TeamAnalysisPanelProps {
   projectId: string;
@@ -113,7 +111,7 @@ export function TeamAnalysisPanel({
         tender: {
           title: tender.title,
           description: tender.description,
-          buyer_name: tender.buyer_name || tender.buyer,
+          buyerName: tender.buyerName || tender.buyer,
           value: tender.value,
           region: tender.region || tender.location,
         },

@@ -1,19 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, createAdminClient } from "@/lib/api";
+import { NextRequest } from "next/server";
+import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth, handleApiError, getUserCompanyIds } from "@/lib/api/validation";
 import { batchScoreTendersForCompany } from "@/lib/services/tenderMatchingService";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { getUserCompanyIds } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { tenders } from "@/lib/db/schema/app";
+import { and, inArray, gte } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await getAuthenticatedUser(request);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 },
-      );
-    }
+    const { user } = await requireAuth(request);
 
     const { tenderIds } = await request.json().catch(() => ({}));
 
@@ -21,10 +17,7 @@ export async function POST(request: NextRequest) {
     const companyIds = await getUserCompanyIds(user.id);
 
     if (companyIds.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Company not found for user" },
-        { status: 404 },
-      );
+      return apiError("Company not found for user", 404);
     }
 
     const companyId = companyIds[0];
@@ -36,21 +29,17 @@ export async function POST(request: NextRequest) {
     } else {
       // Fetch open tenders with deadline >= today (same filter as main endpoint)
       const today = new Date().toISOString().split("T")[0];
-      const supabase = createAdminClient();
-      const { data: openTenders, error: tendersError } = await supabase
-        .from("tenders")
-        .select("id")
-        .in("status", ["open", "closing_soon", "framework"])
-        .gte("deadline", today);
-
-      if (tendersError) {
-        return NextResponse.json(
-          { success: false, error: `Failed to fetch tenders: ${tendersError.message}` },
-          { status: 500 },
+      const openTenders = await db
+        .select({ id: tenders.id })
+        .from(tenders)
+        .where(
+          and(
+            inArray(tenders.status, ["open", "closing_soon", "framework"]),
+            gte(tenders.deadline, new Date(today)),
+          ),
         );
-      }
 
-      filteredTenderIds = (openTenders || []).map((t: { id: string }) => t.id);
+      filteredTenderIds = openTenders.map((t) => t.id);
     }
 
     // Queue matching jobs
@@ -74,31 +63,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    return apiResponse({
       success: true,
       jobCount,
       companyId,
       batchId,
     });
   } catch (error) {
-    console.error("Error triggering matching:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    // Log error event
-    await logApiEvent(request, {
-      actionType: "matching_triggered",
-      userId: undefined,
-      status: "error",
-      errorMessage,
-    }).catch(() => {}); // Don't fail if logging fails
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: errorMessage,
-      },
-      { status: 500 },
-    );
+    return handleApiError(error);
   }
 }

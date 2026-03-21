@@ -1,12 +1,14 @@
 import { NextRequest } from "next/server";
 import {
-  createAdminClient,
   apiResponse,
   apiError,
   getAuthenticatedUser,
   checkSuperadminRole,
 } from "@/lib/api";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { db } from "@/lib/db";
+import { companies } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 
 export interface EditPendingCompanyRequest {
   companyId: string;
@@ -52,16 +54,20 @@ export async function PUT(request: NextRequest) {
       return apiError("Company ID is required", 400);
     }
 
-    const supabase = createAdminClient();
-
     // Verify company exists and is pending_review
-    const { data: company, error: fetchError } = await supabase
-      .from("companies")
-      .select("id, status, company_name")
-      .eq("id", companyId)
-      .single();
+    const companyRows = await db
+      .select({
+        id: companies.id,
+        status: companies.status,
+        companyName: companies.companyName,
+      })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
 
-    if (fetchError || !company) {
+    const company = companyRows[0];
+
+    if (!company) {
       return apiError("Company not found", 404);
     }
 
@@ -73,17 +79,17 @@ export async function PUT(request: NextRequest) {
     }
 
     // Build update object with only provided fields
-    const updateData: Record<string, unknown> = {};
-    if (companyName !== undefined) updateData.company_name = companyName;
+    const updateData: Partial<typeof companies.$inferInsert> = {};
+    if (companyName !== undefined) updateData.companyName = companyName;
     if (companiesHouseNumber !== undefined)
-      updateData.companies_house_number = companiesHouseNumber || null;
-    if (websiteUrl !== undefined) updateData.website_url = websiteUrl || null;
+      updateData.companiesHouseNumber = companiesHouseNumber || null;
+    if (websiteUrl !== undefined) updateData.websiteUrl = websiteUrl || null;
     if (contactPerson !== undefined)
-      updateData.contact_person = contactPerson || null;
+      updateData.contactPerson = contactPerson || null;
     if (contactEmail !== undefined)
-      updateData.contact_email = contactEmail || null;
+      updateData.contactEmail = contactEmail || null;
     if (contactPhone !== undefined)
-      updateData.contact_phone = contactPhone || null;
+      updateData.contactPhone = contactPhone || null;
 
     // Only update if there are changes
     if (Object.keys(updateData).length === 0) {
@@ -91,15 +97,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update the company
-    const { error: updateError } = await supabase
-      .from("companies")
-      .update(updateData)
-      .eq("id", companyId);
-
-    if (updateError) {
-      console.error("Error updating company:", updateError);
-      return apiError("Failed to update company", 500);
-    }
+    await db
+      .update(companies)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(companies.id, companyId));
 
     await logApiEvent(request, {
       actionType: "admin_edit_pending_company",
@@ -108,14 +109,14 @@ export async function PUT(request: NextRequest) {
       entityType: "company",
       entityId: companyId,
       details: {
-        company_name: company.company_name,
+        company_name: company.companyName,
         fields_updated: Object.keys(updateData),
       },
     }).catch(() => {});
 
     return apiResponse<EditPendingCompanyResponse>({
       success: true,
-      message: `Company "${company.company_name}" has been updated`,
+      message: `Company "${company.companyName}" has been updated`,
     });
   } catch (error) {
     console.error("Edit pending company error:", error);

@@ -1,74 +1,100 @@
 import { NextRequest } from "next/server";
-import { apiResponse, createAdminClient } from "@/lib/api";
+import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
   getUserCompanyIds,
   handleApiError,
 } from "@/lib/api/validation";
+import { db } from "@/lib/db";
+import { companies, tenders, matchingResults, virtualOrganizations } from "@/lib/db/schema/app";
+import { eq, inArray, desc, count } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
-    const supabase = createAdminClient();
 
     // Get user's company IDs
     const companyIds = await getUserCompanyIds(user.id);
 
     // Fetch companies
-    let companies: Record<string, unknown>[] = [];
+    let companiesData: (typeof companies.$inferSelect)[] = [];
     if (companyIds.length > 0) {
-      const { data } = await supabase
-        .from("companies")
-        .select("*")
-        .in("id", companyIds)
-        .order("created_at", { ascending: false });
-      companies = data || [];
+      companiesData = await db
+        .select()
+        .from(companies)
+        .where(inArray(companies.id, companyIds))
+        .orderBy(desc(companies.createdAt));
     }
 
     // Fetch total tenders count
-    const { count: totalTenders } = await supabase
-      .from("tenders")
-      .select("*", { count: "exact", head: true });
+    const tendersCountResult = await db.select({ count: count() }).from(tenders);
+    const totalTenders = tendersCountResult[0]?.count || 0;
 
     // Fetch matching results for user's companies
     let recentMatches: Record<string, unknown>[] = [];
     let matchingResultsCount = 0;
 
     if (companyIds.length > 0) {
-      const { data: matchData, count } = await supabase
-        .from("matching_results")
-        .select(
-          `
-          *,
-          tenders(title, buyer, deadline, description, location, budget_min, budget_max),
-          companies(company_name)
-        `,
-          { count: "exact" },
-        )
-        .in("company_id", companyIds)
-        .order("created_at", { ascending: false })
+      // Count total matching results
+      const countResult = await db
+        .select({ count: count() })
+        .from(matchingResults)
+        .where(inArray(matchingResults.companyId, companyIds));
+      matchingResultsCount = countResult[0]?.count || 0;
+
+      // Fetch recent matches with joined data
+      const matchData = await db
+        .select({
+          match: matchingResults,
+          tenderTitle: tenders.title,
+          tenderBuyer: tenders.buyer,
+          tenderDeadline: tenders.deadline,
+          tenderDescription: tenders.description,
+          tenderLocation: tenders.location,
+          tenderBudgetMin: tenders.budgetMin,
+          tenderBudgetMax: tenders.budgetMax,
+          companyName: companies.companyName,
+        })
+        .from(matchingResults)
+        .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+        .innerJoin(companies, eq(matchingResults.companyId, companies.id))
+        .where(inArray(matchingResults.companyId, companyIds))
+        .orderBy(desc(matchingResults.createdAt))
         .limit(5);
 
-      recentMatches = matchData || [];
-      matchingResultsCount = count || 0;
+      recentMatches = matchData.map((row) => ({
+        ...row.match,
+        tenders: {
+          title: row.tenderTitle,
+          buyer: row.tenderBuyer,
+          deadline: row.tenderDeadline,
+          description: row.tenderDescription,
+          location: row.tenderLocation,
+          budgetMin: row.tenderBudgetMin,
+          budgetMax: row.tenderBudgetMax,
+        },
+        companies: {
+          companyName: row.companyName,
+        },
+      }));
     }
 
     // Fetch projects count
     let projectsCount = 0;
     if (companyIds.length > 0) {
-      const { data: projects } = await supabase
-        .from("virtual_organizations")
-        .select("id")
-        .in("lead_company_id", companyIds);
-      projectsCount = projects?.length || 0;
+      const projectsResult = await db
+        .select({ count: count() })
+        .from(virtualOrganizations)
+        .where(inArray(virtualOrganizations.leadCompanyId, companyIds));
+      projectsCount = projectsResult[0]?.count || 0;
     }
 
     return apiResponse({
-      companies,
+      companies: companiesData,
       stats: {
-        totalTenders: totalTenders || 0,
+        totalTenders,
         matchingResults: matchingResultsCount,
-        companies: companies.length,
+        companies: companiesData.length,
         projects: projectsCount,
       },
       recentMatches,

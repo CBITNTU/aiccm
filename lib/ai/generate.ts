@@ -32,6 +32,8 @@ function normaliseReasoningEffort(
   effort: string | undefined,
   modelId: string,
 ): string | undefined {
+  // GPT-5 models require an explicit reasoning effort — default to "low"
+  if (!effort && modelId.startsWith("gpt-5")) return "low";
   if (!effort) return undefined;
 
   // DeepSeek: pass through; buildProviderOptions maps to thinking mode

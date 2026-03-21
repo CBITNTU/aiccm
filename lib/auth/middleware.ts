@@ -54,6 +54,16 @@ export async function updateSession(request: NextRequest) {
     );
 
     if (isProtectedPath) {
+      // Redirect /directory/[uuid] to public company page instead of /auth
+      const directoryCompanyMatch = request.nextUrl.pathname.match(
+        /^\/directory\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i,
+      );
+      if (directoryCompanyMatch) {
+        const url = request.nextUrl.clone();
+        url.pathname = `/companies/${directoryCompanyMatch[1]}`;
+        return NextResponse.redirect(url);
+      }
+
       const url = request.nextUrl.clone();
       url.pathname = "/auth";
       url.searchParams.set("redirectTo", request.nextUrl.pathname);

@@ -34,13 +34,18 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }) => {
+      // Replace default callbackURL=/ with /auth/callback for proper post-verification routing
+      const verifyUrl = url.replace(
+        /callbackURL=[^&]*/,
+        `callbackURL=${encodeURIComponent("/auth/callback")}`,
+      );
       await sendEmail({
         to: user.email,
         subject: `Verify your email - ${getPlatformName()}`,
         html: `
           <h2>Welcome to ${getPlatformName()}</h2>
           <p>Please verify your email address by clicking the link below:</p>
-          <p><a href="${url}">Verify Email</a></p>
+          <p><a href="${verifyUrl}">Verify Email</a></p>
           <p>If you didn't create an account, you can safely ignore this email.</p>
         `,
       });

@@ -55,7 +55,7 @@ const overviewStats = [
     value: 89,
     change: +7,
     icon: FileText,
-    color: "text-secondary",
+    color: "text-primary",
   },
   {
     label: "Consulting Teams",

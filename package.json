@@ -28,6 +28,8 @@
     "db:reset-local:drizzle": "node scripts/reset-local-db-for-drizzle.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:seed": "node scripts/seed-local-db.mjs",
+    "db:fresh": "node scripts/reset-and-seed.mjs",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "prepare": "husky"

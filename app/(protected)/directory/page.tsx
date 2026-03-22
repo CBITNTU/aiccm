@@ -35,6 +35,7 @@ type PublicCompany = Pick<
   | "createdAt"
   | "updatedAt"
   | "userId"
+  | "verificationStatus"
 >;
 
 const defaultFilters: DirectoryFiltersState = {

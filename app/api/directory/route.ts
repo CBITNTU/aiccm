@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
             createdAt: companies.createdAt,
             updatedAt: companies.updatedAt,
             userId: companies.userId,
+            verificationStatus: companies.verificationStatus,
           })
           .from(companies)
           .where(whereClause)

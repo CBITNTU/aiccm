@@ -117,23 +117,23 @@ export async function PUT(
 
     // Whitelist allowed fields (use camelCase for Drizzle)
     const fieldMap: Record<string, keyof typeof companies.$inferInsert> = {
-      company_name: "companyName",
+      companyName: "companyName",
       description: "description",
-      key_capabilities: "keyCapabilities",
+      keyCapabilities: "keyCapabilities",
       postcode: "postcode",
-      contact_email: "contactEmail",
-      website_url: "websiteUrl",
-      contact_phone: "contactPhone",
-      operation_locations: "operationLocations",
+      contactEmail: "contactEmail",
+      websiteUrl: "websiteUrl",
+      contactPhone: "contactPhone",
+      operationLocations: "operationLocations",
       certifications: "certifications",
-      past_projects: "pastProjects",
+      pastProjects: "pastProjects",
     };
 
     const updates: Partial<typeof companies.$inferInsert> = {};
-    for (const [snakeField, camelField] of Object.entries(fieldMap)) {
-      if (snakeField in body) {
+    for (const [field, camelField] of Object.entries(fieldMap)) {
+      if (field in body) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (updates as any)[camelField] = body[snakeField];
+        (updates as any)[camelField] = body[field];
       }
     }
 

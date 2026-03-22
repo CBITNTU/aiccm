@@ -59,6 +59,8 @@ export interface CompanyRecord {
   safetyRating?: string | null;
   marketPosition?: string | null;
   isSystemCompany?: boolean | null;
+  verificationStatus?: string | null;
+  verifiedAt?: string | null;
   aiCertifications?: JsonValue;
   aiSummary?: string | null;
   aiCapabilityTaxonomy?: JsonValue;

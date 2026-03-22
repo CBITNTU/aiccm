@@ -24,7 +24,7 @@ export class ApiError extends Error {
 export async function apiCall<T>(
   endpoint: string,
   options: {
-    method?: "GET" | "POST" | "PUT" | "DELETE";
+    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
     body?: Record<string, unknown>;
     params?: Record<string, string | number | boolean | undefined>;
     signal?: AbortSignal;
@@ -393,11 +393,23 @@ export const api = {
     apiCall<{
       capabilities: { id: string; name: string; category: string }[];
       allCapabilities: { id: string; name: string; category: string }[];
+      verificationStatus: string;
+      competencyLimit: number | null;
+      pendingCompetencyRequest: {
+        id: string;
+        proposedAdditions: string[];
+        proposedRemovals: string[];
+        createdAt: string;
+      } | null;
     }>(`companies/${companyId}/capabilities`, { method: "GET" }),
 
   syncCapabilities: (companyId: string, capabilityIds: string[]) =>
     apiCall<{
-      capabilities: { id: string; name: string; category: string }[];
+      capabilities?: { id: string; name: string; category: string }[];
+      pendingReview?: boolean;
+      changeRequestId?: string;
+      message?: string;
+      error?: string;
     }>(`companies/${companyId}/capabilities`, {
       method: "PUT",
       body: { capabilityIds },
@@ -935,4 +947,98 @@ export const api = {
       enabled: boolean;
       result: { lat: number; lng: number; displayName: string } | null;
     }>("geocode", { method: "GET", params: { q: query } }),
+
+  // Company Verification
+  getVerificationStatus: (companyId: string) =>
+    apiCall<{
+      verificationStatus: string;
+      verifiedAt: string | null;
+      latestRequest: {
+        id: string;
+        status: string;
+        submissionNotes: string | null;
+        reviewNotes: string | null;
+        createdAt: string;
+        reviewedAt: string | null;
+      } | null;
+    }>(`companies/${companyId}/verification`, { method: "GET" }),
+
+  submitVerification: (companyId: string, notes?: string) =>
+    apiCall<{ verificationRequest: Record<string, unknown> }>(
+      `companies/${companyId}/verification`,
+      { body: { notes } },
+    ),
+
+  // Admin - Verification Requests
+  adminGetVerificationRequests: () =>
+    apiCall<{
+      requests: {
+        id: string;
+        companyId: string;
+        companyName: string;
+        status: string;
+        submissionNotes: string | null;
+        reviewNotes: string | null;
+        companySnapshot: Record<string, unknown>;
+        createdAt: string;
+        reviewedAt: string | null;
+        verificationStatus: string;
+      }[];
+    }>("admin/verification-requests", { method: "GET" }),
+
+  adminReviewVerification: (
+    requestId: string,
+    action: "approve" | "reject",
+    reviewNotes?: string,
+  ) =>
+    apiCall<{ success: boolean; action: string }>(
+      `admin/verification-requests/${requestId}`,
+      { method: "PUT", body: { action, reviewNotes } },
+    ),
+
+  // Admin - Competency Change Requests
+  adminGetCompetencyRequests: () =>
+    apiCall<{
+      requests: {
+        id: string;
+        companyId: string;
+        companyName: string;
+        status: string;
+        proposedAdditions: string[];
+        proposedRemovals: string[];
+        reviewNotes: string | null;
+        createdAt: string;
+        reviewedAt: string | null;
+      }[];
+      capabilityMap: Record<string, string>;
+    }>("admin/competency-requests", { method: "GET" }),
+
+  adminReviewCompetencyRequest: (
+    requestId: string,
+    action: "approve" | "reject",
+    reviewNotes?: string,
+  ) =>
+    apiCall<{ success: boolean; action: string }>(
+      `admin/competency-requests/${requestId}`,
+      { method: "PUT", body: { action, reviewNotes } },
+    ),
+
+  // Admin - Verification Settings
+  adminGetVerificationSettings: () =>
+    apiCall<{
+      verifiedProjectLimit: number;
+      unverifiedProjectLimit: number;
+      unverifiedCompetencyLimit: number;
+    }>("admin/settings/verification", { method: "GET" }),
+
+  adminUpdateVerificationSettings: (updates: {
+    verifiedProjectLimit?: number;
+    unverifiedProjectLimit?: number;
+    unverifiedCompetencyLimit?: number;
+  }) =>
+    apiCall<{
+      verifiedProjectLimit: number;
+      unverifiedProjectLimit: number;
+      unverifiedCompetencyLimit: number;
+    }>("admin/settings/verification", { method: "PATCH", body: updates }),
 };

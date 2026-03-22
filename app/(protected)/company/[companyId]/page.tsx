@@ -61,6 +61,7 @@ import {
   useUpdateCompany,
   useAnalyzeCompany,
 } from "@/hooks/useCompanyMutations";
+import { VerificationBanner } from "@/components/company/VerificationBanner";
 
 interface Certification {
   name: string;
@@ -401,6 +402,15 @@ export default function CompanyDetailPage() {
           <ArrowLeft className="w-4 h-4" />
           Back to Companies
         </Button>
+      </div>
+
+      {/* Verification Banner */}
+      <div className="mb-4">
+        <VerificationBanner
+          companyId={companyId}
+          companyData={companyData}
+          isOwner={isOwner}
+        />
       </div>
 
       {/* Company Header */}

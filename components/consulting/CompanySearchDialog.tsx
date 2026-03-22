@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Award, Plus, Loader2 } from "lucide-react";
+import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import { toast } from "sonner";
 import { useGeocode } from "@/hooks/useGeocode";
 import { useOrg } from "@/hooks/useOrg";
@@ -29,6 +30,7 @@ interface Company {
   keyCapabilities: string | null;
   certifications: string | null;
   postcode: string | null;
+  verificationStatus?: string | null;
 }
 
 interface CompanySearchDialogProps {
@@ -246,8 +248,11 @@ export function CompanySearchDialog({
                   >
                     <div className="flex items-start gap-3 mb-2">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold truncate">
+                        <h4 className="font-semibold truncate flex items-center gap-1.5">
                           {company.companyName}
+                          {company.verificationStatus === "verified" && (
+                            <VerifiedBadge compact />
+                          )}
                         </h4>
                         <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                           <MapPin className="h-3 w-3 flex-shrink-0" />

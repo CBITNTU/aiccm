@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Building2 } from "lucide-react";
+import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import type { Company } from "./types";
 
 export function CompanyOverviewCard({ company }: { company: Company }) {
@@ -88,6 +89,21 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
                   company.status.slice(1)
                 : "Active"}
             </Badge>
+          </div>
+
+          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+            <span className="text-sm font-medium">Verification</span>
+            {company.verificationStatus === "verified" ? (
+              <VerifiedBadge />
+            ) : company.verificationStatus === "pending_verification" ? (
+              <Badge className="gap-1 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">
+                Pending
+              </Badge>
+            ) : (
+              <Badge className="gap-1 bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100">
+                Not Verified
+              </Badge>
+            )}
           </div>
 
           <div className="flex gap-2">

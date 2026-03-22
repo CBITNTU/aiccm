@@ -32,6 +32,12 @@ export const approvalStatusEnum = pgEnum("approval_status", [
   "rejected",
 ]);
 
+export const verificationStatusEnum = pgEnum("verification_status", [
+  "unverified",
+  "pending_verification",
+  "verified",
+]);
+
 // ============================================================================
 // Profiles
 // ============================================================================
@@ -104,6 +110,9 @@ export const companies = pgTable("companies", {
   operationLocations: jsonb("operation_locations").default([]),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
+  verificationStatus: verificationStatusEnum("verification_status").notNull().default("unverified"),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  verifiedBy: uuid("verified_by").references(() => user.id, { onDelete: "set null" }),
 });
 
 // ============================================================================
@@ -545,6 +554,53 @@ export const syncState = pgTable("sync_state", {
 export const platformSettings = pgTable("platform_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============================================================================
+// Company Verification Requests
+// ============================================================================
+export const companyVerificationRequests = pgTable("company_verification_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  submittedBy: uuid("submitted_by")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  submissionNotes: text("submission_notes"),
+  reviewNotes: text("review_notes"),
+  reviewedBy: uuid("reviewed_by").references(() => user.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  companySnapshot: jsonb("company_snapshot").default({}),
+  reviewFeedback: jsonb("review_feedback"),
+  // Future-proofing fields
+  paymentReference: text("payment_reference"),
+  scheduledVisitAt: timestamp("scheduled_visit_at", { withTimezone: true }),
+  questionnaireResponses: jsonb("questionnaire_responses"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============================================================================
+// Competency Change Requests
+// ============================================================================
+export const competencyChangeRequests = pgTable("competency_change_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  requestedBy: uuid("requested_by")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  proposedAdditions: jsonb("proposed_additions").default([]),
+  proposedRemovals: jsonb("proposed_removals").default([]),
+  reviewNotes: text("review_notes"),
+  reviewedBy: uuid("reviewed_by").references(() => user.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

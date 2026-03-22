@@ -8,8 +8,9 @@ import {
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { isCompanyMember } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { virtualOrganizations, voMembers } from "@/lib/db/schema/app";
-import { eq } from "drizzle-orm";
+import { virtualOrganizations, voMembers, companies } from "@/lib/db/schema/app";
+import { eq, and, ne, count } from "drizzle-orm";
+import { getPlatformVerificationSettings } from "@/lib/platformVerificationSettings";
 
 interface ProjectRequest {
   name: string;
@@ -48,6 +49,36 @@ export async function POST(request: NextRequest) {
     const hasAccess = await isCompanyMember(user.id, company_id);
     if (!hasAccess) {
       return apiError("Company not found or unauthorized", 403);
+    }
+
+    // Enforce project limit based on verification status
+    const company = await db
+      .select({ verificationStatus: companies.verificationStatus })
+      .from(companies)
+      .where(eq(companies.id, company_id))
+      .then((rows) => rows[0]);
+
+    if (company) {
+      const settings = await getPlatformVerificationSettings();
+      const isVerified = company.verificationStatus === "verified";
+      const limit = isVerified ? settings.verifiedProjectLimit : settings.unverifiedProjectLimit;
+
+      const [{ value: projectCount }] = await db
+        .select({ value: count() })
+        .from(virtualOrganizations)
+        .where(
+          and(
+            eq(virtualOrganizations.leadCompanyId, company_id),
+            ne(virtualOrganizations.status, "archived"),
+          ),
+        );
+
+      if (projectCount >= limit) {
+        const message = isVerified
+          ? `Verified companies can create up to ${limit} active projects. Please archive existing projects to create new ones.`
+          : `Unverified companies can create up to ${limit} active project(s). Get your company verified to unlock more projects.`;
+        return apiError(message, 403);
+      }
     }
 
     // Create project

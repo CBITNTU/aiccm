@@ -44,6 +44,7 @@ import {
   CheckCircle2,
   Building2,
 } from "lucide-react";
+import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import { ProjectSummary } from "@/components/consulting/ProjectSummary";
 import { CoverageMap } from "@/components/consulting/CoverageMap";
 import { RecommendedPartners } from "@/components/consulting/RecommendedPartners";
@@ -134,6 +135,7 @@ interface TeamMember {
     certifications?: string | null;
     pastProjects?: string | null;
     description?: string | null;
+    verificationStatus?: string | null;
   } | null;
 }
 
@@ -1042,8 +1044,11 @@ export default function ConsultingPage() {
                           <div className="flex items-center gap-3">
                             <Building2 className="h-5 w-5 text-muted-foreground" />
                             <div>
-                              <p className="font-medium">
+                              <p className="font-medium flex items-center gap-1.5">
                                 {member.companies?.companyName}
+                                {member.companies?.verificationStatus === "verified" && (
+                                  <VerifiedBadge compact />
+                                )}
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 {member.companies?.keyCapabilities?.substring(

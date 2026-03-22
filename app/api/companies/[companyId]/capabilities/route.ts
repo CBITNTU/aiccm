@@ -7,8 +7,14 @@ import {
   AuthError,
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
-import { eq, and, inArray, asc } from "drizzle-orm";
+import {
+  companyCapabilities,
+  companyCapabilitiesRef,
+  companies,
+  competencyChangeRequests,
+} from "@/lib/db/schema/app";
+import { eq, and, inArray, asc, desc } from "drizzle-orm";
+import { getPlatformVerificationSettings } from "@/lib/platformVerificationSettings";
 
 export async function GET(
   request: NextRequest,
@@ -48,9 +54,42 @@ export async function GET(
       .where(eq(companyCapabilitiesRef.isActive, true))
       .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
 
+    // Get company verification status and settings for limits
+    const company = await db
+      .select({ verificationStatus: companies.verificationStatus })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .then((rows) => rows[0]);
+
+    const settings = await getPlatformVerificationSettings();
+
+    // Check for pending competency request
+    const pendingRequest = await db
+      .select({
+        id: competencyChangeRequests.id,
+        proposedAdditions: competencyChangeRequests.proposedAdditions,
+        proposedRemovals: competencyChangeRequests.proposedRemovals,
+        createdAt: competencyChangeRequests.createdAt,
+      })
+      .from(competencyChangeRequests)
+      .where(
+        and(
+          eq(competencyChangeRequests.companyId, companyId),
+          eq(competencyChangeRequests.status, "pending"),
+        ),
+      )
+      .orderBy(desc(competencyChangeRequests.createdAt))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
     return apiResponse({
       capabilities: capData,
       allCapabilities,
+      verificationStatus: company?.verificationStatus ?? "unverified",
+      competencyLimit: company?.verificationStatus === "unverified" || company?.verificationStatus === "pending_verification"
+        ? settings.unverifiedCompetencyLimit
+        : null,
+      pendingCompetencyRequest: pendingRequest,
     });
   } catch (error) {
     return handleApiError(error);
@@ -77,6 +116,19 @@ export async function PUT(
       return apiResponse({ error: "capabilityIds must be an array with at most 500 items" }, 400);
     }
 
+    // Get company verification status
+    const company = await db
+      .select({ verificationStatus: companies.verificationStatus })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .then((rows) => rows[0]);
+
+    if (!company) {
+      return apiResponse({ error: "Company not found" }, 404);
+    }
+
+    const isVerified = company.verificationStatus === "verified";
+
     // Get current capability IDs
     const current = await db
       .select({ capabilityId: companyCapabilities.capabilityId })
@@ -90,43 +142,98 @@ export async function PUT(
     const toRemove = [...currentIds].filter((id) => !newIds.has(id));
     const toAdd = [...newIds].filter((id) => !currentIds.has(id));
 
-    // Apply removals
-    if (toRemove.length > 0) {
-      await db
-        .delete(companyCapabilities)
+    // No changes
+    if (toRemove.length === 0 && toAdd.length === 0) {
+      return apiResponse({ capabilities: current, pendingReview: false });
+    }
+
+    if (isVerified) {
+      // Verified companies: all changes go through review
+      // Check for existing pending request
+      const existingPending = await db
+        .select({ id: competencyChangeRequests.id })
+        .from(competencyChangeRequests)
         .where(
           and(
-            eq(companyCapabilities.companyId, companyId),
-            inArray(companyCapabilities.capabilityId, toRemove),
+            eq(competencyChangeRequests.companyId, companyId),
+            eq(competencyChangeRequests.status, "pending"),
           ),
+        )
+        .limit(1)
+        .then((rows) => rows[0]);
+
+      if (existingPending) {
+        return apiResponse(
+          { error: "A competency change request is already pending review. Please wait for it to be reviewed before submitting new changes." },
+          400,
         );
-    }
+      }
 
-    // Apply additions
-    if (toAdd.length > 0) {
-      await db.insert(companyCapabilities).values(
-        toAdd.map((capabilityId) => ({
+      // Create change request
+      const [changeRequest] = await db
+        .insert(competencyChangeRequests)
+        .values({
           companyId,
-          capabilityId,
-        })),
-      );
+          requestedBy: user.id,
+          status: "pending",
+          proposedAdditions: toAdd,
+          proposedRemovals: toRemove,
+        })
+        .returning();
+
+      return apiResponse({
+        pendingReview: true,
+        changeRequestId: changeRequest.id,
+        message: "Your competency changes have been submitted for review.",
+      });
+    } else {
+      // Unverified companies: direct sync up to limit
+      const settings = await getPlatformVerificationSettings();
+      if (capabilityIds.length > settings.unverifiedCompetencyLimit) {
+        return apiResponse(
+          { error: `Unverified companies can have at most ${settings.unverifiedCompetencyLimit} competencies. Get verified to unlock unlimited competencies.` },
+          403,
+        );
+      }
+
+      // Apply removals
+      if (toRemove.length > 0) {
+        await db
+          .delete(companyCapabilities)
+          .where(
+            and(
+              eq(companyCapabilities.companyId, companyId),
+              inArray(companyCapabilities.capabilityId, toRemove),
+            ),
+          );
+      }
+
+      // Apply additions
+      if (toAdd.length > 0) {
+        await db.insert(companyCapabilities).values(
+          toAdd.map((capabilityId) => ({
+            companyId,
+            capabilityId,
+          })),
+        );
+      }
+
+      // Fetch updated capabilities via join
+      const updatedCaps = await db
+        .select({
+          id: companyCapabilitiesRef.id,
+          name: companyCapabilitiesRef.name,
+          category: companyCapabilitiesRef.category,
+        })
+        .from(companyCapabilities)
+        .innerJoin(
+          companyCapabilitiesRef,
+          eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id),
+        )
+        .where(eq(companyCapabilities.companyId, companyId));
+
+      return apiResponse({ capabilities: updatedCaps, pendingReview: false });
     }
-
-    // Fetch updated capabilities via join
-    const updatedCaps = await db
-      .select({
-        id: companyCapabilitiesRef.id,
-        name: companyCapabilitiesRef.name,
-        category: companyCapabilitiesRef.category,
-      })
-      .from(companyCapabilities)
-      .innerJoin(
-        companyCapabilitiesRef,
-        eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id),
-      )
-      .where(eq(companyCapabilities.companyId, companyId));
-
-    return apiResponse({ capabilities: updatedCaps });
   } catch (error) {
     return handleApiError(error);
   }

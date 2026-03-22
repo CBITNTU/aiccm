@@ -60,6 +60,7 @@ export async function nearbyCompanies(params: {
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
     userId: r.user_id as string | null,
+    verificationStatus: r.verification_status as string | null,
     address: r.address as string | null,
     companiesHouseNumber: r.companies_house_number as string | null,
     contactEmail: r.contact_email as string | null,

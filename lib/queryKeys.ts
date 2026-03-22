@@ -23,4 +23,8 @@ export const queryKeys = {
     ["projectInvitations", userId] as const,
   directoryCompany: (id: string) => ["directoryCompany", id] as const,
   publicCompany: (id: string) => ["publicCompany", id] as const,
+  verificationStatus: (companyId: string) => ["verificationStatus", companyId] as const,
+  adminVerificationRequests: () => ["adminVerificationRequests"] as const,
+  adminCompetencyRequests: () => ["adminCompetencyRequests"] as const,
+  adminVerificationSettings: () => ["adminVerificationSettings"] as const,
 };

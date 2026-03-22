@@ -7,7 +7,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies, companyTaxonomies, taxonomies, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
-import { eq, and, or, ilike, inArray, asc, count, sql } from "drizzle-orm";
+import { eq, and, or, ilike, inArray, asc, count } from "drizzle-orm";
 import { nearbyCompanies } from "@/lib/db/raw";
 
 export async function GET(request: NextRequest) {

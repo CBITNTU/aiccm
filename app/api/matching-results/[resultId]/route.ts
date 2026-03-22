@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
 import { requireAuth, isCompanyMember, handleApiError, AuthError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { matchingResults, companies } from "@/lib/db/schema/app";
+import { matchingResults } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
 
 export async function DELETE(

@@ -57,6 +57,7 @@ interface CompaniesStepProps {
   selectedCapabilityIds: string[];
   selectedCompanies: Company[];
   onSelectionChange: (companies: Company[]) => void;
+  leadCompanyId?: string | null;
 }
 
 interface CompanyWithCapabilities extends Company {
@@ -75,6 +76,7 @@ export function CompaniesStep({
   selectedCapabilityIds,
   selectedCompanies,
   onSelectionChange,
+  leadCompanyId,
 }: CompaniesStepProps) {
   const [companies, setCompanies] = useState<CompanyWithCapabilities[]>([]);
   const [distanceMap, setDistanceMap] = useState<Record<string, number>>({});
@@ -116,6 +118,7 @@ export function CompaniesStep({
 
       const result = await api.getCompaniesByCapabilities({
         capabilityIds: selectedCapabilityIds,
+        excludeCompanyIds: leadCompanyId ? [leadCompanyId] : [],
         ...locationParams,
       });
       setCompanies(
@@ -132,7 +135,7 @@ export function CompaniesStep({
     } finally {
       setLoading(false);
     }
-  }, [selectedCapabilityIds, coords, radius]);
+  }, [selectedCapabilityIds, coords, radius, leadCompanyId]);
 
   useEffect(() => {
     if (selectedCapabilityIds.length > 0) {

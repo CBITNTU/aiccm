@@ -380,6 +380,7 @@ export function ProjectCreationWizard({
                     selectedCapabilityIds={selectedCapabilities}
                     selectedCompanies={selectedCompanies}
                     onSelectionChange={handleCompanySelection}
+                    leadCompanyId={leadCompanyId}
                   />
                 )}
 

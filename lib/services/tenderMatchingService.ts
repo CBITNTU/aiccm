@@ -4,7 +4,7 @@ import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { db } from "@/lib/db";
 import { companies, tenders, matchingResults, demoMatchingResults } from "@/lib/db/schema/app";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 /** Reasoning effort for GPT-5 models: lower = faster, fewer reasoning tokens. */
 export type ReasoningEffort =

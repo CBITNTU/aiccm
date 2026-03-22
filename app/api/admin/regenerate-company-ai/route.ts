@@ -12,7 +12,7 @@ import {
   companyCapabilitiesRef,
   companies,
 } from "@/lib/db/schema/app";
-import { eq, inArray, notInArray, ne } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 
 // Helper to get base URL
 function getBaseUrl(): string {
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     // Filter by batch_type in JS since we need company_ai_regeneration batches
     const oldBatchIds = oldBatches
-      .filter((b) => true) // All old batches with pending/processing status
+      .filter((_b) => true) // All old batches with pending/processing status
       .map((b) => b.id);
 
     if (oldBatchIds.length > 0) {

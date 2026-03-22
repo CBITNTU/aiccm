@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { tenders, companyCapabilitiesRef } from "@/lib/db/schema/app";
-import { eq, inArray, isNotNull } from "drizzle-orm";
+import { inArray, isNotNull } from "drizzle-orm";
 
 /**
  * Updates which capabilities are "active" based on whether they appear in any tenders.

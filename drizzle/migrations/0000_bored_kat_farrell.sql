@@ -69,10 +69,10 @@ CREATE TABLE "company_capabilities_ref" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"category" text,
+	"parent_id" uuid,
 	"is_active" boolean DEFAULT true,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "company_capabilities_ref_name_unique" UNIQUE("name")
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "company_join_requests" (
@@ -93,6 +93,12 @@ CREATE TABLE "company_join_requests" (
 	CONSTRAINT "company_join_requests_user_id_company_id_unique" UNIQUE("user_id","company_id")
 );
 --> statement-breakpoint
+CREATE TABLE "company_markets" (
+	"company_id" uuid NOT NULL,
+	"market_id" uuid NOT NULL,
+	CONSTRAINT "company_markets_company_id_market_id_pk" PRIMARY KEY("company_id","market_id")
+);
+--> statement-breakpoint
 CREATE TABLE "company_members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid NOT NULL,
@@ -108,12 +114,43 @@ CREATE TABLE "company_members" (
 	CONSTRAINT "company_members_company_id_user_id_unique" UNIQUE("company_id","user_id")
 );
 --> statement-breakpoint
+CREATE TABLE "company_standards" (
+	"company_id" uuid NOT NULL,
+	"standard_id" uuid NOT NULL,
+	CONSTRAINT "company_standards_company_id_standard_id_pk" PRIMARY KEY("company_id","standard_id")
+);
+--> statement-breakpoint
 CREATE TABLE "company_taxonomies" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid NOT NULL,
 	"taxonomy_id" uuid NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "company_taxonomies_company_id_taxonomy_id_unique" UNIQUE("company_id","taxonomy_id")
+);
+--> statement-breakpoint
+CREATE TABLE "competency_taxonomy_seed" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"category" text,
+	"parent_id" uuid,
+	"is_active" boolean DEFAULT true NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "demo_matching_results" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"batch_label" text NOT NULL,
+	"company_id" uuid NOT NULL,
+	"tender_id" uuid NOT NULL,
+	"model_used" text NOT NULL,
+	"overall_score" integer,
+	"capability_score" integer,
+	"experience_score" integer,
+	"location_score" integer,
+	"certification_score" integer,
+	"match_reasons" text[],
+	"improvement_suggestions" text[],
+	"ai_analysis" jsonb
 );
 --> statement-breakpoint
 CREATE TABLE "events" (
@@ -131,6 +168,15 @@ CREATE TABLE "events" (
 	"request_method" text,
 	"status" text DEFAULT 'success',
 	"error_message" text
+);
+--> statement-breakpoint
+CREATE TABLE "markets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"parent_id" uuid,
+	"sort_order" integer DEFAULT 0,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "matching_results" (
@@ -226,6 +272,15 @@ CREATE TABLE "profiles" (
 	"signup_type" text,
 	"invited_to_company_id" uuid,
 	CONSTRAINT "profiles_user_id_unique" UNIQUE("user_id")
+);
+--> statement-breakpoint
+CREATE TABLE "standards_ref" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"parent_id" uuid,
+	"sort_order" integer DEFAULT 0,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "sync_state" (
@@ -420,12 +475,18 @@ ALTER TABLE "company_join_requests" ADD CONSTRAINT "company_join_requests_compan
 ALTER TABLE "company_join_requests" ADD CONSTRAINT "company_join_requests_admin_approved_by_user_id_fk" FOREIGN KEY ("admin_approved_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_join_requests" ADD CONSTRAINT "company_join_requests_superadmin_approved_by_user_id_fk" FOREIGN KEY ("superadmin_approved_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_join_requests" ADD CONSTRAINT "company_join_requests_rejected_by_user_id_fk" FOREIGN KEY ("rejected_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_markets" ADD CONSTRAINT "company_markets_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_markets" ADD CONSTRAINT "company_markets_market_id_markets_id_fk" FOREIGN KEY ("market_id") REFERENCES "public"."markets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_members" ADD CONSTRAINT "company_members_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_members" ADD CONSTRAINT "company_members_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_members" ADD CONSTRAINT "company_members_invited_by_user_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_members" ADD CONSTRAINT "company_members_approved_by_user_id_fk" FOREIGN KEY ("approved_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_standards" ADD CONSTRAINT "company_standards_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_standards" ADD CONSTRAINT "company_standards_standard_id_standards_ref_id_fk" FOREIGN KEY ("standard_id") REFERENCES "public"."standards_ref"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_taxonomies" ADD CONSTRAINT "company_taxonomies_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_taxonomies" ADD CONSTRAINT "company_taxonomies_taxonomy_id_taxonomies_id_fk" FOREIGN KEY ("taxonomy_id") REFERENCES "public"."taxonomies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "demo_matching_results" ADD CONSTRAINT "demo_matching_results_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "demo_matching_results" ADD CONSTRAINT "demo_matching_results_tender_id_tenders_id_fk" FOREIGN KEY ("tender_id") REFERENCES "public"."tenders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "events" ADD CONSTRAINT "events_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "matching_results" ADD CONSTRAINT "matching_results_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "matching_results" ADD CONSTRAINT "matching_results_tender_id_tenders_id_fk" FOREIGN KEY ("tender_id") REFERENCES "public"."tenders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -455,4 +516,5 @@ ALTER TABLE "invitation" ADD CONSTRAINT "invitation_organization_id_organization
 ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREIGN KEY ("inviter_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "member" ADD CONSTRAINT "member_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "member" ADD CONSTRAINT "member_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "idx_competency_taxonomy_seed_parent_id" ON "competency_taxonomy_seed" USING btree ("parent_id");

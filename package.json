@@ -29,6 +29,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "node scripts/seed-local-db.mjs",
+    "db:seed-ref": "node scripts/seed-reference-data.mjs",
     "db:fresh": "node scripts/reset-and-seed.mjs",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",

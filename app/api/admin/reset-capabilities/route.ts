@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import {
   companyCapabilities,
   companyCapabilitiesRef,
+  competencyTaxonomySeed,
   companies,
 } from "@/lib/db/schema/app";
 import { ne, sql } from "drizzle-orm";
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     const [{ count: seedCount }] = await db
       .select({ count: sql<number>`count(*)::int` })
-      .from(sql`competency_taxonomy_seed`);
+      .from(competencyTaxonomySeed);
 
     if (!seedCount || seedCount === 0) {
       return apiError(

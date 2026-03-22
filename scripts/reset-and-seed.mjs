@@ -23,13 +23,12 @@ console.log("=== Reset & Seed Local Database ===\n");
 
 run("node scripts/reset-local-db-for-drizzle.mjs");
 
-// Use db:push instead of db:migrate as it reliably creates tables
-// The reset script already runs db:migrate but it may not always apply
-// db:push ensures the schema is synced directly
-run("npm run db:push");
-
 console.log("");
 
 run("node scripts/seed-local-db.mjs");
+
+console.log("");
+
+run("node scripts/seed-reference-data.mjs");
 
 console.log("\n=== Done! Database is fresh and seeded. ===");

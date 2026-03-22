@@ -12,6 +12,7 @@ import {
   doublePrecision,
   unique,
   primaryKey,
+  index,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
@@ -304,13 +305,23 @@ export const tenderTaxonomies = pgTable(
 // ============================================================================
 export const companyCapabilitiesRef = pgTable("company_capabilities_ref", {
   id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull().unique(),
+  name: text("name").notNull(),
   category: text("category"),
   parentId: uuid("parent_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Canonical competency taxonomy from CSV. Populated by seed script.
+// Admin reset-capabilities copies this into company_capabilities_ref.
+export const competencyTaxonomySeed = pgTable("competency_taxonomy_seed", {
+  id: uuid("id").primaryKey(),
+  name: text("name").notNull(),
+  category: text("category"),
+  parentId: uuid("parent_id"),
+  isActive: boolean("is_active").notNull().default(true),
+}, (table) => [index("idx_competency_taxonomy_seed_parent_id").on(table.parentId)]);
 
 export const companyCapabilities = pgTable(
   "company_capabilities",

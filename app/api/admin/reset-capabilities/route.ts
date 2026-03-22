@@ -41,15 +41,18 @@ export async function POST(request: NextRequest) {
     const deletedLinksCount = deletedLinks.length;
     console.log(`Deleted ${deletedLinksCount} company-capability links`);
 
-    // Step 2: Delete ALL capabilities from reference table
+    // Step 2: Delete ALL capabilities from reference table in reverse order (L3 → L2 → L1)
+    // to avoid FK cascade conflicts on self-referential parent_id.
     console.log("Step 2: Deleting all capabilities from reference table...");
-    const deletedCaps = await db
+    await db.execute(sql`DELETE FROM company_capabilities_ref WHERE parent_id IN (SELECT id FROM company_capabilities_ref WHERE parent_id IS NOT NULL)`);
+    await db.execute(sql`DELETE FROM company_capabilities_ref WHERE parent_id IS NOT NULL`);
+    const deletedCapsResult = await db
       .delete(companyCapabilitiesRef)
       .where(ne(companyCapabilitiesRef.id, ZERO_UUID))
       .returning();
 
-    const deletedCapsCount = deletedCaps.length;
-    console.log(`Deleted ${deletedCapsCount} capabilities from reference table`);
+    const deletedCapsCount = deletedCapsResult.length;
+    console.log(`Deleted ${deletedCapsCount} L1 capabilities from reference table`);
 
     // Step 3: Clear ai_capability_taxonomy from all companies
     console.log("Step 3: Clearing capability taxonomies from all companies...");

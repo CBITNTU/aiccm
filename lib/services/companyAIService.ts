@@ -4,9 +4,97 @@ import {
   companyCapabilities,
   companyCapabilitiesRef,
 } from "@/lib/db/schema/app";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, isNull } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
 import { companySummaryAndTaxonomySchema } from "@/lib/schemas/capabilitySuggestion";
+
+// ---------------------------------------------------------------------------
+// Local taxonomy helpers (keyword scoring, no AI)
+// ---------------------------------------------------------------------------
+
+const LOCAL_TAXONOMY_MIN_SCORE = 1;
+const LOCAL_TAXONOMY_MAX_L1 = 5;
+
+function toSearchWords(text: string): string[] {
+  if (!text || typeof text !== "string") return [];
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 1);
+}
+
+function scoreCapabilityMatch(
+  companyWords: string[],
+  companyTextLower: string,
+  capabilityName: string,
+  category: string | null,
+): number {
+  const nameWords = toSearchWords(capabilityName);
+  const categoryWords = category ? toSearchWords(category) : [];
+  const allTerms = [...new Set([...nameWords, ...categoryWords])];
+  if (allTerms.length === 0) return 0;
+  let score = 0;
+  for (const word of allTerms) {
+    if (companyWords.includes(word)) score += 1;
+  }
+  if (capabilityName && companyTextLower.includes(capabilityName.toLowerCase())) score += 2;
+  if (category && companyTextLower.includes(category.toLowerCase())) score += 2;
+  return score;
+}
+
+async function assignCapabilitiesLocally(companyId: string): Promise<string[]> {
+  const companyResult = await db
+    .select({
+      companyName: companies.companyName,
+      description: companies.description,
+      keyCapabilities: companies.keyCapabilities,
+      certifications: companies.certifications,
+      equipment: companies.equipment,
+      pastProjects: companies.pastProjects,
+    })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+
+  const company = companyResult[0];
+  if (!company) throw new Error(`Failed to fetch company: Company not found`);
+
+  const parts = [
+    company.companyName,
+    company.description,
+    company.keyCapabilities,
+    company.certifications,
+    company.equipment,
+    company.pastProjects,
+  ].filter(Boolean) as string[];
+
+  const companyText = parts.join(" ");
+  const companyTextLower = companyText.toLowerCase();
+  const companyWords = toSearchWords(companyText);
+  if (companyWords.length === 0) return [];
+
+  // Only L1 capabilities (parent_id IS NULL)
+  const l1Caps = await db
+    .select({ id: companyCapabilitiesRef.id, name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+    .from(companyCapabilitiesRef)
+    .where(isNull(companyCapabilitiesRef.parentId))
+    .orderBy(asc(companyCapabilitiesRef.name));
+
+  if (l1Caps.length === 0) return [];
+
+  const scored = l1Caps.map((cap) => ({
+    id: cap.id,
+    score: scoreCapabilityMatch(companyWords, companyTextLower, cap.name, cap.category),
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored
+    .filter((s) => s.score >= LOCAL_TAXONOMY_MIN_SCORE)
+    .slice(0, LOCAL_TAXONOMY_MAX_L1)
+    .map((s) => s.id);
+}
 
 /**
  * Generate AI summary for a company
@@ -106,109 +194,17 @@ Summarize.`;
 }
 
 /**
- * Generate capability taxonomy for a company
- * Returns array of capability IDs and creates new capabilities if needed
- * @param companyId - The company ID
- * @param _fullRegeneration - If true, start from base/generic categories only. If false, show all capabilities for incremental updates.
+ * Assign capabilities to a company using local keyword scoring (no AI).
+ * Picks the top 2-5 L1 capabilities whose name/category words best match the company text.
  */
 export async function generateCompanyCapabilityTaxonomy(
   companyId: string,
   _fullRegeneration: boolean = false,
 ): Promise<string[]> {
-  // Fetch company data
-  const result = await db
-    .select({
-      companyName: companies.companyName,
-      description: companies.description,
-      keyCapabilities: companies.keyCapabilities,
-      certifications: companies.certifications,
-      equipment: companies.equipment,
-      pastProjects: companies.pastProjects,
-    })
-    .from(companies)
-    .where(eq(companies.id, companyId))
-    .limit(1);
+  console.log("[CompanyAI:taxonomy] Running local keyword taxonomy for company", companyId);
+  const uniqueIds = await assignCapabilitiesLocally(companyId);
+  console.log("[CompanyAI:taxonomy] Matched capability IDs:", uniqueIds);
 
-  const company = result[0];
-
-  if (!company) {
-    throw new Error("Failed to fetch company: Company not found");
-  }
-
-  console.log("[CompanyAI:taxonomy] Company data fetched —", {
-    companyName: company.companyName,
-    hasDescription: !!company.description,
-    hasKeyCapabilities: !!company.keyCapabilities,
-    hasCertifications: !!company.certifications,
-    hasEquipment: !!company.equipment,
-    hasPastProjects: !!company.pastProjects,
-  });
-
-  // Fetch existing capabilities from static list
-  const existingCapabilities = await db
-    .select({
-      id: companyCapabilitiesRef.id,
-      name: companyCapabilitiesRef.name,
-      category: companyCapabilitiesRef.category,
-    })
-    .from(companyCapabilitiesRef)
-    .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
-
-  if (!existingCapabilities || existingCapabilities.length === 0) {
-    throw new Error("Failed to fetch capabilities: No capabilities found");
-  }
-
-  console.log("[CompanyAI:taxonomy] Available capabilities from static list — count:", existingCapabilities.length);
-
-  // Format capabilities for AI
-  const capabilitiesByCategory: Record<
-    string,
-    Array<{ id: string; name: string }>
-  > = {};
-  existingCapabilities.forEach((cap) => {
-    const category = cap.category || "Uncategorized";
-    if (!capabilitiesByCategory[category]) {
-      capabilitiesByCategory[category] = [];
-    }
-    capabilitiesByCategory[category].push({ id: cap.id, name: cap.name });
-  });
-
-  const capabilitiesList = Object.entries(capabilitiesByCategory)
-    .map(
-      ([category, caps]) =>
-        `${category}:\n  ${caps.map((c) => `- ${c.name} (ID: ${c.id})`).join("\n  ")}`,
-    )
-    .join("\n\n");
-
-  const systemPrompt = `From the STATIC capability list below, pick 2-5 IDs that best match the company. Do not create new capabilities.`;
-
-  const userPrompt = `Company Details:
-Name: ${company.companyName || "N/A"}
-Description: ${company.description || "N/A"}
-${company.keyCapabilities ? `Key Capabilities: ${company.keyCapabilities}` : ""}
-${company.certifications ? `Certifications: ${company.certifications}` : ""}
-${company.equipment ? `Equipment: ${company.equipment}` : ""}
-${company.pastProjects ? `Past Projects: ${company.pastProjects}` : ""}
-
-Available Capabilities:
-${capabilitiesList}
-
-Return existing = array of capability IDs from the list.`;
-
-  const parsed = await aiGenerateObject({
-    schema: companySummaryAndTaxonomySchema,
-    system: systemPrompt,
-    prompt: userPrompt,
-    maxTokens: 4000,
-    estTokens: 3000,
-  });
-
-  const existingIds = parsed.existing;
-
-  // Only use existing capabilities from static list
-  const uniqueIds = Array.from(new Set(existingIds));
-
-  // Store taxonomy in database
   await db
     .update(companies)
     .set({
@@ -217,22 +213,18 @@ Return existing = array of capability IDs from the list.`;
     })
     .where(eq(companies.id, companyId));
 
-  // Atomically replace capability links in the junction table
   await db.transaction(async (tx) => {
     await tx
       .delete(companyCapabilities)
       .where(eq(companyCapabilities.companyId, companyId));
-
     if (uniqueIds.length > 0) {
       await tx.insert(companyCapabilities).values(
-        uniqueIds.map((capabilityId) => ({
-          companyId,
-          capabilityId,
-        })),
+        uniqueIds.map((capabilityId) => ({ companyId, capabilityId })),
       );
     }
   });
 
+  console.log("[CompanyAI:taxonomy] DB save confirmed for company", companyId);
   return uniqueIds;
 }
 

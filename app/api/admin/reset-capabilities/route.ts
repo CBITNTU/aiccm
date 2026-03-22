@@ -6,14 +6,13 @@ import {
 } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { EIC_TAXONOMY } from "@/lib/eicTaxonomy";
 import { db } from "@/lib/db";
 import {
   companyCapabilities,
   companyCapabilitiesRef,
   companies,
 } from "@/lib/db/schema/app";
-import { ne } from "drizzle-orm";
+import { ne, sql } from "drizzle-orm";
 
 // A UUID that will never match any real row - used as a "match all" condition
 const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
@@ -67,23 +66,57 @@ export async function POST(request: NextRequest) {
       console.error("Failed to clear company taxonomies:", clearTaxonomyError);
     }
 
-    // Step 4: Reseed base capabilities list from EIC taxonomy (standard taxonomy)
-    console.log("Step 4: Reseeding base capabilities list from EIC taxonomy...");
-
-    const baseCapabilities = EIC_TAXONOMY.flatMap((item) =>
-      item.subcategories.map((sub) => ({
-        name: sub,
-        category: item.name,
-        isActive: true,
-      })),
+    // Step 4: Reseed from competency_taxonomy_seed (3-level CSV canonical copy in DB)
+    console.log(
+      "Step 4: Reseeding company_capabilities_ref from competency_taxonomy_seed...",
     );
 
-    const insertedCaps = await db
-      .insert(companyCapabilitiesRef)
-      .values(baseCapabilities)
-      .returning();
+    const [{ count: seedCount }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(sql`competency_taxonomy_seed`);
 
-    console.log(`Reseeded ${insertedCaps.length} base capabilities`);
+    if (!seedCount || seedCount === 0) {
+      return apiError(
+        "competency_taxonomy_seed is empty. Apply migrations that seed the CSV taxonomy (e.g. 20260217000000_seed_taxonomies_from_csv.sql).",
+        500,
+      );
+    }
+
+    // Self-referential FK: insert L1, then L2, then L3 (parent rows must exist first)
+    await db.execute(sql`
+      INSERT INTO company_capabilities_ref (id, name, category, parent_id, is_active, created_at, updated_at)
+      SELECT id, name, category, parent_id, is_active, now(), now()
+      FROM competency_taxonomy_seed
+      WHERE parent_id IS NULL
+    `);
+
+    await db.execute(sql`
+      INSERT INTO company_capabilities_ref (id, name, category, parent_id, is_active, created_at, updated_at)
+      SELECT s.id, s.name, s.category, s.parent_id, s.is_active, now(), now()
+      FROM competency_taxonomy_seed s
+      WHERE s.parent_id IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM competency_taxonomy_seed p
+          WHERE p.id = s.parent_id AND p.parent_id IS NULL
+        )
+    `);
+
+    await db.execute(sql`
+      INSERT INTO company_capabilities_ref (id, name, category, parent_id, is_active, created_at, updated_at)
+      SELECT s.id, s.name, s.category, s.parent_id, s.is_active, now(), now()
+      FROM competency_taxonomy_seed s
+      WHERE s.parent_id IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM competency_taxonomy_seed p
+          WHERE p.id = s.parent_id AND p.parent_id IS NOT NULL
+        )
+    `);
+
+    const [{ count: reseededCount }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(companyCapabilitiesRef);
+
+    console.log(`Reseeded ${reseededCount} capabilities from seed table`);
 
     // Log admin action
     await logApiEvent(request, {
@@ -93,20 +126,20 @@ export async function POST(request: NextRequest) {
       details: {
         deletedCapabilities: deletedCapsCount,
         deletedLinks: deletedLinksCount,
-        reseededCapabilities: baseCapabilities.length,
+        reseededCapabilities: reseededCount,
       },
     }).catch(() => {});
 
     console.log(
-      `RESET COMPLETE: All capabilities deleted and EIC taxonomy reseeded (${baseCapabilities.length} capabilities)`,
+      `RESET COMPLETE: All capabilities deleted; ${reseededCount} rows copied from competency_taxonomy_seed`,
     );
 
     return apiResponse({
       success: true,
       deletedCapabilities: deletedCapsCount,
       deletedLinks: deletedLinksCount,
-      reseededCapabilities: baseCapabilities.length,
-      message: `All capabilities deleted. Reseeded ${baseCapabilities.length} capabilities from EIC taxonomy.`,
+      reseededCapabilities: reseededCount,
+      message: `All capabilities deleted. Reseeded ${reseededCount} capabilities from competency taxonomy seed (3-level CSV).`,
     });
   } catch (error) {
     return handleApiError(error);

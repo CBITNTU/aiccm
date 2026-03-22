@@ -5,7 +5,6 @@ import { eq, and, inArray, desc, asc, lt, isNotNull } from "drizzle-orm";
 
 // Drizzle-inferred types (camelCase)
 type ProcessingQueue = typeof processingQueue.$inferSelect;
-type BatchJob = typeof batchJobs.$inferSelect;
 
 export type JobType =
   | "tender_summary"
@@ -44,7 +43,9 @@ export interface BatchStatus {
 /**
  * Map a snake_case row from raw SQL (dequeueJobAtomic) to camelCase ProcessingQueue shape.
  */
-function mapRawToProcessingQueue(raw: Record<string, unknown>): ProcessingQueue {
+function mapRawToProcessingQueue(
+  raw: Record<string, unknown>,
+): ProcessingQueue {
   return {
     id: raw.id as string,
     jobType: raw.job_type as string,
@@ -58,8 +59,8 @@ function mapRawToProcessingQueue(raw: Record<string, unknown>): ProcessingQueue 
     attempts: (raw.attempts as number | null) ?? 0,
     maxAttempts: (raw.max_attempts as number | null) ?? 3,
     errorMessage: (raw.error_message as string | null) ?? null,
-    resultData: raw.result_data as Record<string, unknown> | null ?? null,
-    metadata: raw.metadata as Record<string, unknown> | null ?? null,
+    resultData: (raw.result_data as Record<string, unknown> | null) ?? null,
+    metadata: (raw.metadata as Record<string, unknown> | null) ?? null,
     scheduledAt: raw.scheduled_at ? new Date(raw.scheduled_at as string) : null,
     startedAt: raw.started_at ? new Date(raw.started_at as string) : null,
     completedAt: raw.completed_at ? new Date(raw.completed_at as string) : null,
@@ -212,7 +213,7 @@ export async function dequeueJob(): Promise<ProcessingQueue | null> {
  * Uses conditional UPDATE to prevent race conditions where multiple workers claim the same job.
  * @deprecated Use dequeueJob() which uses atomic database function
  */
-async function dequeueJobFallback(): Promise<ProcessingQueue | null> {
+async function _dequeueJobFallback(): Promise<ProcessingQueue | null> {
   const now = new Date();
 
   // First, try to get a job with batchId (prioritize batch jobs)
@@ -250,7 +251,7 @@ async function dequeueJobFallback(): Promise<ProcessingQueue | null> {
       console.log(
         `Job ${batchJobRows[0].id} was claimed by another worker, retrying...`,
       );
-      return dequeueJobFallback();
+      return _dequeueJobFallback();
     }
 
     return claimed[0];
@@ -289,7 +290,7 @@ async function dequeueJobFallback(): Promise<ProcessingQueue | null> {
     console.log(
       `Job ${pendingRows[0].id} was claimed by another worker, retrying...`,
     );
-    return dequeueJobFallback();
+    return _dequeueJobFallback();
   }
 
   return claimed[0];
@@ -617,7 +618,7 @@ async function updateBatchProgress(
  * Fallback method for updating batch progress (non-atomic, for backward compatibility)
  * @deprecated Use updateBatchProgress() which uses atomic database function
  */
-async function updateBatchProgressFallback(
+async function _updateBatchProgressFallback(
   jobId: string,
   outcome: "completed" | "failed",
 ): Promise<void> {

@@ -14,7 +14,9 @@ function run(commandString) {
   }
 
   if (result.status !== 0) {
-    console.error(`Command failed with exit code ${result.status}: ${commandString}`);
+    console.error(
+      `Command failed with exit code ${result.status}: ${commandString}`,
+    );
     process.exit(result.status ?? 1);
   }
 }

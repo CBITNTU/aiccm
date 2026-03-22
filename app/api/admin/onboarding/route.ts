@@ -12,9 +12,8 @@ import {
   profiles,
   companies,
   companyJoinRequests,
-  userRoles,
 } from "@/lib/db/schema/app";
-import { desc, eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 
 /**
  * GET /api/admin/onboarding

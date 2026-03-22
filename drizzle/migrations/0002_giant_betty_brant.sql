@@ -1,0 +1,1 @@
+ALTER TABLE "company_verification_requests" ADD COLUMN "review_feedback" jsonb;

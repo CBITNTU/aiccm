@@ -27,4 +27,5 @@ export const queryKeys = {
   adminVerificationRequests: () => ["adminVerificationRequests"] as const,
   adminCompetencyRequests: () => ["adminCompetencyRequests"] as const,
   adminVerificationSettings: () => ["adminVerificationSettings"] as const,
+  adminVerificationReview: (requestId: string) => ["adminVerificationReview", requestId] as const,
 };

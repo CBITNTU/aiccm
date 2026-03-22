@@ -15,6 +15,13 @@
       "when": 1774214029232,
       "tag": "0001_talented_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774217807574,
+      "tag": "0002_giant_betty_brant",
+      "breakpoints": true
     }
   ]
 }

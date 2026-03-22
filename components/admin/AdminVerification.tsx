@@ -16,14 +16,24 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Loader2,
   CheckCircle,
   XCircle,
   ShieldCheck,
   Clock,
   Building2,
+  Eye,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminVerificationReviewPanel } from "./AdminVerificationReviewPanel";
 
 export function AdminVerification() {
   return (
@@ -35,51 +45,67 @@ export function AdminVerification() {
 }
 
 // ============================================================================
+// Status Badge Helper
+// ============================================================================
+function RequestStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { variant: "default" | "destructive" | "outline" | "secondary"; label: string; icon: React.ReactNode }> = {
+    pending: {
+      variant: "outline",
+      label: "Pending",
+      icon: <Clock className="h-3 w-3" />,
+    },
+    approved: {
+      variant: "default",
+      label: "Verified",
+      icon: <CheckCircle className="h-3 w-3" />,
+    },
+    rejected: {
+      variant: "destructive",
+      label: "Rejected",
+      icon: <XCircle className="h-3 w-3" />,
+    },
+    changes_requested: {
+      variant: "secondary",
+      label: "Changes Requested",
+      icon: <AlertTriangle className="h-3 w-3" />,
+    },
+  };
+  const c = config[status] ?? { variant: "outline" as const, label: status, icon: null };
+  return (
+    <Badge variant={c.variant} className="gap-1">
+      {c.icon}
+      {c.label}
+    </Badge>
+  );
+}
+
+// ============================================================================
 // Verification Requests Section
 // ============================================================================
 function VerificationRequests() {
-  const queryClient = useQueryClient();
-  const [reviewDialog, setReviewDialog] = useState<{
-    requestId: string;
-    action: "approve" | "reject";
-    companyName: string;
-  } | null>(null);
-  const [reviewNotes, setReviewNotes] = useState("");
+  const [reviewPanelRequestId, setReviewPanelRequestId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("pending");
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.adminVerificationRequests(),
     queryFn: () => api.adminGetVerificationRequests(),
   });
 
-  const reviewMutation = useMutation({
-    mutationFn: ({
-      requestId,
-      action,
-      reviewNotes,
-    }: {
-      requestId: string;
-      action: "approve" | "reject";
-      reviewNotes?: string;
-    }) => api.adminReviewVerification(requestId, action, reviewNotes),
-    onSuccess: (_, variables) => {
-      toast.success(
-        variables.action === "approve"
-          ? "Company verified successfully"
-          : "Verification request rejected",
-      );
-      queryClient.invalidateQueries({ queryKey: queryKeys.adminVerificationRequests() });
-      queryClient.invalidateQueries({ queryKey: ["directory"] });
-      queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
-      setReviewDialog(null);
-      setReviewNotes("");
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to review request");
-    },
-  });
+  const allRequests = data?.requests ?? [];
 
-  const pendingRequests = data?.requests?.filter((r) => r.status === "pending") ?? [];
-  const reviewedRequests = data?.requests?.filter((r) => r.status !== "pending") ?? [];
+  const filteredRequests =
+    statusFilter === "all"
+      ? allRequests
+      : allRequests.filter((r) => {
+          if (statusFilter === "pending") return r.status === "pending";
+          if (statusFilter === "changes_requested") return r.status === "changes_requested";
+          if (statusFilter === "reviewed")
+            return r.status === "approved" || r.status === "rejected";
+          return r.status === statusFilter;
+        });
+
+  const pendingCount = allRequests.filter((r) => r.status === "pending").length;
+  const changesRequestedCount = allRequests.filter((r) => r.status === "changes_requested").length;
 
   if (isLoading) {
     return (
@@ -95,85 +121,83 @@ function VerificationRequests() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            Verification Requests
-            {pendingRequests.length > 0 && (
-              <Badge variant="destructive">{pendingRequests.length}</Badge>
-            )}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Verification Requests
+              {pendingCount > 0 && (
+                <Badge variant="destructive">{pendingCount}</Badge>
+              )}
+              {changesRequestedCount > 0 && (
+                <Badge variant="secondary">{changesRequestedCount}</Badge>
+              )}
+            </CardTitle>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Requests</SelectItem>
+                <SelectItem value="pending">Pending Review</SelectItem>
+                <SelectItem value="changes_requested">Changes Requested</SelectItem>
+                <SelectItem value="reviewed">Reviewed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
-          {pendingRequests.length === 0 ? (
+          {filteredRequests.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">
-              No pending verification requests.
+              No {statusFilter === "all" ? "" : statusFilter.replace("_", " ")} verification requests.
             </p>
           ) : (
-            <div className="space-y-4">
-              {pendingRequests.map((req) => {
+            <div className="space-y-3">
+              {filteredRequests.map((req) => {
                 const snapshot = req.companySnapshot as Record<string, string> | null;
                 return (
                   <div
                     key={req.id}
-                    className="flex items-start justify-between gap-4 p-4 border rounded-lg"
+                    className="flex items-start justify-between gap-4 p-4 border rounded-lg hover:bg-muted/30 transition-colors"
                   >
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{req.companyName}</span>
-                        <Badge variant="outline" className="gap-1">
-                          <Clock className="h-3 w-3" />
-                          Pending
-                        </Badge>
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="font-medium truncate">{req.companyName}</span>
+                        <RequestStatusBadge status={req.status} />
                       </div>
                       {req.submissionNotes && (
-                        <p className="text-sm text-muted-foreground">
-                          Notes: {req.submissionNotes}
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {req.submissionNotes}
                         </p>
                       )}
-                      <p className="text-xs text-muted-foreground">
-                        Submitted: {new Date(req.createdAt).toLocaleDateString()}
-                      </p>
-                      {snapshot && (
-                        <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
-                          {snapshot.contactEmail && <p>Email: {snapshot.contactEmail}</p>}
-                          {snapshot.postcode && <p>Postcode: {snapshot.postcode}</p>}
-                          {snapshot.websiteUrl && <p>Website: {snapshot.websiteUrl}</p>}
-                          {snapshot.companiesHouseNumber && (
-                            <p>Companies House: {snapshot.companiesHouseNumber}</p>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>
+                          Submitted: {new Date(req.createdAt).toLocaleDateString()}
+                        </span>
+                        {snapshot?.websiteUrl && (
+                          <a
+                            href={snapshot.websiteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:underline"
+                          >
+                            Website
+                          </a>
+                        )}
+                        {snapshot?.companiesHouseNumber && (
+                          <span>CH: {snapshot.companiesHouseNumber}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <Button
                         size="sm"
-                        onClick={() =>
-                          setReviewDialog({
-                            requestId: req.id,
-                            action: "approve",
-                            companyName: req.companyName,
-                          })
-                        }
+                        variant="outline"
+                        onClick={() => setReviewPanelRequestId(req.id)}
                         className="gap-1"
                       >
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() =>
-                          setReviewDialog({
-                            requestId: req.id,
-                            action: "reject",
-                            companyName: req.companyName,
-                          })
-                        }
-                        className="gap-1"
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                        Reject
+                        <Eye className="h-3.5 w-3.5" />
+                        Review
                       </Button>
                     </div>
                   </div>
@@ -181,80 +205,13 @@ function VerificationRequests() {
               })}
             </div>
           )}
-
-          {reviewedRequests.length > 0 && (
-            <div className="mt-6">
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                Recently Reviewed
-              </h4>
-              <div className="space-y-2">
-                {reviewedRequests.slice(0, 5).map((req) => (
-                  <div
-                    key={req.id}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{req.companyName}</span>
-                      <Badge
-                        variant={req.status === "approved" ? "default" : "destructive"}
-                        className="text-xs"
-                      >
-                        {req.status === "approved" ? "Verified" : "Rejected"}
-                      </Badge>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {req.reviewedAt
-                        ? new Date(req.reviewedAt).toLocaleDateString()
-                        : ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      <Dialog open={!!reviewDialog} onOpenChange={() => setReviewDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {reviewDialog?.action === "approve" ? "Approve" : "Reject"}{" "}
-              Verification for {reviewDialog?.companyName}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Add review notes (optional)..."
-              value={reviewNotes}
-              onChange={(e) => setReviewNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReviewDialog(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant={reviewDialog?.action === "approve" ? "default" : "destructive"}
-              disabled={reviewMutation.isPending}
-              onClick={() => {
-                if (!reviewDialog) return;
-                reviewMutation.mutate({
-                  requestId: reviewDialog.requestId,
-                  action: reviewDialog.action,
-                  reviewNotes: reviewNotes || undefined,
-                });
-              }}
-            >
-              {reviewMutation.isPending && (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              )}
-              {reviewDialog?.action === "approve" ? "Approve" : "Reject"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AdminVerificationReviewPanel
+        requestId={reviewPanelRequestId}
+        onClose={() => setReviewPanelRequestId(null)}
+      />
     </>
   );
 }

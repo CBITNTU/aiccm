@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
         reviewedBy: companyVerificationRequests.reviewedBy,
         reviewedAt: companyVerificationRequests.reviewedAt,
         companySnapshot: companyVerificationRequests.companySnapshot,
+        reviewFeedback: companyVerificationRequests.reviewFeedback,
         createdAt: companyVerificationRequests.createdAt,
         companyName: companies.companyName,
         companyStatus: companies.status,

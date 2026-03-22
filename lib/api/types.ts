@@ -287,6 +287,54 @@ export function normalizeMatchingResultRecord(
   };
 }
 
+// Verification review types
+export interface ReviewFeedbackItem {
+  section: string;
+  label: string;
+  status: "ok" | "needs_changes";
+  notes: string;
+}
+
+export interface ReviewFeedback {
+  items: ReviewFeedbackItem[];
+  overallNotes: string;
+}
+
+export interface VerificationReviewData {
+  request: {
+    id: string;
+    companyId: string;
+    submittedBy: string;
+    status: string;
+    submissionNotes: string | null;
+    reviewNotes: string | null;
+    reviewFeedback: ReviewFeedback | null;
+    companySnapshot: Record<string, unknown>;
+    createdAt: string;
+    reviewedAt: string | null;
+  };
+  company: CompanyRecord;
+  capabilities: { id: string; name: string; category: string }[];
+  markets: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
+  standards: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
+  previousRequests: {
+    id: string;
+    status: string;
+    submissionNotes: string | null;
+    reviewNotes: string | null;
+    reviewFeedback: ReviewFeedback | null;
+    companySnapshot: Record<string, unknown>;
+    createdAt: string;
+    reviewedAt: string | null;
+  }[];
+  submitter: {
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    jobTitle: string | null;
+  } | null;
+}
+
 export interface PlatformStats {
   companies: number;
   tenders: number;

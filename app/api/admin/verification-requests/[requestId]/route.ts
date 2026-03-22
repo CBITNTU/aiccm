@@ -5,6 +5,9 @@ import { db } from "@/lib/db";
 import { companyVerificationRequests, companies } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
 
+const VALID_ACTIONS = ["approve", "reject", "request_changes"] as const;
+type ReviewAction = (typeof VALID_ACTIONS)[number];
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ requestId: string }> },
@@ -16,13 +19,17 @@ export async function PUT(
 
     const { requestId } = await params;
     const body = await request.json();
-    const { action, reviewNotes } = body as {
-      action: "approve" | "reject";
+    const { action, reviewNotes, reviewFeedback } = body as {
+      action: ReviewAction;
       reviewNotes?: string;
+      reviewFeedback?: unknown;
     };
 
-    if (!action || !["approve", "reject"].includes(action)) {
-      return apiResponse({ error: "action must be 'approve' or 'reject'" }, 400);
+    if (!action || !VALID_ACTIONS.includes(action)) {
+      return apiResponse(
+        { error: "action must be 'approve', 'reject', or 'request_changes'" },
+        400,
+      );
     }
 
     // Get the verification request
@@ -41,13 +48,19 @@ export async function PUT(
     }
 
     const now = new Date();
+    const statusMap: Record<ReviewAction, string> = {
+      approve: "approved",
+      reject: "rejected",
+      request_changes: "changes_requested",
+    };
 
     // Update the request
     await db
       .update(companyVerificationRequests)
       .set({
-        status: action === "approve" ? "approved" : "rejected",
+        status: statusMap[action],
         reviewNotes: typeof reviewNotes === "string" ? reviewNotes.trim().slice(0, 2000) : null,
+        reviewFeedback: reviewFeedback ?? null,
         reviewedBy: user.id,
         reviewedAt: now,
         updatedAt: now,
@@ -66,6 +79,7 @@ export async function PUT(
         })
         .where(eq(companies.id, verificationRequest.companyId));
     } else {
+      // Both reject and request_changes reset to unverified
       await db
         .update(companies)
         .set({

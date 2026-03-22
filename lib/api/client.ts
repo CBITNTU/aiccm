@@ -958,6 +958,7 @@ export const api = {
         status: string;
         submissionNotes: string | null;
         reviewNotes: string | null;
+        reviewFeedback: import("@/lib/api/types").ReviewFeedback | null;
         createdAt: string;
         reviewedAt: string | null;
       } | null;
@@ -986,14 +987,21 @@ export const api = {
       }[];
     }>("admin/verification-requests", { method: "GET" }),
 
+  adminGetVerificationReviewData: (requestId: string) =>
+    apiCall<import("@/lib/api/types").VerificationReviewData>(
+      `admin/verification-requests/${requestId}/review`,
+      { method: "GET" },
+    ),
+
   adminReviewVerification: (
     requestId: string,
-    action: "approve" | "reject",
+    action: "approve" | "reject" | "request_changes",
     reviewNotes?: string,
+    reviewFeedback?: import("@/lib/api/types").ReviewFeedback,
   ) =>
     apiCall<{ success: boolean; action: string }>(
       `admin/verification-requests/${requestId}`,
-      { method: "PUT", body: { action, reviewNotes } },
+      { method: "PUT", body: { action, reviewNotes, reviewFeedback } },
     ),
 
   // Admin - Competency Change Requests

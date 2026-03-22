@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useVerificationStatus } from "@/hooks/useVerificationStatus";
 import { useSubmitVerification } from "@/hooks/useVerificationMutations";
+import type { ReviewFeedback } from "@/lib/api/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import {
   CheckCircle,
   Loader2,
   Info,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyRecord as Company } from "@/lib/api/types";
@@ -104,11 +106,6 @@ export function VerificationBanner({
               Submitted on {new Date(latestRequest.createdAt).toLocaleDateString()}.
             </span>
           )}
-          {latestRequest?.status === "rejected" && latestRequest.reviewNotes && (
-            <p className="mt-2 text-sm">
-              Previous feedback: {latestRequest.reviewNotes}
-            </p>
-          )}
         </AlertDescription>
       </Alert>
     );
@@ -117,30 +114,105 @@ export function VerificationBanner({
   // Unverified state
   if (!isOwner) return null;
 
+  const hasChangesRequested = latestRequest?.status === "changes_requested";
+  const reviewFeedback = latestRequest?.reviewFeedback as ReviewFeedback | null;
+  const hasStructuredFeedback =
+    reviewFeedback?.items?.some((i) => i.status === "needs_changes");
+  const wasRejected =
+    latestRequest?.status === "rejected" && latestRequest.reviewNotes;
+
   return (
     <>
-      <Alert className="border-blue-200 bg-blue-50">
-        <ShieldAlert className="h-4 w-4 text-blue-600" />
-        <AlertTitle className="text-blue-800">Get Your Company Verified</AlertTitle>
-        <AlertDescription className="text-blue-700">
-          <p>Verified companies get access to:</p>
-          <ul className="list-disc list-inside mt-1 space-y-0.5 text-sm">
-            <li>More active projects</li>
-            <li>Unlimited competencies</li>
-            <li>A verified badge in the directory</li>
-          </ul>
-          {latestRequest?.status === "rejected" && latestRequest.reviewNotes && (
-            <p className="mt-2 text-sm bg-red-50 border border-red-200 rounded p-2">
-              Previous review feedback: {latestRequest.reviewNotes}
-            </p>
+      <Alert
+        className={
+          hasChangesRequested
+            ? "border-amber-200 bg-amber-50"
+            : "border-blue-200 bg-blue-50"
+        }
+      >
+        {hasChangesRequested ? (
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+        ) : (
+          <ShieldAlert className="h-4 w-4 text-blue-600" />
+        )}
+        <AlertTitle
+          className={hasChangesRequested ? "text-amber-800" : "text-blue-800"}
+        >
+          {hasChangesRequested
+            ? "Changes Requested"
+            : "Get Your Company Verified"}
+        </AlertTitle>
+        <AlertDescription
+          className={hasChangesRequested ? "text-amber-700" : "text-blue-700"}
+        >
+          {hasChangesRequested ? (
+            <div className="space-y-3">
+              <p>
+                Our team reviewed your verification request and has requested some
+                changes. Please address the feedback below and resubmit.
+              </p>
+
+              {/* Structured feedback display */}
+              {hasStructuredFeedback && (
+                <div className="space-y-2">
+                  {reviewFeedback!.items
+                    .filter((item) => item.status === "needs_changes")
+                    .map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-2 text-sm bg-white/60 border border-amber-200 rounded p-2"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+                        <div>
+                          <span className="font-medium text-amber-900">
+                            {item.label}:
+                          </span>{" "}
+                          <span className="text-amber-800">{item.notes}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              {/* Overall reviewer notes */}
+              {reviewFeedback?.overallNotes && (
+                <p className="text-sm bg-white/60 border border-amber-200 rounded p-2">
+                  {reviewFeedback.overallNotes}
+                </p>
+              )}
+
+              {/* Fallback to reviewNotes if no structured feedback */}
+              {!hasStructuredFeedback && latestRequest?.reviewNotes && (
+                <p className="text-sm bg-white/60 border border-amber-200 rounded p-2">
+                  {latestRequest.reviewNotes}
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              <p>Verified companies get access to:</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-sm">
+                <li>More active projects</li>
+                <li>Unlimited competencies</li>
+                <li>A verified badge in the directory</li>
+              </ul>
+              {wasRejected && (
+                <p className="mt-2 text-sm bg-red-50 border border-red-200 rounded p-2">
+                  Previous review feedback: {latestRequest.reviewNotes}
+                </p>
+              )}
+            </>
           )}
+
           <Button
             size="sm"
             className="mt-3"
             onClick={() => setShowDialog(true)}
           >
             <ShieldCheck className="h-4 w-4 mr-1" />
-            Submit for Verification
+            {hasChangesRequested
+              ? "Resubmit for Verification"
+              : "Submit for Verification"}
           </Button>
         </AlertDescription>
       </Alert>
@@ -148,9 +220,13 @@ export function VerificationBanner({
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submit for Verification</DialogTitle>
+            <DialogTitle>
+              {hasChangesRequested ? "Resubmit" : "Submit"} for Verification
+            </DialogTitle>
             <DialogDescription>
-              Our team will review your company profile to verify your business details and capabilities.
+              {hasChangesRequested
+                ? "Please ensure you've addressed the feedback before resubmitting. Our team will review the updated profile."
+                : "Our team will review your company profile to verify your business details and capabilities."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -180,7 +256,11 @@ export function VerificationBanner({
             <div>
               <label className="text-sm font-medium">Additional Notes (optional)</label>
               <Textarea
-                placeholder="Any additional information you'd like to provide..."
+                placeholder={
+                  hasChangesRequested
+                    ? "Describe what changes you've made..."
+                    : "Any additional information you'd like to provide..."
+                }
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
@@ -199,7 +279,7 @@ export function VerificationBanner({
               {submitMutation.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               )}
-              Submit for Verification
+              {hasChangesRequested ? "Resubmit" : "Submit"} for Verification
             </Button>
           </DialogFooter>
         </DialogContent>

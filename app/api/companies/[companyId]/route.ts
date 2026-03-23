@@ -127,6 +127,7 @@ export async function PUT(
       operationLocations: "operationLocations",
       certifications: "certifications",
       pastProjects: "pastProjects",
+      address: "address",
     };
 
     const updates: Partial<typeof companies.$inferInsert> = {};

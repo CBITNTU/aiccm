@@ -54,7 +54,6 @@ export function VerificationBanner({
     if (!companyData.companyName) missingFields.push("Company Name");
     if (!companyData.description) missingFields.push("Description");
     if (!companyData.contactEmail) missingFields.push("Contact Email");
-    if (!companyData.postcode) missingFields.push("Postcode");
     if (!companyData.websiteUrl) missingFields.push("Website");
     if (!companyData.contactPhone) missingFields.push("Phone");
     if (!companyData.address) missingFields.push("Address");

@@ -8,6 +8,7 @@ import type { ReviewFeedback, JsonValue } from "@/lib/api/types";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -131,6 +132,8 @@ export function AdminVerificationReviewPanel({
           side="right"
           className="w-[95vw] sm:max-w-[1200px] p-0 flex flex-col [&>button]:hidden"
         >
+          <SheetTitle className="sr-only">Company Verification Review</SheetTitle>
+          <SheetDescription className="sr-only">Review company verification request details</SheetDescription>
           {isLoading ? (
             <div className="flex items-center justify-center flex-1">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

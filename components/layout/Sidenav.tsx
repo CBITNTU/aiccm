@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
+import { VerificationStatusIndicator } from "@/components/layout/VerificationStatusIndicator";
 
 interface SidenavProps {
   mobileOpen: boolean;
@@ -163,7 +164,10 @@ function SidebarContent({
 
       {/* Org Switcher — hidden for onboarding/pending-approval users */}
       {!isRestrictedUser && (
-        <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
+        <>
+          <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
+          <VerificationStatusIndicator isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
+        </>
       )}
 
       {/* Navigation */}

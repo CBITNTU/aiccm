@@ -9,6 +9,7 @@ import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
 import { api } from "@/lib/api/client";
 import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
+import { VerificationBanner } from "@/components/company/VerificationBanner";
 import { DashboardSkeleton } from "./_components/skeletons/DashboardSkeleton";
 import { StatsCards } from "./_components/StatsCards";
 import { PerformanceBenchmarkCard } from "./_components/PerformanceBenchmarkCard";
@@ -129,6 +130,16 @@ export default function DashboardPage() {
           opportunities.
         </p>
       </div>
+
+      {selectedOrg && selectedOrg.verificationStatus !== "verified" && (
+        <div className="mb-6">
+          <VerificationBanner
+            companyId={selectedOrg.id}
+            companyData={selectedOrg}
+            isOwner={true}
+          />
+        </div>
+      )}
 
       <StatsCards stats={stats} />
 

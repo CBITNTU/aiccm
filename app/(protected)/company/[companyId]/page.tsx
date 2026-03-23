@@ -188,7 +188,7 @@ export default function CompanyDetailPage() {
         companyId: companyData.id,
         updates: {
           companyName: editedCompanyName.trim(),
-          postcode: editedLocation.trim(),
+          address: editedLocation.trim(),
           contactEmail: editedEmail.trim(),
           websiteUrl: editedWebsite.trim(),
           contactPhone: editedPhone.trim(),
@@ -477,7 +477,7 @@ export default function CompanyDetailPage() {
                     onClick={() => {
                       setIsEditingBasicInfo(true);
                       setEditedCompanyName(companyData.companyName);
-                      setEditedLocation(companyData.postcode || "");
+                      setEditedLocation(companyData.address || "");
                       setEditedEmail(companyData.contactEmail || "");
                       setEditedWebsite(companyData.websiteUrl || "");
                       setEditedPhone(companyData.contactPhone || "");

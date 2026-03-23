@@ -3,7 +3,14 @@ import { apiResponse, checkSuperadminRole } from "@/lib/api";
 import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyVerificationRequests, companies } from "@/lib/db/schema/app";
+import { user as userTable } from "@/lib/db/schema/auth";
 import { eq } from "drizzle-orm";
+import {
+  sendEmail,
+  getVerificationReviewEmailSubject,
+  getVerificationReviewEmailHtml,
+  type VerificationReviewEmailData,
+} from "@/lib/email";
 
 const VALID_ACTIONS = ["approve", "reject", "request_changes"] as const;
 type ReviewAction = (typeof VALID_ACTIONS)[number];
@@ -87,6 +94,43 @@ export async function PUT(
           updatedAt: now,
         })
         .where(eq(companies.id, verificationRequest.companyId));
+    }
+
+    // Send notification email to the submitter
+    const [submitter, company] = await Promise.all([
+      db
+        .select({ name: userTable.name, email: userTable.email })
+        .from(userTable)
+        .where(eq(userTable.id, verificationRequest.submittedBy))
+        .then((r) => r[0]),
+      db
+        .select({ companyName: companies.companyName })
+        .from(companies)
+        .where(eq(companies.id, verificationRequest.companyId))
+        .then((r) => r[0]),
+    ]);
+
+    if (submitter?.email && company) {
+      const emailAction = statusMap[action] as "approved" | "rejected" | "changes_requested";
+      try {
+        await sendEmail({
+          to: submitter.email,
+          subject: getVerificationReviewEmailSubject({
+            userName: submitter.name,
+            companyName: company.companyName,
+            action: emailAction,
+          }),
+          html: getVerificationReviewEmailHtml({
+            userName: submitter.name,
+            companyName: company.companyName,
+            action: emailAction,
+            reviewNotes: typeof reviewNotes === "string" ? reviewNotes.trim() : undefined,
+            reviewFeedback: action === "request_changes" ? (reviewFeedback as VerificationReviewEmailData["reviewFeedback"]) : undefined,
+          }),
+        });
+      } catch (emailError) {
+        console.error("Failed to send verification review email:", emailError);
+      }
     }
 
     return apiResponse({ success: true, action });

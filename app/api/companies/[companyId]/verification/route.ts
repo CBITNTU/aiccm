@@ -86,10 +86,13 @@ export async function POST(
 
     // Validate minimum fields
     const missingFields: string[] = [];
-    if (!company.companyName) missingFields.push("companyName");
-    if (!company.description) missingFields.push("description");
-    if (!company.contactEmail) missingFields.push("contactEmail");
-    if (!company.postcode) missingFields.push("postcode");
+    if (!company.companyName) missingFields.push("Company Name");
+    if (!company.description) missingFields.push("Description");
+    if (!company.contactEmail) missingFields.push("Contact Email");
+    if (!company.websiteUrl) missingFields.push("Website");
+    if (!company.contactPhone) missingFields.push("Phone");
+    if (!company.address) missingFields.push("Address");
+
 
     if (missingFields.length > 0) {
       return apiResponse(

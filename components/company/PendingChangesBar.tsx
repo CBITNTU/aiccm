@@ -53,6 +53,7 @@ interface PendingChangesBarProps {
   companyId: string;
   pendingChanges: PendingChanges;
   pendingReviewRequest: PendingReviewRequest | null;
+  onSuccess?: () => void;
 }
 
 function ScalarFieldDiff({
@@ -146,6 +147,7 @@ export function PendingChangesBar({
   companyId,
   pendingChanges,
   pendingReviewRequest,
+  onSuccess,
 }: PendingChangesBarProps) {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitNotes, setSubmitNotes] = useState("");
@@ -246,6 +248,7 @@ export function PendingChangesBar({
       setShowSubmitDialog(false);
       setSubmitNotes("");
       toast.success("Changes submitted for review");
+      onSuccess?.();
     } catch (error: unknown) {
       toast.error(
         error instanceof Error ? error.message : "Failed to submit changes",
@@ -257,6 +260,7 @@ export function PendingChangesBar({
     try {
       await discardMutation.mutateAsync(companyId);
       toast.success("Draft changes discarded");
+      onSuccess?.();
     } catch (error: unknown) {
       toast.error(
         error instanceof Error ? error.message : "Failed to discard changes",

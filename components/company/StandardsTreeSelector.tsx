@@ -25,6 +25,7 @@ export interface StandardNode {
 interface StandardsTreeSelectorProps {
   selectedStandardIds: string[];
   onSelectionChange: (standardIds: string[]) => void;
+  onNameMapChange?: (map: Record<string, string>) => void;
   /** When set, only standards for industries matching the company's markets are shown. */
   companyId?: string;
 }
@@ -148,6 +149,7 @@ function TreeNodeRow({
 export function StandardsTreeSelector({
   selectedStandardIds,
   onSelectionChange,
+  onNameMapChange,
   companyId,
 }: StandardsTreeSelectorProps) {
   const [standards, setStandards] = useState<StandardNode[]>([]);
@@ -159,8 +161,10 @@ export function StandardsTreeSelector({
     const fetchStandards = async () => {
       try {
         const result = await api.getStandards(companyId);
-        setStandards(result.standards || []);
-        const allIds = new Set((result.standards || []).map((s) => s.id));
+        const stds = result.standards || [];
+        setStandards(stds);
+        onNameMapChange?.(Object.fromEntries(stds.map((s) => [s.id, s.name])));
+        const allIds = new Set(stds.map((s) => s.id));
         setExpandedIds(allIds);
       } catch (error) {
         console.error("Error fetching standards:", error);

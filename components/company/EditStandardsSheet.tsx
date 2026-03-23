@@ -98,6 +98,7 @@ export function EditStandardsSheet({
           <StandardsTreeSelector
             selectedStandardIds={selectedIds}
             onSelectionChange={setSelectedIds}
+            onNameMapChange={(map) => setNameMap((prev) => ({ ...prev, ...map }))}
             companyId={companyId}
           />
         </>

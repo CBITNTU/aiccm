@@ -194,6 +194,7 @@ export default function CompanyDetailPage() {
           companyId={companyId}
           pendingChanges={data.pendingChanges}
           pendingReviewRequest={data.pendingReviewRequest}
+          onSuccess={data.refreshCompanyData}
         />
       )}
     </div>

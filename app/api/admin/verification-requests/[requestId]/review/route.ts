@@ -13,7 +13,8 @@ import {
   standardsRef,
   profiles,
 } from "@/lib/db/schema/app";
-import { eq, desc, and, ne } from "drizzle-orm";
+import { eq, desc, and, ne, inArray } from "drizzle-orm";
+import type { PendingChanges } from "@/lib/companyFieldCategories";
 
 export async function GET(
   request: NextRequest,
@@ -122,6 +123,72 @@ export async function GET(
       return apiResponse({ error: "Company not found" }, 404);
     }
 
+    // For change_review requests, resolve capability/market/standard names in the snapshot
+    let resolvedPendingChanges = null;
+    if (verificationRequest.requestType === "change_review" && verificationRequest.pendingChangesSnapshot) {
+      const snapshot = verificationRequest.pendingChangesSnapshot as PendingChanges;
+      const resolved: Record<string, unknown> = { ...snapshot };
+
+      // Resolve capability names
+      if (snapshot.capabilities) {
+        const allCapIds = [...new Set([...snapshot.capabilities.current, ...snapshot.capabilities.proposed])];
+        if (allCapIds.length > 0) {
+          const capNames = await db
+            .select({ id: companyCapabilitiesRef.id, name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+            .from(companyCapabilitiesRef)
+            .where(inArray(companyCapabilitiesRef.id, allCapIds));
+          const capMap = Object.fromEntries(capNames.map((c) => [c.id, { name: c.name, category: c.category }]));
+          resolved.capabilities = {
+            ...snapshot.capabilities,
+            currentNames: snapshot.capabilities.current.map((id) => capMap[id] ?? { name: id, category: "" }),
+            proposedNames: snapshot.capabilities.proposed.map((id) => capMap[id] ?? { name: id, category: "" }),
+            addedNames: snapshot.capabilities.added.map((id) => capMap[id] ?? { name: id, category: "" }),
+            removedNames: snapshot.capabilities.removed.map((id) => capMap[id] ?? { name: id, category: "" }),
+          };
+        }
+      }
+
+      // Resolve market names
+      if (snapshot.markets) {
+        const allMarketIds = [...new Set([...snapshot.markets.current, ...snapshot.markets.proposed])];
+        if (allMarketIds.length > 0) {
+          const marketNames = await db
+            .select({ id: markets.id, name: markets.name })
+            .from(markets)
+            .where(inArray(markets.id, allMarketIds));
+          const marketMap = Object.fromEntries(marketNames.map((m) => [m.id, m.name]));
+          resolved.markets = {
+            ...snapshot.markets,
+            currentNames: snapshot.markets.current.map((id) => marketMap[id] ?? id),
+            proposedNames: snapshot.markets.proposed.map((id) => marketMap[id] ?? id),
+            addedNames: snapshot.markets.added.map((id) => marketMap[id] ?? id),
+            removedNames: snapshot.markets.removed.map((id) => marketMap[id] ?? id),
+          };
+        }
+      }
+
+      // Resolve standard names
+      if (snapshot.standards) {
+        const allStdIds = [...new Set([...snapshot.standards.current, ...snapshot.standards.proposed])];
+        if (allStdIds.length > 0) {
+          const stdNames = await db
+            .select({ id: standardsRef.id, name: standardsRef.name })
+            .from(standardsRef)
+            .where(inArray(standardsRef.id, allStdIds));
+          const stdMap = Object.fromEntries(stdNames.map((s) => [s.id, s.name]));
+          resolved.standards = {
+            ...snapshot.standards,
+            currentNames: snapshot.standards.current.map((id) => stdMap[id] ?? id),
+            proposedNames: snapshot.standards.proposed.map((id) => stdMap[id] ?? id),
+            addedNames: snapshot.standards.added.map((id) => stdMap[id] ?? id),
+            removedNames: snapshot.standards.removed.map((id) => stdMap[id] ?? id),
+          };
+        }
+      }
+
+      resolvedPendingChanges = resolved;
+    }
+
     return apiResponse({
       request: verificationRequest,
       company: companyResult,
@@ -130,6 +197,7 @@ export async function GET(
       standards: standardsData,
       previousRequests,
       submitter: submitterProfile,
+      resolvedPendingChanges,
     });
   } catch (error) {
     return handleApiError(error);

@@ -26,6 +26,43 @@ export function useUpdateCompany() {
   });
 }
 
+export function useSubmitChangesForReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      companyId,
+      notes,
+    }: {
+      companyId: string;
+      notes?: string;
+    }) => api.submitChangesForReview(companyId, notes),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.company(variables.companyId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.verificationStatus(variables.companyId),
+      });
+      queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
+    },
+  });
+}
+
+export function useDiscardPendingChanges() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (companyId: string) => api.discardPendingChanges(companyId),
+    onSuccess: (_, companyId) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.company(companyId),
+      });
+      queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
+    },
+  });
+}
+
 export function useAnalyzeCompany() {
   const queryClient = useQueryClient();
 

@@ -12,17 +12,21 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Award, Loader2, Pencil } from "lucide-react";
+import { Award, Loader2, Pencil, Clock } from "lucide-react";
 import { StandardsTreeSelector } from "@/components/company/StandardsTreeSelector";
 
 interface CompanyStandardsSelectorProps {
   companyId: string;
   onUpdate?: () => void;
+  isEditLocked?: boolean;
+  hasPendingDraft?: boolean;
 }
 
 export function CompanyStandardsSelector({
   companyId,
   onUpdate,
+  isEditLocked = false,
+  hasPendingDraft = false,
 }: CompanyStandardsSelectorProps) {
   const [selectedStandardIds, setSelectedStandardIds] = useState<string[]>([]);
   const [standardNames, setStandardNames] = useState<Record<string, string>>({});
@@ -53,15 +57,22 @@ export function CompanyStandardsSelector({
     try {
       setSaving(true);
       const result = await api.syncStandards(companyId, standardIds);
-      setSelectedStandardIds(standardIds);
-      setStandardNames(
-        Object.fromEntries((result.standards || []).map((s) => [s.id, s.name])),
-      );
-      setEditMode(false);
-      onUpdate?.();
+      if (result.draftSaved) {
+        toast.success(result.message || "Standards changes saved as draft.");
+        setEditMode(false);
+        onUpdate?.();
+      } else {
+        setSelectedStandardIds(standardIds);
+        setStandardNames(
+          Object.fromEntries((result.standards || []).map((s) => [s.id, s.name])),
+        );
+        setEditMode(false);
+        onUpdate?.();
+      }
     } catch (error) {
       console.error("Error saving standards:", error);
-      toast.error("Failed to save standards");
+      const message = error instanceof Error ? error.message : "Failed to save standards";
+      toast.error(message);
       await fetchCompanyStandards();
     } finally {
       setSaving(false);
@@ -105,9 +116,21 @@ export function CompanyStandardsSelector({
           Standards & Certifications
         </CardTitle>
         <CardDescription>
-          {editMode
-            ? "Select standards and certifications your company holds. Only standards relevant to your selected markets are shown. Changes are saved automatically."
-            : "Standards and certifications your company holds."}
+          {isEditLocked ? (
+            <span className="flex items-center gap-1 text-amber-600">
+              <Clock className="h-3.5 w-3.5" />
+              Editing locked while changes are under review.
+            </span>
+          ) : hasPendingDraft ? (
+            <span className="flex items-center gap-1 text-amber-600">
+              <Clock className="h-3.5 w-3.5" />
+              Standards changes saved as draft.
+            </span>
+          ) : editMode ? (
+            "Select standards and certifications your company holds. Only standards relevant to your selected markets are shown. Changes are saved automatically."
+          ) : (
+            "Standards and certifications your company holds."
+          )}
           {saving && <span className="ml-2 text-primary">Saving...</span>}
         </CardDescription>
       </CardHeader>
@@ -127,16 +150,18 @@ export function CompanyStandardsSelector({
                 ))
               )}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setEditMode(true)}
-              className="gap-1"
-            >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </Button>
+            {!isEditLocked && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditMode(true)}
+                className="gap-1"
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </Button>
+            )}
           </>
         ) : (
           <>

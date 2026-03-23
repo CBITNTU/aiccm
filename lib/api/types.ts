@@ -306,10 +306,12 @@ export interface VerificationReviewData {
     companyId: string;
     submittedBy: string;
     status: string;
+    requestType: string;
     submissionNotes: string | null;
     reviewNotes: string | null;
     reviewFeedback: ReviewFeedback | null;
     companySnapshot: Record<string, unknown>;
+    pendingChangesSnapshot: Record<string, unknown> | null;
     createdAt: string;
     reviewedAt: string | null;
   };
@@ -333,6 +335,7 @@ export interface VerificationReviewData {
     email: string | null;
     jobTitle: string | null;
   } | null;
+  resolvedPendingChanges: Record<string, unknown> | null;
 }
 
 export interface PlatformStats {

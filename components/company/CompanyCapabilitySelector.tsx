@@ -25,11 +25,15 @@ interface Capability {
 interface CompanyCapabilitySelectorProps {
   companyId: string;
   onUpdate?: () => void;
+  isEditLocked?: boolean;
+  hasPendingDraft?: boolean;
 }
 
 export function CompanyCapabilitySelector({
   companyId,
   onUpdate,
+  isEditLocked = false,
+  hasPendingDraft = false,
 }: CompanyCapabilitySelectorProps) {
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>(
     [],
@@ -72,9 +76,10 @@ export function CompanyCapabilitySelector({
       const result = await api.syncCapabilities(companyId, capabilityIds);
 
       if (result.pendingReview) {
-        toast.success(result.message || "Your competency changes have been submitted for review.");
+        toast.success(result.message || "Competency changes saved as draft. Submit for review when ready.");
         setHasPendingRequest(true);
         setEditMode(false);
+        onUpdate?.();
       } else if (result.error) {
         toast.error(result.error);
         await fetchCompanyCapabilities();
@@ -174,14 +179,19 @@ export function CompanyCapabilitySelector({
           )}
         </CardTitle>
         <CardDescription>
-          {hasPendingRequest ? (
+          {isEditLocked ? (
             <span className="flex items-center gap-1 text-amber-600">
               <Clock className="h-3.5 w-3.5" />
-              Your competency changes are pending review by an admin.
+              Editing locked while changes are under review.
+            </span>
+          ) : hasPendingRequest || hasPendingDraft ? (
+            <span className="flex items-center gap-1 text-amber-600">
+              <Clock className="h-3.5 w-3.5" />
+              Competency changes saved as draft.
             </span>
           ) : editMode ? (
             isVerified
-              ? "Select capabilities. Changes will be submitted for admin review."
+              ? "Select capabilities. Changes will be saved as a draft requiring admin review."
               : `Select capabilities that your company has.${competencyLimit !== null ? ` Up to ${competencyLimit} for unverified companies.` : ""} Changes are saved automatically.`
           ) : (
             "Capabilities your company has."
@@ -205,7 +215,7 @@ export function CompanyCapabilitySelector({
                 ))
               )}
             </div>
-            {!hasPendingRequest && (
+            {!hasPendingRequest && !isEditLocked && (
               <Button
                 type="button"
                 variant="outline"
@@ -262,7 +272,7 @@ export function CompanyCapabilitySelector({
                 {isVerified ? (
                   <>
                     <ShieldCheck className="h-3 w-3" />
-                    Submit for Review
+                    Save as Draft
                   </>
                 ) : (
                   "Done"

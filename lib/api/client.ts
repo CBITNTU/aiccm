@@ -375,13 +375,27 @@ export const api = {
       capabilities: { id: string; name: string; category: string }[];
       markets: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
       standards: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
+      hasPendingChanges?: boolean;
+      pendingChanges?: Record<string, unknown> | null;
+      pendingReviewRequest?: {
+        id: string;
+        status: string;
+        requestType: string;
+        reviewFeedback: Record<string, unknown> | null;
+        reviewNotes: string | null;
+        createdAt: string;
+      } | null;
     }>(`companies/${companyId}`, { method: "GET" }).then((data) => ({
       ...data,
       company: normalizeCompanyRecord(data.company),
     })),
 
   updateCompany: (companyId: string, updates: Record<string, unknown>) =>
-    apiCall<{ company: Record<string, unknown> }>(`companies/${companyId}`, {
+    apiCall<{
+      company: Record<string, unknown>;
+      hasPendingChanges?: boolean;
+      pendingChanges?: Record<string, unknown> | null;
+    }>(`companies/${companyId}`, {
       method: "PUT",
       body: updates,
     }).then((data) => ({
@@ -435,7 +449,10 @@ export const api = {
 
   syncMarkets: (companyId: string, marketIds: string[]) =>
     apiCall<{
-      markets: { id: string; name: string; parentId: string | null; sortOrder: number }[];
+      markets?: { id: string; name: string; parentId: string | null; sortOrder: number }[];
+      pendingReview?: boolean;
+      draftSaved?: boolean;
+      message?: string;
     }>(`companies/${companyId}/markets`, {
       method: "PUT",
       body: { marketIds },
@@ -448,7 +465,10 @@ export const api = {
 
   syncStandards: (companyId: string, standardIds: string[]) =>
     apiCall<{
-      standards: { id: string; name: string; parentId: string | null; sortOrder: number }[];
+      standards?: { id: string; name: string; parentId: string | null; sortOrder: number }[];
+      pendingReview?: boolean;
+      draftSaved?: boolean;
+      message?: string;
     }>(`companies/${companyId}/standards`, {
       method: "PUT",
       body: { standardIds },
@@ -970,6 +990,18 @@ export const api = {
       { body: { notes } },
     ),
 
+  submitChangesForReview: (companyId: string, notes?: string) =>
+    apiCall<{ verificationRequest: Record<string, unknown> }>(
+      `companies/${companyId}/submit-changes`,
+      { body: { notes } },
+    ),
+
+  discardPendingChanges: (companyId: string) =>
+    apiCall<{ success: boolean }>(
+      `companies/${companyId}/pending-changes`,
+      { method: "DELETE" },
+    ),
+
   // Admin - Verification Requests
   adminGetVerificationRequests: () =>
     apiCall<{
@@ -981,6 +1013,8 @@ export const api = {
         submissionNotes: string | null;
         reviewNotes: string | null;
         companySnapshot: Record<string, unknown>;
+        requestType: string;
+        pendingChangesSnapshot: Record<string, unknown> | null;
         createdAt: string;
         reviewedAt: string | null;
         verificationStatus: string;

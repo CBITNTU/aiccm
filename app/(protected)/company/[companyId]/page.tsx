@@ -62,6 +62,8 @@ import {
   useAnalyzeCompany,
 } from "@/hooks/useCompanyMutations";
 import { VerificationBanner } from "@/components/company/VerificationBanner";
+import { PendingChangesCard } from "@/components/company/PendingChangesCard";
+import type { PendingChanges } from "@/lib/companyFieldCategories";
 
 interface Certification {
   name: string;
@@ -99,6 +101,15 @@ export default function CompanyDetailPage() {
   );
   const [isOwner, setIsOwner] = useState(false);
   const [inviteRefreshTrigger, setInviteRefreshTrigger] = useState(0);
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges | null>(null);
+  const [pendingReviewRequest, setPendingReviewRequest] = useState<{
+    id: string;
+    status: string;
+    requestType: string;
+    reviewFeedback: Record<string, unknown> | null;
+    reviewNotes: string | null;
+    createdAt: string;
+  } | null>(null);
 
   const updateCompanyMutation = useUpdateCompany();
   const analyzeCompanyMutation = useAnalyzeCompany();
@@ -141,6 +152,8 @@ export default function CompanyDetailPage() {
         setCompanyData(data.company);
         setIsOwner(data.isOwner);
         setCompanyCapabilities(data.capabilities);
+        setPendingChanges((data.pendingChanges as PendingChanges | null) ?? null);
+        setPendingReviewRequest(data.pendingReviewRequest ?? null);
 
         const company = data.company as unknown as Record<string, unknown>;
         if (company.aiAnalysis) {
@@ -410,6 +423,8 @@ export default function CompanyDetailPage() {
           companyId={companyId}
           companyData={companyData}
           isOwner={isOwner}
+          hasPendingChanges={!!pendingChanges}
+          pendingReviewRequest={pendingReviewRequest}
         />
       </div>
 
@@ -794,21 +809,54 @@ export default function CompanyDetailPage() {
         {/* Capabilities Tab */}
         <TabsContent value="capabilities">
           <div className="space-y-6">
+            {/* Pending Changes Card */}
+            {pendingChanges && isOwner && (
+              <PendingChangesCard
+                companyId={companyId}
+                pendingChanges={pendingChanges}
+                pendingReviewRequest={pendingReviewRequest}
+              />
+            )}
+
             {/* Competency */}
             <CompanyCapabilitySelector
               companyId={companyId}
+              isEditLocked={!!pendingReviewRequest}
+              hasPendingDraft={!!pendingChanges?.capabilities}
               onUpdate={() => {
                 api.getCompany(companyId).then((data) => {
                   setCompanyCapabilities(data.capabilities);
+                  setPendingChanges((data.pendingChanges as PendingChanges | null) ?? null);
+                  setPendingReviewRequest(data.pendingReviewRequest ?? null);
                 });
               }}
             />
 
             {/* Market */}
-            <CompanyMarketSelector companyId={companyId} />
+            <CompanyMarketSelector
+              companyId={companyId}
+              isEditLocked={!!pendingReviewRequest}
+              hasPendingDraft={!!pendingChanges?.markets}
+              onUpdate={() => {
+                api.getCompany(companyId).then((data) => {
+                  setPendingChanges((data.pendingChanges as PendingChanges | null) ?? null);
+                  setPendingReviewRequest(data.pendingReviewRequest ?? null);
+                });
+              }}
+            />
 
             {/* Standards & Certifications */}
-            <CompanyStandardsSelector companyId={companyId} />
+            <CompanyStandardsSelector
+              companyId={companyId}
+              isEditLocked={!!pendingReviewRequest}
+              hasPendingDraft={!!pendingChanges?.standards}
+              onUpdate={() => {
+                api.getCompany(companyId).then((data) => {
+                  setPendingChanges((data.pendingChanges as PendingChanges | null) ?? null);
+                  setPendingReviewRequest(data.pendingReviewRequest ?? null);
+                });
+              }}
+            />
 
             <div className="grid md:grid-cols-2 gap-6">
               {/* Other certifications (free-text) */}

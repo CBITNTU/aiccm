@@ -164,6 +164,11 @@ function VerificationRequests() {
                         <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="font-medium truncate">{req.companyName}</span>
                         <RequestStatusBadge status={req.status} />
+                        {req.requestType === "change_review" && (
+                          <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                            Change Review
+                          </Badge>
+                        )}
                       </div>
                       {req.submissionNotes && (
                         <p className="text-sm text-muted-foreground line-clamp-2">

@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
         reviewedAt: companyVerificationRequests.reviewedAt,
         companySnapshot: companyVerificationRequests.companySnapshot,
         reviewFeedback: companyVerificationRequests.reviewFeedback,
+        requestType: companyVerificationRequests.requestType,
+        pendingChangesSnapshot: companyVerificationRequests.pendingChangesSnapshot,
         createdAt: companyVerificationRequests.createdAt,
         companyName: companies.companyName,
         companyStatus: companies.status,

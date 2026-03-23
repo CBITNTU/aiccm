@@ -13,8 +13,13 @@ import {
   isGeocodingEnabled,
 } from "@/lib/geocode";
 import { db } from "@/lib/db";
-import { companies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
-import { eq } from "drizzle-orm";
+import { companies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef, companyVerificationRequests } from "@/lib/db/schema/app";
+import { eq, and, desc } from "drizzle-orm";
+import {
+  isReviewableField,
+  type PendingChanges,
+  type ReviewableScalarField,
+} from "@/lib/companyFieldCategories";
 
 export async function GET(
   request: NextRequest,
@@ -87,7 +92,42 @@ export async function GET(
       .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
       .where(eq(companyStandards.companyId, companyId));
 
-    return apiResponse({ company, isOwner, capabilities: capData, markets: marketsData, standards: standardsData });
+    // Include pending changes info for company members
+    const isMember = hasAccess;
+    let pendingReviewRequest = null;
+    if (isMember && company.verificationStatus === "verified") {
+      pendingReviewRequest = await db
+        .select({
+          id: companyVerificationRequests.id,
+          status: companyVerificationRequests.status,
+          requestType: companyVerificationRequests.requestType,
+          reviewFeedback: companyVerificationRequests.reviewFeedback,
+          reviewNotes: companyVerificationRequests.reviewNotes,
+          createdAt: companyVerificationRequests.createdAt,
+        })
+        .from(companyVerificationRequests)
+        .where(
+          and(
+            eq(companyVerificationRequests.companyId, companyId),
+            eq(companyVerificationRequests.requestType, "change_review"),
+            eq(companyVerificationRequests.status, "pending"),
+          ),
+        )
+        .orderBy(desc(companyVerificationRequests.createdAt))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+    }
+
+    return apiResponse({
+      company,
+      isOwner,
+      capabilities: capData,
+      markets: marketsData,
+      standards: standardsData,
+      hasPendingChanges: isMember ? company.pendingChanges != null : undefined,
+      pendingChanges: isMember ? company.pendingChanges : undefined,
+      pendingReviewRequest: isMember ? pendingReviewRequest : undefined,
+    });
   } catch (error) {
     return handleApiError(error);
   }
@@ -115,47 +155,123 @@ export async function PUT(
 
     const body = await request.json();
 
-    // Whitelist allowed fields (use camelCase for Drizzle)
-    const fieldMap: Record<string, keyof typeof companies.$inferInsert> = {
-      companyName: "companyName",
-      description: "description",
-      keyCapabilities: "keyCapabilities",
-      postcode: "postcode",
-      contactEmail: "contactEmail",
-      websiteUrl: "websiteUrl",
-      contactPhone: "contactPhone",
-      operationLocations: "operationLocations",
-      certifications: "certifications",
-      pastProjects: "pastProjects",
-      address: "address",
-    };
+    // Whitelist allowed fields
+    const allowedFields = [
+      "companyName", "description", "keyCapabilities", "postcode",
+      "contactEmail", "websiteUrl", "contactPhone", "operationLocations",
+      "certifications", "pastProjects", "address", "companiesHouseNumber",
+      "contactPerson", "equipment",
+    ];
 
-    const updates: Partial<typeof companies.$inferInsert> = {};
-    for (const [field, camelField] of Object.entries(fieldMap)) {
-      if (field in body) {
+    // Fetch current company data
+    const company = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .then((rows) => rows[0]);
+
+    if (!company) {
+      return apiResponse({ error: "Company not found" }, 404);
+    }
+
+    const isVerified = company.verificationStatus === "verified";
+
+    // Split fields into reviewable and non-reviewable
+    const directUpdates: Partial<typeof companies.$inferInsert> = {};
+    const reviewableUpdates: Record<string, string | null> = {};
+
+    for (const field of allowedFields) {
+      if (!(field in body)) continue;
+      if (isVerified && isReviewableField(field)) {
+        reviewableUpdates[field] = body[field] ?? null;
+      } else {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (updates as any)[camelField] = body[field];
+        (directUpdates as any)[field] = body[field];
       }
     }
 
-    // Auto-geocode when postcode or address changes
-    if (isGeocodingEnabled() && ("postcode" in body || "address" in body)) {
+    // For verified companies, check edit lock before accepting reviewable changes
+    if (isVerified && Object.keys(reviewableUpdates).length > 0) {
+      const pendingRequest = await db
+        .select({ id: companyVerificationRequests.id })
+        .from(companyVerificationRequests)
+        .where(
+          and(
+            eq(companyVerificationRequests.companyId, companyId),
+            eq(companyVerificationRequests.requestType, "change_review"),
+            eq(companyVerificationRequests.status, "pending"),
+          ),
+        )
+        .limit(1)
+        .then((rows) => rows[0]);
+
+      if (pendingRequest) {
+        return apiResponse(
+          { error: "Cannot edit reviewable fields while a change review is pending. Please wait for admin review." },
+          400,
+        );
+      }
+    }
+
+    // Build pending changes for reviewable fields (verified companies only)
+    let pendingChanges: PendingChanges | null = (company.pendingChanges as PendingChanges | null) ?? null;
+    if (isVerified && Object.keys(reviewableUpdates).length > 0) {
+      if (!pendingChanges) {
+        pendingChanges = { lastSavedAt: new Date().toISOString() };
+      }
+      if (!pendingChanges.scalarFields) {
+        pendingChanges.scalarFields = {};
+      }
+      for (const [field, proposedValue] of Object.entries(reviewableUpdates)) {
+        const currentValue = (company as Record<string, unknown>)[field as ReviewableScalarField] as string | null;
+        if (proposedValue === currentValue) {
+          // User reverted to current value — remove from pending
+          delete pendingChanges.scalarFields[field];
+        } else {
+          pendingChanges.scalarFields[field] = {
+            current: currentValue ?? null,
+            proposed: proposedValue,
+          };
+        }
+      }
+      // If no scalar fields and no relation changes remain, clear pendingChanges
+      const hasScalar = pendingChanges.scalarFields && Object.keys(pendingChanges.scalarFields).length > 0;
+      const hasRelations = pendingChanges.capabilities || pendingChanges.markets || pendingChanges.standards;
+      if (!hasScalar && !hasRelations) {
+        pendingChanges = null;
+      } else {
+        pendingChanges.lastSavedAt = new Date().toISOString();
+      }
+    }
+
+    // Auto-geocode when postcode or address changes (only for direct updates)
+    if (isGeocodingEnabled() && ("postcode" in directUpdates || "address" in directUpdates)) {
       const geoQuery = buildCompanyGeoQuery(
-        (body.address as string) ?? null,
-        (body.postcode as string) ?? null,
+        (directUpdates.address as string) ?? null,
+        (directUpdates.postcode as string) ?? null,
       );
       if (geoQuery) {
         const coords = await geocodeLocation(geoQuery);
         if (coords) {
-          updates.latitude = coords.lat;
-          updates.longitude = coords.lng;
+          directUpdates.latitude = coords.lat;
+          directUpdates.longitude = coords.lng;
         }
       }
     }
 
+    // Build the final DB update
+    const dbUpdate: Partial<typeof companies.$inferInsert> = {
+      ...directUpdates,
+      updatedAt: new Date(),
+    };
+    if (isVerified && Object.keys(reviewableUpdates).length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (dbUpdate as any).pendingChanges = pendingChanges;
+    }
+
     const data = await db
       .update(companies)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(dbUpdate)
       .where(eq(companies.id, companyId))
       .returning();
 
@@ -163,7 +279,11 @@ export async function PUT(
       return apiResponse({ error: "Company not found" }, 404);
     }
 
-    return apiResponse({ company: data[0] });
+    return apiResponse({
+      company: data[0],
+      hasPendingChanges: data[0].pendingChanges != null,
+      pendingChanges: data[0].pendingChanges,
+    });
   } catch (error) {
     return handleApiError(error);
   }

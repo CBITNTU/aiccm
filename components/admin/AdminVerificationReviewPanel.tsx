@@ -107,7 +107,8 @@ export function AdminVerificationReviewPanel({
     },
   });
 
-  const allChecked = checkedItems.size === CHECKLIST_ITEMS.length;
+  const isChangeReview = data?.request?.requestType === "change_review";
+  const allChecked = isChangeReview || checkedItems.size === CHECKLIST_ITEMS.length;
   const isResubmission = (data?.previousRequests?.length ?? 0) > 0;
   const previousSnapshot = data?.previousRequests?.[0]?.companySnapshot as
     | Record<string, string>
@@ -156,6 +157,11 @@ export function AdminVerificationReviewPanel({
                     </SheetTitle>
                     <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                       <StatusBadge status={data.request.status} />
+                      {data.request.requestType === "change_review" && (
+                        <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                          Change Review
+                        </Badge>
+                      )}
                       {isResubmission && (
                         <Badge variant="outline" className="text-xs">
                           Resubmission #{(data.previousRequests?.length ?? 0) + 1}
@@ -176,9 +182,12 @@ export function AdminVerificationReviewPanel({
               </SheetHeader>
 
               {/* Tabs Content */}
-              <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
+              <Tabs defaultValue={data.request.requestType === "change_review" ? "changes" : "overview"} className="flex-1 flex flex-col min-h-0">
                 <div className="px-6 border-b shrink-0">
                   <TabsList className="h-10">
+                    {data.request.requestType === "change_review" && (
+                      <TabsTrigger value="changes">Changes</TabsTrigger>
+                    )}
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="details">Company Details</TabsTrigger>
                     <TabsTrigger value="competencies">Competencies</TabsTrigger>
@@ -190,6 +199,12 @@ export function AdminVerificationReviewPanel({
 
                 <ScrollArea className="flex-1">
                   <div className="p-6">
+                    {data.request.requestType === "change_review" && data.resolvedPendingChanges && (
+                      <TabsContent value="changes" className="mt-0">
+                        <ChangeReviewTab resolvedChanges={data.resolvedPendingChanges as Record<string, unknown>} />
+                      </TabsContent>
+                    )}
+
                     <TabsContent value="overview" className="mt-0">
                       <OverviewTab
                         data={data}
@@ -440,6 +455,163 @@ function SectionCard({
 // =============================================================================
 // Tab Components
 // =============================================================================
+
+function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, unknown> }) {
+  const scalarFields = resolvedChanges.scalarFields as Record<string, { current: string | null; proposed: string | null }> | undefined;
+  const capabilities = resolvedChanges.capabilities as {
+    added: string[]; removed: string[];
+    addedNames?: { name: string; category: string }[];
+    removedNames?: { name: string; category: string }[];
+  } | undefined;
+  const markets = resolvedChanges.markets as {
+    added: string[]; removed: string[];
+    addedNames?: string[];
+    removedNames?: string[];
+  } | undefined;
+  const standards = resolvedChanges.standards as {
+    added: string[]; removed: string[];
+    addedNames?: string[];
+    removedNames?: string[];
+  } | undefined;
+
+  const fieldLabels: Record<string, string> = {
+    companyName: "Company Name",
+    description: "Description",
+    keyCapabilities: "Key Capabilities",
+    certifications: "Certifications",
+    equipment: "Equipment",
+    pastProjects: "Past Projects",
+    companiesHouseNumber: "Companies House Number",
+  };
+
+  const fieldOrder = ["companyName", "description", "keyCapabilities", "certifications", "equipment", "pastProjects", "companiesHouseNumber"];
+
+  const hasScalarChanges = scalarFields && Object.keys(scalarFields).length > 0;
+  const hasCapChanges = capabilities && (capabilities.added.length > 0 || capabilities.removed.length > 0);
+  const hasMarketChanges = markets && (markets.added.length > 0 || markets.removed.length > 0);
+  const hasStdChanges = standards && (standards.added.length > 0 || standards.removed.length > 0);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Proposed Changes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!hasScalarChanges && !hasCapChanges && !hasMarketChanges && !hasStdChanges && (
+            <p className="text-sm text-muted-foreground">No changes found in snapshot.</p>
+          )}
+
+          {/* Scalar field diffs */}
+          {hasScalarChanges && fieldOrder.map((field) => {
+            const change = scalarFields![field];
+            if (!change) return null;
+            return (
+              <div key={field} className="border rounded-lg p-4 space-y-2">
+                <div className="text-sm font-medium">{fieldLabels[field] ?? field}</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1 font-medium">Current (Approved)</div>
+                    <div className="text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
+                      {change.current || <span className="text-muted-foreground italic">Empty</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1 font-medium">Proposed</div>
+                    <div className="text-sm bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
+                      {change.proposed || <span className="text-muted-foreground italic">Empty</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Capability changes */}
+          {hasCapChanges && (
+            <div className="border rounded-lg p-4 space-y-2">
+              <div className="text-sm font-medium">Competencies</div>
+              {capabilities!.addedNames && capabilities!.addedNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-muted-foreground mr-1 self-center">Added:</span>
+                  {capabilities!.addedNames.map((cap, i) => (
+                    <Badge key={i} variant="outline" className="text-xs bg-green-50 border-green-300 text-green-700">
+                      + {typeof cap === "string" ? cap : cap.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {capabilities!.removedNames && capabilities!.removedNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-muted-foreground mr-1 self-center">Removed:</span>
+                  {capabilities!.removedNames.map((cap, i) => (
+                    <Badge key={i} variant="outline" className="text-xs bg-red-50 border-red-300 text-red-700">
+                      - {typeof cap === "string" ? cap : cap.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Market changes */}
+          {hasMarketChanges && (
+            <div className="border rounded-lg p-4 space-y-2">
+              <div className="text-sm font-medium">Markets</div>
+              {markets!.addedNames && markets!.addedNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-muted-foreground mr-1 self-center">Added:</span>
+                  {markets!.addedNames.map((name, i) => (
+                    <Badge key={i} variant="outline" className="text-xs bg-green-50 border-green-300 text-green-700">
+                      + {name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {markets!.removedNames && markets!.removedNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-muted-foreground mr-1 self-center">Removed:</span>
+                  {markets!.removedNames.map((name, i) => (
+                    <Badge key={i} variant="outline" className="text-xs bg-red-50 border-red-300 text-red-700">
+                      - {name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Standard changes */}
+          {hasStdChanges && (
+            <div className="border rounded-lg p-4 space-y-2">
+              <div className="text-sm font-medium">Standards</div>
+              {standards!.addedNames && standards!.addedNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-muted-foreground mr-1 self-center">Added:</span>
+                  {standards!.addedNames.map((name, i) => (
+                    <Badge key={i} variant="outline" className="text-xs bg-green-50 border-green-300 text-green-700">
+                      + {name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {standards!.removedNames && standards!.removedNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-muted-foreground mr-1 self-center">Removed:</span>
+                  {standards!.removedNames.map((name, i) => (
+                    <Badge key={i} variant="outline" className="text-xs bg-red-50 border-red-300 text-red-700">
+                      - {name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function OverviewTab({
   data,

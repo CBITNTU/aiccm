@@ -113,6 +113,7 @@ export const companies = pgTable("companies", {
   verificationStatus: verificationStatusEnum("verification_status").notNull().default("unverified"),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   verifiedBy: uuid("verified_by").references(() => user.id, { onDelete: "set null" }),
+  pendingChanges: jsonb("pending_changes"),
 });
 
 // ============================================================================
@@ -575,6 +576,8 @@ export const companyVerificationRequests = pgTable("company_verification_request
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   companySnapshot: jsonb("company_snapshot").default({}),
   reviewFeedback: jsonb("review_feedback"),
+  requestType: text("request_type").notNull().default("initial_verification"),
+  pendingChangesSnapshot: jsonb("pending_changes_snapshot"),
   // Future-proofing fields
   paymentReference: text("payment_reference"),
   scheduledVisitAt: timestamp("scheduled_visit_at", { withTimezone: true }),

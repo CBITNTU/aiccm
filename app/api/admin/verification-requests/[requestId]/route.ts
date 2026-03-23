@@ -2,9 +2,17 @@ import { NextRequest } from "next/server";
 import { apiResponse, checkSuperadminRole } from "@/lib/api";
 import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { companyVerificationRequests, companies } from "@/lib/db/schema/app";
+import {
+  companyVerificationRequests,
+  companies,
+  companyCapabilities,
+  companyMarkets,
+  companyStandards,
+} from "@/lib/db/schema/app";
 import { user as userTable } from "@/lib/db/schema/auth";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
+import type { PendingChanges } from "@/lib/companyFieldCategories";
+import { REVIEWABLE_SCALAR_FIELDS } from "@/lib/companyFieldCategories";
 import {
   sendEmail,
   getVerificationReviewEmailSubject,
@@ -82,6 +90,8 @@ export async function PUT(
       request_changes: "changes_requested",
     };
 
+    const isChangeReview = verificationRequest.requestType === "change_review";
+
     // Update request and company status atomically
     await db.transaction(async (tx) => {
       await tx
@@ -96,25 +106,135 @@ export async function PUT(
         })
         .where(eq(companyVerificationRequests.id, requestId));
 
-      if (action === "approve") {
-        await tx
-          .update(companies)
-          .set({
-            verificationStatus: "verified",
-            verifiedAt: now,
-            verifiedBy: user.id,
-            updatedAt: now,
-          })
-          .where(eq(companies.id, verificationRequest.companyId));
+      if (isChangeReview) {
+        // Change review: company stays verified, apply/clear pendingChanges
+        if (action === "approve") {
+          const snapshot = verificationRequest.pendingChangesSnapshot as PendingChanges | null;
+          if (snapshot) {
+            // Apply scalar field changes
+            if (snapshot.scalarFields) {
+              const scalarUpdates: Partial<typeof companies.$inferInsert> = {};
+              for (const field of REVIEWABLE_SCALAR_FIELDS) {
+                if (snapshot.scalarFields[field]) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (scalarUpdates as any)[field] = snapshot.scalarFields[field].proposed;
+                }
+              }
+              if (Object.keys(scalarUpdates).length > 0) {
+                await tx
+                  .update(companies)
+                  .set({ ...scalarUpdates, updatedAt: now })
+                  .where(eq(companies.id, verificationRequest.companyId));
+              }
+            }
+
+            // Apply capability changes
+            if (snapshot.capabilities) {
+              if (snapshot.capabilities.removed.length > 0) {
+                await tx
+                  .delete(companyCapabilities)
+                  .where(
+                    and(
+                      eq(companyCapabilities.companyId, verificationRequest.companyId),
+                      inArray(companyCapabilities.capabilityId, snapshot.capabilities.removed),
+                    ),
+                  );
+              }
+              if (snapshot.capabilities.added.length > 0) {
+                await tx.insert(companyCapabilities).values(
+                  snapshot.capabilities.added.map((capabilityId) => ({
+                    companyId: verificationRequest.companyId,
+                    capabilityId,
+                  })),
+                );
+              }
+            }
+
+            // Apply market changes
+            if (snapshot.markets) {
+              if (snapshot.markets.removed.length > 0) {
+                await tx
+                  .delete(companyMarkets)
+                  .where(
+                    and(
+                      eq(companyMarkets.companyId, verificationRequest.companyId),
+                      inArray(companyMarkets.marketId, snapshot.markets.removed),
+                    ),
+                  );
+              }
+              if (snapshot.markets.added.length > 0) {
+                await tx.insert(companyMarkets).values(
+                  snapshot.markets.added.map((marketId) => ({
+                    companyId: verificationRequest.companyId,
+                    marketId,
+                  })),
+                );
+              }
+            }
+
+            // Apply standard changes
+            if (snapshot.standards) {
+              if (snapshot.standards.removed.length > 0) {
+                await tx
+                  .delete(companyStandards)
+                  .where(
+                    and(
+                      eq(companyStandards.companyId, verificationRequest.companyId),
+                      inArray(companyStandards.standardId, snapshot.standards.removed),
+                    ),
+                  );
+              }
+              if (snapshot.standards.added.length > 0) {
+                await tx.insert(companyStandards).values(
+                  snapshot.standards.added.map((standardId) => ({
+                    companyId: verificationRequest.companyId,
+                    standardId,
+                  })),
+                );
+              }
+            }
+          }
+          // Clear pendingChanges — company stays verified
+          await tx
+            .update(companies)
+            .set({ pendingChanges: null, updatedAt: now })
+            .where(eq(companies.id, verificationRequest.companyId));
+        } else if (action === "reject") {
+          // Reject: clear pendingChanges, company stays verified
+          await tx
+            .update(companies)
+            .set({ pendingChanges: null, updatedAt: now })
+            .where(eq(companies.id, verificationRequest.companyId));
+        } else {
+          // Request changes: keep pendingChanges intact so user can edit and resubmit
+          // Company stays verified, just update timestamp
+          await tx
+            .update(companies)
+            .set({ updatedAt: now })
+            .where(eq(companies.id, verificationRequest.companyId));
+        }
       } else {
-        // Both reject and request_changes reset to unverified
-        await tx
-          .update(companies)
-          .set({
-            verificationStatus: "unverified",
-            updatedAt: now,
-          })
-          .where(eq(companies.id, verificationRequest.companyId));
+        // Initial verification: original behavior
+        if (action === "approve") {
+          await tx
+            .update(companies)
+            .set({
+              verificationStatus: "verified",
+              verifiedAt: now,
+              verifiedBy: user.id,
+              updatedAt: now,
+            })
+            .where(eq(companies.id, verificationRequest.companyId));
+        } else {
+          // Both reject and request_changes reset to unverified
+          await tx
+            .update(companies)
+            .set({
+              verificationStatus: "unverified",
+              updatedAt: now,
+            })
+            .where(eq(companies.id, verificationRequest.companyId));
+        }
       }
     });
 

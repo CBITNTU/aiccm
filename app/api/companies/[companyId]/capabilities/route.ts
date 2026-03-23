@@ -12,9 +12,11 @@ import {
   companyCapabilitiesRef,
   companies,
   competencyChangeRequests,
+  companyVerificationRequests,
 } from "@/lib/db/schema/app";
 import { eq, and, inArray, asc, desc } from "drizzle-orm";
 import { getPlatformVerificationSettings } from "@/lib/platformVerificationSettings";
+import type { PendingChanges } from "@/lib/companyFieldCategories";
 
 export async function GET(
   request: NextRequest,
@@ -152,43 +154,55 @@ export async function PUT(
     }
 
     if (isVerified) {
-      // Verified companies: all changes go through review
-      // Check for existing pending request
-      const existingPending = await db
-        .select({ id: competencyChangeRequests.id })
-        .from(competencyChangeRequests)
+      // Check edit lock: reject if a change review is already submitted
+      const pendingReview = await db
+        .select({ id: companyVerificationRequests.id })
+        .from(companyVerificationRequests)
         .where(
           and(
-            eq(competencyChangeRequests.companyId, companyId),
-            eq(competencyChangeRequests.status, "pending"),
+            eq(companyVerificationRequests.companyId, companyId),
+            eq(companyVerificationRequests.requestType, "change_review"),
+            eq(companyVerificationRequests.status, "pending"),
           ),
         )
         .limit(1)
         .then((rows) => rows[0]);
 
-      if (existingPending) {
+      if (pendingReview) {
         return apiResponse(
-          { error: "A competency change request is already pending review. Please wait for it to be reviewed before submitting new changes." },
+          { error: "Cannot edit competencies while a change review is pending. Please wait for admin review." },
           400,
         );
       }
 
-      // Create change request
-      const [changeRequest] = await db
-        .insert(competencyChangeRequests)
-        .values({
-          companyId,
-          requestedBy: user.id,
-          status: "pending",
-          proposedAdditions: toAdd,
-          proposedRemovals: toRemove,
-        })
-        .returning();
+      // Store diff in pendingChanges instead of competencyChangeRequests
+      const companyData = await db
+        .select({ pendingChanges: companies.pendingChanges })
+        .from(companies)
+        .where(eq(companies.id, companyId))
+        .then((rows) => rows[0]);
+
+      const pending: PendingChanges = (companyData?.pendingChanges as PendingChanges | null) ?? {
+        lastSavedAt: new Date().toISOString(),
+      };
+
+      pending.capabilities = {
+        current: [...currentIds],
+        proposed: capabilityIds,
+        added: toAdd,
+        removed: toRemove,
+      };
+      pending.lastSavedAt = new Date().toISOString();
+
+      await db
+        .update(companies)
+        .set({ pendingChanges: pending, updatedAt: new Date() })
+        .where(eq(companies.id, companyId));
 
       return apiResponse({
         pendingReview: true,
-        changeRequestId: changeRequest.id,
-        message: "Your competency changes have been submitted for review.",
+        draftSaved: true,
+        message: "Competency changes saved as draft. Submit for review when ready.",
       });
     } else {
       // Unverified companies: direct sync up to limit

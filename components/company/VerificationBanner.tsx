@@ -32,12 +32,22 @@ interface VerificationBannerProps {
   companyId: string;
   companyData?: Company;
   isOwner?: boolean;
+  hasPendingChanges?: boolean;
+  pendingReviewRequest?: {
+    id: string;
+    status: string;
+    reviewFeedback: Record<string, unknown> | null;
+    reviewNotes: string | null;
+    createdAt: string;
+  } | null;
 }
 
 export function VerificationBanner({
   companyId,
   companyData,
   isOwner = false,
+  hasPendingChanges = false,
+  pendingReviewRequest,
 }: VerificationBannerProps) {
   const { data, isLoading } = useVerificationStatus(companyId);
   const submitMutation = useSubmitVerification();
@@ -76,6 +86,36 @@ export function VerificationBanner({
   };
 
   if (verificationStatus === "verified") {
+    // Check if there's a pending change review
+    if (pendingReviewRequest) {
+      return (
+        <Alert className="border-amber-200 bg-amber-50">
+          <Clock className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">Changes Under Review</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            Your profile changes are being reviewed by our team. Editing of reviewed fields is locked until the review is complete.
+            {pendingReviewRequest.createdAt && (
+              <span className="ml-1">
+                Submitted on {new Date(pendingReviewRequest.createdAt).toLocaleDateString()}.
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (hasPendingChanges) {
+      return (
+        <Alert className="border-emerald-200 bg-emerald-50">
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          <AlertTitle className="text-emerald-800">Verified Company</AlertTitle>
+          <AlertDescription className="text-emerald-700">
+            This company has been verified by TNDRX. You have unsaved draft changes — submit them for review when ready.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
     return (
       <Alert className="border-emerald-200 bg-emerald-50">
         <ShieldCheck className="h-4 w-4 text-emerald-600" />

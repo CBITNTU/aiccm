@@ -12,17 +12,21 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Globe, Loader2, Pencil } from "lucide-react";
+import { Globe, Loader2, Pencil, Clock } from "lucide-react";
 import { MarketTreeSelector } from "@/components/company/MarketTreeSelector";
 
 interface CompanyMarketSelectorProps {
   companyId: string;
   onUpdate?: () => void;
+  isEditLocked?: boolean;
+  hasPendingDraft?: boolean;
 }
 
 export function CompanyMarketSelector({
   companyId,
   onUpdate,
+  isEditLocked = false,
+  hasPendingDraft = false,
 }: CompanyMarketSelectorProps) {
   const [selectedMarketIds, setSelectedMarketIds] = useState<string[]>([]);
   const [marketNames, setMarketNames] = useState<Record<string, string>>({});
@@ -53,15 +57,22 @@ export function CompanyMarketSelector({
     try {
       setSaving(true);
       const result = await api.syncMarkets(companyId, marketIds);
-      setSelectedMarketIds(marketIds);
-      setMarketNames(
-        Object.fromEntries((result.markets || []).map((m) => [m.id, m.name])),
-      );
-      setEditMode(false);
-      onUpdate?.();
+      if (result.draftSaved) {
+        toast.success(result.message || "Market changes saved as draft.");
+        setEditMode(false);
+        onUpdate?.();
+      } else {
+        setSelectedMarketIds(marketIds);
+        setMarketNames(
+          Object.fromEntries((result.markets || []).map((m) => [m.id, m.name])),
+        );
+        setEditMode(false);
+        onUpdate?.();
+      }
     } catch (error) {
       console.error("Error saving markets:", error);
-      toast.error("Failed to save markets");
+      const message = error instanceof Error ? error.message : "Failed to save markets";
+      toast.error(message);
       await fetchCompanyMarkets();
     } finally {
       setSaving(false);
@@ -105,9 +116,21 @@ export function CompanyMarketSelector({
           Market
         </CardTitle>
         <CardDescription>
-          {editMode
-            ? "Select the markets your company serves. Changes are saved automatically."
-            : "Markets your company serves."}
+          {isEditLocked ? (
+            <span className="flex items-center gap-1 text-amber-600">
+              <Clock className="h-3.5 w-3.5" />
+              Editing locked while changes are under review.
+            </span>
+          ) : hasPendingDraft ? (
+            <span className="flex items-center gap-1 text-amber-600">
+              <Clock className="h-3.5 w-3.5" />
+              Market changes saved as draft.
+            </span>
+          ) : editMode ? (
+            "Select the markets your company serves. Changes are saved automatically."
+          ) : (
+            "Markets your company serves."
+          )}
           {saving && <span className="ml-2 text-primary">Saving...</span>}
         </CardDescription>
       </CardHeader>
@@ -127,16 +150,18 @@ export function CompanyMarketSelector({
                 ))
               )}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setEditMode(true)}
-              className="gap-1"
-            >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </Button>
+            {!isEditLocked && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditMode(true)}
+                className="gap-1"
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </Button>
+            )}
           </>
         ) : (
           <>

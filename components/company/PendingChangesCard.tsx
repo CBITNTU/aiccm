@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +28,23 @@ import {
 import { FileEdit, Send, Trash2, Lock, Loader2, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useSubmitChangesForReview, useDiscardPendingChanges } from "@/hooks/useCompanyMutations";
-import { FIELD_LABELS, type PendingChanges } from "@/lib/companyFieldCategories";
+import { api } from "@/lib/api/client";
+import {
+  FIELD_LABELS,
+  REVIEWABLE_SCALAR_FIELDS,
+  type PendingChanges,
+} from "@/lib/companyFieldCategories";
+import { queryKeys } from "@/lib/queryKeys";
+
+const SCALAR_FIELD_ORDER = [
+  "companyName",
+  "description",
+  "keyCapabilities",
+  "certifications",
+  "equipment",
+  "pastProjects",
+  "companiesHouseNumber",
+] as const;
 
 interface PendingChangesCardProps {
   companyId: string;
@@ -56,18 +73,18 @@ function ScalarFieldDiff({
 }) {
   const label = FIELD_LABELS[field] ?? field;
   return (
-    <div className="border rounded-lg p-3 space-y-2">
+    <div className="border border-blue-100 rounded-lg p-3 space-y-2">
       <div className="text-sm font-medium">{label}</div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="text-xs text-muted-foreground mb-1">Current</div>
-          <div className="text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-2 min-h-[2rem]">
+          <div className="text-xs text-blue-700 mb-1">Current</div>
+          <div className="text-sm text-foreground bg-blue-50 border border-blue-200 rounded p-2 min-h-[2rem]">
             {current || <span className="text-muted-foreground italic">Empty</span>}
           </div>
         </div>
         <div>
-          <div className="text-xs text-muted-foreground mb-1">Proposed</div>
-          <div className="text-sm bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-2 min-h-[2rem]">
+          <div className="text-xs text-blue-700 mb-1">Proposed</div>
+          <div className="text-sm text-foreground bg-blue-100 border border-blue-300 rounded p-2 min-h-[2rem]">
             {proposed || <span className="text-muted-foreground italic">Empty</span>}
           </div>
         </div>
@@ -81,11 +98,13 @@ function RelationFieldDiff({
   added,
   removed,
   nameMap,
+  namesLoading,
 }: {
   field: string;
   added: string[];
   removed: string[];
   nameMap?: Record<string, string>;
+  namesLoading?: boolean;
 }) {
   const label = FIELD_LABELS[field] ?? field;
   const getName = (id: string) => nameMap?.[id] ?? id;
@@ -95,11 +114,18 @@ function RelationFieldDiff({
   return (
     <div className="border rounded-lg p-3 space-y-2">
       <div className="text-sm font-medium">{label}</div>
+      {namesLoading && (
+        <p className="text-xs text-muted-foreground">Loading labels…</p>
+      )}
       {added.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          <span className="text-xs text-muted-foreground mr-1">Added:</span>
+          <span className="text-xs text-blue-800 mr-1">Added:</span>
           {added.map((id) => (
-            <Badge key={id} variant="outline" className="text-xs bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300">
+            <Badge
+              key={id}
+              variant="outline"
+              className="text-xs bg-sky-50 border-sky-200 text-sky-900"
+            >
               + {getName(id)}
             </Badge>
           ))}
@@ -107,9 +133,13 @@ function RelationFieldDiff({
       )}
       {removed.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          <span className="text-xs text-muted-foreground mr-1">Removed:</span>
+          <span className="text-xs text-slate-600 mr-1">Removed:</span>
           {removed.map((id) => (
-            <Badge key={id} variant="outline" className="text-xs bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300">
+            <Badge
+              key={id}
+              variant="outline"
+              className="text-xs bg-slate-50 border border-dashed border-slate-200 text-slate-700"
+            >
               - {getName(id)}
             </Badge>
           ))}
@@ -169,33 +199,93 @@ export function PendingChangesCard({
     }
   };
 
-  // Priority order for scalar fields display
-  const scalarFieldOrder = [
-    "companyName", "description", "keyCapabilities", "certifications",
-    "equipment", "pastProjects", "companiesHouseNumber",
-  ];
+  const needsCapLabels = !!pendingChanges.capabilities;
+  const needsMarketLabels = !!pendingChanges.markets;
+  const needsStandardLabels = !!pendingChanges.standards;
+
+  const [capQuery, marketQuery, stdQuery] = useQueries({
+    queries: [
+      {
+        queryKey: queryKeys.referenceCapabilities(),
+        queryFn: async () => (await api.getCapabilities()).capabilities,
+        staleTime: 30 * 60 * 1000,
+        gcTime: 60 * 60 * 1000,
+        enabled: needsCapLabels,
+      },
+      {
+        queryKey: queryKeys.referenceMarkets(),
+        queryFn: async () => (await api.getMarkets()).markets,
+        staleTime: 30 * 60 * 1000,
+        gcTime: 60 * 60 * 1000,
+        enabled: needsMarketLabels,
+      },
+      {
+        queryKey: queryKeys.referenceStandards(),
+        queryFn: async () => (await api.getStandards()).standards,
+        staleTime: 30 * 60 * 1000,
+        gcTime: 60 * 60 * 1000,
+        enabled: needsStandardLabels,
+      },
+    ],
+  });
+
+  const mergedCapabilityNames = useMemo(() => {
+    const fromApi =
+      capQuery.data?.reduce<Record<string, string>>((acc, c) => {
+        acc[c.id] = c.name;
+        return acc;
+      }, {}) ?? {};
+    return { ...fromApi, ...capabilityNames };
+  }, [capQuery.data, capabilityNames]);
+
+  const mergedMarketNames = useMemo(() => {
+    const fromApi =
+      marketQuery.data?.reduce<Record<string, string>>((acc, m) => {
+        acc[m.id] = m.name;
+        return acc;
+      }, {}) ?? {};
+    return { ...fromApi, ...marketNames };
+  }, [marketQuery.data, marketNames]);
+
+  const mergedStandardNames = useMemo(() => {
+    const fromApi =
+      stdQuery.data?.reduce<Record<string, string>>((acc, s) => {
+        acc[s.id] = s.name;
+        return acc;
+      }, {}) ?? {};
+    return { ...fromApi, ...standardNames };
+  }, [stdQuery.data, standardNames]);
+
+  const orphanScalarFields = useMemo(() => {
+    if (!pendingChanges.scalarFields) return [];
+    const ordered = new Set<string>(SCALAR_FIELD_ORDER);
+    return (REVIEWABLE_SCALAR_FIELDS as readonly string[]).filter(
+      (k) =>
+        pendingChanges.scalarFields![k] != null && !ordered.has(k),
+    );
+  }, [pendingChanges.scalarFields]);
 
   return (
     <>
-      <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+      <Card className="border-blue-200 bg-blue-50/50">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               {isSubmitted ? (
                 <>
-                  <Lock className="h-4 w-4 text-amber-600" />
+                  <Lock className="h-4 w-4 text-blue-600" />
                   Changes Under Review
                 </>
               ) : (
                 <>
-                  <FileEdit className="h-4 w-4 text-amber-600" />
+                  <FileEdit className="h-4 w-4 text-blue-600" />
                   Pending Changes
                 </>
               )}
             </CardTitle>
             <div className="flex items-center gap-2">
               {isSubmitted ? (
-                <Badge variant="outline" className="text-xs bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700">
+                <Badge variant="outline" className="text-xs bg-blue-100 border-blue-200">
                   <Clock className="h-3 w-3 mr-1" />
                   Awaiting Review
                 </Badge>
@@ -220,7 +310,7 @@ export function PendingChangesCard({
 
         <CardContent className="space-y-3">
           {/* Scalar field diffs */}
-          {pendingChanges.scalarFields && scalarFieldOrder.map((field) => {
+          {pendingChanges.scalarFields && SCALAR_FIELD_ORDER.map((field) => {
             const change = pendingChanges.scalarFields?.[field];
             if (!change) return null;
             return (
@@ -232,6 +322,19 @@ export function PendingChangesCard({
               />
             );
           })}
+          {pendingChanges.scalarFields &&
+            orphanScalarFields.map((field) => {
+              const change = pendingChanges.scalarFields![field];
+              if (!change) return null;
+              return (
+                <ScalarFieldDiff
+                  key={field}
+                  field={field}
+                  current={change.current}
+                  proposed={change.proposed}
+                />
+              );
+            })}
 
           {/* Relation diffs */}
           {pendingChanges.capabilities && (
@@ -239,7 +342,8 @@ export function PendingChangesCard({
               field="capabilities"
               added={pendingChanges.capabilities.added}
               removed={pendingChanges.capabilities.removed}
-              nameMap={capabilityNames}
+              nameMap={mergedCapabilityNames}
+              namesLoading={needsCapLabels && capQuery.isPending}
             />
           )}
           {pendingChanges.markets && (
@@ -247,7 +351,8 @@ export function PendingChangesCard({
               field="markets"
               added={pendingChanges.markets.added}
               removed={pendingChanges.markets.removed}
-              nameMap={marketNames}
+              nameMap={mergedMarketNames}
+              namesLoading={needsMarketLabels && marketQuery.isPending}
             />
           )}
           {pendingChanges.standards && (
@@ -255,7 +360,8 @@ export function PendingChangesCard({
               field="standards"
               added={pendingChanges.standards.added}
               removed={pendingChanges.standards.removed}
-              nameMap={standardNames}
+              nameMap={mergedStandardNames}
+              namesLoading={needsStandardLabels && stdQuery.isPending}
             />
           )}
 
@@ -326,9 +432,9 @@ export function PendingChangesCard({
           </DialogHeader>
 
           <div className="space-y-3">
-            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <AlertTriangle className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-blue-900">
                 While your changes are under review, you won&apos;t be able to edit these fields until the review is complete.
               </p>
             </div>

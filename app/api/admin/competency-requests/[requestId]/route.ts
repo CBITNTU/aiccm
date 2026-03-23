@@ -58,8 +58,12 @@ export async function PUT(
 
     // If approved, apply the diff
     if (action === "approve") {
-      const additions = (changeRequest.proposedAdditions as string[]) ?? [];
-      const removals = (changeRequest.proposedRemovals as string[]) ?? [];
+      const additions = ((changeRequest.proposedAdditions as unknown[]) ?? []).filter(
+        (x): x is string => typeof x === "string",
+      );
+      const removals = ((changeRequest.proposedRemovals as unknown[]) ?? []).filter(
+        (x): x is string => typeof x === "string",
+      );
 
       if (removals.length > 0) {
         await db

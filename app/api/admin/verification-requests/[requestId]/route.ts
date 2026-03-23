@@ -15,6 +15,27 @@ import {
 const VALID_ACTIONS = ["approve", "reject", "request_changes"] as const;
 type ReviewAction = (typeof VALID_ACTIONS)[number];
 
+type ReviewFeedback = VerificationReviewEmailData["reviewFeedback"];
+
+function isValidReviewFeedback(fb: unknown): fb is ReviewFeedback {
+  if (!fb || typeof fb !== "object") return false;
+  const obj = fb as Record<string, unknown>;
+  if (!Array.isArray(obj.items)) return false;
+  for (const item of obj.items) {
+    if (typeof item !== "object" || !item) return false;
+    const i = item as Record<string, unknown>;
+    if (
+      typeof i.section !== "string" ||
+      typeof i.label !== "string" ||
+      typeof i.status !== "string" ||
+      typeof i.notes !== "string"
+    )
+      return false;
+  }
+  if (obj.overallNotes !== undefined && typeof obj.overallNotes !== "string") return false;
+  return true;
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ requestId: string }> },
@@ -61,40 +82,41 @@ export async function PUT(
       request_changes: "changes_requested",
     };
 
-    // Update the request
-    await db
-      .update(companyVerificationRequests)
-      .set({
-        status: statusMap[action],
-        reviewNotes: typeof reviewNotes === "string" ? reviewNotes.trim().slice(0, 2000) : null,
-        reviewFeedback: reviewFeedback ?? null,
-        reviewedBy: user.id,
-        reviewedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(companyVerificationRequests.id, requestId));
+    // Update request and company status atomically
+    await db.transaction(async (tx) => {
+      await tx
+        .update(companyVerificationRequests)
+        .set({
+          status: statusMap[action],
+          reviewNotes: typeof reviewNotes === "string" ? reviewNotes.trim().slice(0, 2000) : null,
+          reviewFeedback: isValidReviewFeedback(reviewFeedback) ? reviewFeedback : null,
+          reviewedBy: user.id,
+          reviewedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(companyVerificationRequests.id, requestId));
 
-    // Update company verification status
-    if (action === "approve") {
-      await db
-        .update(companies)
-        .set({
-          verificationStatus: "verified",
-          verifiedAt: now,
-          verifiedBy: user.id,
-          updatedAt: now,
-        })
-        .where(eq(companies.id, verificationRequest.companyId));
-    } else {
-      // Both reject and request_changes reset to unverified
-      await db
-        .update(companies)
-        .set({
-          verificationStatus: "unverified",
-          updatedAt: now,
-        })
-        .where(eq(companies.id, verificationRequest.companyId));
-    }
+      if (action === "approve") {
+        await tx
+          .update(companies)
+          .set({
+            verificationStatus: "verified",
+            verifiedAt: now,
+            verifiedBy: user.id,
+            updatedAt: now,
+          })
+          .where(eq(companies.id, verificationRequest.companyId));
+      } else {
+        // Both reject and request_changes reset to unverified
+        await tx
+          .update(companies)
+          .set({
+            verificationStatus: "unverified",
+            updatedAt: now,
+          })
+          .where(eq(companies.id, verificationRequest.companyId));
+      }
+    });
 
     // Send notification email to the submitter
     const [submitter, company] = await Promise.all([
@@ -110,6 +132,7 @@ export async function PUT(
         .then((r) => r[0]),
     ]);
 
+    let emailSent = false;
     if (submitter?.email && company) {
       const emailAction = statusMap[action] as "approved" | "rejected" | "changes_requested";
       try {
@@ -125,15 +148,16 @@ export async function PUT(
             companyName: company.companyName,
             action: emailAction,
             reviewNotes: typeof reviewNotes === "string" ? reviewNotes.trim() : undefined,
-            reviewFeedback: action === "request_changes" ? (reviewFeedback as VerificationReviewEmailData["reviewFeedback"]) : undefined,
+            reviewFeedback: action === "request_changes" && isValidReviewFeedback(reviewFeedback) ? reviewFeedback : undefined,
           }),
         });
+        emailSent = true;
       } catch (emailError) {
         console.error("Failed to send verification review email:", emailError);
       }
     }
 
-    return apiResponse({ success: true, action });
+    return apiResponse({ success: true, action, emailSent });
   } catch (error) {
     return handleApiError(error);
   }

@@ -38,13 +38,14 @@ export async function getPlatformVerificationSettings(): Promise<PlatformVerific
   ]);
 
   const map = new Map(rows.map((r) => [r.key, r.value]));
+  const parseOrDefault = (val: string | undefined, fallback: number): number => {
+    const parsed = parseInt(val ?? "", 10);
+    return Number.isNaN(parsed) ? fallback : parsed;
+  };
   cached = {
-    verifiedProjectLimit:
-      parseInt(map.get(KEYS.verified_project_limit) ?? "", 10) || DEFAULTS.verifiedProjectLimit,
-    unverifiedProjectLimit:
-      parseInt(map.get(KEYS.unverified_project_limit) ?? "", 10) || DEFAULTS.unverifiedProjectLimit,
-    unverifiedCompetencyLimit:
-      parseInt(map.get(KEYS.unverified_competency_limit) ?? "", 10) || DEFAULTS.unverifiedCompetencyLimit,
+    verifiedProjectLimit: parseOrDefault(map.get(KEYS.verified_project_limit), DEFAULTS.verifiedProjectLimit),
+    unverifiedProjectLimit: parseOrDefault(map.get(KEYS.unverified_project_limit), DEFAULTS.unverifiedProjectLimit),
+    unverifiedCompetencyLimit: parseOrDefault(map.get(KEYS.unverified_competency_limit), DEFAULTS.unverifiedCompetencyLimit),
   };
   cacheTime = now;
   return cached;

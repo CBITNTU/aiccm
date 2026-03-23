@@ -87,7 +87,6 @@ export async function POST(
     // Validate minimum fields
     const missingFields: string[] = [];
     if (!company.companyName) missingFields.push("Company Name");
-    if (!company.description) missingFields.push("Description");
     if (!company.contactEmail) missingFields.push("Contact Email");
     if (!company.websiteUrl) missingFields.push("Website");
     if (!company.contactPhone) missingFields.push("Phone");
@@ -120,23 +119,26 @@ export async function POST(
       pastProjects: company.pastProjects,
     };
 
-    // Create verification request
-    const [verificationRequest] = await db
-      .insert(companyVerificationRequests)
-      .values({
-        companyId,
-        submittedBy: user.id,
-        status: "pending",
-        submissionNotes,
-        companySnapshot,
-      })
-      .returning();
+    // Create verification request and update company status atomically
+    const verificationRequest = await db.transaction(async (tx) => {
+      const [request] = await tx
+        .insert(companyVerificationRequests)
+        .values({
+          companyId,
+          submittedBy: user.id,
+          status: "pending",
+          submissionNotes,
+          companySnapshot,
+        })
+        .returning();
 
-    // Update company verification status
-    await db
-      .update(companies)
-      .set({ verificationStatus: "pending_verification", updatedAt: new Date() })
-      .where(eq(companies.id, companyId));
+      await tx
+        .update(companies)
+        .set({ verificationStatus: "pending_verification", updatedAt: new Date() })
+        .where(eq(companies.id, companyId));
+
+      return request;
+    });
 
     return apiResponse({ verificationRequest });
   } catch (error) {

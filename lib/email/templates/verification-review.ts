@@ -15,8 +15,8 @@ export interface VerificationReviewEmailData {
 export function getVerificationReviewEmailSubject(
   data: VerificationReviewEmailData,
 ): string {
-  const platformName = getPlatformName();
-  const companyName = data.companyName;
+  const platformName = getPlatformName().replace(/[\r\n]/g, "");
+  const companyName = data.companyName.replace(/[\r\n]/g, "");
 
   switch (data.action) {
     case "approved":

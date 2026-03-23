@@ -112,8 +112,12 @@ export async function PUT(
     const body = await request.json();
     const { capabilityIds } = body as { capabilityIds: string[] };
 
-    if (!Array.isArray(capabilityIds) || capabilityIds.length > 500) {
-      return apiResponse({ error: "capabilityIds must be an array with at most 500 items" }, 400);
+    if (
+      !Array.isArray(capabilityIds) ||
+      capabilityIds.length > 500 ||
+      !capabilityIds.every((id) => typeof id === "string")
+    ) {
+      return apiResponse({ error: "capabilityIds must be an array of strings with at most 500 items" }, 400);
     }
 
     // Get company verification status

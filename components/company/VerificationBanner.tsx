@@ -52,7 +52,6 @@ export function VerificationBanner({
   const missingFields: string[] = [];
   if (companyData) {
     if (!companyData.companyName) missingFields.push("Company Name");
-    if (!companyData.description) missingFields.push("Description");
     if (!companyData.contactEmail) missingFields.push("Contact Email");
     if (!companyData.websiteUrl) missingFields.push("Website");
     if (!companyData.contactPhone) missingFields.push("Phone");

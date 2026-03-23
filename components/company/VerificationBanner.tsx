@@ -24,6 +24,7 @@ import {
   Loader2,
   Info,
   AlertTriangle,
+  FileEdit,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyRecord as Company } from "@/lib/api/types";
@@ -106,11 +107,11 @@ export function VerificationBanner({
 
     if (hasPendingChanges) {
       return (
-        <Alert className="border-emerald-200 bg-emerald-50">
-          <ShieldCheck className="h-4 w-4 text-emerald-600" />
-          <AlertTitle className="text-emerald-800">Verified Company</AlertTitle>
-          <AlertDescription className="text-emerald-700">
-            This company has been verified by TNDRX. You have unsaved draft changes — submit them for review when ready.
+        <Alert className="border-amber-200 bg-amber-50">
+          <FileEdit className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">Draft Changes Pending</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            You have draft changes that need to be submitted for review. Use the bar at the bottom of the page to review and submit your changes.
           </AlertDescription>
         </Alert>
       );

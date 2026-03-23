@@ -9,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ShieldCheck, Clock, AlertTriangle, ShieldAlert } from "lucide-react";
+import { ShieldCheck, Clock, AlertTriangle, ShieldAlert, FileEdit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface VerificationStatusIndicatorProps {
@@ -80,19 +80,22 @@ export function VerificationStatusIndicator({
     data.latestRequest?.status,
   );
 
-  if (!displayState) return null;
+  const hasPendingChanges = !!data.hasPendingChanges;
 
-  const config = stateConfig[displayState];
-  const Icon = config.icon;
+  if (!displayState && !hasPendingChanges) return null;
+
   const showExpanded = !isCollapsed || isMobile;
 
   const handleClick = () => {
     router.push("/my-company");
   };
 
-  if (!showExpanded) {
-    return (
-      <div className="px-2 py-1.5 border-b border-border flex justify-center">
+  const verificationIndicator = displayState ? (() => {
+    const config = stateConfig[displayState];
+    const Icon = config.icon;
+
+    if (!showExpanded) {
+      return (
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -109,12 +112,10 @@ export function VerificationStatusIndicator({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      </div>
-    );
-  }
+      );
+    }
 
-  return (
-    <div className="px-3 py-1.5 border-b border-border">
+    return (
       <button
         onClick={handleClick}
         className={cn(
@@ -127,6 +128,50 @@ export function VerificationStatusIndicator({
         <Icon className="h-3.5 w-3.5 flex-shrink-0" />
         <span className="truncate">{config.label}</span>
       </button>
+    );
+  })() : null;
+
+  const draftIndicator = hasPendingChanges ? (() => {
+    if (!showExpanded) {
+      return (
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleClick}
+                className="relative flex h-2.5 w-2.5 cursor-pointer"
+                aria-label="Draft changes pending"
+              >
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={10}>
+              Draft changes pending
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return (
+      <button
+        onClick={handleClick}
+        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium text-amber-700 bg-amber-50 hover:opacity-80 transition-colors cursor-pointer"
+      >
+        <FileEdit className="h-3.5 w-3.5 flex-shrink-0" />
+        <span className="truncate">Draft changes</span>
+      </button>
+    );
+  })() : null;
+
+  return (
+    <div className={cn(
+      "border-b border-border",
+      showExpanded ? "px-3 py-1.5 space-y-1" : "px-2 py-1.5 flex flex-col items-center gap-1.5",
+    )}>
+      {verificationIndicator}
+      {draftIndicator}
     </div>
   );
 }

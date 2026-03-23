@@ -18,6 +18,7 @@ import {
 interface CapabilityTreeSelectorProps {
   selectedCapabilities: string[];
   onSelectionChange: (capabilityIds: string[]) => void;
+  onNameMapChange?: (map: Record<string, string>) => void;
 }
 
 interface Capability {
@@ -120,6 +121,7 @@ function TreeLevel({
 export function CapabilityTreeSelector({
   selectedCapabilities,
   onSelectionChange,
+  onNameMapChange,
 }: CapabilityTreeSelectorProps) {
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,9 @@ export function CapabilityTreeSelector({
     const fetchCapabilities = async () => {
       try {
         const result = await api.getCapabilities();
-        setCapabilities(result.capabilities || []);
+        const caps = result.capabilities || [];
+        setCapabilities(caps);
+        onNameMapChange?.(Object.fromEntries(caps.map((c) => [c.id, c.name])));
         // Auto-expand all categories by default
         const categories = new Set(
           result.capabilities

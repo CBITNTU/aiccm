@@ -973,6 +973,7 @@ export const api = {
     apiCall<{
       verificationStatus: string;
       verifiedAt: string | null;
+      hasPendingChanges: boolean;
       latestRequest: {
         id: string;
         status: string;

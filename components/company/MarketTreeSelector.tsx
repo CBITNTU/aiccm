@@ -25,6 +25,7 @@ export interface MarketNode {
 interface MarketTreeSelectorProps {
   selectedMarketIds: string[];
   onSelectionChange: (marketIds: string[]) => void;
+  onNameMapChange?: (map: Record<string, string>) => void;
 }
 
 interface TreeNode extends MarketNode {
@@ -153,6 +154,7 @@ function TreeNodeRow({
 export function MarketTreeSelector({
   selectedMarketIds,
   onSelectionChange,
+  onNameMapChange,
 }: MarketTreeSelectorProps) {
   const [markets, setMarkets] = useState<MarketNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,8 +165,10 @@ export function MarketTreeSelector({
     const fetchMarkets = async () => {
       try {
         const result = await api.getMarkets();
-        setMarkets(result.markets || []);
-        const allIds = new Set((result.markets || []).map((m) => m.id));
+        const mks = result.markets || [];
+        setMarkets(mks);
+        onNameMapChange?.(Object.fromEntries(mks.map((m) => [m.id, m.name])));
+        const allIds = new Set(mks.map((m) => m.id));
         setExpandedIds(allIds);
       } catch (error) {
         console.error("Error fetching markets:", error);

@@ -19,6 +19,9 @@ export function useUpdateCompany() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.company(variables.companyId),
       });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.verificationStatus(variables.companyId),
+      });
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
       queryClient.invalidateQueries({ queryKey: ["directory"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -57,6 +60,9 @@ export function useDiscardPendingChanges() {
     onSuccess: (_, companyId) => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.company(companyId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.verificationStatus(companyId),
       });
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
     },

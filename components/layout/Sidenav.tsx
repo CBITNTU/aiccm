@@ -30,6 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { VerificationStatusIndicator } from "@/components/layout/VerificationStatusIndicator";
+import { useOrg } from "@/hooks/useOrg";
 
 interface SidenavProps {
   mobileOpen: boolean;
@@ -277,6 +278,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, signOut, isPendingApproval, isOnboarding, profile } = useAuth();
   const { isAdmin } = useUserRole();
+  const { selectedOrg } = useOrg();
   const pathname = usePathname();
 
   // Users are restricted if they're pending approval OR still onboarding
@@ -298,18 +300,29 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
     localStorage.setItem("sidenav-collapsed", String(newState));
   };
 
-  // Filter navigation based on user status
-  const filteredNavItems = navigationItems.filter((item) => {
-    if (item.adminOnly && !isAdmin) return false;
-    // Hide restricted items for both pending and onboarding users
-    if (item.hideForPending && isRestrictedUser) return false;
-    return true;
-  });
+  // Filter navigation based on user status, and make "My Company" href dynamic
+  const filteredNavItems = navigationItems
+    .filter((item) => {
+      if (item.adminOnly && !isAdmin) return false;
+      // Hide restricted items for both pending and onboarding users
+      if (item.hideForPending && isRestrictedUser) return false;
+      return true;
+    })
+    .map((item) => {
+      if (item.href === "/my-company" && selectedOrg) {
+        return { ...item, href: `/company/${selectedOrg.id}` };
+      }
+      return item;
+    });
 
   // Check if route is active
   const isActiveRoute = (href: string) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
+    }
+    // For dynamic company route, also match /my-company
+    if (href.startsWith("/company/")) {
+      return pathname.startsWith(href) || pathname.startsWith("/my-company");
     }
     return pathname.startsWith(href);
   };

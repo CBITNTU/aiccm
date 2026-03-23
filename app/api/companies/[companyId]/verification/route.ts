@@ -24,7 +24,11 @@ export async function GET(
     }
 
     const company = await db
-      .select({ verificationStatus: companies.verificationStatus, verifiedAt: companies.verifiedAt })
+      .select({
+        verificationStatus: companies.verificationStatus,
+        verifiedAt: companies.verifiedAt,
+        pendingChanges: companies.pendingChanges,
+      })
       .from(companies)
       .where(eq(companies.id, companyId))
       .then((rows) => rows[0]);
@@ -45,6 +49,7 @@ export async function GET(
     return apiResponse({
       verificationStatus: company.verificationStatus,
       verifiedAt: company.verifiedAt,
+      hasPendingChanges: !!company.pendingChanges,
       latestRequest,
     });
   } catch (error) {

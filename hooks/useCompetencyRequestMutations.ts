@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/queryKeys";
 
 export function useSyncCapabilitiesWithReview() {
   const queryClient = useQueryClient();
@@ -11,6 +12,7 @@ export function useSyncCapabilitiesWithReview() {
       api.syncCapabilities(companyId, capabilityIds),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["company", variables.companyId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.verificationStatus(variables.companyId) });
       queryClient.invalidateQueries({ queryKey: ["adminCompetencyRequests"] });
     },
   });

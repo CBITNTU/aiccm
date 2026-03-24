@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { CapabilityTreeSelector } from "@/components/tenders/CapabilityTreeSelector";
 import { api } from "@/lib/api/client";
+import type { PendingChangesRelationField } from "@/lib/companyFieldCategories";
 
 interface EditCompetenciesSheetProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface EditCompetenciesSheetProps {
   isVerified: boolean;
   isEditLocked: boolean;
   competencyLimit: number | null;
+  pendingRelation?: PendingChangesRelationField;
   onSaved: () => void;
 }
 
@@ -24,6 +26,7 @@ export function EditCompetenciesSheet({
   isVerified,
   isEditLocked,
   competencyLimit,
+  pendingRelation,
   onSaved,
 }: EditCompetenciesSheetProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -32,20 +35,26 @@ export function EditCompetenciesSheet({
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const draftAddedSet = useMemo(
+    () => new Set(pendingRelation?.added ?? []),
+    [pendingRelation],
+  );
+
   useEffect(() => {
     if (open) {
       setLoading(true);
       api
         .getCompanyCapabilities(companyId)
         .then((data) => {
-          const ids = data.capabilities.map((c) => c.id);
-          setSelectedIds(ids);
-          setInitialIds(ids);
+          const approvedIds = data.capabilities.map((c) => c.id);
+          const effectiveIds = pendingRelation ? pendingRelation.proposed : approvedIds;
+          setSelectedIds(effectiveIds);
+          setInitialIds(effectiveIds);
         })
         .catch(() => toast.error("Failed to load capabilities"))
         .finally(() => setLoading(false));
     }
-  }, [open, companyId]);
+  }, [open, companyId, pendingRelation]);
 
   const handleSelectionChange = (ids: string[]) => {
     if (!isVerified && competencyLimit !== null && ids.length > competencyLimit) {
@@ -116,7 +125,15 @@ export function EditCompetenciesSheet({
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {selectedIds.map((id) => (
-                  <Badge key={id} variant="default" className="text-xs">
+                  <Badge
+                    key={id}
+                    variant={draftAddedSet.has(id) ? "outline" : "default"}
+                    className={
+                      draftAddedSet.has(id)
+                        ? "text-xs bg-amber-50 border-amber-300 text-amber-900 border-dashed"
+                        : "text-xs"
+                    }
+                  >
                     {nameMap[id] ?? id}
                   </Badge>
                 ))}

@@ -247,6 +247,7 @@ export function CapabilitiesTab({
         isVerified={isVerified}
         isEditLocked={isEditLocked}
         competencyLimit={competencyLimit}
+        pendingRelation={pendingChanges?.capabilities}
         onSaved={handleSaved}
       />
       <EditMarketsSheet
@@ -255,6 +256,7 @@ export function CapabilitiesTab({
         companyId={companyId}
         isVerified={isVerified}
         isEditLocked={isEditLocked}
+        pendingRelation={pendingChanges?.markets}
         onSaved={handleSaved}
       />
       <EditStandardsSheet
@@ -263,6 +265,7 @@ export function CapabilitiesTab({
         companyId={companyId}
         isVerified={isVerified}
         isEditLocked={isEditLocked}
+        pendingRelation={pendingChanges?.standards}
         onSaved={handleSaved}
       />
     </>

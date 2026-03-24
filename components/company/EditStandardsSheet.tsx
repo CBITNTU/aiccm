@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { StandardsTreeSelector } from "@/components/company/StandardsTreeSelector";
 import { api } from "@/lib/api/client";
+import type { PendingChangesRelationField } from "@/lib/companyFieldCategories";
 
 interface EditStandardsSheetProps {
   open: boolean;
@@ -13,6 +14,7 @@ interface EditStandardsSheetProps {
   companyId: string;
   isVerified: boolean;
   isEditLocked: boolean;
+  pendingRelation?: PendingChangesRelationField;
   onSaved: () => void;
 }
 
@@ -22,12 +24,19 @@ export function EditStandardsSheet({
   companyId,
   isVerified,
   isEditLocked,
+  pendingRelation,
   onSaved,
 }: EditStandardsSheetProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [initialIds, setInitialIds] = useState<string[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const draftAddedSet = useMemo(
+    () => new Set(pendingRelation?.added ?? []),
+    [pendingRelation],
+  );
 
   useEffect(() => {
     if (open) {
@@ -36,13 +45,16 @@ export function EditStandardsSheet({
         .getCompanyStandards(companyId)
         .then((data) => {
           const standards = data.standards || [];
-          setSelectedIds(standards.map((s) => s.id));
+          const approvedIds = standards.map((s) => s.id);
+          const effectiveIds = pendingRelation ? pendingRelation.proposed : approvedIds;
+          setSelectedIds(effectiveIds);
+          setInitialIds(effectiveIds);
           setNameMap(Object.fromEntries(standards.map((s) => [s.id, s.name])));
         })
         .catch(() => toast.error("Failed to load standards"))
         .finally(() => setLoading(false));
     }
-  }, [open, companyId]);
+  }, [open, companyId, pendingRelation]);
 
   const handleSave = async () => {
     try {
@@ -63,6 +75,8 @@ export function EditStandardsSheet({
     }
   };
 
+  const hasChanges = JSON.stringify([...selectedIds].sort()) !== JSON.stringify([...initialIds].sort());
+
   return (
     <EditSheetLayout
       open={open}
@@ -74,6 +88,7 @@ export function EditStandardsSheet({
       isEditLocked={isEditLocked}
       isSaving={saving}
       onSave={handleSave}
+      saveLabel={hasChanges ? undefined : "No Changes"}
     >
       {loading ? (
         <div className="flex justify-center py-8">
@@ -88,7 +103,15 @@ export function EditStandardsSheet({
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {selectedIds.map((id) => (
-                  <Badge key={id} variant="default" className="text-xs">
+                  <Badge
+                    key={id}
+                    variant={draftAddedSet.has(id) ? "outline" : "default"}
+                    className={
+                      draftAddedSet.has(id)
+                        ? "text-xs bg-amber-50 border-amber-300 text-amber-900 border-dashed"
+                        : "text-xs"
+                    }
+                  >
                     {nameMap[id] ?? id}
                   </Badge>
                 ))}

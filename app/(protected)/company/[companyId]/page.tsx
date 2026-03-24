@@ -148,7 +148,6 @@ export default function CompanyDetailPage() {
 
         <TabsContent value="intelligence">
           <IntelligenceTab
-            companyId={companyId}
             financialData={data.financialData}
             analysis={data.analysis}
             isAnalyzing={data.isAnalyzing}

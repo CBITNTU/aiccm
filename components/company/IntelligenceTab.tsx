@@ -4,10 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DollarSign, TrendingUp, RefreshCw } from "lucide-react";
-import { TenderMatching } from "@/components/tenders/TenderMatching";
 
 interface IntelligenceTabProps {
-  companyId: string;
   financialData: Record<string, { value: number; confidence: number }> | null;
   analysis: Record<string, unknown> | null;
   isAnalyzing: boolean;
@@ -15,7 +13,6 @@ interface IntelligenceTabProps {
 }
 
 export function IntelligenceTab({
-  companyId,
   financialData,
   analysis,
   isAnalyzing,
@@ -57,9 +54,6 @@ export function IntelligenceTab({
           )}
         </CardContent>
       </Card>
-
-      {/* Tender Matches */}
-      <TenderMatching companyId={companyId} />
 
       {/* AI Analysis */}
       <Card>

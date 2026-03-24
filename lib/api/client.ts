@@ -445,7 +445,7 @@ export const api = {
 
   getStandards: (companyId?: string) =>
     apiCall<{
-      standards: { id: string; name: string; parentId: string | null; sortOrder: number }[];
+      standards: { id: string; name: string; parentId: string | null; sortOrder: number; relevant?: boolean }[];
     }>(
       companyId ? `standards?companyId=${encodeURIComponent(companyId)}` : "standards",
       { method: "GET" },

@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   FileText,
   Tag,
-  Briefcase,
   Users,
   TrendingUp,
 } from "lucide-react";
@@ -21,7 +20,6 @@ import { PendingChangesBar } from "@/components/company/PendingChangesBar";
 import { EditBasicInfoSheet } from "@/components/company/EditBasicInfoSheet";
 import { OverviewTab } from "@/components/company/OverviewTab";
 import { CapabilitiesTab } from "@/components/company/CapabilitiesTab";
-import { ProfileTab } from "@/components/company/ProfileTab";
 import { TeamTab } from "@/components/company/TeamTab";
 import { IntelligenceTab } from "@/components/company/IntelligenceTab";
 
@@ -102,10 +100,6 @@ export default function CompanyDetailPage() {
               <Tag className="h-3.5 w-3.5" />
               Capabilities
             </TabsTrigger>
-            <TabsTrigger value="profile" className="gap-1.5">
-              <Briefcase className="h-3.5 w-3.5" />
-              Profile
-            </TabsTrigger>
             <TabsTrigger value="team" className="gap-1.5">
               <Users className="h-3.5 w-3.5" />
               Team
@@ -128,6 +122,7 @@ export default function CompanyDetailPage() {
             sectionPendingStatus={data.sectionPendingStatus}
             pendingChanges={data.pendingChanges}
             aiCompetencies={data.aiCompetencies}
+            operationLocations={data.operationLocations}
             onSaved={(updated) => data.setCompanyData(updated)}
           />
         </TabsContent>
@@ -141,21 +136,6 @@ export default function CompanyDetailPage() {
             sectionPendingStatus={data.sectionPendingStatus}
             pendingChanges={data.pendingChanges}
             onDataRefresh={data.refreshCompanyData}
-          />
-        </TabsContent>
-
-        <TabsContent value="profile">
-          <ProfileTab
-            companyData={data.companyData}
-            isOwner={data.isOwner}
-            isVerified={data.isVerified}
-            isEditLocked={data.isEditLocked}
-            sectionPendingStatus={data.sectionPendingStatus}
-            pendingChanges={data.pendingChanges}
-            pastProjects={data.pastProjects}
-            certifications={data.certifications}
-            operationLocations={data.operationLocations}
-            onSaved={(updated) => data.setCompanyData(updated)}
           />
         </TabsContent>
 

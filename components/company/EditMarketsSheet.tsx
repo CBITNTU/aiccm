@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
+import { EditSheetSkeleton } from "@/components/company/EditSheetSkeleton";
 import { MarketTreeSelector } from "@/components/company/MarketTreeSelector";
 import { api } from "@/lib/api/client";
 import type { PendingChangesRelationField } from "@/lib/companyFieldCategories";
@@ -32,15 +35,20 @@ export function EditMarketsSheet({
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [treeReady, setTreeReady] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const draftAddedSet = useMemo(
     () => new Set(pendingRelation?.added ?? []),
     [pendingRelation],
   );
 
+  const handleTreeReady = useCallback(() => setTreeReady(true), []);
+
   useEffect(() => {
     if (open) {
       setLoading(true);
+      setTreeReady(false);
       api
         .getCompanyMarkets(companyId)
         .then((data) => {
@@ -76,6 +84,7 @@ export function EditMarketsSheet({
   };
 
   const hasChanges = JSON.stringify([...selectedIds].sort()) !== JSON.stringify([...initialIds].sort());
+  const isLoading = loading || !treeReady;
 
   return (
     <EditSheetLayout
@@ -90,12 +99,22 @@ export function EditMarketsSheet({
       onSave={handleSave}
       saveLabel={hasChanges ? undefined : "No Changes"}
     >
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <>
+      {isLoading && <EditSheetSkeleton />}
+      <div className={isLoading ? "hidden" : "flex flex-col lg:grid lg:grid-cols-[1fr_1.5fr] gap-6 h-full"}>
+        {/* Left column: search + selected */}
+        <div className="space-y-4 lg:overflow-y-auto">
+          <p className="text-sm text-muted-foreground">
+            Select the markets your company serves.
+          </p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search markets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           {selectedIds.length > 0 && (
             <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
               <h3 className="font-medium text-sm">
@@ -118,13 +137,18 @@ export function EditMarketsSheet({
               </div>
             </div>
           )}
-          <MarketTreeSelector
-            selectedMarketIds={selectedIds}
-            onSelectionChange={setSelectedIds}
-            onNameMapChange={(map) => setNameMap((prev) => ({ ...prev, ...map }))}
-          />
-        </>
-      )}
+        </div>
+        {/* Right column: tree */}
+        <MarketTreeSelector
+          selectedMarketIds={selectedIds}
+          onSelectionChange={setSelectedIds}
+          onNameMapChange={(map) => setNameMap((prev) => ({ ...prev, ...map }))}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          className="h-full min-h-[300px]"
+          onReady={handleTreeReady}
+        />
+      </div>
     </EditSheetLayout>
   );
 }

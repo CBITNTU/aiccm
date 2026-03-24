@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Award, TrendingUp } from "lucide-react";
+import { Award, TrendingUp, MapPin } from "lucide-react";
 import { SectionCard } from "@/components/company/SectionCard";
 import { EditOverviewSheet } from "@/components/company/EditOverviewSheet";
+import { EditOperationLocationsSheet } from "@/components/company/EditOperationLocationsSheet";
+import { OperationLocationsEditor } from "@/components/company/OperationLocationsEditor";
 import { DraftBlock } from "@/components/company/DraftChangeIndicator";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import type { CompanyRecord } from "@/lib/api/types";
@@ -21,6 +23,7 @@ interface OverviewTabProps {
   sectionPendingStatus: SectionPendingStatus;
   pendingChanges?: PendingChanges | null;
   aiCompetencies: string[] | null;
+  operationLocations: string[];
   onSaved: (updated: CompanyRecord) => void;
 }
 
@@ -33,9 +36,11 @@ export function OverviewTab({
   sectionPendingStatus,
   pendingChanges,
   aiCompetencies,
+  operationLocations,
   onSaved,
 }: OverviewTabProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [editLocations, setEditLocations] = useState(false);
 
   return (
     <>
@@ -104,6 +109,26 @@ export function OverviewTab({
         {/* Taxonomy Selector */}
         <CompanyTaxonomySelector companyId={companyId} />
 
+        {/* Operation Locations */}
+        <SectionCard
+          title="Operation Locations"
+          icon={MapPin}
+          onEdit={isOwner ? () => setEditLocations(true) : undefined}
+          hideEdit={!isOwner}
+        >
+          {operationLocations.length > 0 ? (
+            <OperationLocationsEditor
+              value={operationLocations}
+              onChange={() => {}}
+              disabled
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              No operation locations recorded
+            </p>
+          )}
+        </SectionCard>
+
         {/* Core Competencies (AI) */}
         {aiCompetencies && aiCompetencies.length > 0 && (
           <SectionCard
@@ -139,12 +164,20 @@ export function OverviewTab({
         )}
       </div>
 
-      {/* Edit Sheet */}
+      {/* Edit Sheets */}
       <EditOverviewSheet
         open={editOpen}
         onOpenChange={setEditOpen}
         companyData={companyData}
         isVerified={isVerified}
+        isEditLocked={isEditLocked}
+        onSaved={onSaved}
+      />
+      <EditOperationLocationsSheet
+        open={editLocations}
+        onOpenChange={setEditLocations}
+        companyData={companyData}
+        operationLocations={operationLocations}
         isEditLocked={isEditLocked}
         onSaved={onSaved}
       />

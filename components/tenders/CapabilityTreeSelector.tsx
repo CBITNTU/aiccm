@@ -19,6 +19,13 @@ interface CapabilityTreeSelectorProps {
   selectedCapabilities: string[];
   onSelectionChange: (capabilityIds: string[]) => void;
   onNameMapChange?: (map: Record<string, string>) => void;
+  /** When provided, search is controlled externally and the built-in search/description are hidden. */
+  searchTerm?: string;
+  onSearchTermChange?: (term: string) => void;
+  /** Additional className for the tree card container */
+  className?: string;
+  /** Called when the tree data has finished loading */
+  onReady?: () => void;
 }
 
 interface Capability {
@@ -122,10 +129,17 @@ export function CapabilityTreeSelector({
   selectedCapabilities,
   onSelectionChange,
   onNameMapChange,
+  searchTerm: externalSearchTerm,
+  onSearchTermChange,
+  className,
+  onReady,
 }: CapabilityTreeSelectorProps) {
+  const isControlled = externalSearchTerm !== undefined;
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalSearchTerm, setInternalSearchTerm] = useState("");
+  const searchTerm = isControlled ? externalSearchTerm : internalSearchTerm;
+  const setSearchTerm = isControlled ? (onSearchTermChange ?? (() => {})) : setInternalSearchTerm;
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(),
   );
@@ -153,6 +167,7 @@ export function CapabilityTreeSelector({
         console.error("Error fetching capabilities:", error);
       }
       setLoading(false);
+      onReady?.();
     };
 
     fetchCapabilities();
@@ -289,25 +304,27 @@ export function CapabilityTreeSelector({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Select the capabilities needed for this project. You can select
-          multiple capabilities from different categories.
-        </p>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search capabilities..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+    <div className={isControlled ? className : "space-y-4"}>
+      {!isControlled && (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Select the capabilities needed for this project. You can select
+            multiple capabilities from different categories.
+          </p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search capabilities..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      <Card>
-        <CardContent className="p-4 max-h-[500px] overflow-y-auto">
+      <Card className={isControlled ? "h-full flex flex-col" : ""}>
+        <CardContent className={isControlled ? "p-4 overflow-y-auto flex-1" : "p-4 max-h-[500px] overflow-y-auto"}>
           {hasParentId && filteredTree.length === 0 && !searchTerm ? (
             <div className="text-center py-8 text-muted-foreground">
               No capabilities available.
@@ -421,7 +438,7 @@ export function CapabilityTreeSelector({
         </CardContent>
       </Card>
 
-      {selectedCapabilities.length > 0 && (
+      {!isControlled && selectedCapabilities.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <span className="text-sm font-medium">Selected:</span>
           {selectedCapabilities.map((capId) => {

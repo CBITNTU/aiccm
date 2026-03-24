@@ -10,6 +10,7 @@ export interface StandardNode {
   name: string;
   parentId: string | null;
   sortOrder: number;
+  relevant?: boolean;
 }
 
 /** Normalise for industry/market name matching (lowercase, trim). */
@@ -89,33 +90,34 @@ export async function GET(request: NextRequest) {
       .orderBy(asc(standardsRef.sortOrder), asc(standardsRef.name));
 
     const list = allStandards as StandardNode[];
+
+    // Mark standards as relevant based on market matching (but always return all)
     if (marketNamesNorm.length === 0) {
       return apiResponse({ standards: list });
     }
 
-    // Filter standards by market relevance
     const byId = new Map<string, StandardNode>();
     list.forEach((n) => byId.set(n.id, n));
-    const allowedIds = new Set<string>();
+    const relevantIds = new Set<string>();
     list.forEach((s) => {
       if (!s.parentId) {
         const industryNorm = norm(s.name);
         const match = marketNamesNorm.some((mn) => industryMatchesMarket(industryNorm, mn));
-        if (match) allowedIds.add(s.id);
+        if (match) relevantIds.add(s.id);
       } else {
         const parent = byId.get(s.parentId);
         if (parent) {
           const industryNorm = norm(parent.name);
           const match = marketNamesNorm.some((mn) => industryMatchesMarket(industryNorm, mn));
           if (match) {
-            allowedIds.add(parent.id);
-            allowedIds.add(s.id);
+            relevantIds.add(parent.id);
+            relevantIds.add(s.id);
           }
         }
       }
     });
-    const filtered = list.filter((s) => allowedIds.has(s.id));
-    return apiResponse({ standards: filtered });
+    const result = list.map((s) => ({ ...s, relevant: relevantIds.has(s.id) }));
+    return apiResponse({ standards: result });
   } catch (error) {
     return handleApiError(error);
   }

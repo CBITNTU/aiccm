@@ -8,7 +8,6 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Info, Lock, Loader2 } from "lucide-react";
 
@@ -51,7 +50,7 @@ export function EditSheetLayout({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="sm:max-w-lg w-full flex flex-col p-0 gap-0"
+        className="sm:max-w-lg lg:max-w-[80vw] w-full flex flex-col p-0 gap-0"
       >
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b space-y-1.5">
@@ -79,10 +78,10 @@ export function EditSheetLayout({
           )}
         </div>
 
-        {/* Scrollable body */}
-        <ScrollArea className="flex-1 px-6 py-4">
-          <div className="space-y-4 pb-4">{children}</div>
-        </ScrollArea>
+        {/* Body */}
+        <div className="flex-1 overflow-auto px-6 py-4">
+          <div className="h-full">{children}</div>
+        </div>
 
         {/* Sticky footer */}
         {!isEditLocked && (

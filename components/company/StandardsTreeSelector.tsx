@@ -20,6 +20,7 @@ export interface StandardNode {
   name: string;
   parentId: string | null;
   sortOrder: number;
+  relevant?: boolean;
 }
 
 interface StandardsTreeSelectorProps {
@@ -28,10 +29,27 @@ interface StandardsTreeSelectorProps {
   onNameMapChange?: (map: Record<string, string>) => void;
   /** When set, only standards for industries matching the company's markets are shown. */
   companyId?: string;
+  /** When provided, search is controlled externally and the built-in search/description are hidden. */
+  searchTerm?: string;
+  onSearchTermChange?: (term: string) => void;
+  /** Additional className for the tree card container */
+  className?: string;
+  /** Called when the tree data has finished loading */
+  onReady?: () => void;
 }
 
 interface TreeNode extends StandardNode {
   children: TreeNode[];
+}
+
+function sortNodes(nodes: TreeNode[]): void {
+  // Sort relevant categories first, then by sortOrder/name
+  nodes.sort((a, b) => {
+    const aRel = a.relevant ? 0 : 1;
+    const bRel = b.relevant ? 0 : 1;
+    if (aRel !== bRel) return aRel - bRel;
+    return a.sortOrder - b.sortOrder || a.name.localeCompare(b.name);
+  });
 }
 
 function buildTree(nodes: StandardNode[]): TreeNode[] {
@@ -48,8 +66,8 @@ function buildTree(nodes: StandardNode[]): TreeNode[] {
       else roots.push(node);
     }
   });
-  roots.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-  roots.forEach((r) => r.children.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)));
+  sortNodes(roots);
+  roots.forEach((r) => sortNodes(r.children));
   return roots;
 }
 
@@ -122,8 +140,13 @@ function TreeNodeRow({
             onCheckedChange={(c) => onToggleSelect(node.id, c === true)}
             id={`standard-${node.id}`}
           />
-          <label htmlFor={`standard-${node.id}`} className="flex-1 cursor-pointer text-sm">
+          <label htmlFor={`standard-${node.id}`} className="flex-1 cursor-pointer text-sm flex items-center gap-1.5">
             {node.name}
+            {node.relevant && !node.parentId && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                Recommended
+              </span>
+            )}
           </label>
         </div>
       </div>
@@ -151,10 +174,17 @@ export function StandardsTreeSelector({
   onSelectionChange,
   onNameMapChange,
   companyId,
+  searchTerm: externalSearchTerm,
+  onSearchTermChange,
+  className,
+  onReady,
 }: StandardsTreeSelectorProps) {
+  const isControlled = externalSearchTerm !== undefined;
   const [standards, setStandards] = useState<StandardNode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalSearchTerm, setInternalSearchTerm] = useState("");
+  const searchTerm = isControlled ? externalSearchTerm : internalSearchTerm;
+  const setSearchTerm = isControlled ? (onSearchTermChange ?? (() => {})) : setInternalSearchTerm;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -170,6 +200,7 @@ export function StandardsTreeSelector({
         console.error("Error fetching standards:", error);
       }
       setLoading(false);
+      onReady?.();
     };
     fetchStandards();
   }, [companyId]);
@@ -210,23 +241,25 @@ export function StandardsTreeSelector({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Select the standards and certifications your company holds.
-        </p>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search standards..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+    <div className={isControlled ? className : "space-y-4"}>
+      {!isControlled && (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Select the standards and certifications your company holds.
+          </p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search standards..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
-      </div>
-      <Card>
-        <CardContent className="p-4 max-h-[500px] overflow-y-auto">
+      )}
+      <Card className={isControlled ? "h-full flex flex-col" : ""}>
+        <CardContent className={isControlled ? "p-4 overflow-y-auto flex-1" : "p-4 max-h-[500px] overflow-y-auto"}>
           {filteredTree.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchTerm ? "No standards found matching your search." : "No standards available."}
@@ -248,7 +281,7 @@ export function StandardsTreeSelector({
           )}
         </CardContent>
       </Card>
-      {selectedStandardIds.length > 0 && (
+      {!isControlled && selectedStandardIds.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <span className="text-sm font-medium">Selected:</span>
           {selectedStandardIds.map((id) => {

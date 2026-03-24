@@ -11,11 +11,7 @@ import {
   useAnalyzeCompany,
 } from "@/hooks/useCompanyMutations";
 import {
-  parseCertifications,
-  parsePastProjects,
   parseOperationLocations,
-  type Certification,
-  type PastProject,
 } from "@/components/company/companyParsers";
 import { suggestLocationsFromCompanyLocation } from "@/lib/locationData";
 
@@ -32,8 +28,6 @@ export interface CompanyPageData {
   // Derived
   isVerified: boolean;
   isEditLocked: boolean;
-  certifications: Certification[];
-  pastProjects: PastProject[];
   operationLocations: string[];
   financialData: Record<string, { value: number; confidence: number }> | null;
   aiCompetencies: string[] | null;
@@ -73,8 +67,6 @@ export interface ResolvedReviewRequest {
 export interface SectionPendingStatus {
   companyName: boolean;
   overview: boolean;
-  certifications: boolean;
-  pastProjects: boolean;
   equipment: boolean;
   capabilities: boolean;
   markets: boolean;
@@ -85,8 +77,6 @@ function getSectionPendingStatus(pc: PendingChanges | null): SectionPendingStatu
   return {
     companyName: !!pc?.scalarFields?.companyName,
     overview: !!(pc?.scalarFields?.description || pc?.scalarFields?.keyCapabilities),
-    certifications: !!pc?.scalarFields?.certifications,
-    pastProjects: !!pc?.scalarFields?.pastProjects,
     equipment: !!pc?.scalarFields?.equipment,
     capabilities: !!pc?.capabilities,
     markets: !!pc?.markets,
@@ -160,16 +150,6 @@ export function useCompanyPageData(
   const isVerified = companyData?.verificationStatus === "verified";
   const isEditLocked = !!pendingReviewRequest;
 
-  const certifications = useMemo(
-    () => parseCertifications(companyData?.certifications),
-    [companyData?.certifications],
-  );
-
-  const pastProjects = useMemo(
-    () => parsePastProjects(companyData?.pastProjects),
-    [companyData?.pastProjects],
-  );
-
   const operationLocations = useMemo(
     () =>
       parseOperationLocations(
@@ -204,8 +184,6 @@ export function useCompanyPageData(
     capabilities,
     isVerified,
     isEditLocked,
-    certifications,
-    pastProjects,
     operationLocations,
     financialData,
     aiCompetencies,

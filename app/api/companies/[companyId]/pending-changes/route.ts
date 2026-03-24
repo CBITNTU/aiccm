@@ -8,7 +8,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies, companyVerificationRequests } from "@/lib/db/schema/app";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -48,6 +48,18 @@ export async function DELETE(
       .update(companies)
       .set({ pendingChanges: null, updatedAt: new Date() })
       .where(eq(companies.id, companyId));
+
+    // Dismiss any stale rejected/changes_requested requests since user is discarding those changes
+    await db
+      .update(companyVerificationRequests)
+      .set({ status: "dismissed", updatedAt: new Date() })
+      .where(
+        and(
+          eq(companyVerificationRequests.companyId, companyId),
+          eq(companyVerificationRequests.requestType, "change_review"),
+          inArray(companyVerificationRequests.status, ["changes_requested", "rejected"]),
+        ),
+      );
 
     return apiResponse({ success: true });
   } catch (error) {

@@ -9,61 +9,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ShieldCheck, Clock, AlertTriangle, ShieldAlert, FileEdit } from "lucide-react";
+import { FileEdit } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  deriveVerificationDisplayState,
+  verificationStateConfig,
+} from "@/lib/verification-utils";
 
 interface VerificationStatusIndicatorProps {
   isCollapsed: boolean;
   isMobile?: boolean;
 }
-
-type DisplayState = "verified" | "pending" | "changes_requested" | "rejected" | null;
-
-function deriveDisplayState(
-  verificationStatus: string | null | undefined,
-  latestRequestStatus: string | null | undefined,
-): DisplayState {
-  if (verificationStatus === "verified") return "verified";
-  if (verificationStatus === "pending_verification") return "pending";
-  if (latestRequestStatus === "changes_requested") return "changes_requested";
-  if (latestRequestStatus === "rejected") return "rejected";
-  return null;
-}
-
-const stateConfig = {
-  verified: {
-    icon: ShieldCheck,
-    label: "Verified",
-    dotColor: "bg-emerald-500",
-    textColor: "text-emerald-700",
-    bgColor: "bg-emerald-50",
-    borderColor: "border-emerald-200",
-  },
-  pending: {
-    icon: Clock,
-    label: "Under Review",
-    dotColor: "bg-amber-500",
-    textColor: "text-amber-700",
-    bgColor: "bg-amber-50",
-    borderColor: "border-amber-200",
-  },
-  changes_requested: {
-    icon: AlertTriangle,
-    label: "Changes Requested",
-    dotColor: "bg-amber-500",
-    textColor: "text-amber-700",
-    bgColor: "bg-amber-50",
-    borderColor: "border-amber-200",
-  },
-  rejected: {
-    icon: ShieldAlert,
-    label: "Rejected",
-    dotColor: "bg-red-500",
-    textColor: "text-red-700",
-    bgColor: "bg-red-50",
-    borderColor: "border-red-200",
-  },
-} as const;
 
 export function VerificationStatusIndicator({
   isCollapsed,
@@ -75,103 +31,118 @@ export function VerificationStatusIndicator({
 
   if (!selectedOrg || isLoading || !data) return null;
 
-  const displayState = deriveDisplayState(
+  const rawHasPendingChanges = !!data.hasPendingChanges;
+
+  const displayState = deriveVerificationDisplayState(
     data.verificationStatus,
     data.latestRequest?.status,
+    rawHasPendingChanges,
   );
 
-  const hasPendingChanges = !!data.hasPendingChanges;
-
-  if (!displayState && !hasPendingChanges) return null;
-
+  // Only show draft indicator if changes haven't already been submitted for review
+  const hasPendingChanges = rawHasPendingChanges && data.latestRequest?.status !== "pending";
+  const config = verificationStateConfig[displayState];
   const showExpanded = !isCollapsed || isMobile;
 
   const handleClick = () => {
-    router.push("/my-company");
+    router.push(`/company/${selectedOrg.id}`);
   };
 
-  const verificationIndicator = displayState ? (() => {
-    const config = stateConfig[displayState];
-    const Icon = config.icon;
+  // Build tooltip text
+  const tooltipParts = [config.label];
+  if (hasPendingChanges) tooltipParts.push("Draft changes");
+  const tooltipText = tooltipParts.join(" · ");
 
-    if (!showExpanded) {
-      return (
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={handleClick}
-                className="w-2 h-2 rounded-full cursor-pointer"
-                aria-label={`Verification: ${config.label}`}
-              >
-                <span className={cn("block w-2 h-2 rounded-full", config.dotColor)} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={10}>
-              Verification: {config.label}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-
+  // Collapsed mode: single dot with combined tooltip
+  if (!showExpanded) {
     return (
-      <button
-        onClick={handleClick}
-        className={cn(
-          "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
-          config.textColor,
-          config.bgColor,
-          "hover:opacity-80",
-        )}
-      >
-        <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-        <span className="truncate">{config.label}</span>
-      </button>
-    );
-  })() : null;
-
-  const draftIndicator = hasPendingChanges ? (() => {
-    if (!showExpanded) {
-      return (
+      <div className="border-b border-border px-2 py-1.5 flex flex-col items-center">
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={handleClick}
                 className="relative flex h-2.5 w-2.5 cursor-pointer"
-                aria-label="Draft changes pending"
+                aria-label={tooltipText}
               >
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                {config.pulse && (
+                  <span
+                    className={cn(
+                      "absolute inline-flex h-full w-full rounded-full opacity-75 animate-pulse",
+                      config.dotColor,
+                    )}
+                  />
+                )}
+                <span
+                  className={cn(
+                    "relative inline-flex rounded-full h-2.5 w-2.5",
+                    config.dotColor,
+                  )}
+                />
+                {hasPendingChanges && (
+                  <span className="absolute -top-0.5 -right-0.5 inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={10}>
-              Draft changes pending
+              {tooltipText}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      );
-    }
-
-    return (
-      <button
-        onClick={handleClick}
-        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium text-amber-700 bg-amber-50 hover:opacity-80 transition-colors cursor-pointer"
-      >
-        <FileEdit className="h-3.5 w-3.5 flex-shrink-0" />
-        <span className="truncate">Draft changes</span>
-      </button>
+      </div>
     );
-  })() : null;
+  }
 
+  // Expanded mode: single muted row
   return (
-    <div className={cn(
-      "border-b border-border",
-      showExpanded ? "px-3 py-1.5 space-y-1" : "px-2 py-1.5 flex flex-col items-center gap-1.5",
-    )}>
-      {verificationIndicator}
-      {draftIndicator}
+    <div className="border-b border-border px-3 py-1.5">
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleClick}
+              className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-xs text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+            >
+              {/* Status dot */}
+              <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                {config.pulse && (
+                  <span
+                    className={cn(
+                      "absolute inline-flex h-full w-full rounded-full opacity-75 animate-pulse",
+                      config.dotColor,
+                    )}
+                  />
+                )}
+                <span
+                  className={cn(
+                    "relative inline-flex rounded-full h-1.5 w-1.5",
+                    config.dotColor,
+                  )}
+                />
+              </span>
+
+              {/* Label */}
+              <span className="truncate">{config.label}</span>
+
+              {/* Spacer */}
+              <span className="flex-1" />
+
+              {/* Draft changes icon */}
+              {hasPendingChanges && (
+                <FileEdit className="h-3 w-3 flex-shrink-0 text-amber-500 animate-pulse" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            <div className="text-xs">
+              <p>{config.label}</p>
+              {hasPendingChanges && (
+                <p className="text-amber-400">Draft changes pending</p>
+              )}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }

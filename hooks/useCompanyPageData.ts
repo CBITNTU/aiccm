@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/client";
 import type { CompanyRecord } from "@/lib/api/types";
@@ -10,6 +11,7 @@ import {
   useUpdateCompany,
   useAnalyzeCompany,
 } from "@/hooks/useCompanyMutations";
+import { queryKeys } from "@/lib/queryKeys";
 import {
   parseOperationLocations,
 } from "@/components/company/companyParsers";
@@ -89,6 +91,7 @@ export function useCompanyPageData(
   userId: string | null | undefined,
 ): CompanyPageData {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [companyData, setCompanyData] = useState<CompanyRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,12 +120,15 @@ export function useCompanyPageData(
       if (company.aiAnalysis) {
         setAnalysis(company.aiAnalysis as Record<string, unknown>);
       }
+
+      // Keep sidenav verification indicator in sync
+      queryClient.invalidateQueries({ queryKey: queryKeys.verificationStatus(companyId) });
     } catch (error) {
       console.error("Error fetching company data:", error);
       toast.error("Failed to load company data");
       router.push("/profile");
     }
-  }, [userId, companyId, router]);
+  }, [userId, companyId, router, queryClient]);
 
   useEffect(() => {
     if (!userId || !companyId) return;

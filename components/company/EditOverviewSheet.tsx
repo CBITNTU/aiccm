@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -25,17 +25,10 @@ export function EditOverviewSheet({
   isEditLocked,
   onSaved,
 }: EditOverviewSheetProps) {
-  const [description, setDescription] = useState("");
-  const [keyCapabilities, setKeyCapabilities] = useState("");
+  const [description, setDescription] = useState(companyData.description || "");
+  const [keyCapabilities, setKeyCapabilities] = useState(companyData.keyCapabilities || "");
 
   const updateMutation = useUpdateCompany();
-
-  useEffect(() => {
-    if (open) {
-      setDescription(companyData.description || "");
-      setKeyCapabilities(companyData.keyCapabilities || "");
-    }
-  }, [open, companyData]);
 
   const handleSave = async () => {
     try {

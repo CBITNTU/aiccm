@@ -37,7 +37,7 @@ export function CompanyHeroHeader({
   companyData,
   isOwner,
   isVerified,
-  isEditLocked,
+  isEditLocked: _isEditLocked,
   isAnalyzing,
   hasAnalysis,
   capabilitiesCount,

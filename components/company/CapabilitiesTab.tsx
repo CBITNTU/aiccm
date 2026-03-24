@@ -102,7 +102,6 @@ export function CapabilitiesTab({
   );
 
   useEffect(() => {
-    setLoading(true);
     Promise.all([
       api.getCompanyCapabilities(companyId),
       api.getCompanyMarkets(companyId),

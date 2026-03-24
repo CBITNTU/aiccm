@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -175,20 +175,27 @@ export function MarketTreeSelector({
   const setSearchTerm = isControlled ? (onSearchTermChange ?? (() => {})) : setInternalSearchTerm;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
+  const onNameMapChangeRef = useRef(onNameMapChange);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onNameMapChangeRef.current = onNameMapChange;
+    onReadyRef.current = onReady;
+  });
+
   useEffect(() => {
     const fetchMarkets = async () => {
       try {
         const result = await api.getMarkets();
         const mks = result.markets || [];
         setMarkets(mks);
-        onNameMapChange?.(Object.fromEntries(mks.map((m) => [m.id, m.name])));
+        onNameMapChangeRef.current?.(Object.fromEntries(mks.map((m) => [m.id, m.name])));
         const allIds = new Set(mks.map((m) => m.id));
         setExpandedIds(allIds);
       } catch (error) {
         console.error("Error fetching markets:", error);
       }
       setLoading(false);
-      onReady?.();
+      onReadyRef.current?.();
     };
     fetchMarkets();
   }, []);

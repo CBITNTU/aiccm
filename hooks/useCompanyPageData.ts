@@ -127,13 +127,14 @@ export function useCompanyPageData(
       console.error("Error fetching company data:", error);
       toast.error("Failed to load company data");
       router.push("/profile");
+    } finally {
+      setLoading(false);
     }
   }, [userId, companyId, router, queryClient]);
 
   useEffect(() => {
     if (!userId || !companyId) return;
-    setLoading(true);
-    refreshCompanyData().finally(() => setLoading(false));
+    refreshCompanyData();
   }, [userId, companyId, refreshCompanyData]);
 
   const handleRefreshAnalysis = useCallback(async () => {

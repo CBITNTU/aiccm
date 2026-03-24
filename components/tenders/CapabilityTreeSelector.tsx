@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -147,13 +147,20 @@ export function CapabilityTreeSelector({
     new Set(),
   );
 
+  const onNameMapChangeRef = useRef(onNameMapChange);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onNameMapChangeRef.current = onNameMapChange;
+    onReadyRef.current = onReady;
+  });
+
   useEffect(() => {
     const fetchCapabilities = async () => {
       try {
         const result = await api.getCapabilities();
         const caps = result.capabilities || [];
         setCapabilities(caps);
-        onNameMapChange?.(Object.fromEntries(caps.map((c) => [c.id, c.name])));
+        onNameMapChangeRef.current?.(Object.fromEntries(caps.map((c) => [c.id, c.name])));
         // Auto-expand all categories by default
         const categories = new Set(
           result.capabilities
@@ -167,7 +174,7 @@ export function CapabilityTreeSelector({
         console.error("Error fetching capabilities:", error);
       }
       setLoading(false);
-      onReady?.();
+      onReadyRef.current?.();
     };
 
     fetchCapabilities();

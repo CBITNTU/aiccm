@@ -166,6 +166,7 @@ export function OverviewTab({
 
       {/* Edit Sheets */}
       <EditOverviewSheet
+        key={`overview-${editOpen}`}
         open={editOpen}
         onOpenChange={setEditOpen}
         companyData={companyData}
@@ -174,6 +175,7 @@ export function OverviewTab({
         onSaved={onSaved}
       />
       <EditOperationLocationsSheet
+        key={`locations-${editLocations}`}
         open={editLocations}
         onOpenChange={setEditLocations}
         companyData={companyData}

@@ -49,7 +49,7 @@ export function VerificationStatusIndicator({
   };
 
   // Build tooltip text
-  const tooltipParts = [config.label];
+  const tooltipParts: string[] = [config.label];
   if (hasPendingChanges) tooltipParts.push("Draft changes");
   const tooltipText = tooltipParts.join(" · ");
 

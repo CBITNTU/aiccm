@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { OperationLocationsEditor } from "@/components/company/OperationLocationsEditor";
@@ -24,14 +24,8 @@ export function EditOperationLocationsSheet({
   isEditLocked,
   onSaved,
 }: EditOperationLocationsSheetProps) {
-  const [edited, setEdited] = useState<string[]>([]);
+  const [edited, setEdited] = useState<string[]>([...operationLocations]);
   const updateMutation = useUpdateCompany();
-
-  useEffect(() => {
-    if (open) {
-      setEdited([...operationLocations]);
-    }
-  }, [open, operationLocations]);
 
   const handleSave = async () => {
     try {

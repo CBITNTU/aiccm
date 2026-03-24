@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -27,23 +27,13 @@ export function EditBasicInfoSheet({
   isEditLocked,
   onSaved,
 }: EditBasicInfoSheetProps) {
-  const [companyName, setCompanyName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
-  const [website, setWebsite] = useState("");
+  const [companyName, setCompanyName] = useState(companyData.companyName || "");
+  const [email, setEmail] = useState(companyData.contactEmail || "");
+  const [phone, setPhone] = useState(companyData.contactPhone || "");
+  const [address, setAddress] = useState(companyData.address || "");
+  const [website, setWebsite] = useState(companyData.websiteUrl || "");
 
   const updateMutation = useUpdateCompany();
-
-  useEffect(() => {
-    if (open) {
-      setCompanyName(companyData.companyName || "");
-      setEmail(companyData.contactEmail || "");
-      setPhone(companyData.contactPhone || "");
-      setAddress(companyData.address || "");
-      setWebsite(companyData.websiteUrl || "");
-    }
-  }, [open, companyData]);
 
   const handleSave = async () => {
     try {

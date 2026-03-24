@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -187,20 +187,27 @@ export function StandardsTreeSelector({
   const setSearchTerm = isControlled ? (onSearchTermChange ?? (() => {})) : setInternalSearchTerm;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
+  const onNameMapChangeRef = useRef(onNameMapChange);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onNameMapChangeRef.current = onNameMapChange;
+    onReadyRef.current = onReady;
+  });
+
   useEffect(() => {
     const fetchStandards = async () => {
       try {
         const result = await api.getStandards(companyId);
         const stds = result.standards || [];
         setStandards(stds);
-        onNameMapChange?.(Object.fromEntries(stds.map((s) => [s.id, s.name])));
+        onNameMapChangeRef.current?.(Object.fromEntries(stds.map((s) => [s.id, s.name])));
         const allIds = new Set(stds.map((s) => s.id));
         setExpandedIds(allIds);
       } catch (error) {
         console.error("Error fetching standards:", error);
       }
       setLoading(false);
-      onReady?.();
+      onReadyRef.current?.();
     };
     fetchStandards();
   }, [companyId]);

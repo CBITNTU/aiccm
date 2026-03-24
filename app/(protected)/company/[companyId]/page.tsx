@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
-  ArrowLeft,
   FileText,
   Tag,
   Users,
@@ -161,6 +159,7 @@ export default function CompanyDetailPage() {
 
       {/* Edit Basic Info Sheet */}
       <EditBasicInfoSheet
+        key={String(editBasicInfo)}
         open={editBasicInfo}
         onOpenChange={setEditBasicInfo}
         companyData={data.companyData}

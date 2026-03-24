@@ -45,7 +45,7 @@ export function VerificationStatusIndicator({
   const showExpanded = !isCollapsed || isMobile;
 
   const handleClick = () => {
-    router.push(`/company/${selectedOrg.id}`);
+    router.push("/my-company");
   };
 
   // Build tooltip text

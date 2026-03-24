@@ -41,6 +41,14 @@ interface VerificationBannerProps {
     reviewNotes: string | null;
     createdAt: string;
   } | null;
+  latestResolvedRequest?: {
+    id: string;
+    status: string;
+    reviewFeedback: Record<string, unknown> | null;
+    reviewNotes: string | null;
+    reviewedAt: string | null;
+    createdAt: string;
+  } | null;
 }
 
 export function VerificationBanner({
@@ -49,6 +57,7 @@ export function VerificationBanner({
   isOwner = false,
   hasPendingChanges = false,
   pendingReviewRequest,
+  latestResolvedRequest,
 }: VerificationBannerProps) {
   const { data, isLoading } = useVerificationStatus(companyId);
   const submitMutation = useSubmitVerification();
@@ -100,6 +109,102 @@ export function VerificationBanner({
                 Submitted on {new Date(pendingReviewRequest.createdAt).toLocaleDateString()}.
               </span>
             )}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    // Show feedback when admin has requested changes or rejected
+    if (latestResolvedRequest?.status === "changes_requested" && hasPendingChanges) {
+      const resolvedFeedback = latestResolvedRequest.reviewFeedback as ReviewFeedback | null;
+      const hasResolvedStructuredFeedback = resolvedFeedback?.items?.some((i) => i.status === "needs_changes");
+
+      return (
+        <Alert className="border-amber-200 bg-amber-50">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">Changes Requested</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            <div className="space-y-3">
+              <p>
+                Our team reviewed your submitted changes and has requested some modifications.
+                Please address the feedback below and resubmit.
+              </p>
+
+              {hasResolvedStructuredFeedback && (
+                <div className="space-y-2">
+                  {resolvedFeedback!.items
+                    .filter((item) => item.status === "needs_changes")
+                    .map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-2 text-sm bg-white/60 border border-amber-200 rounded p-2"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+                        <div>
+                          <span className="font-medium text-amber-900">
+                            {item.label}:
+                          </span>{" "}
+                          <span className="text-amber-800">{item.notes}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              {resolvedFeedback?.overallNotes && (
+                <p className="text-sm bg-white/60 border border-amber-200 rounded p-2">
+                  {resolvedFeedback.overallNotes}
+                </p>
+              )}
+
+              {!hasResolvedStructuredFeedback && latestResolvedRequest.reviewNotes && (
+                <p className="text-sm bg-white/60 border border-amber-200 rounded p-2">
+                  {latestResolvedRequest.reviewNotes}
+                </p>
+              )}
+
+              {latestResolvedRequest.reviewedAt && (
+                <p className="text-xs text-amber-600">
+                  Reviewed on {new Date(latestResolvedRequest.reviewedAt).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (latestResolvedRequest?.status === "rejected" && hasPendingChanges) {
+      const resolvedFeedback = latestResolvedRequest.reviewFeedback as ReviewFeedback | null;
+
+      return (
+        <Alert className="border-red-200 bg-red-50">
+          <ShieldAlert className="h-4 w-4 text-red-600" />
+          <AlertTitle className="text-red-800">Changes Not Approved</AlertTitle>
+          <AlertDescription className="text-red-700">
+            <div className="space-y-3">
+              <p>
+                Your proposed changes were not approved by our team. You can modify and resubmit your changes, or discard them.
+              </p>
+
+              {resolvedFeedback?.overallNotes && (
+                <p className="text-sm bg-white/60 border border-red-200 rounded p-2">
+                  {resolvedFeedback.overallNotes}
+                </p>
+              )}
+
+              {latestResolvedRequest.reviewNotes && (
+                <p className="text-sm bg-white/60 border border-red-200 rounded p-2">
+                  {latestResolvedRequest.reviewNotes}
+                </p>
+              )}
+
+              {latestResolvedRequest.reviewedAt && (
+                <p className="text-xs text-red-600">
+                  Reviewed on {new Date(latestResolvedRequest.reviewedAt).toLocaleDateString()}
+                </p>
+              )}
+            </div>
           </AlertDescription>
         </Alert>
       );

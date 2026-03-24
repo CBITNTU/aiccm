@@ -200,10 +200,10 @@ export async function PUT(
             .set({ pendingChanges: null, updatedAt: now })
             .where(eq(companies.id, verificationRequest.companyId));
         } else if (action === "reject") {
-          // Reject: clear pendingChanges, company stays verified
+          // Reject: keep pendingChanges so user can see what was rejected and modify/discard
           await tx
             .update(companies)
-            .set({ pendingChanges: null, updatedAt: now })
+            .set({ updatedAt: now })
             .where(eq(companies.id, verificationRequest.companyId));
         } else {
           // Request changes: keep pendingChanges intact so user can edit and resubmit

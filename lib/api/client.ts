@@ -385,6 +385,15 @@ export const api = {
         reviewNotes: string | null;
         createdAt: string;
       } | null;
+      latestResolvedRequest?: {
+        id: string;
+        status: string;
+        requestType: string;
+        reviewFeedback: Record<string, unknown> | null;
+        reviewNotes: string | null;
+        reviewedAt: string | null;
+        createdAt: string;
+      } | null;
     }>(`companies/${companyId}`, { method: "GET" }).then((data) => ({
       ...data,
       company: normalizeCompanyRecord(data.company),

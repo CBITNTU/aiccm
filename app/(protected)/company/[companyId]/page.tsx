@@ -71,6 +71,7 @@ export default function CompanyDetailPage() {
           isOwner={data.isOwner}
           hasPendingChanges={!!data.pendingChanges}
           pendingReviewRequest={data.pendingReviewRequest}
+          latestResolvedRequest={data.latestResolvedRequest}
         />
       </div>
 
@@ -194,6 +195,7 @@ export default function CompanyDetailPage() {
           companyId={companyId}
           pendingChanges={data.pendingChanges}
           pendingReviewRequest={data.pendingReviewRequest}
+          latestResolvedRequest={data.latestResolvedRequest}
           onSuccess={data.refreshCompanyData}
         />
       )}

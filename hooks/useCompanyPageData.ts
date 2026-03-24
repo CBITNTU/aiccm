@@ -26,6 +26,7 @@ export interface CompanyPageData {
   analysis: Record<string, unknown> | null;
   pendingChanges: PendingChanges | null;
   pendingReviewRequest: PendingReviewRequest | null;
+  latestResolvedRequest: ResolvedReviewRequest | null;
   capabilities: { id: string; name: string; category: string }[];
 
   // Derived
@@ -56,6 +57,16 @@ export interface PendingReviewRequest {
   requestType: string;
   reviewFeedback: Record<string, unknown> | null;
   reviewNotes: string | null;
+  createdAt: string;
+}
+
+export interface ResolvedReviewRequest {
+  id: string;
+  status: string;
+  requestType: string;
+  reviewFeedback: Record<string, unknown> | null;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
   createdAt: string;
 }
 
@@ -95,6 +106,7 @@ export function useCompanyPageData(
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null);
   const [pendingChanges, setPendingChanges] = useState<PendingChanges | null>(null);
   const [pendingReviewRequest, setPendingReviewRequest] = useState<PendingReviewRequest | null>(null);
+  const [latestResolvedRequest, setLatestResolvedRequest] = useState<ResolvedReviewRequest | null>(null);
   const [capabilities, setCapabilities] = useState<{ id: string; name: string; category: string }[]>([]);
 
   const updateCompanyMutation = useUpdateCompany();
@@ -109,6 +121,7 @@ export function useCompanyPageData(
       setCapabilities(data.capabilities);
       setPendingChanges((data.pendingChanges as PendingChanges | null) ?? null);
       setPendingReviewRequest(data.pendingReviewRequest ?? null);
+      setLatestResolvedRequest(data.latestResolvedRequest ?? null);
 
       const company = data.company as unknown as Record<string, unknown>;
       if (company.aiAnalysis) {
@@ -187,6 +200,7 @@ export function useCompanyPageData(
     analysis,
     pendingChanges,
     pendingReviewRequest,
+    latestResolvedRequest,
     capabilities,
     isVerified,
     isEditLocked,

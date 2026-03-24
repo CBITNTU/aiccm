@@ -37,7 +37,7 @@ import {
   type PendingChanges,
 } from "@/lib/companyFieldCategories";
 import { queryKeys } from "@/lib/queryKeys";
-import type { PendingReviewRequest } from "@/hooks/useCompanyPageData";
+import type { PendingReviewRequest, ResolvedReviewRequest } from "@/hooks/useCompanyPageData";
 
 const SCALAR_FIELD_ORDER = [
   "companyName",
@@ -53,6 +53,7 @@ interface PendingChangesBarProps {
   companyId: string;
   pendingChanges: PendingChanges;
   pendingReviewRequest: PendingReviewRequest | null;
+  latestResolvedRequest?: ResolvedReviewRequest | null;
   onSuccess?: () => void;
 }
 
@@ -147,6 +148,7 @@ export function PendingChangesBar({
   companyId,
   pendingChanges,
   pendingReviewRequest,
+  latestResolvedRequest,
   onSuccess,
 }: PendingChangesBarProps) {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
@@ -156,6 +158,10 @@ export function PendingChangesBar({
   const discardMutation = useDiscardPendingChanges();
 
   const isSubmitted = !!pendingReviewRequest;
+  const reviewStatus = latestResolvedRequest?.status; // "changes_requested" | "rejected" | undefined
+  const isChangesRequested = reviewStatus === "changes_requested";
+  const isRejected = reviewStatus === "rejected";
+  const hasResolvedFeedback = isChangesRequested || isRejected;
 
   // Count changes
   const scalarCount = pendingChanges.scalarFields
@@ -271,7 +277,15 @@ export function PendingChangesBar({
   return (
     <>
       {/* Floating bottom bar */}
-      <div className={`fixed bottom-0 left-0 right-0 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] ${isSubmitted ? "border-t-2 border-t-blue-500 bg-blue-50/95" : "border-t-2 border-t-amber-500 bg-amber-50/95"}`}>
+      <div className={`fixed bottom-0 left-0 right-0 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] ${
+        isSubmitted
+          ? "border-t-2 border-t-blue-500 bg-blue-50/95"
+          : isRejected
+            ? "border-t-2 border-t-red-500 bg-red-50/95"
+            : isChangesRequested
+              ? "border-t-2 border-t-amber-500 bg-amber-50/95"
+              : "border-t-2 border-t-amber-500 bg-amber-50/95"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             {isSubmitted ? (
@@ -279,20 +293,30 @@ export function PendingChangesBar({
             ) : (
               <>
                 <span className="relative flex h-2.5 w-2.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isRejected ? "bg-red-400" : "bg-amber-400"} opacity-75`} />
+                  <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isRejected ? "bg-red-500" : "bg-amber-500"}`} />
                 </span>
-                <FileEdit className="h-4 w-4 text-amber-600 shrink-0" />
+                <FileEdit className={`h-4 w-4 ${isRejected ? "text-red-600" : "text-amber-600"} shrink-0`} />
               </>
             )}
             <span className="text-sm font-medium truncate">
               {isSubmitted
                 ? "Changes under review"
-                : `${totalChanges} pending ${totalChanges === 1 ? "change" : "changes"}`}
+                : isChangesRequested
+                  ? `${totalChanges} ${totalChanges === 1 ? "change" : "changes"} to address`
+                  : isRejected
+                    ? `${totalChanges} rejected ${totalChanges === 1 ? "change" : "changes"}`
+                    : `${totalChanges} pending ${totalChanges === 1 ? "change" : "changes"}`}
             </span>
             {!isSubmitted && (
-              <Badge variant="outline" className="text-xs shrink-0 bg-amber-100 text-amber-800 border-amber-300">
-                Draft
+              <Badge variant="outline" className={`text-xs shrink-0 ${
+                isChangesRequested
+                  ? "bg-amber-100 text-amber-800 border-amber-300"
+                  : isRejected
+                    ? "bg-red-100 text-red-800 border-red-300"
+                    : "bg-amber-100 text-amber-800 border-amber-300"
+              }`}>
+                {isChangesRequested ? "Changes Requested" : isRejected ? "Rejected" : "Draft"}
               </Badge>
             )}
             {isSubmitted && (
@@ -350,7 +374,7 @@ export function PendingChangesBar({
                   ) : (
                     <Send className="h-3.5 w-3.5 mr-1" />
                   )}
-                  Review & Submit
+                  {hasResolvedFeedback ? "Resubmit for Review" : "Review & Submit"}
                 </Button>
               </>
             )}

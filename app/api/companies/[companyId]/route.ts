@@ -14,7 +14,7 @@ import {
 } from "@/lib/geocode";
 import { db } from "@/lib/db";
 import { companies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef, companyVerificationRequests } from "@/lib/db/schema/app";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import {
   isReviewableField,
   type PendingChanges,
@@ -118,6 +118,38 @@ export async function GET(
         .then((rows) => rows[0] ?? null);
     }
 
+    // Fetch latest resolved (changes_requested/rejected) review request when no pending one exists
+    // We fetch any terminal status (including approved) so that a newer approved request supersedes old rejections
+    let latestResolvedRequest = null;
+    if (isMember && company.verificationStatus === "verified" && !pendingReviewRequest && company.pendingChanges) {
+      const latestRequest = await db
+        .select({
+          id: companyVerificationRequests.id,
+          status: companyVerificationRequests.status,
+          requestType: companyVerificationRequests.requestType,
+          reviewFeedback: companyVerificationRequests.reviewFeedback,
+          reviewNotes: companyVerificationRequests.reviewNotes,
+          reviewedAt: companyVerificationRequests.reviewedAt,
+          createdAt: companyVerificationRequests.createdAt,
+        })
+        .from(companyVerificationRequests)
+        .where(
+          and(
+            eq(companyVerificationRequests.companyId, companyId),
+            eq(companyVerificationRequests.requestType, "change_review"),
+            inArray(companyVerificationRequests.status, ["changes_requested", "rejected", "approved"]),
+          ),
+        )
+        .orderBy(desc(companyVerificationRequests.createdAt))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+
+      // Only surface if the latest resolved request needs user action
+      if (latestRequest && (latestRequest.status === "changes_requested" || latestRequest.status === "rejected")) {
+        latestResolvedRequest = latestRequest;
+      }
+    }
+
     return apiResponse({
       company,
       isOwner,
@@ -127,6 +159,7 @@ export async function GET(
       hasPendingChanges: isMember ? company.pendingChanges != null : undefined,
       pendingChanges: isMember ? company.pendingChanges : undefined,
       pendingReviewRequest: isMember ? pendingReviewRequest : undefined,
+      latestResolvedRequest: isMember ? latestResolvedRequest : undefined,
     });
   } catch (error) {
     return handleApiError(error);

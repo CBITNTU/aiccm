@@ -23,6 +23,7 @@ import {
   Target,
   Lightbulb,
 } from "lucide-react";
+import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import { CompanySearchDialog } from "./CompanySearchDialog";
 import {
   AlertDialog,
@@ -61,6 +62,7 @@ interface TeamMember {
     keyCapabilities?: string | null;
     postcode?: string | null;
     location?: string | null;
+    verificationStatus?: string | null;
   } | null;
 }
 
@@ -155,7 +157,12 @@ export function TeamBuilder({
               {members.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell className="font-medium">
-                    {member.companies?.companyName}
+                    <span className="inline-flex items-center gap-1.5">
+                      {member.companies?.companyName}
+                      {member.companies?.verificationStatus === "verified" && (
+                        <VerifiedBadge compact />
+                      )}
+                    </span>
                   </TableCell>
                   <TableCell>{getRoleBadge(member.role)}</TableCell>
                   <TableCell className="max-w-xs truncate">

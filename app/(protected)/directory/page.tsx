@@ -35,6 +35,7 @@ type PublicCompany = Pick<
   | "createdAt"
   | "updatedAt"
   | "userId"
+  | "verificationStatus"
 >;
 
 const defaultFilters: DirectoryFiltersState = {
@@ -163,14 +164,13 @@ export default function DirectoryPage() {
           <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {companies.map((company) => (
-                <div key={company.id} className="list-item-deferred">
-                  <CompanyCardNew
-                    company={company}
-                    onClick={handleCompanyClick}
-                    taxonomies={taxonomiesByCompany[company.id]}
-                    distanceMiles={distanceByCompany[company.id]}
-                  />
-                </div>
+                <CompanyCardNew
+                  key={company.id}
+                  company={company}
+                  onClick={handleCompanyClick}
+                  taxonomies={taxonomiesByCompany[company.id]}
+                  distanceMiles={distanceByCompany[company.id]}
+                />
               ))}
             </div>
 

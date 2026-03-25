@@ -1,6 +1,6 @@
 "use client";
 
- 
+
 import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tag, Loader2, Pencil } from "lucide-react";
+import { Tag, Loader2, Pencil, Clock, ShieldCheck } from "lucide-react";
 import { CapabilityTreeSelector } from "@/components/tenders/CapabilityTreeSelector";
 
 interface Capability {
@@ -25,11 +25,15 @@ interface Capability {
 interface CompanyCapabilitySelectorProps {
   companyId: string;
   onUpdate?: () => void;
+  isEditLocked?: boolean;
+  hasPendingDraft?: boolean;
 }
 
 export function CompanyCapabilitySelector({
   companyId,
   onUpdate,
+  isEditLocked = false,
+  hasPendingDraft = false,
 }: CompanyCapabilitySelectorProps) {
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>(
     [],
@@ -38,6 +42,9 @@ export function CompanyCapabilitySelector({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<string>("unverified");
+  const [competencyLimit, setCompetencyLimit] = useState<number | null>(null);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
   useEffect(() => {
     fetchCompanyCapabilities();
@@ -50,6 +57,9 @@ export function CompanyCapabilitySelector({
       const data = await api.getCompanyCapabilities(companyId);
       setSelectedCapabilityIds(data.capabilities.map((c) => c.id));
       setAllCapabilities(data.capabilities);
+      setVerificationStatus(data.verificationStatus ?? "unverified");
+      setCompetencyLimit(data.competencyLimit ?? null);
+      setHasPendingRequest(!!data.pendingCompetencyRequest);
     } catch (error) {
       console.error("Error fetching company capabilities:", error);
       toast.error("Failed to load capabilities");
@@ -58,16 +68,30 @@ export function CompanyCapabilitySelector({
     }
   };
 
+  const isVerified = verificationStatus === "verified";
+
   const saveCapabilities = async (capabilityIds: string[]) => {
     try {
       setSaving(true);
       const result = await api.syncCapabilities(companyId, capabilityIds);
-      setSelectedCapabilityIds(capabilityIds);
-      setAllCapabilities(result.capabilities);
-      onUpdate?.();
+
+      if (result.pendingReview) {
+        toast.success(result.message || "Competency changes saved as draft. Submit for review when ready.");
+        setHasPendingRequest(true);
+        setEditMode(false);
+        onUpdate?.();
+      } else if (result.error) {
+        toast.error(result.error);
+        await fetchCompanyCapabilities();
+      } else if (result.capabilities) {
+        setSelectedCapabilityIds(capabilityIds);
+        setAllCapabilities(result.capabilities);
+        onUpdate?.();
+      }
     } catch (error) {
       console.error("Error saving capabilities:", error);
-      toast.error("Failed to save capabilities");
+      const message = error instanceof Error ? error.message : "Failed to save capabilities";
+      toast.error(message);
       await fetchCompanyCapabilities();
     } finally {
       setSaving(false);
@@ -77,7 +101,16 @@ export function CompanyCapabilitySelector({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSelectionChange = (capabilityIds: string[]) => {
+    // For unverified companies, check limit before allowing selection
+    if (!isVerified && competencyLimit !== null && capabilityIds.length > competencyLimit) {
+      toast.error(`Unverified companies can select up to ${competencyLimit} competencies. Get verified to unlock unlimited competencies.`);
+      return;
+    }
+
     setSelectedCapabilityIds(capabilityIds);
+
+    // For verified companies, don't auto-save (they need to click Done to submit for review)
+    if (isVerified) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -87,6 +120,14 @@ export function CompanyCapabilitySelector({
       saveCapabilities(capabilityIds);
       saveTimeoutRef.current = null;
     }, 500);
+  };
+
+  const handleDoneEditing = () => {
+    if (isVerified) {
+      // Submit for review
+      saveCapabilities(selectedCapabilityIds);
+    }
+    setEditMode(false);
   };
 
   useEffect(() => {
@@ -131,11 +172,30 @@ export function CompanyCapabilitySelector({
         <CardTitle className="flex items-center gap-2">
           <Tag className="h-5 w-5" />
           Competency
+          {competencyLimit !== null && !isVerified && (
+            <Badge variant="outline" className="text-xs font-normal ml-auto">
+              {selectedCapabilityIds.length}/{competencyLimit}
+            </Badge>
+          )}
         </CardTitle>
         <CardDescription>
-          {editMode
-            ? "Select capabilities that your company has. Changes are saved automatically."
-            : "Capabilities your company has."}
+          {isEditLocked ? (
+            <span className="flex items-center gap-1 text-amber-600">
+              <Clock className="h-3.5 w-3.5" />
+              Editing locked while changes are under review.
+            </span>
+          ) : hasPendingRequest || hasPendingDraft ? (
+            <span className="flex items-center gap-1 text-amber-600">
+              <Clock className="h-3.5 w-3.5" />
+              Competency changes saved as draft.
+            </span>
+          ) : editMode ? (
+            isVerified
+              ? "Select capabilities. Changes will be saved as a draft requiring admin review."
+              : `Select capabilities that your company has.${competencyLimit !== null ? ` Up to ${competencyLimit} for unverified companies.` : ""} Changes are saved automatically.`
+          ) : (
+            "Capabilities your company has."
+          )}
           {saving && <span className="ml-2 text-primary">Saving...</span>}
         </CardDescription>
       </CardHeader>
@@ -155,16 +215,18 @@ export function CompanyCapabilitySelector({
                 ))
               )}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setEditMode(true)}
-              className="gap-1"
-            >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </Button>
+            {!hasPendingRequest && !isEditLocked && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditMode(true)}
+                className="gap-1"
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </Button>
+            )}
           </>
         ) : (
           <>
@@ -197,14 +259,39 @@ export function CompanyCapabilitySelector({
               selectedCapabilities={selectedCapabilityIds}
               onSelectionChange={handleSelectionChange}
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setEditMode(false)}
-            >
-              Done
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant={isVerified ? "default" : "outline"}
+                size="sm"
+                onClick={handleDoneEditing}
+                disabled={saving}
+                className="gap-1"
+              >
+                {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+                {isVerified ? (
+                  <>
+                    <ShieldCheck className="h-3 w-3" />
+                    Save as Draft
+                  </>
+                ) : (
+                  "Done"
+                )}
+              </Button>
+              {isVerified && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditMode(false);
+                    fetchCompanyCapabilities();
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </>
         )}
       </CardContent>

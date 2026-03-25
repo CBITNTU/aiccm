@@ -31,6 +31,8 @@ import AdminApprovals from "@/components/admin/AdminApprovals";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
 import { AdminDemoSync } from "@/components/admin/AdminDemoSync";
 import { AdminAISettings } from "@/components/admin/AdminAISettings";
+import { AdminVerification } from "@/components/admin/AdminVerification";
+import { AdminVerificationSettings } from "@/components/admin/AdminVerificationSettings";
 import {
   UserCog,
   Tags,
@@ -38,6 +40,7 @@ import {
   UserPlus,
   FlaskConical,
   SlidersHorizontal,
+  ShieldCheck,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
@@ -217,6 +220,7 @@ export default function AdminPage() {
               { id: "companies", label: "Companies", icon: Building2 },
               { id: "tenders", label: "Tenders", icon: FileText },
               { id: "users", label: "Users", icon: UserCog },
+              { id: "verification", label: "Verification", icon: ShieldCheck },
               { id: "taxonomy", label: "Taxonomy", icon: Tags },
               { id: "settings", label: "Settings", icon: SlidersHorizontal },
               { id: "demo-sync", label: "Demo sync", icon: FlaskConical },
@@ -392,6 +396,13 @@ export default function AdminPage() {
         {/* Users Tab */}
         {activeTab === "users" && <AdminUsers />}
 
+        {/* Verification Tab */}
+        {activeTab === "verification" && (
+          <div className="space-y-6">
+            <AdminVerification />
+          </div>
+        )}
+
         {/* Taxonomy Tab */}
         {activeTab === "taxonomy" && (
           <div className="space-y-6">
@@ -403,6 +414,7 @@ export default function AdminPage() {
         {activeTab === "settings" && (
           <div className="space-y-6">
             <AdminAISettings />
+            <AdminVerificationSettings />
           </div>
         )}
 

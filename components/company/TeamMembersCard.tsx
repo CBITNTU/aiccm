@@ -298,7 +298,7 @@ export function TeamMembersCard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push(`/company/${companyId}?tab=team`)}
+                onClick={() => router.push("/my-company?tab=team")}
               >
                 Manage Team
               </Button>

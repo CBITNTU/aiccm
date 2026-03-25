@@ -13,6 +13,9 @@ export const queryKeys = {
     ["matchingProgress", companyId] as const,
   batchProgress: (batchId: string) => ["batchProgress", batchId] as const,
   taxonomies: () => ["taxonomies"] as const,
+  referenceCapabilities: () => ["referenceData", "capabilities"] as const,
+  referenceMarkets: () => ["referenceData", "markets"] as const,
+  referenceStandards: () => ["referenceData", "standards", "all"] as const,
   projects: (companyId: string, filter: string) =>
     ["projects", companyId, filter] as const,
   projectDetails: (id: string) => ["projectDetails", id] as const,
@@ -23,4 +26,9 @@ export const queryKeys = {
     ["projectInvitations", userId] as const,
   directoryCompany: (id: string) => ["directoryCompany", id] as const,
   publicCompany: (id: string) => ["publicCompany", id] as const,
+  verificationStatus: (companyId: string) => ["verificationStatus", companyId] as const,
+  adminVerificationRequests: () => ["adminVerificationRequests"] as const,
+  adminCompetencyRequests: () => ["adminCompetencyRequests"] as const,
+  adminVerificationSettings: () => ["adminVerificationSettings"] as const,
+  adminVerificationReview: (requestId: string) => ["adminVerificationReview", requestId] as const,
 };

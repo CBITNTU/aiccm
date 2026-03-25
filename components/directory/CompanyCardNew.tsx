@@ -3,12 +3,12 @@
 import { Badge } from "@/components/ui/badge";
 import {
   MapPin,
-  BadgeCheck,
   Tag,
   ChevronDown,
   ChevronUp,
   Sparkles,
 } from "lucide-react";
+import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ type PublicCompany = Pick<
   | "createdAt"
   | "updatedAt"
   | "userId"
+  | "verificationStatus"
 >;
 
 interface CompanyCardNewProps {
@@ -87,12 +88,9 @@ export function CompanyCardNew({
         <h3 className="font-semibold text-base text-foreground line-clamp-2 group-hover:text-primary transition-colors">
           {company.companyName}
         </h3>
-        {company.userId ? (
-          <Badge className="shrink-0 gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
-            <BadgeCheck className="h-3 w-3" />
-            Verified
-          </Badge>
-        ) : company.isSystemCompany ? (
+        {company.verificationStatus === "verified" ? (
+          <VerifiedBadge />
+        ) : company.isSystemCompany && !company.userId ? (
           <Badge className="shrink-0 gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
             <Sparkles className="h-3 w-3" />
             AI Generated

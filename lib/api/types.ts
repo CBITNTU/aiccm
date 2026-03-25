@@ -59,6 +59,8 @@ export interface CompanyRecord {
   safetyRating?: string | null;
   marketPosition?: string | null;
   isSystemCompany?: boolean | null;
+  verificationStatus?: string | null;
+  verifiedAt?: string | null;
   aiCertifications?: JsonValue;
   aiSummary?: string | null;
   aiCapabilityTaxonomy?: JsonValue;
@@ -283,6 +285,57 @@ export function normalizeMatchingResultRecord(
         }
       : null,
   };
+}
+
+// Verification review types
+export interface ReviewFeedbackItem {
+  section: string;
+  label: string;
+  status: "ok" | "needs_changes";
+  notes: string;
+}
+
+export interface ReviewFeedback {
+  items: ReviewFeedbackItem[];
+  overallNotes: string;
+}
+
+export interface VerificationReviewData {
+  request: {
+    id: string;
+    companyId: string;
+    submittedBy: string;
+    status: string;
+    requestType: string;
+    submissionNotes: string | null;
+    reviewNotes: string | null;
+    reviewFeedback: ReviewFeedback | null;
+    companySnapshot: Record<string, unknown>;
+    pendingChangesSnapshot: Record<string, unknown> | null;
+    createdAt: string;
+    reviewedAt: string | null;
+  };
+  company: CompanyRecord;
+  capabilities: { id: string; name: string; category: string }[];
+  markets: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
+  standards: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
+  previousRequests: {
+    id: string;
+    status: string;
+    submissionNotes: string | null;
+    reviewNotes: string | null;
+    reviewFeedback: ReviewFeedback | null;
+    companySnapshot: Record<string, unknown>;
+    createdAt: string;
+    reviewedAt: string | null;
+  }[];
+  submitter: {
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    jobTitle: string | null;
+  } | null;
+  resolvedPendingChanges: Record<string, unknown> | null;
 }
 
 export interface PlatformStats {

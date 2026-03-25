@@ -7,7 +7,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies, companyTaxonomies, taxonomies, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
-import { eq, and, or, ilike, inArray, asc, count } from "drizzle-orm";
+import { eq, and, or, ilike, inArray, asc, count, sql } from "drizzle-orm";
 import { nearbyCompanies } from "@/lib/db/raw";
 
 export async function GET(request: NextRequest) {
@@ -67,6 +67,13 @@ export async function GET(request: NextRequest) {
       totalCount = rows.length > 0 ? Number(rows[0].totalCount) : 0;
       totalPages = Math.ceil(totalCount / limit);
 
+      rows.sort((a, b) => {
+        const tierA = a.verificationStatus === "verified" ? 0 : (a.isSystemCompany && !a.userId) ? 2 : 1;
+        const tierB = b.verificationStatus === "verified" ? 0 : (b.isSystemCompany && !b.userId) ? 2 : 1;
+        if (tierA !== tierB) return tierA - tierB;
+        return (a.distanceMiles ?? Infinity) - (b.distanceMiles ?? Infinity);
+      });
+
       companiesData = rows;
       for (const row of rows) {
         if (row.distanceMiles != null) {
@@ -120,10 +127,18 @@ export async function GET(request: NextRequest) {
             createdAt: companies.createdAt,
             updatedAt: companies.updatedAt,
             userId: companies.userId,
+            verificationStatus: companies.verificationStatus,
           })
           .from(companies)
           .where(whereClause)
-          .orderBy(asc(companies.companyName))
+          .orderBy(
+            sql`CASE
+              WHEN ${companies.verificationStatus} = 'verified' THEN 0
+              WHEN ${companies.isSystemCompany} = true AND ${companies.userId} IS NULL THEN 2
+              ELSE 1
+            END`,
+            asc(companies.companyName),
+          )
           .limit(limit)
           .offset(offset),
       ]);

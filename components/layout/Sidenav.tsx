@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
+import { VerificationStatusIndicator } from "@/components/layout/VerificationStatusIndicator";
+
 
 interface SidenavProps {
   mobileOpen: boolean;
@@ -163,7 +165,10 @@ function SidebarContent({
 
       {/* Org Switcher — hidden for onboarding/pending-approval users */}
       {!isRestrictedUser && (
-        <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
+        <>
+          <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
+          <VerificationStatusIndicator isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
+        </>
       )}
 
       {/* Navigation */}
@@ -273,6 +278,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, signOut, isPendingApproval, isOnboarding, profile } = useAuth();
   const { isAdmin } = useUserRole();
+
   const pathname = usePathname();
 
   // Users are restricted if they're pending approval OR still onboarding

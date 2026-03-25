@@ -14,7 +14,6 @@ import {
   Building2,
   Shield,
   Loader2,
-  BadgeCheck,
   Sparkles,
   UserPlus,
   Tag,
@@ -32,6 +31,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
+import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 type PublicCompany = Pick<
   Company,
   | "id"
@@ -51,6 +51,7 @@ type PublicCompany = Pick<
   | "updatedAt"
   | "userId"
   | "websiteUrl"
+  | "verificationStatus"
 >;
 
 interface CompanyAnalysis {
@@ -268,12 +269,9 @@ export function CompanyDetailView({
                 {analysis.performanceBenchmark.overallScore}/100
               </Badge>
             )}
-            {company.userId ? (
-              <Badge className="gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
-                <BadgeCheck className="h-3 w-3" />
-                Verified
-              </Badge>
-            ) : company.isSystemCompany ? (
+            {company.verificationStatus === "verified" ? (
+              <VerifiedBadge />
+            ) : company.isSystemCompany && !company.userId ? (
               <Badge className="gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
                 <Sparkles className="h-3 w-3" />
                 AI Generated

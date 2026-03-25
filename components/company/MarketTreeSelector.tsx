@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,14 @@ export interface MarketNode {
 interface MarketTreeSelectorProps {
   selectedMarketIds: string[];
   onSelectionChange: (marketIds: string[]) => void;
+  onNameMapChange?: (map: Record<string, string>) => void;
+  /** When provided, search is controlled externally and the built-in search/description are hidden. */
+  searchTerm?: string;
+  onSearchTermChange?: (term: string) => void;
+  /** Additional className for the tree card container */
+  className?: string;
+  /** Called when the tree data has finished loading */
+  onReady?: () => void;
 }
 
 interface TreeNode extends MarketNode {
@@ -153,23 +161,41 @@ function TreeNodeRow({
 export function MarketTreeSelector({
   selectedMarketIds,
   onSelectionChange,
+  onNameMapChange,
+  searchTerm: externalSearchTerm,
+  onSearchTermChange,
+  className,
+  onReady,
 }: MarketTreeSelectorProps) {
+  const isControlled = externalSearchTerm !== undefined;
   const [markets, setMarkets] = useState<MarketNode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalSearchTerm, setInternalSearchTerm] = useState("");
+  const searchTerm = isControlled ? externalSearchTerm : internalSearchTerm;
+  const setSearchTerm = isControlled ? (onSearchTermChange ?? (() => {})) : setInternalSearchTerm;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const onNameMapChangeRef = useRef(onNameMapChange);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onNameMapChangeRef.current = onNameMapChange;
+    onReadyRef.current = onReady;
+  });
 
   useEffect(() => {
     const fetchMarkets = async () => {
       try {
         const result = await api.getMarkets();
-        setMarkets(result.markets || []);
-        const allIds = new Set((result.markets || []).map((m) => m.id));
+        const mks = result.markets || [];
+        setMarkets(mks);
+        onNameMapChangeRef.current?.(Object.fromEntries(mks.map((m) => [m.id, m.name])));
+        const allIds = new Set(mks.map((m) => m.id));
         setExpandedIds(allIds);
       } catch (error) {
         console.error("Error fetching markets:", error);
       }
       setLoading(false);
+      onReadyRef.current?.();
     };
     fetchMarkets();
   }, []);
@@ -210,23 +236,25 @@ export function MarketTreeSelector({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Select the markets your company serves. You can select multiple.
-        </p>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search markets..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+    <div className={isControlled ? className : "space-y-4"}>
+      {!isControlled && (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Select the markets your company serves. You can select multiple.
+          </p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search markets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
-      </div>
-      <Card>
-        <CardContent className="p-4 max-h-[500px] overflow-y-auto">
+      )}
+      <Card className={isControlled ? "h-full flex flex-col" : ""}>
+        <CardContent className={isControlled ? "p-4 overflow-y-auto flex-1" : "p-4 max-h-[500px] overflow-y-auto"}>
           {filteredTree.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchTerm ? "No markets found matching your search." : "No markets available."}
@@ -249,7 +277,7 @@ export function MarketTreeSelector({
           )}
         </CardContent>
       </Card>
-      {selectedMarketIds.length > 0 && (
+      {!isControlled && selectedMarketIds.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <span className="text-sm font-medium">Selected:</span>
           {selectedMarketIds.map((id) => {

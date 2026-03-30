@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
 import { isCompanyMember } from "@/lib/api/validation";
 import { aiGenerateObject } from "@/lib/ai";
@@ -6,6 +6,8 @@ import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { enqueueBatch } from "@/lib/services/queueService";
 import { getPlatformAISettings } from "@/lib/platformSettings";
+import { getPlatformMatchingSettings } from "@/lib/platformMatchingSettings";
+import { getMatchingRunsThisMonth, getEffectiveMatchingLimit, getNextMonthStart } from "@/lib/matchingUsage";
 import type { TenderMatchResult } from "@/lib/api/types";
 import { db } from "@/lib/db";
 import { companies, companyMembers, companyCapabilities, companyCapabilitiesRef, tenders, batchJobs } from "@/lib/db/schema/app";
@@ -338,6 +340,27 @@ export async function POST(request: NextRequest) {
         totalTenders: existingBatch.totalJobs,
         status: "already_running",
       });
+    }
+
+    // Check monthly matching run limit
+    const [matchingSettings, runsThisMonth] = await Promise.all([
+      getPlatformMatchingSettings(),
+      getMatchingRunsThisMonth(companyData.id),
+    ]);
+    const effectiveLimit = getEffectiveMatchingLimit(company, matchingSettings);
+    if (runsThisMonth >= effectiveLimit) {
+      const resetsAt = getNextMonthStart().toISOString();
+      console.log(`🚫 Company ${companyData.id} hit matching limit: ${runsThisMonth}/${effectiveLimit} runs this month`);
+      return NextResponse.json(
+        {
+          error: `Matching run limit reached (${runsThisMonth}/${effectiveLimit} this month). Resets on ${new Date(resetsAt).toLocaleDateString()}.`,
+          limitExceeded: true,
+          used: runsThisMonth,
+          limit: effectiveLimit,
+          resetsAt,
+        },
+        { status: 429 },
+      );
     }
 
     // Create batch and queue all jobs

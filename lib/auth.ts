@@ -57,13 +57,8 @@ export const auth = betterAuth({
     admin(),
     nextCookies(),
   ],
-
-  baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
-
-  trustedOrigins: [
-    process.env.BETTER_AUTH_URL || "http://localhost:3000",
-  ],
+  trustedOrigins: [process.env.VERCEL_URL! || "http://localhost:3000"],
 });
 
 export type Session = typeof auth.$Infer.Session;

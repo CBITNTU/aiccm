@@ -48,8 +48,8 @@ export default function TendersPage() {
     tenderStatus: "active",
   });
 
-  // Get tab from URL query parameter, default to "tenders"
-  const tabFromUrl = searchParams.get("tab") || "tenders";
+  // Get tab from URL query parameter, default to "matches"
+  const tabFromUrl = searchParams.get("tab") || "matches";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
   const handleFiltersChange = (newFilters: TenderFiltersState) => {
@@ -113,13 +113,6 @@ export default function TendersPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="inline-flex h-10 items-center justify-start rounded-lg bg-muted p-1 mb-6">
             <TabsTrigger
-              value="tenders"
-              className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              All Tenders
-            </TabsTrigger>
-            <TabsTrigger
               value="matches"
               className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
@@ -133,34 +126,14 @@ export default function TendersPage() {
               <Bookmark className="w-4 h-4 mr-2" />
               Saved
             </TabsTrigger>
+            <TabsTrigger
+              value="tenders"
+              className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              All Tenders
+            </TabsTrigger>
           </TabsList>
-
-          {/* All Tenders Tab */}
-          <TabsContent value="tenders" className="space-y-4">
-            <TenderSearchBar
-              filterType="database"
-              databaseFilters={filters}
-              onDatabaseFiltersChange={handleFiltersChange}
-              onReset={resetFilters}
-              placeholder="Search by title, buyer, location, or description..."
-            />
-            <DatabaseTenderFeed
-              filters={filters}
-              readOnly={isRestrictedUser}
-              onCreateProject={
-                isRestrictedUser
-                  ? undefined
-                  : (tenderId) => {
-                      if (selectedOrg) {
-                        const params = new URLSearchParams();
-                        params.set("companyId", selectedOrg.id);
-                        params.set("tenderId", tenderId);
-                        router.push(`/projects/new?${params.toString()}`);
-                      }
-                    }
-              }
-            />
-          </TabsContent>
 
           {/* Your Matches Tab */}
           <TabsContent value="matches" className="space-y-4">
@@ -193,6 +166,7 @@ export default function TendersPage() {
 
             <TenderMatching
               companyId={selectedOrg?.id}
+              companyData={selectedOrg ?? undefined}
               filters={matchingFilters}
               readOnly={isRestrictedUser}
               onCreateProject={
@@ -215,6 +189,33 @@ export default function TendersPage() {
             <SavedTenders
               companyId={selectedOrg?.id}
               readOnly={isRestrictedUser}
+            />
+          </TabsContent>
+
+          {/* All Tenders Tab */}
+          <TabsContent value="tenders" className="space-y-4">
+            <TenderSearchBar
+              filterType="database"
+              databaseFilters={filters}
+              onDatabaseFiltersChange={handleFiltersChange}
+              onReset={resetFilters}
+              placeholder="Search by title, buyer, location, or description..."
+            />
+            <DatabaseTenderFeed
+              filters={filters}
+              readOnly={isRestrictedUser}
+              onCreateProject={
+                isRestrictedUser
+                  ? undefined
+                  : (tenderId) => {
+                      if (selectedOrg) {
+                        const params = new URLSearchParams();
+                        params.set("companyId", selectedOrg.id);
+                        params.set("tenderId", tenderId);
+                        router.push(`/projects/new?${params.toString()}`);
+                      }
+                    }
+              }
             />
           </TabsContent>
         </Tabs>

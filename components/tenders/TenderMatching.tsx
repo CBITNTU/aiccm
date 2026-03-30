@@ -9,16 +9,26 @@ import { useMatchingResults } from "@/hooks/useMatchingResults";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AlertCircle,
   Target,
   Loader2,
   X,
   ChevronLeft,
   ChevronRight,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TenderMatchCard } from "./TenderMatchCard";
 import { ResultsHeader } from "./ResultsHeader";
+import { MatchingReadinessDialog } from "./MatchingReadinessDialog";
+import { checkMatchingReadiness, type ReadinessResult } from "@/lib/matchingReadiness";
+import type { CompanyRecord } from "@/lib/api/types";
 
 export interface MatchingFiltersState {
   keyword?: string;
@@ -69,6 +79,7 @@ interface MatchingResult {
 
 interface TenderMatchingProps {
   companyId?: string;
+  companyData?: CompanyRecord;
   filters?: MatchingFiltersState;
   onCreateProject?: (tenderId: string) => void;
   readOnly?: boolean;
@@ -76,6 +87,7 @@ interface TenderMatchingProps {
 
 export function TenderMatching({
   companyId,
+  companyData,
   filters: filtersProp,
   onCreateProject: _onCreateProject,
   readOnly = false,
@@ -152,6 +164,32 @@ export function TenderMatching({
 
   const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [readinessDialogOpen, setReadinessDialogOpen] = useState(false);
+  const [readinessResult, setReadinessResult] = useState<ReadinessResult | null>(null);
+
+  const [matchingUsage, setMatchingUsage] = useState<{
+    used: number;
+    limit: number;
+    remaining: number;
+    resetsAt: string;
+  } | null>(null);
+
+  const fetchMatchingUsage = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const res = await fetch(`/api/companies/${companyId}/matching-usage`);
+      if (res.ok) {
+        const data = await res.json();
+        setMatchingUsage(data);
+      }
+    } catch {
+      // non-critical; silently ignore
+    }
+  }, [companyId]);
+
+  useEffect(() => {
+    fetchMatchingUsage();
+  }, [fetchMatchingUsage]);
 
   const [matchingProgress, setMatchingProgress] = useState<{
     batchId: string;
@@ -164,6 +202,8 @@ export function TenderMatching({
 
   const analyzing =
     internalAnalyzing || matchingProgress?.status === "processing";
+
+  const limitReached = matchingUsage != null && matchingUsage.remaining === 0;
 
   const invalidateMatchingResults = useCallback(() => {
     if (companyId) {
@@ -293,17 +333,17 @@ export function TenderMatching({
           invalidateMatchingResults();
           if (data.status === "completed") {
             toast.success(
-              `Matching completed: ${data.completed_jobs} tenders analyzed`,
+              `Matching completed: ${data.completedJobs} tenders analyzed`,
             );
           } else {
-            toast.error(`Matching failed: ${data.failed_jobs} jobs failed`);
+            toast.error(`Matching failed: ${data.failedJobs} jobs failed`);
           }
         }
 
         if (
           data.status === "processing" &&
-          data.completed_jobs === 0 &&
-          data.failed_jobs === 0
+          data.completedJobs === 0 &&
+          data.failedJobs === 0
         ) {
           const staleCheckKey = `stale_check_${batchId}`;
           const firstCheckTime = localStorage.getItem(staleCheckKey);
@@ -327,7 +367,7 @@ export function TenderMatching({
               return;
             }
           }
-        } else if (data.completed_jobs > 0 || data.failed_jobs > 0) {
+        } else if (data.completedJobs > 0 || data.failedJobs > 0) {
           localStorage.removeItem(`stale_check_${batchId}`);
         }
       } catch (error) {
@@ -361,24 +401,7 @@ export function TenderMatching({
     return () => clearInterval(interval);
   }, [isProcessing, batchId, checkMatchingProgress, invalidateMatchingResults]);
 
-  const runAnalysis = async () => {
-    if (!companyId) {
-      toast.error("Please select a company to analyze");
-      return;
-    }
-
-    if (analyzing) {
-      toast.info("Analysis already in progress");
-      return;
-    }
-
-    if (matchingProgress && matchingProgress.status === "processing") {
-      toast.info(
-        "Matching already in progress. Click 'Clear & Restart' to cancel.",
-      );
-      return;
-    }
-
+  const startAnalysis = useCallback(async () => {
     setInternalAnalyzing(true);
 
     if (companyId) {
@@ -399,37 +422,36 @@ export function TenderMatching({
       });
 
       if (!response.ok) {
-        let errorMessage = "Failed to start matching";
         const status = response.status;
         const statusText = response.statusText;
-
         const responseText = await response.text();
-        console.error("Matching API error - Raw response:", {
-          status,
-          statusText,
-          contentType: response.headers.get("content-type"),
-          bodyLength: responseText.length,
-          bodyPreview: responseText.substring(0, 500),
-          fullBody: responseText,
-        });
+
+        let errorMessage = "Failed to start matching";
+        let parsedData: Record<string, unknown> = {};
 
         try {
-          const data = JSON.parse(responseText);
+          parsedData = JSON.parse(responseText);
           errorMessage =
-            data.error || data.message || data.details || errorMessage;
-          console.error("Matching API error - Parsed:", {
-            status,
-            statusText,
-            error: data.error,
-            message: data.message,
-            details: data.details,
-            fullData: data,
-          });
+            (parsedData.error as string) ||
+            (parsedData.message as string) ||
+            (parsedData.details as string) ||
+            errorMessage;
         } catch (parseError) {
           console.error("Failed to parse error response as JSON:", parseError);
           errorMessage = responseText || `HTTP ${status}: ${statusText}`;
         }
 
+        if (status === 429 && parsedData.limitExceeded) {
+          const resetsAt = parsedData.resetsAt
+            ? new Date(parsedData.resetsAt as string).toLocaleDateString("en-GB", { day: "numeric", month: "long" })
+            : "next month";
+          toast.error(`Monthly matching limit reached. Resets on ${resetsAt}.`, { duration: 6000 });
+          fetchMatchingUsage();
+          setInternalAnalyzing(false);
+          return;
+        }
+
+        console.error("Matching API error:", { status, statusText, body: responseText });
         throw new Error(errorMessage);
       }
 
@@ -467,6 +489,7 @@ export function TenderMatching({
           );
         }
         localStorage.setItem(`matching_batch_${companyId}`, data.batchId);
+        fetchMatchingUsage();
       }
 
       setMatchingProgress({
@@ -489,7 +512,44 @@ export function TenderMatching({
     } finally {
       setInternalAnalyzing(false);
     }
-  };
+  }, [companyId, checkMatchingProgress, fetchMatchingUsage]);
+
+  const runAnalysis = useCallback(() => {
+    if (!companyId) {
+      toast.error("Please select a company to analyze");
+      return;
+    }
+
+    if (analyzing) {
+      toast.info("Analysis already in progress");
+      return;
+    }
+
+    if (matchingProgress && matchingProgress.status === "processing") {
+      toast.info(
+        "Matching already in progress. Click 'Clear & Restart' to cancel.",
+      );
+      return;
+    }
+
+    // Pre-flight readiness check
+    if (companyData) {
+      const readiness = checkMatchingReadiness(companyData);
+      const hasMissingRequired = !readiness.ready;
+      const hasMissingRecommended = readiness.fields.some(
+        (f) => !f.required && f.status === "missing",
+      );
+      const hasWarnings = readiness.warnings.length > 0;
+
+      if (hasMissingRequired || hasMissingRecommended || hasWarnings) {
+        setReadinessResult(readiness);
+        setReadinessDialogOpen(true);
+        return;
+      }
+    }
+
+    startAnalysis();
+  }, [companyId, companyData, analyzing, matchingProgress, startAnalysis]);
 
   const deleteResult = async (resultId: string) => {
     setDeleting(resultId);
@@ -543,7 +603,7 @@ export function TenderMatching({
     <div className="space-y-4">
       {/* Results summary */}
       {!loading && totalCount > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <ResultsHeader
             total={totalCount}
             start={startIndex + 1}
@@ -553,26 +613,49 @@ export function TenderMatching({
             loading={loading}
             onRefresh={() => refetchMatchingResults()}
           />
-          <Button
-            onClick={runAnalysis}
-            disabled={analyzing || loading || readOnly}
-            size="sm"
-            title={
-              readOnly ? "Action restricted for pending accounts" : undefined
-            }
-          >
-            {analyzing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <Target className="w-4 h-4 mr-2" />
-                Re-run Analysis
-              </>
+          <div className="flex items-center gap-2 shrink-0">
+            {matchingUsage && !analyzing && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${limitReached ? "border-destructive/40 text-destructive bg-destructive/5" : "border-muted-foreground/30 text-muted-foreground"}`}>
+                      <Zap className="h-3 w-3" />
+                      {matchingUsage.used}/{matchingUsage.limit} this month
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {limitReached
+                      ? `Monthly limit reached. Resets on ${new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.`
+                      : `${matchingUsage.remaining} matching run${matchingUsage.remaining === 1 ? "" : "s"} remaining this month.`}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
-          </Button>
+            <Button
+              onClick={runAnalysis}
+              disabled={analyzing || loading || readOnly || limitReached}
+              size="sm"
+              title={
+                readOnly
+                  ? "Action restricted for pending accounts"
+                  : limitReached
+                    ? `Monthly matching limit reached (${matchingUsage?.used}/${matchingUsage?.limit}). Resets on ${matchingUsage ? new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : "next month"}.`
+                    : undefined
+              }
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Target className="w-4 h-4 mr-2" />
+                  Re-run Analysis
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -629,10 +712,28 @@ export function TenderMatching({
               : "No matches found with the current filters. Adjust your filters to see results."}
           </p>
           {totalCount === 0 && currentPage === 1 && !readOnly && (
-            <Button onClick={runAnalysis} disabled={analyzing}>
-              <Target className="w-4 h-4 mr-2" />
-              {analyzing ? "Analyzing..." : "Start Analysis"}
-            </Button>
+            <div className="flex flex-col items-center gap-2">
+              <Button
+                onClick={runAnalysis}
+                disabled={analyzing || limitReached}
+                title={
+                  limitReached
+                    ? `Monthly matching limit reached (${matchingUsage?.used}/${matchingUsage?.limit}). Resets on ${matchingUsage ? new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : "next month"}.`
+                    : undefined
+                }
+              >
+                <Target className="w-4 h-4 mr-2" />
+                {analyzing ? "Analyzing..." : "Start Analysis"}
+              </Button>
+              {matchingUsage && (
+                <span className={`flex items-center gap-1 text-xs ${limitReached ? "text-destructive" : "text-muted-foreground"}`}>
+                  <Zap className="h-3 w-3" />
+                  {limitReached
+                    ? `Limit reached (${matchingUsage.used}/${matchingUsage.limit}). Resets ${new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.`
+                    : `${matchingUsage.used}/${matchingUsage.limit} matching runs used this month`}
+                </span>
+              )}
+            </div>
           )}
         </div>
       ) : (
@@ -720,6 +821,16 @@ export function TenderMatching({
             </div>
           )}
         </>
+      )}
+      {/* Readiness Dialog */}
+      {readinessResult && companyId && (
+        <MatchingReadinessDialog
+          open={readinessDialogOpen}
+          onOpenChange={setReadinessDialogOpen}
+          companyId={companyId}
+          readiness={readinessResult}
+          onRunAnyway={startAnalysis}
+        />
       )}
     </div>
   );

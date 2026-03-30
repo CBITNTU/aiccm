@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ADD COLUMN "matching_runs_limit" integer;

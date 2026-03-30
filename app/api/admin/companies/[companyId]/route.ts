@@ -7,6 +7,8 @@ import { eq } from "drizzle-orm";
 
 const ADMIN_COMPANY_FIELD_MAP: Record<string, keyof typeof companies.$inferInsert> =
   {
+    matching_runs_limit: "matchingRunsLimit",
+    analysis_runs_limit: "analysisRunsLimit",
     company_name: "companyName",
     companies_house_number: "companiesHouseNumber",
     website_url: "websiteUrl",

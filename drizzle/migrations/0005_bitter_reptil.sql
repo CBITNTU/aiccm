@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ADD COLUMN "analysis_runs_limit" integer;

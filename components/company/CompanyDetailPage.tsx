@@ -86,6 +86,8 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
           capabilitiesCount={data.capabilities.length}
           onEditInfo={() => setEditBasicInfo(true)}
           onAnalyze={data.handleRefreshAnalysis}
+          analysisUsage={data.analysisUsage}
+          analysisLimitReached={data.analysisLimitReached}
         />
       </div>
 
@@ -155,6 +157,8 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
             analysis={data.analysis}
             isAnalyzing={data.isAnalyzing}
             onAnalyze={data.handleRefreshAnalysis}
+            analysisUsage={data.analysisUsage}
+            analysisLimitReached={data.analysisLimitReached}
           />
         </TabsContent>
       </Tabs>

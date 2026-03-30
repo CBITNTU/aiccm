@@ -19,8 +19,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Search, Trash2, Building2, AlertTriangle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Search, Trash2, Building2, AlertTriangle, Zap, Brain } from "lucide-react";
 import { toast } from "sonner";
+import { AdminCompanyDetailSheet } from "./AdminCompanyDetailSheet";
 
 export function AdminCompanyManager() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -28,6 +35,7 @@ export function AdminCompanyManager() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   useEffect(() => {
     fetchCompanies();
@@ -69,6 +77,15 @@ export function AdminCompanyManager() {
       toast.error(`Error deleting ${companyName}`);
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleCompanyUpdated = () => {
+    fetchCompanies();
+    // Update selectedCompany if it's still open
+    if (selectedCompany) {
+      const updated = companies.find((c) => c.id === selectedCompany.id);
+      if (updated) setSelectedCompany(updated);
     }
   };
 
@@ -209,60 +226,105 @@ export function AdminCompanyManager() {
               No user companies found
             </div>
           ) : (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {userCompanies.map((company) => (
-                <div
-                  key={company.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium">{company.companyName}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {company.postcode} • Status: {company.status}
+            <TooltipProvider>
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {userCompanies.map((company) => (
+                  <div
+                    key={company.id}
+                    className="flex items-center justify-between p-3 border rounded-lg gap-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedCompany(company)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{company.companyName}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {company.postcode} • Status: {company.status} •{" "}
+                        <span className="capitalize">{company.verificationStatus ?? "unverified"}</span>
+                      </div>
                     </div>
-                  </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={deleting === company.id}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-destructive" />
-                          Delete User Company
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete{" "}
-                          <strong>{company.companyName}</strong>? This action
-                          cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() =>
-                            handleDeleteCompany(
-                              company.id,
-                              company.companyName,
-                            )
-                          }
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+
+                    {/* Limit badges (read-only) */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs px-2 py-0.5 rounded border border-dashed border-muted-foreground/40 text-muted-foreground flex items-center gap-1">
+                            <Zap className="h-3 w-3" />
+                            {company.matchingRunsLimit != null
+                              ? `${company.matchingRunsLimit}/mo`
+                              : "default"}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p className="text-xs">
+                            {company.matchingRunsLimit != null
+                              ? `Custom matching limit: ${company.matchingRunsLimit}/month`
+                              : "Matching: platform default"}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs px-2 py-0.5 rounded border border-dashed border-muted-foreground/40 text-muted-foreground flex items-center gap-1">
+                            <Brain className="h-3 w-3" />
+                            {company.analysisRunsLimit != null
+                              ? `${company.analysisRunsLimit}/mo`
+                              : "default"}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p className="text-xs">
+                            {company.analysisRunsLimit != null
+                              ? `Custom analysis limit: ${company.analysisRunsLimit}/month`
+                              : "Analysis: platform default"}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={deleting === company.id}
+                          className="text-destructive hover:text-destructive shrink-0"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          Delete Company
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
-            </div>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-destructive" />
+                            Delete User Company
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete{" "}
+                            <strong>{company.companyName}</strong>? This action
+                            cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() =>
+                              handleDeleteCompany(
+                                company.id,
+                                company.companyName,
+                              )
+                            }
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete Company
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                ))}
+              </div>
+            </TooltipProvider>
           )}
         </CardContent>
       </Card>
@@ -275,6 +337,13 @@ export function AdminCompanyManager() {
           delete system companies, you may need superadmin role assignment.
         </AlertDescription>
       </Alert>
+
+      {/* Company Detail Sheet */}
+      <AdminCompanyDetailSheet
+        company={selectedCompany}
+        onClose={() => setSelectedCompany(null)}
+        onCompanyUpdated={handleCompanyUpdated}
+      />
     </div>
   );
 }

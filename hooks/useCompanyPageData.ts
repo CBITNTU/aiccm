@@ -17,6 +17,13 @@ import {
 } from "@/components/company/companyParsers";
 import { suggestLocationsFromCompanyLocation } from "@/lib/locationData";
 
+export interface AnalysisUsage {
+  used: number;
+  limit: number;
+  remaining: number;
+  resetsAt: string;
+}
+
 export interface CompanyPageData {
   companyData: CompanyRecord | null;
   loading: boolean;
@@ -34,6 +41,10 @@ export interface CompanyPageData {
   financialData: Record<string, { value: number; confidence: number }> | null;
   aiCompetencies: string[] | null;
   sectionPendingStatus: SectionPendingStatus;
+
+  // Analysis usage
+  analysisUsage: AnalysisUsage | null;
+  analysisLimitReached: boolean;
 
   // Mutations
   updateCompanyMutation: ReturnType<typeof useUpdateCompany>;
@@ -101,6 +112,7 @@ export function useCompanyPageData(
   const [pendingReviewRequest, setPendingReviewRequest] = useState<PendingReviewRequest | null>(null);
   const [latestResolvedRequest, setLatestResolvedRequest] = useState<ResolvedReviewRequest | null>(null);
   const [capabilities, setCapabilities] = useState<{ id: string; name: string; category: string }[]>([]);
+  const [analysisUsage, setAnalysisUsage] = useState<AnalysisUsage | null>(null);
 
   const updateCompanyMutation = useUpdateCompany();
   const analyzeCompanyMutation = useAnalyzeCompany();
@@ -132,10 +144,24 @@ export function useCompanyPageData(
     }
   }, [userId, companyId, router, queryClient]);
 
+  const refreshAnalysisUsage = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const res = await fetch(`/api/companies/${companyId}/analysis-usage`);
+      if (res.ok) {
+        const data = await res.json();
+        setAnalysisUsage(data);
+      }
+    } catch {
+      // Usage display is non-critical
+    }
+  }, [companyId]);
+
   useEffect(() => {
     if (!userId || !companyId) return;
     refreshCompanyData();
-  }, [userId, companyId, refreshCompanyData]);
+    refreshAnalysisUsage();
+  }, [userId, companyId, refreshCompanyData, refreshAnalysisUsage]);
 
   const handleRefreshAnalysis = useCallback(async () => {
     if (!companyData) return;
@@ -148,11 +174,19 @@ export function useCompanyPageData(
         setCapabilities(refreshed.capabilities);
         toast.success("Company profile analysis has been refreshed.");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Analysis error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to analyze profile");
+      // Check for limit exceeded (429)
+      const errorMessage = error instanceof Error ? error.message : "Failed to analyze profile";
+      if (errorMessage.includes("limit reached") || errorMessage.includes("429")) {
+        toast.error("Analysis limit reached for this month.");
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      refreshAnalysisUsage();
     }
-  }, [companyData, analyzeCompanyMutation]);
+  }, [companyData, analyzeCompanyMutation, refreshAnalysisUsage]);
 
   const isVerified = companyData?.verificationStatus === "verified";
   const isEditLocked = !!pendingReviewRequest;
@@ -180,6 +214,8 @@ export function useCompanyPageData(
     [pendingChanges],
   );
 
+  const analysisLimitReached = analysisUsage ? analysisUsage.remaining <= 0 : false;
+
   return {
     companyData,
     loading,
@@ -195,6 +231,8 @@ export function useCompanyPageData(
     financialData,
     aiCompetencies,
     sectionPendingStatus,
+    analysisUsage,
+    analysisLimitReached,
     updateCompanyMutation,
     analyzeCompanyMutation,
     isSaving: updateCompanyMutation.isPending,

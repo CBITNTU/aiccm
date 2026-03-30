@@ -809,6 +809,20 @@ export const api = {
       }),
     })),
 
+  // Admin - Stats
+  adminGetStats: () =>
+    apiCall<{
+      totalCompanies: number;
+      totalUsers: number;
+      activeTenders: number;
+      pendingUserApprovals: number;
+      pendingJoinRequests: number;
+      pendingVerifications: number;
+      pendingCompetencyRequests: number;
+      pendingApprovalsTotal: number;
+      pendingVerificationTotal: number;
+    }>("admin/stats", { method: "GET" }),
+
   // Admin - Companies
   adminListCompanies: () =>
     apiCall<{ companies: Record<string, unknown>[] }>("admin/companies", {

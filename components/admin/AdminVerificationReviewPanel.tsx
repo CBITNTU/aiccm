@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
@@ -72,15 +72,6 @@ export function AdminVerificationReviewPanel({
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [rejectNotes, setRejectNotes] = useState("");
-
-  // Reset all modal/form state when switching to a different company
-  useEffect(() => {
-    setCheckedItems(new Set());
-    setShowApproveDialog(false);
-    setShowRejectDialog(false);
-    setShowFeedbackForm(false);
-    setRejectNotes("");
-  }, [requestId]);
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.adminVerificationReview(requestId!),

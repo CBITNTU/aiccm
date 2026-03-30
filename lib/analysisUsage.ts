@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema/app";
 import { and, eq, gte, count, sql } from "drizzle-orm";
-import { getMonthStart, getNextMonthStart } from "@/lib/matchingUsage";
+import { getMonthStart } from "@/lib/matchingUsage";
 import type { PlatformAnalysisSettings } from "@/lib/platformAnalysisSettings";
 
 type CompanyForLimit = {

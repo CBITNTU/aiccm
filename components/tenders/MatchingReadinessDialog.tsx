@@ -24,7 +24,7 @@ interface MatchingReadinessDialogProps {
 export function MatchingReadinessDialog({
   open,
   onOpenChange,
-  companyId,
+  companyId: _companyId,
   readiness,
   onRunAnyway,
 }: MatchingReadinessDialogProps) {

@@ -17,14 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AdminDataImport } from "@/components/admin/AdminDataImport";
 import { AdminCompanyManager } from "@/components/admin/AdminCompanyManager";
-import { AdminCSVImport } from "@/components/admin/AdminCSVImport";
 import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
 import { AdminTenderSyncSchedule } from "@/components/admin/AdminTenderSyncSchedule";
 import { AdminTenderSyncProvider } from "@/components/admin/AdminTenderSyncContext";
 import { TenderAIRegeneration } from "@/components/admin/TenderAIRegeneration";
-import { CompanyAIRegeneration } from "@/components/admin/CompanyAIRegeneration";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminTaxonomyEditor from "@/components/admin/AdminTaxonomyEditor";
 import AdminApprovals from "@/components/admin/AdminApprovals";
@@ -363,19 +360,7 @@ export default function AdminPage() {
         {activeTab === "onboarding" && <AdminOnboarding />}
 
         {/* Companies Tab */}
-        {activeTab === "companies" && (
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Company Management</h3>
-                <CompanyAIRegeneration />
-              </div>
-              <AdminCSVImport />
-              <AdminDataImport />
-              <AdminCompanyManager />
-            </div>
-          </div>
-        )}
+        {activeTab === "companies" && <AdminCompanyManager />}
 
         {/* Tenders Tab */}
         {activeTab === "tenders" && (

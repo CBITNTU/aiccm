@@ -1075,22 +1075,51 @@ export const api = {
       { method: "PUT", body: { action, reviewNotes } },
     ),
 
-  // Admin - Verification Settings
+  // Admin - Verification Settings (includes matching and analysis run limits)
   adminGetVerificationSettings: () =>
     apiCall<{
       verifiedProjectLimit: number;
       unverifiedProjectLimit: number;
       unverifiedCompetencyLimit: number;
+      verifiedMatchingRunsPerMonth: number;
+      unverifiedMatchingRunsPerMonth: number;
+      verifiedAnalysisRunsPerMonth: number;
+      unverifiedAnalysisRunsPerMonth: number;
     }>("admin/settings/verification", { method: "GET" }),
 
   adminUpdateVerificationSettings: (updates: {
     verifiedProjectLimit?: number;
     unverifiedProjectLimit?: number;
     unverifiedCompetencyLimit?: number;
+    verifiedMatchingRunsPerMonth?: number;
+    unverifiedMatchingRunsPerMonth?: number;
+    verifiedAnalysisRunsPerMonth?: number;
+    unverifiedAnalysisRunsPerMonth?: number;
   }) =>
     apiCall<{
       verifiedProjectLimit: number;
       unverifiedProjectLimit: number;
       unverifiedCompetencyLimit: number;
+      verifiedMatchingRunsPerMonth: number;
+      unverifiedMatchingRunsPerMonth: number;
+      verifiedAnalysisRunsPerMonth: number;
+      unverifiedAnalysisRunsPerMonth: number;
     }>("admin/settings/verification", { method: "PATCH", body: updates }),
+
+  // Company usage stats
+  getCompanyMatchingUsage: (companyId: string) =>
+    apiCall<{
+      used: number;
+      limit: number;
+      remaining: number;
+      resetsAt: string;
+    }>(`companies/${companyId}/matching-usage`, { method: "GET" }),
+
+  getCompanyAnalysisUsage: (companyId: string) =>
+    apiCall<{
+      used: number;
+      limit: number;
+      remaining: number;
+      resetsAt: string;
+    }>(`companies/${companyId}/analysis-usage`, { method: "GET" }),
 };

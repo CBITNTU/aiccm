@@ -74,13 +74,16 @@ export function AdminCompanyManager() {
     fetchCompanies();
   }, []);
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = async (): Promise<Company[]> => {
     try {
       const data = await api.adminListCompanies();
-      setCompanies(data.companies || []);
+      const list = data.companies || [];
+      setCompanies(list);
+      return list;
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast.error("Failed to load companies");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -100,10 +103,10 @@ export function AdminCompanyManager() {
     }
   };
 
-  const handleCompanyUpdated = () => {
-    fetchCompanies();
+  const handleCompanyUpdated = async () => {
+    const refreshed = await fetchCompanies();
     if (selectedCompany) {
-      const updated = companies.find((c) => c.id === selectedCompany.id);
+      const updated = refreshed.find((c) => c.id === selectedCompany.id);
       if (updated) setSelectedCompany(updated);
     }
   };

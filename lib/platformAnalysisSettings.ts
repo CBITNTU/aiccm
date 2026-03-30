@@ -15,12 +15,17 @@ const DEFAULTS: PlatformAnalysisSettings = {
   unverifiedAnalysisRunsPerMonth: 1,
 };
 
+// NOTE: This is a module-level in-process cache. In Vercel's serverless model each Lambda
+// instance has its own memory, so after an admin updates settings (cached = null) other warm
+// instances may continue serving stale values for up to CACHE_MS. This is an acceptable
+// trade-off for a low-write setting; replace with a distributed cache (e.g. Redis / KV) if
+// stronger consistency is required.
 let cached: PlatformAnalysisSettings | null = null;
 let cacheTime = 0;
 const CACHE_MS = 60_000;
 
 /**
- * Get platform analysis run limit settings. Cached for 1 minute.
+ * Get platform analysis run limit settings. Cached for 1 minute per process instance.
  */
 export async function getPlatformAnalysisSettings(): Promise<PlatformAnalysisSettings> {
   const now = Date.now();

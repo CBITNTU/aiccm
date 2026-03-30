@@ -49,6 +49,9 @@ export function AdminReviewFeedbackForm({
   );
   const [overallNotes, setOverallNotes] = useState("");
 
+  // NOTE: State is reset on each open because the parent renders this component with
+  // key={open ? "open" : "closed"}, causing a fresh remount whenever the dialog opens.
+
   const toggleSection = (section: string) => {
     setSectionStates((prev) => ({
       ...prev,

@@ -177,11 +177,8 @@ export function TenderMatching({
   const fetchMatchingUsage = useCallback(async () => {
     if (!companyId) return;
     try {
-      const res = await fetch(`/api/companies/${companyId}/matching-usage`);
-      if (res.ok) {
-        const data = await res.json();
-        setMatchingUsage(data);
-      }
+      const data = await api.getCompanyMatchingUsage(companyId);
+      setMatchingUsage(data);
     } catch {
       // non-critical; silently ignore
     }

@@ -73,6 +73,10 @@ export function AdminVerificationReviewPanel({
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [rejectNotes, setRejectNotes] = useState("");
 
+  // NOTE: State reset when switching companies is handled by the parent, which renders this
+  // component with key={requestId}. When requestId changes, React unmounts and remounts the
+  // component, so all state above initializes fresh — no useEffect reset needed here.
+
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.adminVerificationReview(requestId!),
     queryFn: () => api.adminGetVerificationReviewData(requestId!),
@@ -351,8 +355,9 @@ export function AdminVerificationReviewPanel({
         </DialogContent>
       </Dialog>
 
-      {/* Request Changes Feedback Form */}
+      {/* Request Changes Feedback Form — key resets form state every time it opens */}
       <AdminReviewFeedbackForm
+        key={showFeedbackForm ? "open" : "closed"}
         open={showFeedbackForm}
         onClose={() => setShowFeedbackForm(false)}
         onSubmit={(feedback) => {

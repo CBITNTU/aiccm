@@ -338,7 +338,7 @@ export async function POST(request: NextRequest) {
       console.error("[CompanyAI:analyze] Summary generation FAILED:", summaryError);
     }
 
-    await logApiEvent(request, {
+    logApiEvent(request, {
       actionType: "company_updated",
       userId: user.id,
       userEmail: user.email || undefined,
@@ -348,7 +348,7 @@ export async function POST(request: NextRequest) {
         analysisType: "comprehensive",
         companyName: company.companyName,
       },
-    });
+    }).catch(() => {});
 
     return apiResponse({
       success: true,

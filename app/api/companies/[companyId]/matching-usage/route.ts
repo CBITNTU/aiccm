@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
-import { requireAuth, handleApiError } from "@/lib/api/validation";
-import { isCompanyMember } from "@/lib/api/validation";
+import { requireAuth, handleApiError, isCompanyMember } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";

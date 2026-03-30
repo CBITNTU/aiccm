@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api/client";
+import { api, ApiError } from "@/lib/api/client";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import {
@@ -147,11 +147,8 @@ export function useCompanyPageData(
   const refreshAnalysisUsage = useCallback(async () => {
     if (!companyId) return;
     try {
-      const res = await fetch(`/api/companies/${companyId}/analysis-usage`);
-      if (res.ok) {
-        const data = await res.json();
-        setAnalysisUsage(data);
-      }
+      const data = await api.getCompanyAnalysisUsage(companyId);
+      setAnalysisUsage(data);
     } catch {
       // Usage display is non-critical
     }
@@ -175,12 +172,10 @@ export function useCompanyPageData(
         toast.success("Company profile analysis has been refreshed.");
       }
     } catch (error: unknown) {
-      console.error("Analysis error:", error);
-      // Check for limit exceeded (429)
-      const errorMessage = error instanceof Error ? error.message : "Failed to analyze profile";
-      if (errorMessage.includes("limit reached") || errorMessage.includes("429")) {
+      if (error instanceof ApiError && error.status === 429) {
         toast.error("Analysis limit reached for this month.");
       } else {
+        const errorMessage = error instanceof Error ? error.message : "Failed to analyze profile";
         toast.error(errorMessage);
       }
     } finally {

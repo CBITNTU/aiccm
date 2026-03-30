@@ -350,7 +350,6 @@ export async function POST(request: NextRequest) {
     const effectiveLimit = getEffectiveMatchingLimit(company, matchingSettings);
     if (runsThisMonth >= effectiveLimit) {
       const resetsAt = getNextMonthStart().toISOString();
-      console.log(`🚫 Company ${companyData.id} hit matching limit: ${runsThisMonth}/${effectiveLimit} runs this month`);
       return NextResponse.json(
         {
           error: `Matching run limit reached (${runsThisMonth}/${effectiveLimit} this month). Resets on ${new Date(resetsAt).toLocaleDateString()}.`,

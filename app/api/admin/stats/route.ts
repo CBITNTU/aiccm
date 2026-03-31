@@ -4,7 +4,7 @@ import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { checkSuperadminRole } from "@/lib/api";
 import { db } from "@/lib/db";
 import { profiles, companies, tenders, companyJoinRequests, companyVerificationRequests, competencyChangeRequests } from "@/lib/db/schema/app";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {

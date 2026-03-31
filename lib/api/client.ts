@@ -412,6 +412,29 @@ export const api = {
       company: normalizeCompanyRecord(data.company),
     })),
 
+  getCompanyProjects: (companyId: string) =>
+    apiCall<{
+      voProjects: {
+        id: string;
+        name: string;
+        description: string | null;
+        status: string;
+        tenderTitle: string | null;
+        tenderBuyer: string | null;
+        tenderLocation: string | null;
+        createdAt: string;
+      }[];
+      pastProjects: {
+        name: string;
+        description?: string;
+        client?: string;
+        value?: string;
+        year?: string;
+        sector?: string;
+        isLegacy?: boolean;
+      }[];
+    }>(`companies/${companyId}/projects`, { method: "GET" }),
+
   getCompanyCapabilities: (companyId: string) =>
     apiCall<{
       capabilities: { id: string; name: string; category: string }[];

@@ -81,6 +81,7 @@ export interface SectionPendingStatus {
   companyName: boolean;
   overview: boolean;
   equipment: boolean;
+  experience: boolean;
   capabilities: boolean;
   markets: boolean;
   standards: boolean;
@@ -91,6 +92,7 @@ function getSectionPendingStatus(pc: PendingChanges | null): SectionPendingStatu
     companyName: !!pc?.scalarFields?.companyName,
     overview: !!(pc?.scalarFields?.description || pc?.scalarFields?.keyCapabilities),
     equipment: !!pc?.scalarFields?.equipment,
+    experience: !!pc?.scalarFields?.pastProjects,
     capabilities: !!pc?.capabilities,
     markets: !!pc?.markets,
     standards: !!pc?.standards,

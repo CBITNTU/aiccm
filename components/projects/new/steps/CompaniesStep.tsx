@@ -168,10 +168,12 @@ export function CompaniesStep({
     return selectedCompanies.some((c) => c.id === companyId);
   };
 
+  console.log(companies);
   const filteredCompanies = companies.filter((company) => {
+    console.log(company);
     const searchLower = searchTerm.toLowerCase();
     return (
-      company.companyName.toLowerCase().includes(searchLower) ||
+      company.companyName?.toLowerCase().includes(searchLower) ||
       company.description?.toLowerCase().includes(searchLower) ||
       company.postcode?.toLowerCase().includes(searchLower) ||
       company.contactEmail?.toLowerCase().includes(searchLower)

@@ -28,6 +28,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
+import { PastProjectsDisplay } from "@/components/company/PastProjectsDisplay";
 import { toast } from "sonner";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
@@ -653,7 +654,7 @@ export function CompanyDetailView({
               <Building2 className="h-5 w-5" />
               Past Projects
             </h3>
-            <p className="text-muted-foreground">{company.pastProjects}</p>
+            <PastProjectsDisplay value={company.pastProjects} />
           </div>
         )}
       </div>

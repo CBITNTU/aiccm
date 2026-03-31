@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchingResults } from "@/hooks/useMatchingResults";
@@ -28,6 +28,7 @@ import { TenderMatchCard } from "./TenderMatchCard";
 import { ResultsHeader } from "./ResultsHeader";
 import { MatchingReadinessDialog } from "./MatchingReadinessDialog";
 import { checkMatchingReadiness, type ReadinessResult } from "@/lib/matchingReadiness";
+import { queryKeys } from "@/lib/queryKeys";
 import type { CompanyRecord } from "@/lib/api/types";
 
 export interface MatchingFiltersState {
@@ -161,6 +162,27 @@ export function TenderMatching({
   const goToPage = (page: number) => {
     setCurrentPage(page);
   };
+
+  const { data: companyTaxonomyData } = useQuery({
+    queryKey: queryKeys.companyTaxonomies(companyId!),
+    queryFn: () => api.getCompanyTaxonomies(companyId!),
+    enabled: !!companyId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: companyStandardsData } = useQuery({
+    queryKey: queryKeys.companyStandards(companyId!),
+    queryFn: () => api.getCompanyStandards(companyId!),
+    enabled: !!companyId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: companyCapabilitiesData } = useQuery({
+    queryKey: queryKeys.companyCapabilities(companyId!),
+    queryFn: () => api.getCompanyCapabilities(companyId!),
+    enabled: !!companyId,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -531,7 +553,11 @@ export function TenderMatching({
 
     // Pre-flight readiness check
     if (companyData) {
-      const readiness = checkMatchingReadiness(companyData);
+      const readiness = checkMatchingReadiness(companyData, {
+        taxonomyCount: companyTaxonomyData?.taxonomies?.length ?? 0,
+        standardsCount: companyStandardsData?.standards?.length ?? 0,
+        capabilitiesCount: companyCapabilitiesData?.capabilities?.length ?? 0,
+      });
       const hasMissingRequired = !readiness.ready;
       const hasMissingRecommended = readiness.fields.some(
         (f) => !f.required && f.status === "missing",
@@ -546,7 +572,7 @@ export function TenderMatching({
     }
 
     startAnalysis();
-  }, [companyId, companyData, analyzing, matchingProgress, startAnalysis]);
+  }, [companyId, companyData, analyzing, matchingProgress, startAnalysis, companyTaxonomyData?.taxonomies?.length, companyStandardsData?.standards?.length, companyCapabilitiesData?.capabilities?.length]);
 
   const deleteResult = async (resultId: string) => {
     setDeleting(resultId);

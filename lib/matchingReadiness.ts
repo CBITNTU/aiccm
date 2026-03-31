@@ -15,6 +15,7 @@ export interface ReadinessResult {
 
 export function checkMatchingReadiness(
   company: CompanyRecord,
+  options?: { taxonomyCount?: number; standardsCount?: number; capabilitiesCount?: number },
 ): ReadinessResult {
   const fields: ReadinessField[] = [];
 
@@ -35,8 +36,10 @@ export function checkMatchingReadiness(
   });
 
   // Required: Key Capabilities
+  const structuredCapabilitiesCount = options?.capabilitiesCount ?? 0;
   const hasCapabilities =
-    !!company.keyCapabilities && company.keyCapabilities.trim().length > 10;
+    (!!company.keyCapabilities && company.keyCapabilities.trim().length > 10) ||
+    structuredCapabilitiesCount > 0;
   const hasAiTaxonomy =
     Array.isArray(company.aiCapabilityTaxonomy) &&
     (company.aiCapabilityTaxonomy as unknown[]).length > 0;
@@ -45,10 +48,14 @@ export function checkMatchingReadiness(
     status: hasCapabilities ? "filled" : hasAiTaxonomy ? "partial" : "missing",
     required: true,
     description: hasCapabilities
-      ? "Capabilities are filled"
+      ? structuredCapabilitiesCount > 0 && company.keyCapabilities && company.keyCapabilities.trim().length > 10
+        ? `Capabilities listed and ${structuredCapabilitiesCount} competenc${structuredCapabilitiesCount === 1 ? "y" : "ies"} selected`
+        : structuredCapabilitiesCount > 0
+          ? `${structuredCapabilitiesCount} competenc${structuredCapabilitiesCount === 1 ? "y" : "ies"} selected`
+          : "Capabilities are filled"
       : hasAiTaxonomy
         ? "AI-extracted capabilities available — adding manual capabilities will improve results"
-        : "Add your key capabilities in your company profile under Overview → Edit Overview",
+        : "Add your key capabilities under Overview → Edit Overview, or select competencies in the Capabilities tab",
   });
 
   // Required: Location
@@ -72,16 +79,22 @@ export function checkMatchingReadiness(
         : "Set your postcode or address in your company profile under Basic Info",
   });
 
-  // Recommended: Certifications
-  const hasCerts =
+  // Recommended: Certifications (free-text OR structured standards from Capabilities tab)
+  const hasFreetextCerts =
     !!company.certifications && company.certifications.trim().length > 5;
+  const structuredStandardsCount = options?.standardsCount ?? 0;
+  const hasCerts = hasFreetextCerts || structuredStandardsCount > 0;
   fields.push({
     name: "Certifications",
     status: hasCerts ? "filled" : "missing",
     required: false,
     description: hasCerts
-      ? "Certifications are listed"
-      : "Add certifications (ISO 9001, CHAS, etc.) in your company profile under Overview → Edit Overview",
+      ? hasFreetextCerts && structuredStandardsCount > 0
+        ? `Certifications listed and ${structuredStandardsCount} standard${structuredStandardsCount === 1 ? "" : "s"} selected`
+        : hasFreetextCerts
+          ? "Certifications are listed"
+          : `${structuredStandardsCount} standard${structuredStandardsCount === 1 ? "" : "s"} selected`
+      : "Add certifications in your company profile under Capabilities → Standards & Certifications",
   });
 
   // Recommended: Company AI Analysis
@@ -92,6 +105,38 @@ export function checkMatchingReadiness(
     description: hasAiSummary
       ? "AI analysis has been run"
       : "Run 'Analyze' on your company profile to generate AI insights that improve matching",
+  });
+
+  // Recommended: Past Projects
+  let hasPastProjects = false;
+  if (company.pastProjects && company.pastProjects.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(company.pastProjects);
+      hasPastProjects = Array.isArray(parsed) && parsed.length > 0;
+    } catch {
+      // Legacy plain text counts as filled
+      hasPastProjects = company.pastProjects.trim().length > 10;
+    }
+  }
+  fields.push({
+    name: "Past Projects",
+    status: hasPastProjects ? "filled" : "missing",
+    required: false,
+    description: hasPastProjects
+      ? "Past project history is available"
+      : "Add past project entries in the Experience tab to improve experience scoring",
+  });
+
+  // Recommended: Industry Category
+  const taxonomyCount = options?.taxonomyCount ?? 0;
+  fields.push({
+    name: "Industry Category",
+    status: taxonomyCount > 0 ? "filled" : "missing",
+    required: false,
+    description:
+      taxonomyCount > 0
+        ? `${taxonomyCount} industry ${taxonomyCount === 1 ? "category" : "categories"} selected`
+        : "Select industry categories in the Overview tab to help the AI identify sector alignment",
   });
 
   const warnings: string[] = [];

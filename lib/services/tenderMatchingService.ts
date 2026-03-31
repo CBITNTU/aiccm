@@ -3,7 +3,7 @@ import { type MatchingModelId } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { db } from "@/lib/db";
-import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers } from "@/lib/db/schema/app";
+import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers, companyTaxonomies, taxonomies, companyStandards, standardsRef, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { eq, inArray, or } from "drizzle-orm";
 
 /** Reasoning effort for GPT-5 models: lower = faster, fewer reasoning tokens. */
@@ -63,6 +63,7 @@ export async function scoreTenderMatch(
       aiCompetencies: companies.aiCompetencies,
       keyCapabilities: companies.keyCapabilities,
       certifications: companies.certifications,
+      pastProjects: companies.pastProjects,
       postcode: companies.postcode,
       address: companies.address,
       operationLocations: companies.operationLocations,
@@ -75,6 +76,35 @@ export async function scoreTenderMatch(
   if (!companyData) {
     throw new Error("Failed to fetch company: Company not found");
   }
+
+  // Fetch company taxonomy categories (manually selected from the overview page)
+  const companyTaxonomyRows = await db
+    .select({ name: taxonomies.name })
+    .from(companyTaxonomies)
+    .innerJoin(taxonomies, eq(companyTaxonomies.taxonomyId, taxonomies.id))
+    .where(eq(companyTaxonomies.companyId, companyId));
+
+  const taxonomyNames = companyTaxonomyRows.map((t) => t.name).filter(Boolean);
+
+  // Fetch structured standards selected via Capabilities → Standards & Certifications
+  const companyStandardRows = await db
+    .select({ name: standardsRef.name })
+    .from(companyStandards)
+    .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+    .where(eq(companyStandards.companyId, companyId));
+
+  const structuredStandardNames = companyStandardRows.map((s) => s.name).filter(Boolean);
+
+  // Fetch structured competencies selected via Capabilities → Competencies tab
+  const companyCapabilityRows = await db
+    .select({ name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+    .from(companyCapabilities)
+    .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
+    .where(eq(companyCapabilities.companyId, companyId));
+
+  const structuredCapabilityNames = companyCapabilityRows
+    .map((c) => (c.category ? `${c.name} (${c.category})` : c.name))
+    .filter(Boolean);
 
   // Fetch VO projects where the company is lead or member.
   // The join on voMembers can produce multiple rows per project (one per member), so we
@@ -144,24 +174,48 @@ export async function scoreTenderMatch(
 
   // Check data completeness for company
   // "Direct" means user-entered data; "indirect" means AI-generated or derived data
-  const hasDirectCapabilities = !!(
-    companyData.keyCapabilities &&
-    companyData.keyCapabilities.trim().length > 10
-  );
+  const hasDirectCapabilities =
+    !!(companyData.keyCapabilities && companyData.keyCapabilities.trim().length > 10) ||
+    structuredCapabilityNames.length > 0;
   const hasIndirectCapabilities =
     !!(companyData.aiCapabilityTaxonomy && (companyData.aiCapabilityTaxonomy as unknown[]).length > 0) ||
     !!(companyData.aiCapabilities && Object.keys(companyData.aiCapabilities as object).length > 0);
   const hasCapabilities = hasDirectCapabilities || hasIndirectCapabilities;
 
-  const hasDirectExperience = uniqueVOProjects.length > 0;
+  // Parse structured past projects from company record
+  let parsedPastProjects: { name: string; description?: string; client?: string; value?: string; year?: string; sector?: string }[] = [];
+  if (companyData.pastProjects && companyData.pastProjects.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(companyData.pastProjects);
+      if (Array.isArray(parsed)) {
+        parsedPastProjects = parsed.filter((p: { name?: string }) => p.name?.trim());
+      }
+    } catch {
+      // Legacy plain text — treat as unstructured experience
+    }
+  }
+
+  const formattedPastProjects = parsedPastProjects
+    .map((p) => {
+      let line = `Past Project: ${p.name}`;
+      if (p.description) line += ` - ${p.description.slice(0, 150)}`;
+      if (p.client) line += ` (Client: ${p.client})`;
+      if (p.value) line += ` [Value: ${p.value}]`;
+      if (p.year) line += ` [${p.year}]`;
+      if (p.sector) line += ` [Sector: ${p.sector}]`;
+      return line;
+    })
+    .join("\n");
+
+  const hasDirectExperience = uniqueVOProjects.length > 0 || parsedPastProjects.length > 0;
   const hasIndirectExperience = !!(
     companyData.aiSummary && String(companyData.aiSummary).trim().length > 20
   );
   const hasExperience = hasDirectExperience || hasIndirectExperience;
 
-  const hasDirectCertifications = !!(
-    companyData.certifications && companyData.certifications.trim().length > 5
-  );
+  const hasDirectCertifications =
+    !!(companyData.certifications && companyData.certifications.trim().length > 5) ||
+    structuredStandardNames.length > 0;
   const hasIndirectCertifications = !!(
     companyData.aiCompetencies && Object.keys(companyData.aiCompetencies as object).length > 0
   );
@@ -228,11 +282,20 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   if (companyData.aiCompetencies && Object.keys(companyData.aiCompetencies as object).length > 0) {
     companyLines.push(`AI Competencies: ${JSON.stringify(companyData.aiCompetencies)}`);
   }
-  if (companyData.certifications && companyData.certifications.trim().length > 0) {
+  if (structuredCapabilityNames.length > 0) {
+    companyLines.push(`Competencies: ${structuredCapabilityNames.join(", ")}`);
+  }
+  if (structuredStandardNames.length > 0) {
+    companyLines.push(`Standards & Certifications: ${structuredStandardNames.join(", ")}`);
+  } else if (companyData.certifications && companyData.certifications.trim().length > 0) {
     companyLines.push(`Certifications: ${companyData.certifications.trim()}`);
   }
-  if (formattedVOProjects.length > 0) {
-    companyLines.push(`Projects:\n${formattedVOProjects}`);
+  if (taxonomyNames.length > 0) {
+    companyLines.push(`Industry Categories: ${taxonomyNames.join(", ")}`);
+  }
+  const allProjects = [formattedPastProjects, formattedVOProjects].filter(Boolean).join("\n");
+  if (allProjects.length > 0) {
+    companyLines.push(`Projects:\n${allProjects}`);
   }
   if (companyData.postcode) {
     companyLines.push(`Location: ${companyData.postcode}`);
@@ -337,7 +400,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       experience: !hasExperience
         ? "No project history or AI summary found - score set to 0"
         : !hasDirectExperience
-          ? `Based on AI summary only, no project records (30% penalty applied). Score: ${experienceScore}%`
+          ? `Based on AI summary only, no past projects or VO projects (30% penalty applied). Score: ${experienceScore}%`
           : scoreExplanations.experience || `Experience score: ${experienceScore}%`,
       location: !hasLocation
         ? "Location not provided - score set to 0"

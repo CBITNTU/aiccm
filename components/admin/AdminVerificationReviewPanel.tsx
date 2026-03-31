@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { PastProjectsDisplay, formatPastProjectsValue } from "@/components/company/PastProjectsDisplay";
 import { queryKeys } from "@/lib/queryKeys";
 import type { ReviewFeedback, JsonValue } from "@/lib/api/types";
 import {
@@ -511,6 +512,7 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
           {hasScalarChanges && fieldOrder.map((field) => {
             const change = scalarFields![field];
             if (!change) return null;
+            const isPastProjects = field === "pastProjects";
             return (
               <div key={field} className="border rounded-lg p-4 space-y-2">
                 <div className="text-sm font-medium">{fieldLabels[field] ?? field}</div>
@@ -518,13 +520,13 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
                   <div>
                     <div className="text-xs text-muted-foreground mb-1 font-medium">Current (Approved)</div>
                     <div className="text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
-                      {change.current || <span className="text-muted-foreground italic">Empty</span>}
+                      {isPastProjects ? formatPastProjectsValue(change.current) : (change.current || <span className="text-muted-foreground italic">Empty</span>)}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground mb-1 font-medium">Proposed</div>
                     <div className="text-sm bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
-                      {change.proposed || <span className="text-muted-foreground italic">Empty</span>}
+                      {isPastProjects ? formatPastProjectsValue(change.proposed) : (change.proposed || <span className="text-muted-foreground italic">Empty</span>)}
                     </div>
                   </div>
                 </div>
@@ -804,7 +806,10 @@ function CompanyDetailsTab({
           <Separator />
           <DataField label="Equipment" value={company.equipment ?? null} />
           <Separator />
-          <DataField label="Past Projects" value={company.pastProjects} />
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-muted-foreground">Past Projects</div>
+            <PastProjectsDisplay value={company.pastProjects} />
+          </div>
         </div>
       </SectionCard>
     </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { JsonValue } from "@/lib/api/types";
 import { api } from "@/lib/api/client";
+import { PastProjectsDisplay } from "@/components/company/PastProjectsDisplay";
 import {
   Sheet,
   SheetContent,
@@ -326,11 +327,7 @@ function CapabilitiesTab({ company }: { company: CompanyRecord }) {
       </SectionCard>
 
       <SectionCard title="Past Projects">
-        {company.pastProjects ? (
-          <p className="text-sm">{company.pastProjects}</p>
-        ) : (
-          <p className="text-sm text-muted-foreground italic">No past projects listed</p>
-        )}
+        <PastProjectsDisplay value={company.pastProjects} />
       </SectionCard>
 
       {company.aiCompetencies && (

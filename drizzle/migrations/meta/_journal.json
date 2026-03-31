@@ -43,6 +43,13 @@
       "when": 1774889102732,
       "tag": "0005_bitter_reptil",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775100000000,
+      "tag": "0006_seed_eic_taxonomy",
+      "breakpoints": true
     }
   ]
 }

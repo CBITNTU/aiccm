@@ -269,8 +269,8 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Org Switcher — hidden for onboarding/pending-approval users */}
-      {!isRestrictedUser && (
+      {/* Org Switcher — hidden for onboarding/pending-approval users and super admins */}
+      {!isRestrictedUser && !isAdmin && (
         <>
           <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
           <VerificationStatusIndicator isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
@@ -281,24 +281,9 @@ function SidebarContent({
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-1 px-2">
           <TooltipProvider delayDuration={0}>
-            {/* Main Navigation */}
-            {filteredMainNavItems.map((item) => (
-              <NavItem
-                key={item.href}
-                item={item}
-                isActive={isActiveRoute(item.href)}
-                isCollapsed={isCollapsed}
-                isMobile={isMobile}
-                onClick={handleNavClick}
-              />
-            ))}
-
-            {/* Admin Section */}
+            {/* Admin Section — shown first for super admins */}
             {isAdmin && (
               <>
-                <div className="pt-3 pb-1">
-                  <Separator />
-                </div>
                 {(!isCollapsed || isMobile) && (
                   <div className="px-3 py-1.5">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -336,8 +321,24 @@ function SidebarContent({
                     })}
                   </div>
                 ))}
+
+                <div className="pt-3 pb-1">
+                  <Separator />
+                </div>
               </>
             )}
+
+            {/* Main Navigation */}
+            {filteredMainNavItems.map((item) => (
+              <NavItem
+                key={item.href}
+                item={item}
+                isActive={isActiveRoute(item.href)}
+                isCollapsed={isCollapsed}
+                isMobile={isMobile}
+                onClick={handleNavClick}
+              />
+            ))}
           </TooltipProvider>
         </nav>
       </ScrollArea>

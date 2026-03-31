@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   UserPlus,
   ArrowRight,
-  Tags,
 } from "lucide-react";
 
 export default function AdminOverviewPage() {
@@ -65,13 +64,6 @@ export default function AdminOverviewPage() {
       href: "/admin/verification",
       icon: ShieldCheck,
       description: "Company verification submissions",
-    },
-    {
-      label: "Competency Changes",
-      count: stats?.pendingCompetencyRequests ?? 0,
-      href: "/admin/verification",
-      icon: Tags,
-      description: "Competency change requests to review",
     },
   ];
 

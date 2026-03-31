@@ -57,14 +57,15 @@ export const auth = betterAuth({
     admin(),
     nextCookies(),
   ],
-  baseURL: process.env.BETTER_AUTH_URL,
+  baseURL: {
+    allowedHosts: [
+      'tndrx.com',
+      'www.tndrx.com',
+      'localhost:3000',
+      'aiccm-*.vercel.app',
+    ]
+  },
   secret: process.env.BETTER_AUTH_SECRET,
-  trustedOrigins: [
-    process.env.BETTER_AUTH_URL || "http://localhost:3000",
-    // Also trust the Vercel deployment URL for preview deployments (VERCEL_URL is a bare
-    // hostname without protocol — prefix https:// so Better-Auth accepts it as a valid origin)
-    ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
-  ],
 });
 
 export type Session = typeof auth.$Infer.Session;

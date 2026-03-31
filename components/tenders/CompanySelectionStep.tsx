@@ -84,6 +84,8 @@ export function CompanySelectionStep({
       const result = await api.getCompaniesByCapabilities({
         capabilityIds: selectedCapabilityIds,
       });
+      console.log(result);
+      console.log(result.companies);
       setCompanies((result.companies as unknown as CompanyWithCapabilities[]) || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
@@ -110,10 +112,11 @@ export function CompanySelectionStep({
     return selectedCompanies.some((c) => c.id === companyId);
   };
 
+  console.log(companies);
   const filteredCompanies = companies.filter((company) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      company.companyName.toLowerCase().includes(searchLower) ||
+      company.companyName?.toLowerCase().includes(searchLower) ||
       company.description?.toLowerCase().includes(searchLower) ||
       company.postcode?.toLowerCase().includes(searchLower) ||
       company.contactEmail?.toLowerCase().includes(searchLower)

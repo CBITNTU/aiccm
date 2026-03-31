@@ -114,6 +114,8 @@ export const companies = pgTable("companies", {
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   verifiedBy: uuid("verified_by").references(() => user.id, { onDelete: "set null" }),
   pendingChanges: jsonb("pending_changes"),
+  matchingRunsLimit: integer("matching_runs_limit"),
+  analysisRunsLimit: integer("analysis_runs_limit"),
 });
 
 // ============================================================================

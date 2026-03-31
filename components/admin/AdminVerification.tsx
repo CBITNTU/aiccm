@@ -214,6 +214,7 @@ function VerificationRequests() {
       </Card>
 
       <AdminVerificationReviewPanel
+        key={reviewPanelRequestId ?? "none"}
         requestId={reviewPanelRequestId}
         onClose={() => setReviewPanelRequestId(null)}
       />

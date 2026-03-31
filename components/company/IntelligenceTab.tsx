@@ -2,14 +2,18 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { DollarSign, TrendingUp, RefreshCw } from "lucide-react";
+import type { AnalysisUsage } from "@/hooks/useCompanyPageData";
 
 interface IntelligenceTabProps {
   financialData: Record<string, { value: number; confidence: number }> | null;
   analysis: Record<string, unknown> | null;
   isAnalyzing: boolean;
   onAnalyze: () => void;
+  analysisUsage?: AnalysisUsage | null;
+  analysisLimitReached?: boolean;
 }
 
 export function IntelligenceTab({
@@ -17,6 +21,8 @@ export function IntelligenceTab({
   analysis,
   isAnalyzing,
   onAnalyze,
+  analysisUsage,
+  analysisLimitReached,
 }: IntelligenceTabProps) {
   return (
     <div className="space-y-6">
@@ -95,16 +101,26 @@ export function IntelligenceTab({
               <p className="text-sm text-muted-foreground mb-3">
                 No analysis available. Click &quot;Analyze&quot; to generate AI insights.
               </p>
-              <Button
-                className="btn-cta"
-                onClick={onAnalyze}
-                disabled={isAnalyzing}
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 mr-1.5 ${isAnalyzing ? "animate-spin" : ""}`}
-                />
-                {isAnalyzing ? "Analyzing..." : "Analyze Company"}
-              </Button>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  className="btn-cta"
+                  onClick={onAnalyze}
+                  disabled={isAnalyzing || !!analysisLimitReached}
+                >
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 mr-1.5 ${isAnalyzing ? "animate-spin" : ""}`}
+                  />
+                  {isAnalyzing ? "Analyzing..." : analysisLimitReached ? "Limit Reached" : "Analyze Company"}
+                </Button>
+                {analysisUsage && (
+                  <Badge
+                    variant={analysisLimitReached ? "destructive" : "secondary"}
+                    className="text-xs"
+                  >
+                    {analysisUsage.used}/{analysisUsage.limit} this month
+                  </Badge>
+                )}
+              </div>
             </div>
           )}
         </CardContent>

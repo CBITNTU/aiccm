@@ -27,6 +27,7 @@ export function EditOverviewSheet({
 }: EditOverviewSheetProps) {
   const [description, setDescription] = useState(companyData.description || "");
   const [keyCapabilities, setKeyCapabilities] = useState(companyData.keyCapabilities || "");
+  const [certifications, setCertifications] = useState(companyData.certifications || "");
 
   const updateMutation = useUpdateCompany();
 
@@ -37,6 +38,7 @@ export function EditOverviewSheet({
         updates: {
           description: description,
           keyCapabilities: keyCapabilities,
+          certifications: certifications,
         },
       });
       onSaved(result.company);
@@ -86,6 +88,20 @@ export function EditOverviewSheet({
         />
         <p className="text-xs text-muted-foreground">
           Separate capabilities with commas
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="certifications">Certifications</Label>
+        <Textarea
+          id="certifications"
+          value={certifications}
+          onChange={(e) => setCertifications(e.target.value)}
+          placeholder="ISO 9001, ISO 14001, Constructionline Gold, CHAS..."
+          rows={3}
+        />
+        <p className="text-xs text-muted-foreground">
+          List your certifications, accreditations, and standards
         </p>
       </div>
     </EditSheetLayout>

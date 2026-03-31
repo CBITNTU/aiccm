@@ -31,4 +31,9 @@ export const queryKeys = {
   adminCompetencyRequests: () => ["adminCompetencyRequests"] as const,
   adminVerificationSettings: () => ["adminVerificationSettings"] as const,
   adminVerificationReview: (requestId: string) => ["adminVerificationReview", requestId] as const,
+  companyProjects: (companyId: string) => ["companyProjects", companyId] as const,
+  companyTaxonomies: (companyId: string) => ["companyTaxonomies", companyId] as const,
+  companyStandards: (companyId: string) => ["companyStandards", companyId] as const,
+  companyCapabilities: (companyId: string) => ["companyCapabilities", companyId] as const,
+  adminStats: () => ["adminStats"] as const,
 };

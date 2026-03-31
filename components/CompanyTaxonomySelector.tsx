@@ -14,14 +14,22 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Plus, Tag } from "lucide-react";
+import { X, Plus, Tag, AlertTriangle, FolderOpen, Check, ChevronsUpDown } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 interface CompanyTaxonomySelectorProps {
   companyId: string;
@@ -31,6 +39,7 @@ export function CompanyTaxonomySelector({
   companyId,
 }: CompanyTaxonomySelectorProps) {
   const {
+    taxonomies: allTaxonomies,
     getLevel1,
     getLevel2,
     getLevel3,
@@ -46,6 +55,9 @@ export function CompanyTaxonomySelector({
   const [level1, setLevel1] = useState<string | null>(null);
   const [level2, setLevel2] = useState<string | null>(null);
   const [level3, setLevel3] = useState<string | null>(null);
+  const [open1, setOpen1] = useState(false);
+  const [open2, setOpen2] = useState(false);
+  const [open3, setOpen3] = useState(false);
 
   useEffect(() => {
     fetchCompanyTaxonomies();
@@ -56,7 +68,9 @@ export function CompanyTaxonomySelector({
     try {
       setLoading(true);
       const result = await api.getCompanyTaxonomies(companyId);
-      setSelectedTaxonomies(result.taxonomies?.map((t) => t.id) || []);
+      const ids = result.taxonomies?.map((t) => t.id) || [];
+
+      setSelectedTaxonomies(ids);
     } catch (error) {
       console.error("Error fetching company taxonomies:", error);
       toast.error("Failed to load your categories");
@@ -140,6 +154,29 @@ export function CompanyTaxonomySelector({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Warning when no taxonomy data is available */}
+        {!taxonomiesLoading && allTaxonomies.length === 0 && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>No categories available</AlertTitle>
+            <AlertDescription>
+              The taxonomy data has not been loaded into the database. Please
+              contact an administrator to run the EIC taxonomy seed migration.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Empty state when no categories selected */}
+        {allTaxonomies.length > 0 && selectedTaxonomies.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+            <FolderOpen className="h-10 w-10 mb-3" />
+            <p className="text-sm font-medium">No categories selected yet</p>
+            <p className="text-xs mt-1">
+              Add categories below to describe your company&apos;s capabilities
+            </p>
+          </div>
+        )}
+
         {/* Selected taxonomies */}
         {selectedTaxonomies.length > 0 && (
           <div className="space-y-2">
@@ -169,60 +206,143 @@ export function CompanyTaxonomySelector({
           <Label>Add Category</Label>
 
           <div className="space-y-3">
-            <Select
-              value={level1 || ""}
-              onValueChange={(val) => {
-                setLevel1(val);
-                setLevel2(null);
-                setLevel3(null);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select primary category" />
-              </SelectTrigger>
-              <SelectContent>
-                {level1Options.map((tax) => (
-                  <SelectItem key={tax.id} value={tax.id}>
-                    {tax.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={open1} onOpenChange={setOpen1}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open1}
+                  className="w-full justify-between font-normal"
+                >
+                  {level1
+                    ? getTaxonomyById(level1)?.name
+                    : "Select primary category"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                  <CommandInput placeholder="Search categories..." />
+                  <CommandList>
+                    <CommandEmpty>No category found.</CommandEmpty>
+                    <CommandGroup>
+                      {level1Options.map((tax) => (
+                        <CommandItem
+                          key={tax.id}
+                          value={tax.name}
+                          onSelect={() => {
+                            setLevel1(tax.id);
+                            setLevel2(null);
+                            setLevel3(null);
+                            setOpen1(false);
+                          }}
+                        >
+                          {tax.name}
+                          <Check
+                            className={cn(
+                              "ml-auto h-4 w-4",
+                              level1 === tax.id ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
             {level1 && level2Options.length > 0 && (
-              <Select
-                value={level2 || ""}
-                onValueChange={(val) => {
-                  setLevel2(val);
-                  setLevel3(null);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select sub-category (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {level2Options.map((tax) => (
-                    <SelectItem key={tax.id} value={tax.id}>
-                      {tax.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={open2} onOpenChange={setOpen2}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open2}
+                    className="w-full justify-between font-normal"
+                  >
+                    {level2
+                      ? getTaxonomyById(level2)?.name
+                      : "Select sub-category (optional)"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search sub-categories..." />
+                    <CommandList>
+                      <CommandEmpty>No sub-category found.</CommandEmpty>
+                      <CommandGroup>
+                        {level2Options.map((tax) => (
+                          <CommandItem
+                            key={tax.id}
+                            value={tax.name}
+                            onSelect={() => {
+                              setLevel2(tax.id);
+                              setLevel3(null);
+                              setOpen2(false);
+                            }}
+                          >
+                            {tax.name}
+                            <Check
+                              className={cn(
+                                "ml-auto h-4 w-4",
+                                level2 === tax.id ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             )}
 
             {level2 && level3Options.length > 0 && (
-              <Select value={level3 || ""} onValueChange={setLevel3}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select specific area (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {level3Options.map((tax) => (
-                    <SelectItem key={tax.id} value={tax.id}>
-                      {tax.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={open3} onOpenChange={setOpen3}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open3}
+                    className="w-full justify-between font-normal"
+                  >
+                    {level3
+                      ? getTaxonomyById(level3)?.name
+                      : "Select specific area (optional)"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search areas..." />
+                    <CommandList>
+                      <CommandEmpty>No area found.</CommandEmpty>
+                      <CommandGroup>
+                        {level3Options.map((tax) => (
+                          <CommandItem
+                            key={tax.id}
+                            value={tax.name}
+                            onSelect={() => {
+                              setLevel3(tax.id);
+                              setOpen3(false);
+                            }}
+                          >
+                            {tax.name}
+                            <Check
+                              className={cn(
+                                "ml-auto h-4 w-4",
+                                level3 === tax.id ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             )}
 
             <Button

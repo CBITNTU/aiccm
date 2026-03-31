@@ -34,6 +34,7 @@ import {
   REVIEWABLE_SCALAR_FIELDS,
   type PendingChanges,
 } from "@/lib/companyFieldCategories";
+import { formatPastProjectsValue } from "@/components/company/PastProjectsDisplay";
 import { queryKeys } from "@/lib/queryKeys";
 
 const SCALAR_FIELD_ORDER = [
@@ -72,6 +73,8 @@ function ScalarFieldDiff({
   proposed: string | null;
 }) {
   const label = FIELD_LABELS[field] ?? field;
+  const isPastProjects = field === "pastProjects";
+
   return (
     <div className="border border-blue-100 rounded-lg p-3 space-y-2">
       <div className="text-sm font-medium">{label}</div>
@@ -79,13 +82,13 @@ function ScalarFieldDiff({
         <div>
           <div className="text-xs text-blue-700 mb-1">Current</div>
           <div className="text-sm text-foreground bg-blue-50 border border-blue-200 rounded p-2 min-h-[2rem]">
-            {current || <span className="text-muted-foreground italic">Empty</span>}
+            {isPastProjects ? formatPastProjectsValue(current) : (current || <span className="text-muted-foreground italic">Empty</span>)}
           </div>
         </div>
         <div>
           <div className="text-xs text-blue-700 mb-1">Proposed</div>
           <div className="text-sm text-foreground bg-blue-100 border border-blue-300 rounded p-2 min-h-[2rem]">
-            {proposed || <span className="text-muted-foreground italic">Empty</span>}
+            {isPastProjects ? formatPastProjectsValue(proposed) : (proposed || <span className="text-muted-foreground italic">Empty</span>)}
           </div>
         </div>
       </div>

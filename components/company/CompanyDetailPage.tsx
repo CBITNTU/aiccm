@@ -10,6 +10,7 @@ import {
   Tag,
   Users,
   TrendingUp,
+  Briefcase,
 } from "lucide-react";
 import { useCompanyPageData } from "@/hooks/useCompanyPageData";
 import { VerificationBanner } from "@/components/company/VerificationBanner";
@@ -20,6 +21,7 @@ import { OverviewTab } from "@/components/company/OverviewTab";
 import { CapabilitiesTab } from "@/components/company/CapabilitiesTab";
 import { TeamTab } from "@/components/company/TeamTab";
 import { IntelligenceTab } from "@/components/company/IntelligenceTab";
+import { ExperienceTab } from "@/components/company/ExperienceTab";
 
 interface CompanyDetailPageProps {
   companyId: string;
@@ -86,6 +88,8 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
           capabilitiesCount={data.capabilities.length}
           onEditInfo={() => setEditBasicInfo(true)}
           onAnalyze={data.handleRefreshAnalysis}
+          analysisUsage={data.analysisUsage}
+          analysisLimitReached={data.analysisLimitReached}
         />
       </div>
 
@@ -100,6 +104,10 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
             <TabsTrigger value="capabilities" className="gap-1.5">
               <Tag className="h-3.5 w-3.5" />
               Capabilities
+            </TabsTrigger>
+            <TabsTrigger value="experience" className="gap-1.5">
+              <Briefcase className="h-3.5 w-3.5" />
+              Experience
             </TabsTrigger>
             <TabsTrigger value="team" className="gap-1.5">
               <Users className="h-3.5 w-3.5" />
@@ -140,6 +148,20 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
           />
         </TabsContent>
 
+        <TabsContent value="experience">
+          <ExperienceTab
+            companyData={data.companyData}
+            companyId={companyId}
+            isOwner={data.isOwner}
+            isVerified={data.isVerified}
+            isEditLocked={data.isEditLocked}
+            sectionPendingStatus={data.sectionPendingStatus}
+            pendingChanges={data.pendingChanges}
+            onSaved={(updated) => data.setCompanyData(updated)}
+            onDataRefresh={data.refreshCompanyData}
+          />
+        </TabsContent>
+
         <TabsContent value="team">
           <TeamTab
             companyId={companyId}
@@ -155,6 +177,8 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
             analysis={data.analysis}
             isAnalyzing={data.isAnalyzing}
             onAnalyze={data.handleRefreshAnalysis}
+            analysisUsage={data.analysisUsage}
+            analysisLimitReached={data.analysisLimitReached}
           />
         </TabsContent>
       </Tabs>

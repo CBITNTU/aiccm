@@ -67,6 +67,9 @@ export interface CompanyRecord {
   taxonomyGeneratedAt?: string | null;
   summaryGeneratedAt?: string | null;
   contentHash?: string | null;
+  pendingChanges?: JsonValue;
+  matchingRunsLimit?: number | null;
+  analysisRunsLimit?: number | null;
 }
 
 export interface AdminPendingCompanyDetails {

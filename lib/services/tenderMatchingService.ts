@@ -3,8 +3,8 @@ import { type MatchingModelId } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { db } from "@/lib/db";
-import { companies, tenders, matchingResults, demoMatchingResults } from "@/lib/db/schema/app";
-import { eq, inArray } from "drizzle-orm";
+import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers, companyTaxonomies, taxonomies, companyStandards, standardsRef, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
+import { eq, inArray, or } from "drizzle-orm";
 
 /** Reasoning effort for GPT-5 models: lower = faster, fewer reasoning tokens. */
 export type ReasoningEffort =
@@ -59,10 +59,14 @@ export async function scoreTenderMatch(
       description: companies.description,
       aiSummary: companies.aiSummary,
       aiCapabilityTaxonomy: companies.aiCapabilityTaxonomy,
+      aiCapabilities: companies.aiCapabilities,
+      aiCompetencies: companies.aiCompetencies,
       keyCapabilities: companies.keyCapabilities,
       certifications: companies.certifications,
       pastProjects: companies.pastProjects,
       postcode: companies.postcode,
+      address: companies.address,
+      operationLocations: companies.operationLocations,
     })
     .from(companies)
     .where(eq(companies.id, companyId))
@@ -73,15 +77,70 @@ export async function scoreTenderMatch(
     throw new Error("Failed to fetch company: Company not found");
   }
 
-  // DEBUG: Company data summary
-  console.log("\n[DEBUG] Company data for", companyData.companyName);
-  console.log("  description:", companyData.description ? `${companyData.description.trim().length} chars` : "MISSING");
-  console.log("  keyCapabilities:", companyData.keyCapabilities ? `${companyData.keyCapabilities.trim().length} chars` : "MISSING");
-  console.log("  aiCapabilityTaxonomy:", Array.isArray(companyData.aiCapabilityTaxonomy) ? `${(companyData.aiCapabilityTaxonomy as string[]).length} items` : "MISSING");
-  console.log("  certifications:", companyData.certifications ? `${companyData.certifications.trim().length} chars` : "MISSING");
-  console.log("  pastProjects:", companyData.pastProjects ? `${companyData.pastProjects.trim().length} chars` : "MISSING");
-  console.log("  postcode:", companyData.postcode || "MISSING");
-  console.log("  aiSummary:", companyData.aiSummary ? `${String(companyData.aiSummary).length} chars` : "MISSING");
+  // Fetch company taxonomy categories (manually selected from the overview page)
+  const companyTaxonomyRows = await db
+    .select({ name: taxonomies.name })
+    .from(companyTaxonomies)
+    .innerJoin(taxonomies, eq(companyTaxonomies.taxonomyId, taxonomies.id))
+    .where(eq(companyTaxonomies.companyId, companyId));
+
+  const taxonomyNames = companyTaxonomyRows.map((t) => t.name).filter(Boolean);
+
+  // Fetch structured standards selected via Capabilities → Standards & Certifications
+  const companyStandardRows = await db
+    .select({ name: standardsRef.name })
+    .from(companyStandards)
+    .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+    .where(eq(companyStandards.companyId, companyId));
+
+  const structuredStandardNames = companyStandardRows.map((s) => s.name).filter(Boolean);
+
+  // Fetch structured competencies selected via Capabilities → Competencies tab
+  const companyCapabilityRows = await db
+    .select({ name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+    .from(companyCapabilities)
+    .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
+    .where(eq(companyCapabilities.companyId, companyId));
+
+  const structuredCapabilityNames = companyCapabilityRows
+    .map((c) => (c.category ? `${c.name} (${c.category})` : c.name))
+    .filter(Boolean);
+
+  // Fetch VO projects where the company is lead or member.
+  // The join on voMembers can produce multiple rows per project (one per member), so we
+  // select the VO id and deduplicate by it to avoid inflating the project list.
+  const voProjectRows = await db
+    .select({
+      id: virtualOrganizations.id,
+      name: virtualOrganizations.name,
+      description: virtualOrganizations.description,
+      status: virtualOrganizations.status,
+      tenderTitle: tenders.title,
+    })
+    .from(virtualOrganizations)
+    .leftJoin(tenders, eq(tenders.id, virtualOrganizations.targetTenderId))
+    .leftJoin(voMembers, eq(voMembers.voId, virtualOrganizations.id))
+    .where(
+      or(
+        eq(virtualOrganizations.leadCompanyId, companyId),
+        eq(voMembers.companyId, companyId),
+      ),
+    );
+
+  // Deduplicate by VO id (company could be both lead and a listed member)
+  const uniqueVOProjects = Array.from(
+    new Map(voProjectRows.map((p) => [p.id, p])).values(),
+  );
+
+  const formattedVOProjects = uniqueVOProjects
+    .map((p) => {
+      let line = `Project: ${p.name}`;
+      if (p.description) line += ` - ${p.description.slice(0, 150)}`;
+      if (p.tenderTitle) line += ` (Tender: ${p.tenderTitle})`;
+      if (p.status) line += ` [${p.status}]`;
+      return line;
+    })
+    .join("\n");
 
   // Fetch tender data with AI-generated summary and taxonomy
   const tenderRows = await db
@@ -107,14 +166,6 @@ export async function scoreTenderMatch(
     throw new Error("Failed to fetch tender: Tender not found");
   }
 
-  // DEBUG: Tender data summary
-  console.log("[DEBUG] Tender data for", tenderData.title);
-  console.log("  description:", tenderData.description ? `${tenderData.description.length} chars` : "MISSING");
-  console.log("  buyer:", tenderData.buyer || "MISSING");
-  console.log("  location:", tenderData.location || "MISSING");
-  console.log("  cpvCodes:", tenderData.cpvCodes?.length ?? 0, "codes");
-  console.log("  budget:", tenderData.budgetMin, "-", tenderData.budgetMax);
-
   // Format budget range
   const budgetRange =
     tenderData.budgetMin || tenderData.budgetMax
@@ -122,38 +173,75 @@ export async function scoreTenderMatch(
       : "Not specified";
 
   // Check data completeness for company
-  const hasCapabilities =
-    !!(
-      companyData.keyCapabilities &&
-      companyData.keyCapabilities.trim().length > 10
-    ) ||
-    !!(
-      companyData.aiCapabilityTaxonomy &&
-      (companyData.aiCapabilityTaxonomy as string[]).length > 0
-    );
-  const hasExperience = !!(
-    companyData.pastProjects && companyData.pastProjects.trim().length > 20
+  // "Direct" means user-entered data; "indirect" means AI-generated or derived data
+  const hasDirectCapabilities =
+    !!(companyData.keyCapabilities && companyData.keyCapabilities.trim().length > 10) ||
+    structuredCapabilityNames.length > 0;
+  const hasIndirectCapabilities =
+    !!(companyData.aiCapabilityTaxonomy && (companyData.aiCapabilityTaxonomy as unknown[]).length > 0) ||
+    !!(companyData.aiCapabilities && Object.keys(companyData.aiCapabilities as object).length > 0);
+  const hasCapabilities = hasDirectCapabilities || hasIndirectCapabilities;
+
+  // Parse structured past projects from company record
+  let parsedPastProjects: { name: string; description?: string; client?: string; value?: string; year?: string; sector?: string }[] = [];
+  if (companyData.pastProjects && companyData.pastProjects.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(companyData.pastProjects);
+      if (Array.isArray(parsed)) {
+        parsedPastProjects = parsed.filter((p: { name?: string }) => p.name?.trim());
+      }
+    } catch {
+      // Legacy plain text — treat as unstructured experience
+    }
+  }
+
+  const formattedPastProjects = parsedPastProjects
+    .map((p) => {
+      let line = `Past Project: ${p.name}`;
+      if (p.description) line += ` - ${p.description.slice(0, 150)}`;
+      if (p.client) line += ` (Client: ${p.client})`;
+      if (p.value) line += ` [Value: ${p.value}]`;
+      if (p.year) line += ` [${p.year}]`;
+      if (p.sector) line += ` [Sector: ${p.sector}]`;
+      return line;
+    })
+    .join("\n");
+
+  const hasDirectExperience = uniqueVOProjects.length > 0 || parsedPastProjects.length > 0;
+  const hasIndirectExperience = !!(
+    companyData.aiSummary && String(companyData.aiSummary).trim().length > 20
   );
-  const hasCertifications = !!(
-    companyData.certifications && companyData.certifications.trim().length > 5
+  const hasExperience = hasDirectExperience || hasIndirectExperience;
+
+  const hasDirectCertifications =
+    !!(companyData.certifications && companyData.certifications.trim().length > 5) ||
+    structuredStandardNames.length > 0;
+  const hasIndirectCertifications = !!(
+    companyData.aiCompetencies && Object.keys(companyData.aiCompetencies as object).length > 0
   );
-  const hasLocation = !!companyData.postcode;
-  const hasDescription = !!(
+  const hasCertifications = hasDirectCertifications || hasIndirectCertifications;
+
+  const hasDirectLocation = !!companyData.postcode;
+  const hasIndirectLocation =
+    !!companyData.address ||
+    !!(companyData.operationLocations && (companyData.operationLocations as unknown[]).length > 0);
+  const hasLocation = hasDirectLocation || hasIndirectLocation;
+
+  const hasDirectDescription = !!(
     companyData.description && companyData.description.trim().length > 20
   );
+  const hasIndirectDescription = !!(
+    companyData.aiSummary && String(companyData.aiSummary).trim().length > 20
+  );
+  const hasDescription = hasDirectDescription || hasIndirectDescription;
 
-  const dataPoints = [
+  const _dataPoints = [
     hasCapabilities,
     hasExperience,
     hasCertifications,
     hasLocation,
     hasDescription,
   ].filter(Boolean).length;
-  const _isMinimalData = dataPoints < 3;
-  void _isMinimalData;
-
-  // DEBUG: Data completeness flags
-  console.log("[DEBUG] Data completeness:", { hasCapabilities, hasExperience, hasCertifications, hasLocation, hasDescription, dataPoints });
 
   const systemPrompt = `You are an expert at evaluating company-tender matches.
 
@@ -174,12 +262,51 @@ For improvementSuggestions: Provide 2-3 SHORT, ACTIONABLE suggestions for improv
 
 FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate capability 0-100. Then rate certification, experience, location 0-100.`;
 
-  const userPrompt = `Company: ${companyData.companyName || "N/A"}
-${hasDescription ? `Description: ${companyData.description}` : "Description: NOT PROVIDED"}
-${hasCapabilities ? (companyData.keyCapabilities ? `Capabilities: ${companyData.keyCapabilities}` : "") : "Capabilities: NOT PROVIDED"}
-${hasCertifications ? `Certifications: ${companyData.certifications}` : "Certifications: NOT PROVIDED"}
-${hasExperience ? `Past Projects: ${companyData.pastProjects}` : "Past Projects: NOT PROVIDED"}
-${hasLocation ? `Location: ${companyData.postcode}` : "Location: NOT PROVIDED"}
+  // Build company section with all available data (omit missing fields entirely)
+  const companyLines: string[] = [
+    `Company: ${companyData.companyName || "N/A"}`,
+  ];
+
+  if (companyData.description && companyData.description.trim().length > 0) {
+    companyLines.push(`Description: ${companyData.description.trim().slice(0, 500)}`);
+  }
+  if (companyData.aiSummary && String(companyData.aiSummary).trim().length > 0) {
+    companyLines.push(`AI Summary: ${String(companyData.aiSummary).trim().slice(0, 500)}`);
+  }
+  if (companyData.keyCapabilities && companyData.keyCapabilities.trim().length > 0) {
+    companyLines.push(`Capabilities: ${companyData.keyCapabilities.trim()}`);
+  }
+  if (companyData.aiCapabilityTaxonomy && (companyData.aiCapabilityTaxonomy as unknown[]).length > 0) {
+    companyLines.push(`AI Capability Taxonomy: ${JSON.stringify(companyData.aiCapabilityTaxonomy)}`);
+  }
+  if (companyData.aiCompetencies && Object.keys(companyData.aiCompetencies as object).length > 0) {
+    companyLines.push(`AI Competencies: ${JSON.stringify(companyData.aiCompetencies)}`);
+  }
+  if (structuredCapabilityNames.length > 0) {
+    companyLines.push(`Competencies: ${structuredCapabilityNames.join(", ")}`);
+  }
+  if (structuredStandardNames.length > 0) {
+    companyLines.push(`Standards & Certifications: ${structuredStandardNames.join(", ")}`);
+  } else if (companyData.certifications && companyData.certifications.trim().length > 0) {
+    companyLines.push(`Certifications: ${companyData.certifications.trim()}`);
+  }
+  if (taxonomyNames.length > 0) {
+    companyLines.push(`Industry Categories: ${taxonomyNames.join(", ")}`);
+  }
+  const allProjects = [formattedPastProjects, formattedVOProjects].filter(Boolean).join("\n");
+  if (allProjects.length > 0) {
+    companyLines.push(`Projects:\n${allProjects}`);
+  }
+  if (companyData.postcode) {
+    companyLines.push(`Location: ${companyData.postcode}`);
+  } else if (companyData.address) {
+    companyLines.push(`Location: ${companyData.address}`);
+  }
+  if (companyData.operationLocations && (companyData.operationLocations as unknown[]).length > 0) {
+    companyLines.push(`Operation Locations: ${JSON.stringify(companyData.operationLocations)}`);
+  }
+
+  const userPrompt = `${companyLines.join("\n")}
 
 Tender: ${tenderData.title || "N/A"}
 Description: ${tenderData.description || "N/A"}
@@ -189,11 +316,6 @@ Location: ${tenderData.location || "N/A"}
 ${tenderData.cpvCodes && tenderData.cpvCodes.length > 0 ? `CPV Codes: ${tenderData.cpvCodes.join(", ")}` : ""}
 
 FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate capability 0-100. Then rate certification, experience, location 0-100.`;
-
-  // Log the prompt for debugging
-  console.log("\n" + "=".repeat(80));
-  console.log(`Matching: ${companyData.companyName} → ${tenderData.title}`);
-  console.log("[DEBUG] User prompt (first 500 chars):", userPrompt.slice(0, 500));
 
   // Call LLM with rate limiting via aiGenerateObject (rate limiter is built in)
   let score: MatchingScore;
@@ -206,16 +328,6 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       modelId: model,
       maxTokens: 8000,
       estTokens: 4000,
-    });
-
-    // DEBUG: Raw AI response scores
-    console.log("[DEBUG] Raw AI scores:", {
-      capability: parsed.capabilityScore,
-      experience: parsed.experienceScore,
-      certification: parsed.certificationScore,
-      location: parsed.locationScore,
-      aiAnalysis: parsed.aiAnalysis?.slice(0, 200),
-      matchReasons: parsed.matchReasons,
     });
 
     // Get scores from AI (no overallScore from AI - we calculate it)
@@ -233,25 +345,30 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
     );
     let locationScore = Math.max(0, Math.min(100, parsed.locationScore || 0));
 
-    // Enforce rules based on data completeness - mark 0 if data is missing
+    // Enforce rules based on data completeness
+    // Hard zero if no data at all; 0.7 penalty if only AI/indirect data available
     if (!hasCapabilities) {
-      console.log("[DEBUG] Override: capabilityScore forced to 0 (no capabilities data)");
       capabilityScore = 0;
+    } else if (!hasDirectCapabilities) {
+      capabilityScore = Math.round(capabilityScore * 0.7);
     }
 
     if (!hasExperience) {
-      console.log("[DEBUG] Override: experienceScore forced to 0 (no experience data)");
       experienceScore = 0;
+    } else if (!hasDirectExperience) {
+      experienceScore = Math.round(experienceScore * 0.7);
     }
 
     if (!hasCertifications) {
-      console.log("[DEBUG] Override: certificationScore forced to 0 (no certifications data)");
       certificationScore = 0;
+    } else if (!hasDirectCertifications) {
+      certificationScore = Math.round(certificationScore * 0.7);
     }
 
     if (!hasLocation) {
-      console.log("[DEBUG] Override: locationScore forced to 0 (no location data)");
       locationScore = 0;
+    } else if (!hasDirectLocation) {
+      locationScore = Math.round(locationScore * 0.7);
     }
 
     // Calculate overall score locally using weights
@@ -264,12 +381,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       overallScore = Math.round(
         certificationScore * 0.5 + experienceScore * 0.4 + locationScore * 0.1,
       );
-    } else {
-      console.log(`[DEBUG] Override: overallScore forced to 0 (capabilityScore ${capabilityScore} < 50)`);
     }
-
-    // DEBUG: Final computed scores
-    console.log("[DEBUG] Final scores:", { overallScore, capabilityScore, experienceScore, certificationScore, locationScore });
 
     const scoreExplanations = parsed.scoreExplanations || {
       capability: "",
@@ -278,23 +390,28 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       certification: "",
     };
 
-    // Override explanations when we force scores to 0
+    // Override explanations when we force scores to 0 or apply penalties
     const finalScoreExplanations = {
       capability: !hasCapabilities
         ? "No capabilities listed - score set to 0"
-        : scoreExplanations.capability ||
-          `Capability score: ${capabilityScore}%`,
+        : !hasDirectCapabilities
+          ? `Based on AI-extracted capabilities only (30% penalty applied). Score: ${capabilityScore}%`
+          : scoreExplanations.capability || `Capability score: ${capabilityScore}%`,
       experience: !hasExperience
-        ? "No past projects listed - score set to 0"
-        : scoreExplanations.experience ||
-          `Experience score: ${experienceScore}%`,
+        ? "No project history or AI summary found - score set to 0"
+        : !hasDirectExperience
+          ? `Based on AI summary only, no past projects or VO projects (30% penalty applied). Score: ${experienceScore}%`
+          : scoreExplanations.experience || `Experience score: ${experienceScore}%`,
       location: !hasLocation
-        ? "Location not provided - score set to 0. Do not assume location."
-        : scoreExplanations.location || `Location score: ${locationScore}%`,
+        ? "Location not provided - score set to 0"
+        : !hasDirectLocation
+          ? `Based on address/operation locations only (30% penalty applied). Score: ${locationScore}%`
+          : scoreExplanations.location || `Location score: ${locationScore}%`,
       certification: !hasCertifications
         ? "No certifications listed - score set to 0"
-        : scoreExplanations.certification ||
-          `Certification score: ${certificationScore}%`,
+        : !hasDirectCertifications
+          ? `Based on AI competencies only (30% penalty applied). Score: ${certificationScore}%`
+          : scoreExplanations.certification || `Certification score: ${certificationScore}%`,
     };
 
     score = {

@@ -21,7 +21,19 @@ export function useTaxonomies() {
     queryKey: queryKeys.taxonomies(),
     queryFn: async () => {
       const data = await api.getTaxonomies();
-      return data.taxonomies as Taxonomy[];
+      const items = data.taxonomies as Taxonomy[];
+      const l1 = items.filter((t) => t.level === 1).length;
+      const l2 = items.filter((t) => t.level === 2).length;
+      const l3 = items.filter((t) => t.level === 3).length;
+      console.debug(
+        `[useTaxonomies] Fetched ${items.length} taxonomies (L1: ${l1}, L2: ${l2}, L3: ${l3})`,
+      );
+      if (items.length === 0) {
+        console.warn(
+          "[useTaxonomies] No taxonomies found — the taxonomies table may be empty. Run the EIC seed migration.",
+        );
+      }
+      return items;
     },
     staleTime: 30 * 60 * 1000, // 30 min
     gcTime: 60 * 60 * 1000, // 60 min

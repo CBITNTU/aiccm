@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api/client";
+import { api, ApiError } from "@/lib/api/client";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import {
@@ -16,6 +16,13 @@ import {
   parseOperationLocations,
 } from "@/components/company/companyParsers";
 import { suggestLocationsFromCompanyLocation } from "@/lib/locationData";
+
+export interface AnalysisUsage {
+  used: number;
+  limit: number;
+  remaining: number;
+  resetsAt: string;
+}
 
 export interface CompanyPageData {
   companyData: CompanyRecord | null;
@@ -34,6 +41,10 @@ export interface CompanyPageData {
   financialData: Record<string, { value: number; confidence: number }> | null;
   aiCompetencies: string[] | null;
   sectionPendingStatus: SectionPendingStatus;
+
+  // Analysis usage
+  analysisUsage: AnalysisUsage | null;
+  analysisLimitReached: boolean;
 
   // Mutations
   updateCompanyMutation: ReturnType<typeof useUpdateCompany>;
@@ -70,6 +81,7 @@ export interface SectionPendingStatus {
   companyName: boolean;
   overview: boolean;
   equipment: boolean;
+  experience: boolean;
   capabilities: boolean;
   markets: boolean;
   standards: boolean;
@@ -80,6 +92,7 @@ function getSectionPendingStatus(pc: PendingChanges | null): SectionPendingStatu
     companyName: !!pc?.scalarFields?.companyName,
     overview: !!(pc?.scalarFields?.description || pc?.scalarFields?.keyCapabilities),
     equipment: !!pc?.scalarFields?.equipment,
+    experience: !!pc?.scalarFields?.pastProjects,
     capabilities: !!pc?.capabilities,
     markets: !!pc?.markets,
     standards: !!pc?.standards,
@@ -101,6 +114,7 @@ export function useCompanyPageData(
   const [pendingReviewRequest, setPendingReviewRequest] = useState<PendingReviewRequest | null>(null);
   const [latestResolvedRequest, setLatestResolvedRequest] = useState<ResolvedReviewRequest | null>(null);
   const [capabilities, setCapabilities] = useState<{ id: string; name: string; category: string }[]>([]);
+  const [analysisUsage, setAnalysisUsage] = useState<AnalysisUsage | null>(null);
 
   const updateCompanyMutation = useUpdateCompany();
   const analyzeCompanyMutation = useAnalyzeCompany();
@@ -132,10 +146,21 @@ export function useCompanyPageData(
     }
   }, [userId, companyId, router, queryClient]);
 
+  const refreshAnalysisUsage = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const data = await api.getCompanyAnalysisUsage(companyId);
+      setAnalysisUsage(data);
+    } catch {
+      // Usage display is non-critical
+    }
+  }, [companyId]);
+
   useEffect(() => {
     if (!userId || !companyId) return;
     refreshCompanyData();
-  }, [userId, companyId, refreshCompanyData]);
+    refreshAnalysisUsage();
+  }, [userId, companyId, refreshCompanyData, refreshAnalysisUsage]);
 
   const handleRefreshAnalysis = useCallback(async () => {
     if (!companyData) return;
@@ -148,11 +173,17 @@ export function useCompanyPageData(
         setCapabilities(refreshed.capabilities);
         toast.success("Company profile analysis has been refreshed.");
       }
-    } catch (error) {
-      console.error("Analysis error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to analyze profile");
+    } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 429) {
+        toast.error("Analysis limit reached for this month.");
+      } else {
+        const errorMessage = error instanceof Error ? error.message : "Failed to analyze profile";
+        toast.error(errorMessage);
+      }
+    } finally {
+      refreshAnalysisUsage();
     }
-  }, [companyData, analyzeCompanyMutation]);
+  }, [companyData, analyzeCompanyMutation, refreshAnalysisUsage]);
 
   const isVerified = companyData?.verificationStatus === "verified";
   const isEditLocked = !!pendingReviewRequest;
@@ -180,6 +211,8 @@ export function useCompanyPageData(
     [pendingChanges],
   );
 
+  const analysisLimitReached = analysisUsage ? analysisUsage.remaining <= 0 : false;
+
   return {
     companyData,
     loading,
@@ -195,6 +228,8 @@ export function useCompanyPageData(
     financialData,
     aiCompetencies,
     sectionPendingStatus,
+    analysisUsage,
+    analysisLimitReached,
     updateCompanyMutation,
     analyzeCompanyMutation,
     isSaving: updateCompanyMutation.isPending,

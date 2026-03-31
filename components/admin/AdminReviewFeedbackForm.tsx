@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { ReviewFeedback, ReviewFeedbackItem } from "@/lib/api/types";
 import {
   Dialog,
@@ -49,17 +49,8 @@ export function AdminReviewFeedbackForm({
   );
   const [overallNotes, setOverallNotes] = useState("");
 
-  // Reset form state when dialog closes (covers programmatic close, not just user-initiated)
-  useEffect(() => {
-    if (!open) {
-      setSectionStates(
-        Object.fromEntries(
-          FEEDBACK_SECTIONS.map((s) => [s.section, { status: "ok" as const, notes: "" }]),
-        ),
-      );
-      setOverallNotes("");
-    }
-  }, [open]);
+  // NOTE: State is reset on each open because the parent renders this component with
+  // key={open ? "open" : "closed"}, causing a fresh remount whenever the dialog opens.
 
   const toggleSection = (section: string) => {
     setSectionStates((prev) => ({

@@ -5,7 +5,8 @@
       "Bash(head:*)",
       "Bash(npx tsc:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebSearch"
     ]
   }
 }

@@ -5,6 +5,14 @@ import {
   getPlatformVerificationSettings,
   setPlatformVerificationSettings,
 } from "@/lib/platformVerificationSettings";
+import {
+  getPlatformMatchingSettings,
+  setPlatformMatchingSettings,
+} from "@/lib/platformMatchingSettings";
+import {
+  getPlatformAnalysisSettings,
+  setPlatformAnalysisSettings,
+} from "@/lib/platformAnalysisSettings";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,8 +20,12 @@ export async function GET(request: NextRequest) {
     const isAdmin = await checkSuperadminRole(user.id);
     if (!isAdmin) throw new AuthError("Admin access required");
 
-    const settings = await getPlatformVerificationSettings();
-    return apiResponse(settings);
+    const [verificationSettings, matchingSettings, analysisSettings] = await Promise.all([
+      getPlatformVerificationSettings(),
+      getPlatformMatchingSettings(),
+      getPlatformAnalysisSettings(),
+    ]);
+    return apiResponse({ ...verificationSettings, ...matchingSettings, ...analysisSettings });
   } catch (error) {
     return handleApiError(error);
   }
@@ -26,25 +38,54 @@ export async function PATCH(request: NextRequest) {
     if (!isAdmin) throw new AuthError("Admin access required");
 
     const body = await request.json();
-    const updates: Record<string, number> = {};
+    const verificationUpdates: Record<string, number> = {};
+    const matchingUpdates: Record<string, number> = {};
+    const analysisUpdates: Record<string, number> = {};
 
     if (typeof body.verifiedProjectLimit === "number" && body.verifiedProjectLimit >= 0) {
-      updates.verifiedProjectLimit = body.verifiedProjectLimit;
+      verificationUpdates.verifiedProjectLimit = body.verifiedProjectLimit;
     }
     if (typeof body.unverifiedProjectLimit === "number" && body.unverifiedProjectLimit >= 0) {
-      updates.unverifiedProjectLimit = body.unverifiedProjectLimit;
+      verificationUpdates.unverifiedProjectLimit = body.unverifiedProjectLimit;
     }
     if (typeof body.unverifiedCompetencyLimit === "number" && body.unverifiedCompetencyLimit >= 0) {
-      updates.unverifiedCompetencyLimit = body.unverifiedCompetencyLimit;
+      verificationUpdates.unverifiedCompetencyLimit = body.unverifiedCompetencyLimit;
+    }
+    if (typeof body.verifiedMatchingRunsPerMonth === "number" && body.verifiedMatchingRunsPerMonth >= 0) {
+      matchingUpdates.verifiedMatchingRunsPerMonth = body.verifiedMatchingRunsPerMonth;
+    }
+    if (typeof body.unverifiedMatchingRunsPerMonth === "number" && body.unverifiedMatchingRunsPerMonth >= 0) {
+      matchingUpdates.unverifiedMatchingRunsPerMonth = body.unverifiedMatchingRunsPerMonth;
+    }
+    if (typeof body.verifiedAnalysisRunsPerMonth === "number" && body.verifiedAnalysisRunsPerMonth >= 0) {
+      analysisUpdates.verifiedAnalysisRunsPerMonth = body.verifiedAnalysisRunsPerMonth;
+    }
+    if (typeof body.unverifiedAnalysisRunsPerMonth === "number" && body.unverifiedAnalysisRunsPerMonth >= 0) {
+      analysisUpdates.unverifiedAnalysisRunsPerMonth = body.unverifiedAnalysisRunsPerMonth;
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(verificationUpdates).length === 0 && Object.keys(matchingUpdates).length === 0 && Object.keys(analysisUpdates).length === 0) {
       return apiResponse({ error: "No valid settings provided" }, 400);
     }
 
-    await setPlatformVerificationSettings(updates);
-    const settings = await getPlatformVerificationSettings();
-    return apiResponse(settings);
+    await Promise.all([
+      Object.keys(verificationUpdates).length > 0
+        ? setPlatformVerificationSettings(verificationUpdates)
+        : Promise.resolve(),
+      Object.keys(matchingUpdates).length > 0
+        ? setPlatformMatchingSettings(matchingUpdates)
+        : Promise.resolve(),
+      Object.keys(analysisUpdates).length > 0
+        ? setPlatformAnalysisSettings(analysisUpdates)
+        : Promise.resolve(),
+    ]);
+
+    const [verificationSettings, matchingSettings, analysisSettings] = await Promise.all([
+      getPlatformVerificationSettings(),
+      getPlatformMatchingSettings(),
+      getPlatformAnalysisSettings(),
+    ]);
+    return apiResponse({ ...verificationSettings, ...matchingSettings, ...analysisSettings });
   } catch (error) {
     return handleApiError(error);
   }

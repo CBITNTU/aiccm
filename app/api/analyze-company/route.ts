@@ -23,6 +23,9 @@ import {
   enrichCompanyData,
   fetchCompanySources,
 } from "@/lib/services/companyEnrichmentService";
+import { NextResponse } from "next/server";
+import { getPlatformAnalysisSettings } from "@/lib/platformAnalysisSettings";
+import { getAnalysisRunsThisMonth, getEffectiveAnalysisLimit, getNextMonthStart } from "@/lib/analysisUsage";
 
 const analyzeCompanyInputSchema = z.object({
   companyId: z.string().uuid(),
@@ -107,6 +110,26 @@ export async function POST(request: NextRequest) {
     const hasAccess = await isCompanyMember(user.id, companyId);
     if (!hasAccess) {
       return apiResponse({ error: "Not authorized to analyze this company" }, 403);
+    }
+
+    // Check monthly analysis run limit
+    const [analysisSettings, analysisRunsThisMonth] = await Promise.all([
+      getPlatformAnalysisSettings(),
+      getAnalysisRunsThisMonth(companyId),
+    ]);
+    const analysisLimit = getEffectiveAnalysisLimit(company, analysisSettings);
+    if (analysisRunsThisMonth >= analysisLimit) {
+      const resetsAt = getNextMonthStart().toISOString();
+      return NextResponse.json(
+        {
+          error: `Analysis limit reached (${analysisRunsThisMonth}/${analysisLimit} this month). Resets on ${new Date(resetsAt).toLocaleDateString()}.`,
+          limitExceeded: true,
+          used: analysisRunsThisMonth,
+          limit: analysisLimit,
+          resetsAt,
+        },
+        { status: 429 },
+      );
     }
 
     // Prefill fallback: if company has no enriched data, run prefill first
@@ -315,7 +338,7 @@ export async function POST(request: NextRequest) {
       console.error("[CompanyAI:analyze] Summary generation FAILED:", summaryError);
     }
 
-    await logApiEvent(request, {
+    logApiEvent(request, {
       actionType: "company_updated",
       userId: user.id,
       userEmail: user.email || undefined,

@@ -20,6 +20,13 @@ import {
   Clock,
 } from "lucide-react";
 import type { CompanyRecord } from "@/lib/api/types";
+import type { AnalysisUsage } from "@/hooks/useCompanyPageData";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CompanyHeroHeaderProps {
   companyData: CompanyRecord;
@@ -31,6 +38,8 @@ interface CompanyHeroHeaderProps {
   capabilitiesCount: number;
   onEditInfo: () => void;
   onAnalyze: () => void;
+  analysisUsage?: AnalysisUsage | null;
+  analysisLimitReached?: boolean;
 }
 
 export function CompanyHeroHeader({
@@ -43,6 +52,8 @@ export function CompanyHeroHeader({
   capabilitiesCount,
   onEditInfo,
   onAnalyze,
+  analysisUsage,
+  analysisLimitReached,
 }: CompanyHeroHeaderProps) {
   return (
     <Card className="card-professional">
@@ -84,17 +95,55 @@ export function CompanyHeroHeader({
                 <Edit2 className="w-3.5 h-3.5 mr-1.5" />
                 Edit Info
               </Button>
-              <Button
-                size="sm"
-                className="btn-cta"
-                onClick={onAnalyze}
-                disabled={isAnalyzing}
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 mr-1.5 ${isAnalyzing ? "animate-spin" : ""}`}
-                />
-                {isAnalyzing ? "Analyzing..." : hasAnalysis ? "Re-analyze" : "Analyze"}
-              </Button>
+              <TooltipProvider>
+                <div className="flex items-center gap-1.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        className="btn-cta"
+                        onClick={onAnalyze}
+                        disabled={isAnalyzing || !!analysisLimitReached}
+                      >
+                        <RefreshCw
+                          className={`w-3.5 h-3.5 mr-1.5 ${isAnalyzing ? "animate-spin" : ""}`}
+                        />
+                        {isAnalyzing ? "Analyzing..." : hasAnalysis ? "Re-analyze" : "Analyze"}
+                      </Button>
+                    </TooltipTrigger>
+                    {analysisLimitReached && (
+                      <TooltipContent>
+                        <p className="text-xs">
+                          Analysis limit reached this month.
+                          {analysisUsage?.resetsAt && (
+                            <> Resets {new Date(analysisUsage.resetsAt).toLocaleDateString()}.</>
+                          )}
+                        </p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                  {analysisUsage && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          variant={analysisLimitReached ? "destructive" : "secondary"}
+                          className="text-xs cursor-default"
+                        >
+                          {analysisUsage.used}/{analysisUsage.limit}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">
+                          {analysisUsage.used} of {analysisUsage.limit} analysis runs used this month.
+                          {analysisUsage.resetsAt && (
+                            <> Resets {new Date(analysisUsage.resetsAt).toLocaleDateString()}.</>
+                          )}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </TooltipProvider>
             </div>
           )}
         </div>

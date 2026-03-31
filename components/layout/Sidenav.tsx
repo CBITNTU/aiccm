@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAdminStats } from "@/hooks/useAdminStats";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -22,10 +23,17 @@ import {
   Search,
   FileText,
   LayoutDashboard,
-  Shield,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
+  BarChart3,
+  ClipboardCheck,
+  ShieldCheck,
+  UserCog,
+  UserPlus,
+  Tags,
+  SlidersHorizontal,
+  FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
@@ -42,10 +50,10 @@ interface NavigationItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   hideForPending: boolean;
-  adminOnly?: boolean;
+  badgeKey?: "pendingApprovalsTotal" | "pendingVerificationTotal";
 }
 
-const navigationItems: NavigationItem[] = [
+const mainNavItems: NavigationItem[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -82,21 +90,50 @@ const navigationItems: NavigationItem[] = [
     icon: User,
     hideForPending: true,
   },
+];
+
+interface AdminNavGroup {
+  items: NavigationItem[];
+}
+
+const adminNavGroups: AdminNavGroup[] = [
   {
-    name: "Admin",
-    href: "/admin",
-    icon: Shield,
-    hideForPending: true,
-    adminOnly: true,
+    items: [
+      { name: "Overview", href: "/admin/overview", icon: BarChart3, hideForPending: true },
+      { name: "Approvals", href: "/admin/approvals", icon: ClipboardCheck, hideForPending: true, badgeKey: "pendingApprovalsTotal" },
+      { name: "Verification", href: "/admin/verification", icon: ShieldCheck, hideForPending: true, badgeKey: "pendingVerificationTotal" },
+    ],
+  },
+  {
+    items: [
+      { name: "Companies", href: "/admin/companies", icon: Building2, hideForPending: true },
+      { name: "Users", href: "/admin/users", icon: UserCog, hideForPending: true },
+      { name: "Tenders", href: "/admin/tenders", icon: FileText, hideForPending: true },
+      { name: "Onboarding", href: "/admin/onboarding", icon: UserPlus, hideForPending: true },
+    ],
+  },
+  {
+    items: [
+      { name: "Taxonomy", href: "/admin/taxonomy", icon: Tags, hideForPending: true },
+      { name: "Settings", href: "/admin/settings", icon: SlidersHorizontal, hideForPending: true },
+      { name: "Demo Sync", href: "/admin/demo-sync", icon: FlaskConical, hideForPending: true },
+    ],
   },
 ];
+
+type AdminStatsData = {
+  pendingApprovalsTotal: number;
+  pendingVerificationTotal: number;
+};
 
 interface SidebarContentProps {
   isMobile?: boolean;
   isCollapsed: boolean;
   isRestrictedUser: boolean;
+  isAdmin: boolean;
+  adminStats?: AdminStatsData;
   toggleCollapsed: () => void;
-  filteredNavItems: NavigationItem[];
+  filteredMainNavItems: NavigationItem[];
   isActiveRoute: (href: string) => boolean;
   handleNavClick: () => void;
   handleSignOut: () => void;
@@ -105,12 +142,81 @@ interface SidebarContentProps {
   userInitials: string;
 }
 
+function NavItem({
+  item,
+  isActive,
+  isCollapsed,
+  isMobile,
+  badgeCount,
+  onClick,
+}: {
+  item: NavigationItem;
+  isActive: boolean;
+  isCollapsed: boolean;
+  isMobile: boolean;
+  badgeCount?: number;
+  onClick: () => void;
+}) {
+  const showBadge = badgeCount !== undefined && badgeCount > 0;
+
+  const NavButton = (
+    <Button
+      variant={isActive ? "secondary" : "ghost"}
+      className={cn(
+        "w-full justify-start relative",
+        isCollapsed && !isMobile && "justify-center px-2",
+      )}
+      asChild
+    >
+      <Link href={item.href} onClick={onClick}>
+        <div className="relative flex-shrink-0">
+          <item.icon
+            className={cn(
+              "h-4 w-4",
+              (!isCollapsed || isMobile) && "mr-3",
+            )}
+          />
+          {showBadge && isCollapsed && !isMobile && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
+          )}
+        </div>
+        {(!isCollapsed || isMobile) && (
+          <>
+            <span className="truncate flex-1">{item.name}</span>
+            {showBadge && (
+              <span className="ml-auto flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-medium flex items-center justify-center">
+                {badgeCount}
+              </span>
+            )}
+          </>
+        )}
+      </Link>
+    </Button>
+  );
+
+  if (isCollapsed && !isMobile) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{NavButton}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={10}>
+          {item.name}
+          {showBadge && ` (${badgeCount})`}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return <div>{NavButton}</div>;
+}
+
 function SidebarContent({
   isMobile = false,
   isCollapsed,
   isRestrictedUser,
+  isAdmin,
+  adminStats,
   toggleCollapsed,
-  filteredNavItems,
+  filteredMainNavItems,
   isActiveRoute,
   handleNavClick,
   handleSignOut,
@@ -163,8 +269,8 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Org Switcher — hidden for onboarding/pending-approval users */}
-      {!isRestrictedUser && (
+      {/* Org Switcher — hidden for onboarding/pending-approval users and super admins */}
+      {!isRestrictedUser && !isAdmin && (
         <>
           <OrgSwitcher isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
           <VerificationStatusIndicator isCollapsed={isCollapsed && !isMobile} isMobile={isMobile} />
@@ -175,44 +281,64 @@ function SidebarContent({
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-1 px-2">
           <TooltipProvider delayDuration={0}>
-            {filteredNavItems.map((item) => {
-              const isActive = isActiveRoute(item.href);
-              const NavButton = (
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start",
-                    isCollapsed && !isMobile && "justify-center px-2",
-                  )}
-                  asChild
-                >
-                  <Link href={item.href} onClick={handleNavClick}>
-                    <item.icon
-                      className={cn(
-                        "h-4 w-4 flex-shrink-0",
-                        (!isCollapsed || isMobile) && "mr-3",
-                      )}
-                    />
-                    {(!isCollapsed || isMobile) && (
-                      <span className="truncate">{item.name}</span>
+            {/* Admin Section — shown first for super admins */}
+            {isAdmin && (
+              <>
+                {(!isCollapsed || isMobile) && (
+                  <div className="px-3 py-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Admin
+                    </span>
+                  </div>
+                )}
+
+                {adminNavGroups.map((group, groupIndex) => (
+                  <div key={groupIndex}>
+                    {groupIndex > 0 && (
+                      <div className={cn("py-1", isCollapsed && !isMobile && "py-0.5")}>
+                        {(!isCollapsed || isMobile) ? (
+                          <Separator className="opacity-50" />
+                        ) : (
+                          <div className="mx-auto w-4 border-t border-border/50" />
+                        )}
+                      </div>
                     )}
-                  </Link>
-                </Button>
-              );
+                    {group.items.map((item) => {
+                      const badgeCount = item.badgeKey && adminStats
+                        ? adminStats[item.badgeKey]
+                        : undefined;
+                      return (
+                        <NavItem
+                          key={item.href}
+                          item={item}
+                          isActive={isActiveRoute(item.href)}
+                          isCollapsed={isCollapsed}
+                          isMobile={isMobile}
+                          badgeCount={badgeCount}
+                          onClick={handleNavClick}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
 
-              if (isCollapsed && !isMobile) {
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>{NavButton}</TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={10}>
-                      {item.name}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
+                <div className="pt-3 pb-1">
+                  <Separator />
+                </div>
+              </>
+            )}
 
-              return <div key={item.href}>{NavButton}</div>;
-            })}
+            {/* Main Navigation */}
+            {filteredMainNavItems.map((item) => (
+              <NavItem
+                key={item.href}
+                item={item}
+                isActive={isActiveRoute(item.href)}
+                isCollapsed={isCollapsed}
+                isMobile={isMobile}
+                onClick={handleNavClick}
+              />
+            ))}
           </TooltipProvider>
         </nav>
       </ScrollArea>
@@ -278,6 +404,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, signOut, isPendingApproval, isOnboarding, profile } = useAuth();
   const { isAdmin } = useUserRole();
+  const { data: adminStatsData } = useAdminStats(isAdmin);
 
   const pathname = usePathname();
 
@@ -300,10 +427,8 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
     localStorage.setItem("sidenav-collapsed", String(newState));
   };
 
-  // Filter navigation based on user status
-  const filteredNavItems = navigationItems.filter((item) => {
-    if (item.adminOnly && !isAdmin) return false;
-    // Hide restricted items for both pending and onboarding users
+  // Filter main navigation based on user status
+  const filteredMainNavItems = mainNavItems.filter((item) => {
     if (item.hideForPending && isRestrictedUser) return false;
     return true;
   });
@@ -312,6 +437,10 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const isActiveRoute = (href: string) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
+    }
+    // For admin sub-routes, match exactly on the route prefix
+    if (href.startsWith("/admin/")) {
+      return pathname.startsWith(href);
     }
     return pathname.startsWith(href);
   };
@@ -333,12 +462,22 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const userEmail = user?.email || "";
   const userInitials = userDisplayName.slice(0, 2).toUpperCase();
 
+  // Extract admin stats for badges
+  const adminStats: AdminStatsData | undefined = adminStatsData
+    ? {
+        pendingApprovalsTotal: adminStatsData.pendingApprovalsTotal,
+        pendingVerificationTotal: adminStatsData.pendingVerificationTotal,
+      }
+    : undefined;
+
   // Shared props for SidebarContent
   const sidebarProps = {
     isCollapsed,
     isRestrictedUser,
+    isAdmin,
+    adminStats,
     toggleCollapsed,
-    filteredNavItems,
+    filteredMainNavItems,
     isActiveRoute,
     handleNavClick,
     handleSignOut,

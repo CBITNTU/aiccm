@@ -57,15 +57,6 @@ export const auth = betterAuth({
     admin(),
     nextCookies(),
   ],
-  baseURL: {
-    allowedHosts: [
-      'tndrx.com',
-      'www.tndrx.com',
-      'localhost:3000',
-      'aiccm-*.vercel.app',
-    ],
-    protocol: process.env.NODE_ENV === 'production' ? 'https' : 'http',
-  },
   secret: process.env.BETTER_AUTH_SECRET,
 });
 

@@ -1,0 +1,158 @@
+{
+  "Metadata": {
+    "title": "TNDRX - Collaborative Commerce Marketplace",
+    "description": "Discover your company's strengths, match with tenders, and form winning consortiums with AI. Build consulting teams and grow your business with TNDRX."
+  },
+  "Header": {
+    "brand": "TNDRX",
+    "tagline": "Collaborative Commerce Marketplace",
+    "dashboard": "Dashboard",
+    "signOut": "Sign Out",
+    "signIn": "Sign In",
+    "getStarted": "Get Started",
+    "menuToggle": "Toggle navigation menu"
+  },
+  "LocaleSwitcher": {
+    "label": "Language",
+    "en": "English"
+  },
+  "HeroSection": {
+    "headlineBrand": "TNDRX",
+    "headlineAccent": "Empowering Collaboration through Competence",
+    "subheadline": "Discover your company's strengths, match with tenders, and form winning consortiums with AI.",
+    "ctaAddCompany": "Add Your Company",
+    "ctaExploreTenders": "Explore Tenders",
+    "stats": {
+      "networkCompanies": "Network Companies",
+      "networkCompaniesDescription": "Active businesses in our network",
+      "availableOpportunities": "Available Opportunities",
+      "availableOpportunitiesDescription": "Current tender opportunities",
+      "smartMatches": "Smart Matches",
+      "smartMatchesDescription": "AI-powered connections made",
+      "activeProjects": "Active Projects",
+      "activeProjectsDescription": "Collaborative consortiums formed"
+    },
+    "features": {
+      "profilingTitle": "Smart Business Profiling",
+      "profilingDescription": "AI analyzes your business data to build comprehensive capability profiles automatically, identifying strengths and opportunities.",
+      "matchingTitle": "Intelligent Opportunity Matching",
+      "matchingDescription": "Get matched to relevant opportunities with explainable AI scoring and detailed capability analysis for informed decisions.",
+      "networkTitle": "Regional Partnership Network",
+      "networkDescription": "Form strategic partnerships with complementary regional businesses to compete for larger opportunities together."
+    },
+    "impact": {
+      "title": "Platform Impact",
+      "subtitle": "Real results driving regional growth across the East Midlands"
+    },
+    "platformFeatures": {
+      "title": "Platform Features",
+      "subtitle": "Discover how AI-powered matching and regional partnerships can transform your business opportunities"
+    },
+    "contact": {
+      "title": "Get In Touch",
+      "subtitle": "Ready to join the East Midlands business network?",
+      "emailUs": "Email Us",
+      "officeHours": "Office Hours",
+      "weekdays": "Monday - Friday: 9 am - 5 pm",
+      "weekend": "Saturday - Sunday: Closed"
+    },
+    "footer": {
+      "logoAlt": "Centre for Business and Industry Transformation",
+      "poweredBy": "Powered by TNDRX"
+    }
+  },
+  "Auth": {
+    "main": {
+      "welcome": "Welcome to TNDRX",
+      "subheading": "Access your tender dashboard",
+      "cardTitle": "Account Access",
+      "tabSignIn": "Sign In",
+      "tabSignUp": "Sign Up"
+    },
+    "signIn": {
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "submit": "Sign In",
+      "submitLoading": "Signing In...",
+      "welcomeBack": "Welcome back!",
+      "redirecting": "Redirecting...",
+      "errorUnverifiedEmail": "Please check your email and click the verification link before signing in.",
+      "errorInvalidCredentials": "Invalid email or password. Please check your credentials and try again.",
+      "errorFallback": "Failed to sign in"
+    },
+    "signUp": {
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Create a password (min 6 characters)",
+      "confirmPasswordLabel": "Confirm Password",
+      "confirmPasswordPlaceholder": "Confirm your password",
+      "helper": "After signing up, you'll verify your email and complete a quick profile setup.",
+      "submit": "Create Account",
+      "submitLoading": "Creating Account...",
+      "errorPasswordsMismatch": "Passwords do not match",
+      "errorPasswordTooShort": "Password must be at least 6 characters",
+      "errorFallback": "Failed to create account",
+      "successTitle": "Account Created!",
+      "successSentTo": "We've sent a verification link to:",
+      "successNextSteps": "Next steps:",
+      "successStep1": "Check your email inbox (and spam folder)",
+      "successStep2": "Click the verification link in the email",
+      "successStep3": "Complete your profile setup",
+      "successExpiry": "The verification link expires in 24 hours",
+      "successBackToSignIn": "Back to Sign In"
+    },
+    "invite": {
+      "validating": "Validating invitation...",
+      "loading": "Loading...",
+      "invalidTitle": "Invalid Invitation",
+      "invalidFallback": "This invitation link is not valid.",
+      "invalidHelper": "Please contact your company administrator to request a new invitation.",
+      "invalidGoToSignIn": "Go to Sign In",
+      "errorNoToken": "No invitation token provided",
+      "errorInvalid": "Invalid invitation",
+      "errorValidateFallback": "Failed to validate invitation",
+      "successTitle": "Success!",
+      "successRedirecting": "Redirecting you...",
+      "newUser": {
+        "title": "Join {companyName}",
+        "description": "{inviterName} has invited you to join their team. Create your account to get started.",
+        "emailLabel": "Email:",
+        "passwordLabel": "Password *",
+        "passwordPlaceholder": "Min. 6 characters",
+        "confirmPasswordLabel": "Confirm Password *",
+        "confirmPasswordPlaceholder": "Confirm your password",
+        "submit": "Create Account & Join",
+        "submitLoading": "Creating Account...",
+        "helper": "You'll complete your profile in the next step.",
+        "errorPasswordEmpty": "Please enter a password",
+        "errorPasswordTooShort": "Password must be at least 6 characters",
+        "errorPasswordsMismatch": "Passwords do not match",
+        "errorCreateFallback": "Failed to create account",
+        "toastPleaseSignIn": "Account created! Please sign in to continue.",
+        "redirectPleaseSignIn": "Account created. Please sign in to continue onboarding.",
+        "toastCreated": "Account created successfully!"
+      },
+      "loggedIn": {
+        "title": "Join {companyName}",
+        "description": "{inviterName} has invited you to join their team",
+        "wrongAccountAlert": "This invitation was sent to {inviteEmail}. You are currently logged in as {currentEmail}. Please log out and log in with the correct account.",
+        "companyLabel": "Company:",
+        "invitedByLabel": "Invited by:",
+        "accept": "Accept Invitation",
+        "accepting": "Accepting...",
+        "helper": "After accepting, a platform administrator will review your membership request.",
+        "toastAccepted": "Invitation accepted!",
+        "errorAcceptFallback": "Failed to accept invitation"
+      },
+      "loggedOut": {
+        "title": "Join {companyName}",
+        "description": "{inviterName} has invited you to join their team",
+        "alert": "You already have an account with {inviteEmail}. Please sign in to accept this invitation.",
+        "signInToAccept": "Sign In to Accept"
+      }
+    }
+  }
+}

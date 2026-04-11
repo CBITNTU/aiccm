@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import {
   ArrowRight,
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function HeroSection() {
+  const t = useTranslations("HeroSection");
   const [realStats, setRealStats] = useState({
     companies: 0,
     tenders: 0,
@@ -51,55 +53,52 @@ export function HeroSection() {
 
   const stats = [
     {
-      label: "Network Companies",
+      label: t("stats.networkCompanies"),
       value: realStats.companies.toString(),
       icon: Building2,
       gradient: "from-primary to-primary/80",
-      description: "Active businesses in our network",
+      description: t("stats.networkCompaniesDescription"),
     },
     {
-      label: "Available Opportunities",
+      label: t("stats.availableOpportunities"),
       value: realStats.tenders.toString(),
       icon: FileText,
       gradient: "from-accent to-accent/80",
-      description: "Current tender opportunities",
+      description: t("stats.availableOpportunitiesDescription"),
     },
     {
-      label: "Smart Matches",
+      label: t("stats.smartMatches"),
       value: realStats.matches.toString(),
       icon: Users2,
       gradient: "from-accent to-accent/80",
-      description: "AI-powered connections made",
+      description: t("stats.smartMatchesDescription"),
     },
     {
-      label: "Active Projects",
+      label: t("stats.activeProjects"),
       value: realStats.projects.toString(),
       icon: Award,
       gradient: "from-primary to-primary/80",
-      description: "Collaborative consortiums formed",
+      description: t("stats.activeProjectsDescription"),
     },
   ];
 
   const features = [
     {
       icon: Sparkles,
-      title: "Smart Business Profiling",
-      description:
-        "AI analyzes your business data to build comprehensive capability profiles automatically, identifying strengths and opportunities.",
+      title: t("features.profilingTitle"),
+      description: t("features.profilingDescription"),
       gradient: "from-primary/20 to-primary/5",
     },
     {
       icon: Target,
-      title: "Intelligent Opportunity Matching",
-      description:
-        "Get matched to relevant opportunities with explainable AI scoring and detailed capability analysis for informed decisions.",
+      title: t("features.matchingTitle"),
+      description: t("features.matchingDescription"),
       gradient: "from-accent/20 to-accent/5",
     },
     {
       icon: Network,
-      title: "Regional Partnership Network",
-      description:
-        "Form strategic partnerships with complementary regional businesses to compete for larger opportunities together.",
+      title: t("features.networkTitle"),
+      description: t("features.networkDescription"),
       gradient: "from-accent/20 to-accent/5",
     },
   ];
@@ -128,18 +127,17 @@ export function HeroSection() {
           {/* Main Heading */}
           <div className="max-w-5xl mx-auto space-y-6">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-              TNDRX{" "}
+              {t("headlineBrand")}{" "}
               <span className="relative">
                 <span className="gradient-hero bg-clip-text text-transparent">
-                  Empowering Collaboration through Competence
+                  {t("headlineAccent")}
                 </span>
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 blur opacity-30 -z-10" />
               </span>
             </h1>
 
             <p className="text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed font-medium">
-              Discover your company&apos;s strengths, match with tenders, and
-              form winning consortiums with AI.
+              {t("subheadline")}
             </p>
           </div>
 
@@ -151,7 +149,7 @@ export function HeroSection() {
               asChild
             >
               <Link href="/onboarding">
-                Add Your Company
+                {t("ctaAddCompany")}
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
             </Button>
@@ -162,7 +160,7 @@ export function HeroSection() {
               className="btn-outline-primary min-w-[220px] text-lg px-8 py-4"
               asChild
             >
-              <Link href="/tenders">Explore Tenders</Link>
+              <Link href="/tenders">{t("ctaExploreTenders")}</Link>
             </Button>
           </div>
         </div>
@@ -171,10 +169,10 @@ export function HeroSection() {
         <div className="mt-20 lg:mt-24">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Platform Impact
+              {t("impact.title")}
             </h2>
             <p className="text-lg text-muted-foreground">
-              Real results driving regional growth across the East Midlands
+              {t("impact.subtitle")}
             </p>
           </div>
 
@@ -217,11 +215,10 @@ export function HeroSection() {
         <div className="mt-20 lg:mt-32">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Platform Features
+              {t("platformFeatures.title")}
             </h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              Discover how AI-powered matching and regional partnerships can
-              transform your business opportunities
+              {t("platformFeatures.subtitle")}
             </p>
           </div>
 
@@ -260,10 +257,10 @@ export function HeroSection() {
         <div className="mt-20 lg:mt-32 max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Get In Touch
+              {t("contact.title")}
             </h2>
             <p className="text-lg text-muted-foreground">
-              Ready to join the East Midlands business network?
+              {t("contact.subtitle")}
             </p>
           </div>
 
@@ -275,7 +272,7 @@ export function HeroSection() {
                   <Mail className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-4">
-                  Email Us
+                  {t("contact.emailUs")}
                 </h3>
                 <a
                   href="mailto:cbit@ntu.ac.uk"
@@ -293,11 +290,11 @@ export function HeroSection() {
                   <Clock className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-4">
-                  Office Hours
+                  {t("contact.officeHours")}
                 </h3>
                 <div className="text-muted-foreground space-y-2 font-medium">
-                  <p>Monday - Friday: 9 am - 5 pm</p>
-                  <p>Saturday - Sunday: Closed</p>
+                  <p>{t("contact.weekdays")}</p>
+                  <p>{t("contact.weekend")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -309,13 +306,13 @@ export function HeroSection() {
           <div className="flex flex-col items-end pr-4">
             <Image
               src="/cbit-logo.png"
-              alt="Centre for Business and Industry Transformation"
+              alt={t("footer.logoAlt")}
               width={150}
               height={48}
               className="h-12 w-auto"
             />
             <p className="text-sm text-muted-foreground mt-2">
-              Powered by TNDRX
+              {t("footer.poweredBy")}
             </p>
           </div>
         </div>

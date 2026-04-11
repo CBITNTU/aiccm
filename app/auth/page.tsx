@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { Header } from "@/components/layout/Header";
 import { isValidRedirectUrl } from "@/lib/utils/redirectUrl";
 
 export default function AuthPage() {
+  const t = useTranslations("Auth");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -46,13 +48,13 @@ export default function AuthPage() {
     setIsLoading(true);
 
     if (signUpData.password !== signUpData.confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("signUp.errorPasswordsMismatch"));
       setIsLoading(false);
       return;
     }
 
     if (signUpData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("signUp.errorPasswordTooShort"));
       setIsLoading(false);
       return;
     }
@@ -70,7 +72,7 @@ export default function AuthPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create account");
+        throw new Error(data.error || t("signUp.errorFallback"));
       }
 
       setSignupSuccessEmail(signUpData.email);
@@ -78,7 +80,7 @@ export default function AuthPage() {
     } catch (error: unknown) {
       console.error("Sign up error:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to create account";
+        error instanceof Error ? error.message : t("signUp.errorFallback");
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -97,11 +99,11 @@ export default function AuthPage() {
       });
 
       if (result.error) {
-        throw new Error(result.error.message || "Failed to sign in");
+        throw new Error(result.error.message || t("signIn.errorFallback"));
       }
 
-      toast.success("Welcome back!", {
-        description: "Redirecting...",
+      toast.success(t("signIn.welcomeBack"), {
+        description: t("signIn.redirecting"),
       });
 
       const requestedRedirect = searchParams.get("redirectTo");
@@ -116,18 +118,14 @@ export default function AuthPage() {
     } catch (error: unknown) {
       console.error("Sign in error:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to sign in";
+        error instanceof Error ? error.message : t("signIn.errorFallback");
       if (errorMessage === "Email not confirmed" || errorMessage.includes("email") && errorMessage.includes("verified")) {
-        setError(
-          "Please check your email and click the verification link before signing in.",
-        );
+        setError(t("signIn.errorUnverifiedEmail"));
       } else if (
         errorMessage === "Invalid login credentials" ||
         errorMessage === "Invalid email or password"
       ) {
-        setError(
-          "Invalid email or password. Please check your credentials and try again.",
-        );
+        setError(t("signIn.errorInvalidCredentials"));
       } else {
         setError(errorMessage);
       }
@@ -146,12 +144,12 @@ export default function AuthPage() {
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
-              <CardTitle className="text-2xl">Account Created!</CardTitle>
+              <CardTitle className="text-2xl">{t("signUp.successTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="text-center">
                 <p className="text-muted-foreground mb-2">
-                  We&apos;ve sent a verification link to:
+                  {t("signUp.successSentTo")}
                 </p>
                 <p className="font-medium text-foreground text-lg">
                   {signupSuccessEmail}
@@ -160,19 +158,19 @@ export default function AuthPage() {
 
               <div className="space-y-3">
                 <p className="text-sm font-medium text-foreground">
-                  Next steps:
+                  {t("signUp.successNextSteps")}
                 </p>
                 <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                  <li>Check your email inbox (and spam folder)</li>
-                  <li>Click the verification link in the email</li>
-                  <li>Complete your profile setup</li>
+                  <li>{t("signUp.successStep1")}</li>
+                  <li>{t("signUp.successStep2")}</li>
+                  <li>{t("signUp.successStep3")}</li>
                 </ol>
               </div>
 
               <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg text-sm">
                 <Mail className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                 <span className="text-amber-800 dark:text-amber-200">
-                  The verification link expires in 24 hours
+                  {t("signUp.successExpiry")}
                 </span>
               </div>
 
@@ -181,7 +179,7 @@ export default function AuthPage() {
                 className="w-full"
                 onClick={() => setSignupSuccessEmail(null)}
               >
-                Back to Sign In
+                {t("signUp.successBackToSignIn")}
               </Button>
             </CardContent>
           </Card>
@@ -200,22 +198,22 @@ export default function AuthPage() {
             <Building2 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            Welcome to TNDRX
+            {t("main.welcome")}
           </h1>
-          <p className="text-muted-foreground">Access your tender dashboard</p>
+          <p className="text-muted-foreground">{t("main.subheading")}</p>
         </div>
 
         <Card className="card-professional">
           <CardHeader>
             <CardTitle className="text-center text-foreground">
-              Account Access
+              {t("main.cardTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="signin">{t("main.tabSignIn")}</TabsTrigger>
+                <TabsTrigger value="signup">{t("main.tabSignUp")}</TabsTrigger>
               </TabsList>
 
               {error && (
@@ -228,13 +226,13 @@ export default function AuthPage() {
               <TabsContent value="signin" className="space-y-4 mt-6">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
+                    <Label htmlFor="signin-email">{t("signIn.emailLabel")}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="signin-email"
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder={t("signIn.emailPlaceholder")}
                         value={signInData.email}
                         onChange={(e) =>
                           setSignInData({
@@ -249,13 +247,13 @@ export default function AuthPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
+                    <Label htmlFor="signin-password">{t("signIn.passwordLabel")}</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="signin-password"
                         type="password"
-                        placeholder="Enter your password"
+                        placeholder={t("signIn.passwordPlaceholder")}
                         value={signInData.password}
                         onChange={(e) =>
                           setSignInData({
@@ -274,7 +272,7 @@ export default function AuthPage() {
                     className="w-full btn-cta"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Signing In..." : "Sign In"}
+                    {isLoading ? t("signIn.submitLoading") : t("signIn.submit")}
                   </Button>
                 </form>
               </TabsContent>
@@ -282,13 +280,13 @@ export default function AuthPage() {
               <TabsContent value="signup" className="space-y-4 mt-6">
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">{t("signUp.emailLabel")}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="signup-email"
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder={t("signUp.emailPlaceholder")}
                         value={signUpData.email}
                         onChange={(e) =>
                           setSignUpData({
@@ -303,13 +301,13 @@ export default function AuthPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="signup-password">{t("signUp.passwordLabel")}</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="signup-password"
                         type="password"
-                        placeholder="Create a password (min 6 characters)"
+                        placeholder={t("signUp.passwordPlaceholder")}
                         value={signUpData.password}
                         onChange={(e) =>
                           setSignUpData({
@@ -325,13 +323,13 @@ export default function AuthPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirm">Confirm Password</Label>
+                    <Label htmlFor="signup-confirm">{t("signUp.confirmPasswordLabel")}</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="signup-confirm"
                         type="password"
-                        placeholder="Confirm your password"
+                        placeholder={t("signUp.confirmPasswordPlaceholder")}
                         value={signUpData.confirmPassword}
                         onChange={(e) =>
                           setSignUpData({
@@ -346,8 +344,7 @@ export default function AuthPage() {
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    After signing up, you&apos;ll verify your email and complete
-                    a quick profile setup.
+                    {t("signUp.helper")}
                   </p>
 
                   <Button
@@ -355,7 +352,7 @@ export default function AuthPage() {
                     className="w-full btn-cta"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Creating Account..." : "Create Account"}
+                    {isLoading ? t("signUp.submitLoading") : t("signUp.submit")}
                   </Button>
                 </form>
               </TabsContent>

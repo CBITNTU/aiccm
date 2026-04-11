@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,9 @@ export function CompanyInfoStep({
   userEmail,
   onComplete,
 }: CompanyInfoStepProps) {
+  const tShared = useTranslations("Onboarding.companyInfo.shared");
+  const tCreate = useTranslations("Onboarding.companyInfo.create");
+  const tJoin = useTranslations("Onboarding.companyInfo.join");
   const [activeTab, setActiveTab] = useState<"create" | "join">("create");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,8 +184,8 @@ export function CompanyInfoStep({
           companyName: data.data.companyName,
           address: data.data.registeredAddress,
         }));
-        toast.success("Company found!", {
-          description: "Details have been auto-filled from Companies House.",
+        toast.success(tCreate("toastFound"), {
+          description: tCreate("toastFoundDescription"),
         });
       } else if (data.errorCode === "DUPLICATE" && data.existingCompany) {
         // Company exists in database - offer to join
@@ -195,19 +199,19 @@ export function CompanyInfoStep({
       } else if (data.errorCode === "NOT_FOUND") {
         setLookupState({
           status: "not-found",
-          error: data.error || "Company not found on Companies House.",
+          error: data.error || tCreate("errorNotFound"),
         });
       } else {
         setLookupState({
           status: "error",
-          error: data.error || "Failed to look up company.",
+          error: data.error || tCreate("errorLookupFailed"),
         });
       }
     } catch (err) {
       console.error("Companies House lookup error:", err);
       setLookupState({
         status: "error",
-        error: "Failed to connect to Companies House. Please try again.",
+        error: tCreate("errorLookupConnection"),
       });
     }
   };
@@ -250,17 +254,19 @@ export function CompanyInfoStep({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to submit join request");
+        throw new Error(data.error || tCreate("errorJoinFallback"));
       }
 
-      toast.success("Request submitted!", {
-        description: `Your request to join "${foundExistingCompany.companyName}" has been sent.`,
+      toast.success(tCreate("toastJoinRequested"), {
+        description: tCreate("toastJoinRequestedDescription", {
+          companyName: foundExistingCompany.companyName,
+        }),
       });
       onComplete();
     } catch (error) {
       console.error("Error joining company:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to submit request";
+        error instanceof Error ? error.message : tJoin("errorFallback");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -273,16 +279,14 @@ export function CompanyInfoStep({
     setError(null);
 
     if (!createForm.companyName.trim()) {
-      setError("Company name is required");
+      setError(tCreate("errorNameRequired"));
       setIsLoading(false);
       return;
     }
 
     // Require at least website URL
     if (!createForm.websiteUrl || !createForm.websiteUrl.trim()) {
-      setError(
-        "Website URL is required. Please provide at least a website for your company.",
-      );
+      setError(tCreate("errorWebsiteRequired"));
       setIsLoading(false);
       return;
     }
@@ -296,9 +300,7 @@ export function CompanyInfoStep({
       !websiteUrl.startsWith("http://") &&
       !websiteUrl.startsWith("https://")
     ) {
-      setError(
-        "Please enter a valid website URL (e.g., example.com or https://example.com)",
-      );
+      setError(tCreate("errorWebsiteInvalid"));
       setIsLoading(false);
       return;
     }
@@ -325,17 +327,19 @@ export function CompanyInfoStep({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create company");
+        throw new Error(data.error || tCreate("errorCreateFallback"));
       }
 
-      toast.success("Company created!", {
-        description: `"${createForm.companyName}" has been registered.`,
+      toast.success(tCreate("toastCreated"), {
+        description: tCreate("toastCreatedDescription", {
+          companyName: createForm.companyName,
+        }),
       });
       onComplete();
     } catch (error) {
       console.error("Error creating company:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to create company";
+        error instanceof Error ? error.message : tCreate("errorCreateFallback");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -348,7 +352,7 @@ export function CompanyInfoStep({
     setError(null);
 
     if (!joinForm.selectedCompany) {
-      setError("Please select a company to join");
+      setError(tJoin("errorRequired"));
       setIsLoading(false);
       return;
     }
@@ -371,17 +375,19 @@ export function CompanyInfoStep({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to submit join request");
+        throw new Error(data.error || tCreate("errorJoinFallback"));
       }
 
-      toast.success("Request submitted!", {
-        description: `Your request to join "${joinForm.selectedCompany.companyName}" has been sent.`,
+      toast.success(tJoin("toastSubmitted"), {
+        description: tJoin("toastSubmittedDescription", {
+          companyName: joinForm.selectedCompany.companyName,
+        }),
       });
       onComplete();
     } catch (error) {
       console.error("Error joining company:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to submit request";
+        error instanceof Error ? error.message : tJoin("errorFallback");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -395,9 +401,9 @@ export function CompanyInfoStep({
           <div className="w-16 h-16 bg-primary/10 dark:bg-primary/20 rounded-full mx-auto mb-4 flex items-center justify-center">
             <Building2 className="w-8 h-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Company Information</CardTitle>
+          <CardTitle className="text-2xl">{tShared("title")}</CardTitle>
           <p className="text-muted-foreground mt-2">
-            Register a new company or join an existing one
+            {tShared("description")}
           </p>
         </CardHeader>
         <CardContent>
@@ -408,11 +414,11 @@ export function CompanyInfoStep({
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="create" className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
-                Create New
+                {tShared("tabCreate")}
               </TabsTrigger>
               <TabsTrigger value="join" className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                Join Existing
+                {tShared("tabJoin")}
               </TabsTrigger>
             </TabsList>
 
@@ -424,7 +430,7 @@ export function CompanyInfoStep({
                     <div className="flex items-center gap-2 text-amber-200 mb-3">
                       <AlertCircle className="w-5 h-5" />
                       <span className="font-medium">
-                        Company Already Registered
+                        {tCreate("alreadyRegisteredTitle")}
                       </span>
                     </div>
 
@@ -432,20 +438,19 @@ export function CompanyInfoStep({
                       {foundExistingCompany.companyName}
                     </h3>
                     <p className="text-sm text-amber-200">
-                      This company is already on our platform.
                       {foundExistingCompany.hasAdmin
-                        ? " An administrator can approve your request to join."
-                        : " This company doesn't have an administrator yet."}
+                        ? tCreate("alreadyRegisteredBodyHasAdmin")
+                        : tCreate("alreadyRegisteredBodyNoAdmin")}
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="foundCompanyMessage">
-                      Message to company admin (optional)
+                      {tCreate("messageToAdminLabel")}
                     </Label>
                     <Textarea
                       id="foundCompanyMessage"
-                      placeholder="Introduce yourself or explain why you'd like to join..."
+                      placeholder={tCreate("messageToAdminPlaceholder")}
                       value={foundCompanyMessage}
                       onChange={(e) => setFoundCompanyMessage(e.target.value)}
                       rows={3}
@@ -468,10 +473,10 @@ export function CompanyInfoStep({
                       {isLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Submitting...
+                          {tCreate("submitting")}
                         </>
                       ) : (
-                        "Request to Join"
+                        tCreate("requestToJoin")
                       )}
                     </Button>
                     <Button
@@ -480,7 +485,7 @@ export function CompanyInfoStep({
                       onClick={handleResetLookup}
                       disabled={isLoading}
                     >
-                      Go Back
+                      {tCreate("goBack")}
                     </Button>
                   </div>
                 </div>
@@ -489,7 +494,7 @@ export function CompanyInfoStep({
                   {/* Companies House Lookup Section */}
                   <div className="space-y-2">
                     <Label htmlFor="companiesHouseNumber">
-                      UK Companies House Number
+                      {tCreate("chNumberLabel")}
                     </Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
@@ -497,7 +502,7 @@ export function CompanyInfoStep({
                         <Input
                           id="companiesHouseNumber"
                           type="text"
-                          placeholder="e.g., 12345678"
+                          placeholder={tCreate("chNumberPlaceholder")}
                           value={createForm.companiesHouseNumber}
                           onChange={(e) =>
                             setCreateForm({
@@ -528,13 +533,12 @@ export function CompanyInfoStep({
                         {lookupState.status === "loading" ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          "Look Up"
+                          tCreate("lookUp")
                         )}
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Optional. Enter your company number to auto-fill details
-                      from Companies House.
+                      {tCreate("chNumberHelper")}
                     </p>
                   </div>
 
@@ -548,8 +552,10 @@ export function CompanyInfoStep({
                             {lookupState.data.companyName}
                           </p>
                           <p className="text-sm text-green-700 dark:text-green-300">
-                            Company #{lookupState.data.companyNumber} &middot;{" "}
-                            {lookupState.data.companyStatus}
+                            {tCreate("companyNumberLine", {
+                              companyNumber: lookupState.data.companyNumber,
+                              companyStatus: lookupState.data.companyStatus,
+                            })}
                           </p>
                           <p className="text-sm text-green-600 dark:text-green-400 mt-1 truncate">
                             {lookupState.data.registeredAddress}
@@ -562,7 +568,7 @@ export function CompanyInfoStep({
                           onClick={handleResetLookup}
                           className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 flex-shrink-0"
                         >
-                          Change
+                          {tJoin("change")}
                         </Button>
                       </div>
                     </div>
@@ -579,8 +585,7 @@ export function CompanyInfoStep({
                             {lookupState.error}
                           </p>
                           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                            You can still create your company by entering the
-                            details manually below.
+                            {tCreate("lookupManualFallback")}
                           </p>
                         </div>
                         <Button
@@ -590,7 +595,7 @@ export function CompanyInfoStep({
                           onClick={handleResetLookup}
                           className="text-amber-600 hover:text-amber-800 dark:text-amber-400 flex-shrink-0"
                         >
-                          Try Again
+                          {tCreate("tryAgain")}
                         </Button>
                       </div>
                     </div>
@@ -605,8 +610,8 @@ export function CompanyInfoStep({
                       <div className="relative flex justify-center text-xs uppercase">
                         <span className="bg-background px-2 text-muted-foreground">
                           {lookupState.status === "idle"
-                            ? "Or enter details manually"
-                            : "Enter details"}
+                            ? tCreate("dividerManual")
+                            : tCreate("dividerEnter")}
                         </span>
                       </div>
                     </div>
@@ -615,13 +620,13 @@ export function CompanyInfoStep({
                   {/* Company Name - only editable if no lookup success */}
                   {lookupState.status !== "success" && (
                     <div className="space-y-2">
-                      <Label htmlFor="companyName">Company Name *</Label>
+                      <Label htmlFor="companyName">{tCreate("nameLabel")}</Label>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                           id="companyName"
                           type="text"
-                          placeholder="Enter company name"
+                          placeholder={tCreate("namePlaceholder")}
                           value={createForm.companyName}
                           onChange={(e) =>
                             setCreateForm({
@@ -638,13 +643,13 @@ export function CompanyInfoStep({
 
                   {/* Website URL */}
                   <div className="space-y-2">
-                    <Label htmlFor="websiteUrl">Website URL</Label>
+                    <Label htmlFor="websiteUrl">{tCreate("websiteLabel")}</Label>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="websiteUrl"
                         type="url"
-                        placeholder="https://yourcompany.com"
+                        placeholder={tCreate("websitePlaceholder")}
                         value={createForm.websiteUrl}
                         onChange={(e) =>
                           setCreateForm({
@@ -660,13 +665,13 @@ export function CompanyInfoStep({
                   {/* Address - only editable if no lookup success */}
                   {lookupState.status !== "success" && (
                     <div className="space-y-2">
-                      <Label htmlFor="address">Address</Label>
+                      <Label htmlFor="address">{tCreate("addressLabel")}</Label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                           id="address"
                           type="text"
-                          placeholder="Company address"
+                          placeholder={tCreate("addressPlaceholder")}
                           value={createForm.address}
                           onChange={(e) =>
                             setCreateForm({
@@ -682,13 +687,17 @@ export function CompanyInfoStep({
 
                   {/* Contact Email */}
                   <div className="space-y-2">
-                    <Label htmlFor="contactEmail">Contact Email</Label>
+                    <Label htmlFor="contactEmail">
+                      {tCreate("contactEmailLabel")}
+                    </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="contactEmail"
                         type="email"
-                        placeholder={userEmail || "contact@company.com"}
+                        placeholder={
+                          userEmail || tCreate("contactEmailPlaceholderDefault")
+                        }
                         value={createForm.contactEmail}
                         onChange={(e) =>
                           setCreateForm({
@@ -700,19 +709,21 @@ export function CompanyInfoStep({
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Defaults to your email if left empty
+                      {tCreate("contactEmailHelper")}
                     </p>
                   </div>
 
                   {/* Contact Phone */}
                   <div className="space-y-2">
-                    <Label htmlFor="contactPhone">Contact Phone</Label>
+                    <Label htmlFor="contactPhone">
+                      {tCreate("contactPhoneLabel")}
+                    </Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="contactPhone"
                         type="tel"
-                        placeholder="+44 ..."
+                        placeholder={tCreate("contactPhonePlaceholder")}
                         value={createForm.contactPhone}
                         onChange={(e) =>
                           setCreateForm({
@@ -726,11 +737,7 @@ export function CompanyInfoStep({
                   </div>
 
                   <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                    <p>
-                      After approval, you&apos;ll be able to add more company
-                      details including certifications, capabilities, and team
-                      members.
-                    </p>
+                    <p>{tCreate("afterApprovalHelper")}</p>
                   </div>
 
                   {error && activeTab === "create" && (
@@ -747,10 +754,10 @@ export function CompanyInfoStep({
                     {isLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Creating...
+                        {tCreate("creating")}
                       </>
                     ) : (
-                      "Create Company"
+                      tCreate("createButton")
                     )}
                   </Button>
                 </form>
@@ -760,13 +767,13 @@ export function CompanyInfoStep({
             <TabsContent value="join">
               <form onSubmit={handleJoinCompany} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="searchCompany">Search Company *</Label>
+                  <Label htmlFor="searchCompany">{tJoin("searchLabel")}</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="searchCompany"
                       type="text"
-                      placeholder="Search for a company..."
+                      placeholder={tJoin("searchPlaceholder")}
                       value={joinForm.searchQuery}
                       onChange={(e) => {
                         setJoinForm({
@@ -809,7 +816,7 @@ export function CompanyInfoStep({
                           {company.hasAdmin && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              Has members
+                              {tJoin("hasMembers")}
                             </span>
                           )}
                         </button>
@@ -823,8 +830,7 @@ export function CompanyInfoStep({
                     !isSearching && (
                       <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
                         <p className="text-sm text-muted-foreground">
-                          No companies found. Try a different search or create a
-                          new company.
+                          {tJoin("noResults")}
                         </p>
                       </div>
                     )}
@@ -839,7 +845,7 @@ export function CompanyInfoStep({
                         {joinForm.selectedCompany.companyName}
                       </p>
                       <p className="text-xs text-green-600 dark:text-green-400">
-                        Selected company
+                        {tJoin("selectedLabel")}
                       </p>
                     </div>
                     <Button
@@ -849,18 +855,16 @@ export function CompanyInfoStep({
                       onClick={handleClearSelection}
                       className="text-green-600 hover:text-green-800"
                     >
-                      Change
+                      {tJoin("change")}
                     </Button>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="joinMessage">
-                    Message to Company Admin (optional)
-                  </Label>
+                  <Label htmlFor="joinMessage">{tJoin("messageLabel")}</Label>
                   <Textarea
                     id="joinMessage"
-                    placeholder="Introduce yourself or explain why you want to join..."
+                    placeholder={tJoin("messagePlaceholder")}
                     value={joinForm.message}
                     onChange={(e) =>
                       setJoinForm({ ...joinForm, message: e.target.value })
@@ -871,8 +875,7 @@ export function CompanyInfoStep({
 
                 <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg text-sm">
                   <p className="text-amber-800 dark:text-amber-200">
-                    Your request will be sent to the company administrator for
-                    approval.
+                    {tJoin("infoAlert")}
                   </p>
                 </div>
 
@@ -890,10 +893,10 @@ export function CompanyInfoStep({
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Submitting...
+                      {tJoin("submitting")}
                     </>
                   ) : (
-                    "Request to Join"
+                    tJoin("requestToJoin")
                   )}
                 </Button>
               </form>

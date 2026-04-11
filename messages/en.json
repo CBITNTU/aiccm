@@ -154,5 +154,177 @@
         "signInToAccept": "Sign In to Accept"
       }
     }
+  },
+  "Onboarding": {
+    "page": {
+      "verifyEmail": "Verify Email",
+      "profile": "Profile",
+      "accountType": "Account Type",
+      "company": "Company",
+      "complete": "Complete",
+      "loadingProgress": "Loading your progress..."
+    },
+    "emailVerification": {
+      "title": "Verify Your Email",
+      "sentTo": "We've sent a verification link to:",
+      "waiting": "Waiting for verification...",
+      "instructions": "Click the link in your email to verify your address. Once verified, this page will automatically update.",
+      "spamHint": "Check your spam folder if you don't see the email",
+      "resend": "Resend Verification Email",
+      "resending": "Sending...",
+      "toastSent": "Verification email sent!",
+      "toastSentDescription": "Please check your inbox (and spam folder).",
+      "errorFallback": "Failed to send email",
+      "errorResendFallback": "Failed to resend verification email"
+    },
+    "profileInfo": {
+      "title": "Your Profile",
+      "titleJoining": "Complete Your Profile to Join {companyName}",
+      "description": "Tell us a bit about yourself",
+      "descriptionJoining": "Tell us a bit about yourself before joining your team",
+      "firstNameLabel": "First Name",
+      "firstNamePlaceholder": "First name",
+      "lastNameLabel": "Last Name",
+      "lastNamePlaceholder": "Last name",
+      "jobTitleLabel": "Job Title / Role",
+      "jobTitlePlaceholder": "e.g. CEO, Project Manager, Engineer",
+      "continue": "Continue",
+      "saving": "Saving...",
+      "errorRequired": "Please fill in all fields",
+      "errorFallback": "Failed to save profile"
+    },
+    "accountType": {
+      "title": "How would you like to use TNDRX?",
+      "subtitle": "Choose the option that best describes your needs",
+      "individualTitle": "Individual",
+      "individualDescription": "Browse and explore tenders without company affiliation",
+      "individualBullet1": "Search and view public tenders",
+      "individualBullet2": "Access tender details and analysis",
+      "individualBullet3": "Join a company later if needed",
+      "businessTitle": "Business",
+      "businessDescription": "Register your company or join an existing one",
+      "businessBullet1": "Get matched with relevant tenders",
+      "businessBullet2": "Collaborate with team members",
+      "businessBullet3": "Build your company profile",
+      "continue": "Continue",
+      "saving": "Saving...",
+      "errorRequired": "Please select an account type",
+      "errorFallback": "Failed to save",
+      "errorSaveFallback": "Failed to save account type"
+    },
+    "companyInfo": {
+      "shared": {
+        "title": "Company Information",
+        "description": "Register a new company or join an existing one",
+        "tabCreate": "Create New",
+        "tabJoin": "Join Existing"
+      },
+      "create": {
+        "chNumberLabel": "UK Companies House Number",
+        "chNumberPlaceholder": "e.g., 12345678",
+        "chNumberHelper": "Optional. Enter your company number to auto-fill details from Companies House.",
+        "lookUp": "Look Up",
+        "toastFound": "Company found!",
+        "toastFoundDescription": "Details have been auto-filled from Companies House.",
+        "errorNotFound": "Company not found on Companies House.",
+        "errorLookupFailed": "Failed to look up company.",
+        "errorLookupConnection": "Failed to connect to Companies House. Please try again.",
+        "lookupManualFallback": "You can still create your company by entering the details manually below.",
+        "tryAgain": "Try Again",
+        "companyNumberLine": "Company #{companyNumber} · {companyStatus}",
+        "alreadyRegisteredTitle": "Company Already Registered",
+        "alreadyRegisteredBodyHasAdmin": "This company is already on our platform. An administrator can approve your request to join.",
+        "alreadyRegisteredBodyNoAdmin": "This company is already on our platform. This company doesn't have an administrator yet.",
+        "messageToAdminLabel": "Message to company admin (optional)",
+        "messageToAdminPlaceholder": "Introduce yourself or explain why you'd like to join...",
+        "requestToJoin": "Request to Join",
+        "submitting": "Submitting...",
+        "goBack": "Go Back",
+        "dividerManual": "Or enter details manually",
+        "dividerEnter": "Enter details",
+        "nameLabel": "Company Name *",
+        "namePlaceholder": "Enter company name",
+        "websiteLabel": "Website URL",
+        "websitePlaceholder": "https://yourcompany.com",
+        "addressLabel": "Address",
+        "addressPlaceholder": "Company address",
+        "contactEmailLabel": "Contact Email",
+        "contactEmailPlaceholderDefault": "contact@company.com",
+        "contactEmailHelper": "Defaults to your email if left empty",
+        "contactPhoneLabel": "Contact Phone",
+        "contactPhonePlaceholder": "+44 ...",
+        "afterApprovalHelper": "After approval, you'll be able to add more company details including certifications, capabilities, and team members.",
+        "errorNameRequired": "Company name is required",
+        "errorWebsiteRequired": "Website URL is required. Please provide at least a website for your company.",
+        "errorWebsiteInvalid": "Please enter a valid website URL (e.g., example.com or https://example.com)",
+        "errorCreateFallback": "Failed to create company",
+        "errorJoinFallback": "Failed to submit join request",
+        "toastCreated": "Company created!",
+        "toastCreatedDescription": "\"{companyName}\" has been registered.",
+        "toastJoinRequested": "Request submitted!",
+        "toastJoinRequestedDescription": "Your request to join \"{companyName}\" has been sent.",
+        "createButton": "Create Company",
+        "creating": "Creating..."
+      },
+      "join": {
+        "searchLabel": "Search Company *",
+        "searchPlaceholder": "Search for a company...",
+        "noResults": "No companies found. Try a different search or create a new company.",
+        "hasMembers": "Has members",
+        "selectedLabel": "Selected company",
+        "change": "Change",
+        "messageLabel": "Message to Company Admin (optional)",
+        "messagePlaceholder": "Introduce yourself or explain why you want to join...",
+        "infoAlert": "Your request will be sent to the company administrator for approval.",
+        "toastSubmitted": "Request submitted!",
+        "toastSubmittedDescription": "Your request to join \"{companyName}\" has been sent.",
+        "requestToJoin": "Request to Join",
+        "submitting": "Submitting...",
+        "errorRequired": "Please select a company to join",
+        "errorFallback": "Failed to submit request"
+      }
+    },
+    "invitedCompany": {
+      "joiningTitle": "You're Joining {companyName}",
+      "invitedBy": "{inviterName} invited you to join their team",
+      "yourTeam": "Your team",
+      "afterYouContinue": "After you continue:",
+      "step1": "A platform administrator will review your membership",
+      "step2": "You'll receive access once approved",
+      "step3": "You can then collaborate with your team",
+      "continue": "Continue",
+      "processing": "Processing...",
+      "errorFallback": "Failed to continue"
+    },
+    "pendingApproval": {
+      "newCompany": {
+        "title": "Company Registration Complete!",
+        "description": "Your company \"{companyName}\" has been registered and is pending approval.",
+        "step1": "Our team will review your company information",
+        "step2": "You'll receive an email once your account is approved",
+        "step3": "After approval, you can complete your company profile and start exploring tenders"
+      },
+      "joinCompany": {
+        "title": "Join Request Submitted!",
+        "description": "Your request to join \"{companyName}\" has been sent to the company administrator.",
+        "step1": "The company administrator will review your request",
+        "step2": "Our platform team will also verify your account",
+        "step3": "You'll receive an email once both approvals are complete"
+      },
+      "individual": {
+        "title": "Profile Complete!",
+        "description": "Your individual account has been set up and is pending approval.",
+        "step1": "Our team will review your account",
+        "step2": "You'll receive an email once your account is approved",
+        "step3": "After approval, you can explore tenders and join companies"
+      },
+      "shared": {
+        "whatHappensNext": "What happens next?",
+        "keepEyeOnInbox": "Keep an eye on your inbox",
+        "emailHint": "We'll send you an email as soon as your account is approved. This usually takes 1-2 business days.",
+        "continue": "Continue",
+        "pleaseWait": "Please wait..."
+      }
+    }
   }
 }

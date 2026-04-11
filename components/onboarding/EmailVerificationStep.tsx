@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -16,6 +17,7 @@ export function EmailVerificationStep({
   email,
   onVerified,
 }: EmailVerificationStepProps) {
+  const t = useTranslations("Onboarding.emailVerification");
   const [isResending, setIsResending] = useState(false);
   const [isPolling, setIsPolling] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,16 +60,16 @@ export function EmailVerificationStep({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to resend verification email");
+        throw new Error(data.error || t("errorResendFallback"));
       }
 
-      toast.success("Verification email sent!", {
-        description: "Please check your inbox (and spam folder).",
+      toast.success(t("toastSent"), {
+        description: t("toastSentDescription"),
       });
     } catch (error) {
       console.error("Error resending verification:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to send email";
+        error instanceof Error ? error.message : t("errorFallback");
       setError(message);
     } finally {
       setIsResending(false);
@@ -81,33 +83,30 @@ export function EmailVerificationStep({
           <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full mx-auto mb-4 flex items-center justify-center">
             <Mail className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <CardTitle className="text-2xl">Verify Your Email</CardTitle>
+          <CardTitle className="text-2xl">{t("title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-center">
-            <p className="text-muted-foreground mb-2">
-              We&apos;ve sent a verification link to:
-            </p>
+            <p className="text-muted-foreground mb-2">{t("sentTo")}</p>
             <p className="font-medium text-foreground text-lg">{email}</p>
           </div>
 
           <div className="bg-muted/50 p-4 rounded-lg text-center">
             <div className="flex items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Waiting for verification...</span>
+              <span className="text-sm">{t("waiting")}</span>
             </div>
           </div>
 
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground text-center">
-              Click the link in your email to verify your address. Once
-              verified, this page will automatically update.
+              {t("instructions")}
             </p>
 
             <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg text-sm">
               <CheckCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
               <span className="text-amber-800 dark:text-amber-200">
-                Check your spam folder if you don&apos;t see the email
+                {t("spamHint")}
               </span>
             </div>
           </div>
@@ -128,12 +127,12 @@ export function EmailVerificationStep({
               {isResending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Sending...
+                  {t("resending")}
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Resend Verification Email
+                  {t("resend")}
                 </>
               )}
             </Button>

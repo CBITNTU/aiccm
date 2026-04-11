@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,6 +20,7 @@ interface AccountTypeStepProps {
 }
 
 export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
+  const t = useTranslations("Onboarding.accountType");
   const [selectedType, setSelectedType] = useState<
     "individual" | "business" | null
   >(null);
@@ -27,7 +29,7 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
 
   const handleContinue = async () => {
     if (!selectedType) {
-      setError("Please select an account type");
+      setError(t("errorRequired"));
       return;
     }
 
@@ -47,13 +49,14 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save account type");
+        throw new Error(data.error || t("errorSaveFallback"));
       }
 
       onComplete(selectedType);
     } catch (error) {
       console.error("Error saving account type:", error);
-      const message = error instanceof Error ? error.message : "Failed to save";
+      const message =
+        error instanceof Error ? error.message : t("errorFallback");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -64,12 +67,8 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
     <div className="w-full max-w-2xl mx-auto">
       <Card className="card-professional">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">
-            How would you like to use TNDRX?
-          </CardTitle>
-          <p className="text-muted-foreground mt-2">
-            Choose the option that best describes your needs
-          </p>
+          <CardTitle className="text-2xl">{t("title")}</CardTitle>
+          <p className="text-muted-foreground mt-2">{t("subtitle")}</p>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid md:grid-cols-2 gap-4">
@@ -96,22 +95,24 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
                   }`}
                 />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Individual</h3>
+              <h3 className="font-semibold text-lg mb-2">
+                {t("individualTitle")}
+              </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Browse and explore tenders without company affiliation
+                {t("individualDescription")}
               </p>
               <ul className="text-sm text-muted-foreground space-y-2">
                 <li className="flex items-start gap-2">
                   <Search className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Search and view public tenders</span>
+                  <span>{t("individualBullet1")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Access tender details and analysis</span>
+                  <span>{t("individualBullet2")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Building2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Join a company later if needed</span>
+                  <span>{t("individualBullet3")}</span>
                 </li>
               </ul>
               {selectedType === "individual" && (
@@ -156,22 +157,24 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
                   }`}
                 />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Business</h3>
+              <h3 className="font-semibold text-lg mb-2">
+                {t("businessTitle")}
+              </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Register your company or join an existing one
+                {t("businessDescription")}
               </p>
               <ul className="text-sm text-muted-foreground space-y-2">
                 <li className="flex items-start gap-2">
                   <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Get matched with relevant tenders</span>
+                  <span>{t("businessBullet1")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Users className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Collaborate with team members</span>
+                  <span>{t("businessBullet2")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Building2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Build your company profile</span>
+                  <span>{t("businessBullet3")}</span>
                 </li>
               </ul>
               {selectedType === "business" && (
@@ -208,10 +211,10 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
+                {t("saving")}
               </>
             ) : (
-              "Continue"
+              t("continue")
             )}
           </Button>
         </CardContent>

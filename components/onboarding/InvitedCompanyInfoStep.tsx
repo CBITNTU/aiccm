@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Loader2, UserPlus } from "lucide-react";
@@ -17,6 +18,7 @@ export function InvitedCompanyInfoStep({
   inviterName,
   onComplete,
 }: InvitedCompanyInfoStepProps) {
+  const t = useTranslations("Onboarding.invitedCompany");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,14 +42,14 @@ export function InvitedCompanyInfoStep({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to continue");
+        throw new Error(data.error || t("errorFallback"));
       }
 
       onComplete();
     } catch (error) {
       console.error("Error confirming invitation:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to continue";
+        error instanceof Error ? error.message : t("errorFallback");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -62,11 +64,11 @@ export function InvitedCompanyInfoStep({
             <Building2 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
           <CardTitle className="text-2xl">
-            You&apos;re Joining {companyName}
+            {t("joiningTitle", { companyName })}
           </CardTitle>
           <p className="text-muted-foreground mt-2">
             <UserPlus className="w-4 h-4 inline-block mr-1" />
-            {inviterName} invited you to join their team
+            {t("invitedBy", { inviterName })}
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -77,17 +79,17 @@ export function InvitedCompanyInfoStep({
               </div>
               <div>
                 <p className="font-medium">{companyName}</p>
-                <p className="text-sm text-muted-foreground">Your team</p>
+                <p className="text-sm text-muted-foreground">{t("yourTeam")}</p>
               </div>
             </div>
           </div>
 
           <div className="text-sm text-muted-foreground space-y-2">
-            <p>After you continue:</p>
+            <p>{t("afterYouContinue")}</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>A platform administrator will review your membership</li>
-              <li>You&apos;ll receive access once approved</li>
-              <li>You can then collaborate with your team</li>
+              <li>{t("step1")}</li>
+              <li>{t("step2")}</li>
+              <li>{t("step3")}</li>
             </ul>
           </div>
 
@@ -105,10 +107,10 @@ export function InvitedCompanyInfoStep({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Processing...
+                {t("processing")}
               </>
             ) : (
-              "Continue"
+              t("continue")
             )}
           </Button>
         </CardContent>

@@ -10,8 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const LOCALES = ["en"] as const;
+import { locales as LOCALES } from "@/i18n/locales";
 
 export function LocaleSwitcher() {
   const t = useTranslations("LocaleSwitcher");
@@ -33,7 +32,7 @@ export function LocaleSwitcher() {
   return (
     <Select value={locale} onValueChange={onChange} disabled={isPending}>
       <SelectTrigger
-        className="h-9 w-[110px]"
+        className="h-9 min-w-[110px] w-[min(100%,140px)]"
         aria-label={t("label")}
       >
         <SelectValue />

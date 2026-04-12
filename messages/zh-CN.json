@@ -1,0 +1,1271 @@
+{
+  "Metadata": {
+    "title": "TNDRX - 协同商务市场",
+    "description": "借助 AI 发现企业优势、匹配招标并组建联合体。构建咨询团队，在 TNDRX 上拓展业务。"
+  },
+  "Header": {
+    "brand": "TNDRX",
+    "tagline": "协同商务市场",
+    "dashboard": "控制台",
+    "signOut": "退出登录",
+    "signIn": "登录",
+    "getStarted": "开始使用",
+    "menuToggle": "切换导航菜单"
+  },
+  "LocaleSwitcher": {
+    "label": "语言",
+    "en": "English",
+    "zh-CN": "简体中文"
+  },
+  "HeroSection": {
+    "headlineBrand": "TNDRX",
+    "headlineAccent": "以能力赋能协作",
+    "subheadline": "借助 AI 发现企业优势、匹配招标并组建联合体。",
+    "ctaAddCompany": "添加企业",
+    "ctaExploreTenders": "浏览招标",
+    "stats": {
+      "networkCompanies": "网络企业",
+      "networkCompaniesDescription": "我们网络中的活跃企业",
+      "availableOpportunities": "可用机会",
+      "availableOpportunitiesDescription": "当前招标机会",
+      "smartMatches": "智能匹配",
+      "smartMatchesDescription": "由 AI 促成的连接",
+      "activeProjects": "进行中项目",
+      "activeProjectsDescription": "已组建的协作联合体"
+    },
+    "features": {
+      "profilingTitle": "智能企业画像",
+      "profilingDescription": "AI 分析业务数据，自动生成全面的能力画像，识别优势与机会。",
+      "matchingTitle": "智能机会匹配",
+      "matchingDescription": "通过可解释的 AI 评分与详细能力分析，匹配相关机会，支持明智决策。",
+      "networkTitle": "区域合作网络",
+      "networkDescription": "与区域内互补企业建立战略合作，共同竞标更大机会。"
+    },
+    "impact": {
+      "title": "平台影响力",
+      "subtitle": "推动东米德兰兹地区真实增长"
+    },
+    "platformFeatures": {
+      "title": "平台功能",
+      "subtitle": "了解 AI 匹配与区域合作如何改变您的商业机会"
+    },
+    "contact": {
+      "title": "联系我们",
+      "subtitle": "准备加入东米德兰兹商业网络？",
+      "emailUs": "发邮件",
+      "officeHours": "办公时间",
+      "weekdays": "周一至周五：9:00 - 17:00",
+      "weekend": "周六至周日：休息"
+    },
+    "footer": {
+      "logoAlt": "商业与产业转型中心",
+      "poweredBy": "由 TNDRX 驱动"
+    }
+  },
+  "Auth": {
+    "main": {
+      "welcome": "欢迎使用 TNDRX",
+      "subheading": "进入您的招标控制台",
+      "cardTitle": "账户访问",
+      "tabSignIn": "登录",
+      "tabSignUp": "注册"
+    },
+    "signIn": {
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "请输入邮箱",
+      "passwordLabel": "密码",
+      "passwordPlaceholder": "请输入密码",
+      "submit": "登录",
+      "submitLoading": "正在登录…",
+      "welcomeBack": "欢迎回来！",
+      "redirecting": "正在跳转…",
+      "errorUnverifiedEmail": "请先查收邮件并点击验证链接后再登录。",
+      "errorInvalidCredentials": "邮箱或密码不正确，请检查后重试。",
+      "errorFallback": "登录失败"
+    },
+    "signUp": {
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "请输入邮箱",
+      "passwordLabel": "密码",
+      "passwordPlaceholder": "设置密码（至少 6 位）",
+      "confirmPasswordLabel": "确认密码",
+      "confirmPasswordPlaceholder": "再次输入密码",
+      "helper": "注册后需验证邮箱并完成简要资料设置。",
+      "submit": "创建账户",
+      "submitLoading": "正在创建账户…",
+      "errorPasswordsMismatch": "两次输入的密码不一致",
+      "errorPasswordTooShort": "密码至少需要 6 个字符",
+      "errorFallback": "创建账户失败",
+      "successTitle": "账户已创建！",
+      "successSentTo": "我们已向以下邮箱发送验证链接：",
+      "successNextSteps": "下一步：",
+      "successStep1": "查收收件箱（及垃圾邮件）",
+      "successStep2": "点击邮件中的验证链接",
+      "successStep3": "完成资料设置",
+      "successExpiry": "验证链接 24 小时内有效",
+      "successBackToSignIn": "返回登录"
+    },
+    "invite": {
+      "validating": "正在验证邀请…",
+      "loading": "加载中…",
+      "invalidTitle": "邀请无效",
+      "invalidFallback": "此邀请链接无效。",
+      "invalidHelper": "请联系公司管理员重新发送邀请。",
+      "invalidGoToSignIn": "前往登录",
+      "errorNoToken": "未提供邀请令牌",
+      "errorInvalid": "邀请无效",
+      "errorValidateFallback": "验证邀请失败",
+      "successTitle": "成功！",
+      "successRedirecting": "正在跳转…",
+      "newUser": {
+        "title": "加入 {companyName}",
+        "description": "{inviterName} 邀请您加入团队。创建账户以开始。",
+        "emailLabel": "邮箱：",
+        "passwordLabel": "密码 *",
+        "passwordPlaceholder": "至少 8 位字符",
+        "confirmPasswordLabel": "确认密码 *",
+        "confirmPasswordPlaceholder": "再次输入密码",
+        "submit": "创建账户并加入",
+        "submitLoading": "正在创建账户…",
+        "helper": "下一步将完善您的资料。",
+        "errorPasswordEmpty": "请输入密码",
+        "errorPasswordTooShort": "密码至少需要 6 个字符",
+        "errorPasswordsMismatch": "两次输入的密码不一致",
+        "errorCreateFallback": "创建账户失败",
+        "toastPleaseSignIn": "账户已创建！请登录以继续。",
+        "redirectPleaseSignIn": "账户已创建！请登录以继续入职流程。",
+        "toastCreated": "账户创建成功！"
+      },
+      "loggedIn": {
+        "title": "加入 {companyName}",
+        "description": "{inviterName} 邀请您加入团队",
+        "wrongAccountAlert": "此邀请发送至 {inviteEmail}。您当前以 {currentEmail} 登录。请退出并使用正确账户登录。",
+        "companyLabel": "公司：",
+        "invitedByLabel": "邀请人：",
+        "accept": "接受邀请",
+        "accepting": "接受中…",
+        "helper": "接受后，平台管理员将审核您的加入申请。",
+        "toastAccepted": "已接受邀请！",
+        "errorAcceptFallback": "接受邀请失败"
+      },
+      "loggedOut": {
+        "title": "加入 {companyName}",
+        "description": "{inviterName} 邀请您加入团队",
+        "alert": "您已使用 {inviteEmail} 拥有账户。请登录以接受此邀请。",
+        "signInToAccept": "登录以接受"
+      }
+    }
+  },
+  "Onboarding": {
+    "page": {
+      "verifyEmail": "验证邮箱",
+      "profile": "资料",
+      "accountType": "账户类型",
+      "company": "公司",
+      "complete": "完成",
+      "loadingProgress": "正在加载进度…"
+    },
+    "emailVerification": {
+      "title": "验证邮箱",
+      "sentTo": "我们已向以下地址发送验证链接：",
+      "waiting": "等待验证…",
+      "instructions": "请点击邮件中的链接完成验证。验证成功后，本页面将自动更新。",
+      "spamHint": "若未收到邮件，请查看垃圾邮件文件夹",
+      "resend": "重发验证邮件",
+      "resending": "发送中…",
+      "toastSent": "验证邮件已发送！",
+      "toastSentDescription": "请查收收件箱（及垃圾邮件）。",
+      "errorFallback": "发送邮件失败",
+      "errorResendFallback": "重发验证邮件失败"
+    },
+    "profileInfo": {
+      "title": "您的资料",
+      "titleJoining": "完善资料以加入 {companyName}",
+      "description": "请简单介绍您自己",
+      "descriptionJoining": "加入团队前请简单介绍您自己",
+      "firstNameLabel": "名",
+      "firstNamePlaceholder": "名",
+      "lastNameLabel": "姓",
+      "lastNamePlaceholder": "姓",
+      "jobTitleLabel": "职位 / 角色",
+      "jobTitlePlaceholder": "例如：CEO、项目经理、工程师",
+      "continue": "继续",
+      "saving": "保存中…",
+      "errorRequired": "请填写所有字段",
+      "errorFallback": "保存资料失败"
+    },
+    "accountType": {
+      "title": "您希望如何使用 TNDRX？",
+      "subtitle": "选择最符合您需求的选项",
+      "individualTitle": "个人",
+      "individualDescription": "不关联公司即可浏览与探索招标",
+      "individualBullet1": "搜索并查看公开招标",
+      "individualBullet2": "查看招标详情与分析",
+      "individualBullet3": "需要时可再加入公司",
+      "businessTitle": "企业",
+      "businessDescription": "注册新公司或加入已有公司",
+      "businessBullet1": "获得相关招标匹配",
+      "businessBullet2": "与团队成员协作",
+      "businessBullet3": "建立公司档案",
+      "continue": "继续",
+      "saving": "保存中…",
+      "errorRequired": "请选择账户类型",
+      "errorFallback": "保存失败",
+      "errorSaveFallback": "保存账户类型失败"
+    },
+    "companyInfo": {
+      "shared": {
+        "title": "公司信息",
+        "description": "注册新公司或加入已有公司",
+        "tabCreate": "新建",
+        "tabJoin": "加入已有"
+      },
+      "create": {
+        "chNumberLabel": "英国 Companies House 编号",
+        "chNumberPlaceholder": "例如：12345678",
+        "chNumberHelper": "选填。输入公司编号可从 Companies House 自动填充信息。",
+        "lookUp": "查询",
+        "toastFound": "已找到公司！",
+        "toastFoundDescription": "已从 Companies House 自动填充详情。",
+        "errorNotFound": "在 Companies House 未找到该公司。",
+        "errorLookupFailed": "查询公司失败。",
+        "errorLookupConnection": "无法连接 Companies House，请重试。",
+        "lookupManualFallback": "您仍可在下方手动填写信息创建公司。",
+        "tryAgain": "重试",
+        "companyNumberLine": "公司 #{companyNumber} · {companyStatus}",
+        "alreadyRegisteredTitle": "公司已注册",
+        "alreadyRegisteredBodyHasAdmin": "该公司已在平台。管理员可审批您的加入申请。",
+        "alreadyRegisteredBodyNoAdmin": "该公司已在平台，目前尚无管理员。",
+        "messageToAdminLabel": "给公司管理员的留言（选填）",
+        "messageToAdminPlaceholder": "自我介绍或说明加入原因…",
+        "requestToJoin": "申请加入",
+        "submitting": "提交中…",
+        "goBack": "返回",
+        "dividerManual": "或手动填写",
+        "dividerEnter": "填写信息",
+        "nameLabel": "公司名称 *",
+        "namePlaceholder": "请输入公司名称",
+        "websiteLabel": "网站 URL",
+        "websitePlaceholder": "https://yourcompany.com",
+        "addressLabel": "地址",
+        "addressPlaceholder": "公司地址",
+        "contactEmailLabel": "联系邮箱",
+        "contactEmailPlaceholderDefault": "contact@company.com",
+        "contactEmailHelper": "留空则默认使用您的邮箱",
+        "contactPhoneLabel": "联系电话",
+        "contactPhonePlaceholder": "+44 …",
+        "afterApprovalHelper": "通过审核后，您可补充认证、能力与团队成员等信息。",
+        "errorNameRequired": "公司名称为必填项",
+        "errorWebsiteRequired": "网站 URL 为必填项，请至少提供公司网站。",
+        "errorWebsiteInvalid": "请输入有效的网站地址（例如 example.com 或 https://example.com）",
+        "errorCreateFallback": "创建公司失败",
+        "errorJoinFallback": "提交加入申请失败",
+        "toastCreated": "公司已创建！",
+        "toastCreatedDescription": "「{companyName}」已注册。",
+        "toastJoinRequested": "申请已提交！",
+        "toastJoinRequestedDescription": "您加入「{companyName}」的申请已发送。",
+        "createButton": "创建公司",
+        "creating": "创建中…"
+      },
+      "join": {
+        "searchLabel": "搜索公司 *",
+        "searchPlaceholder": "搜索公司…",
+        "noResults": "未找到公司。请更换关键词或创建新公司。",
+        "hasMembers": "已有成员",
+        "selectedLabel": "已选公司",
+        "change": "更改",
+        "messageLabel": "给公司管理员的留言（选填）",
+        "messagePlaceholder": "自我介绍或说明加入原因…",
+        "infoAlert": "申请将发送给公司管理员审批。",
+        "toastSubmitted": "申请已提交！",
+        "toastSubmittedDescription": "您加入「{companyName}」的申请已发送。",
+        "requestToJoin": "申请加入",
+        "submitting": "提交中…",
+        "errorRequired": "请选择要加入的公司",
+        "errorFallback": "提交申请失败"
+      }
+    },
+    "invitedCompany": {
+      "joiningTitle": "您将加入 {companyName}",
+      "invitedBy": "{inviterName} 邀请您加入团队",
+      "yourTeam": "您的团队",
+      "afterYouContinue": "继续之后：",
+      "step1": "平台管理员将审核您的成员资格",
+      "step2": "通过后将获得访问权限",
+      "step3": "随后可与团队协作",
+      "continue": "继续",
+      "processing": "处理中…",
+      "errorFallback": "继续失败"
+    },
+    "pendingApproval": {
+      "newCompany": {
+        "title": "公司注册已提交！",
+        "description": "您的公司「{companyName}」已注册，待审核。",
+        "step1": "我们将审核您的公司信息",
+        "step2": "账户通过后将邮件通知您",
+        "step3": "通过后可完善公司档案并开始浏览招标"
+      },
+      "joinCompany": {
+        "title": "加入申请已提交！",
+        "description": "您加入「{companyName}」的申请已发送给公司管理员。",
+        "step1": "公司管理员将审核您的申请",
+        "step2": "平台团队也会验证您的账户",
+        "step3": "两项均通过后将邮件通知您"
+      },
+      "individual": {
+        "title": "资料已完成！",
+        "description": "您的个人账户已设置，待审核。",
+        "step1": "我们将审核您的账户",
+        "step2": "通过后将邮件通知您",
+        "step3": "通过后可浏览招标并加入公司"
+      },
+      "shared": {
+        "whatHappensNext": "接下来会怎样？",
+        "keepEyeOnInbox": "请关注收件箱",
+        "emailHint": "账户通过审核后我们会发邮件，通常需 1–2 个工作日。",
+        "continue": "继续",
+        "pleaseWait": "请稍候…"
+      }
+    }
+  },
+  "AdminLayout": {
+    "loading": "正在加载超级管理员权限…",
+    "accessDenied": "需要超级管理员权限"
+  },
+  "AdminOverview": {
+    "title": "概览",
+    "description": "平台统计与待处理事项。",
+    "stats": {
+      "totalCompanies": "公司总数",
+      "totalUsers": "用户总数",
+      "activeTenders": "活跃招标",
+      "pendingActions": "待处理"
+    },
+    "attention": {
+      "title": "需要关注的事项",
+      "review": "处理"
+    },
+    "actionItems": {
+      "pendingUserApprovalsLabel": "待审批用户",
+      "pendingUserApprovalsDescription": "等待账户审批的用户",
+      "pendingJoinRequestsLabel": "待处理加入申请",
+      "pendingJoinRequestsDescription": "待审核的公司加入请求",
+      "verificationRequestsLabel": "认证申请",
+      "verificationRequestsDescription": "公司认证提交"
+    }
+  },
+  "AdminCompanyDetail": {
+    "srTitle": "公司详情",
+    "srDescription": "查看公司详情与管理设置",
+    "verified": "已认证",
+    "unverified": "未认证",
+    "notProvided": "未提供",
+    "notAssessed": "未评估",
+    "none": "无",
+    "tabs": {
+      "overview": "概览",
+      "capabilities": "能力",
+      "ai": "AI 分析",
+      "settings": "设置"
+    },
+    "sections": {
+      "businessInformation": "工商信息",
+      "contactInformation": "联系信息",
+      "status": "状态",
+      "keyCapabilities": "核心能力",
+      "certifications": "认证",
+      "equipment": "设备",
+      "pastProjects": "过往项目",
+      "aiSuggestedCompetencies": "AI 建议能力",
+      "aiSummary": "AI 摘要",
+      "assessmentRatings": "评估评分",
+      "aiCapabilities": "AI 能力",
+      "aiStrengths": "AI 优势",
+      "performanceBenchmark": "绩效基准",
+      "executiveSummary": "执行摘要",
+      "usageOverrides": "单公司用量覆盖"
+    },
+    "fields": {
+      "companyName": "公司名称",
+      "companiesHouse": "Companies House 编号",
+      "description": "描述",
+      "address": "地址",
+      "postcode": "邮编",
+      "contactPerson": "联系人",
+      "email": "邮箱",
+      "phone": "电话",
+      "website": "网站",
+      "verificationStatus": "认证状态",
+      "verifiedAt": "认证时间",
+      "created": "创建时间",
+      "updated": "更新时间",
+      "digitalMaturity": "数字化成熟度",
+      "safetyRating": "安全评级",
+      "marketPosition": "市场地位"
+    },
+    "empty": {
+      "capabilities": "暂无能力项",
+      "certifications": "暂无认证",
+      "equipment": "暂无设备",
+      "aiSummary": "尚未生成 AI 分析"
+    },
+    "scoreOutOf": "{score}/100",
+    "usage": {
+      "description": "为此公司设置自定义限额。留空则使用平台默认。",
+      "matchingLabel": "招标匹配次数 / 月",
+      "analysisLabel": "AI 分析次数 / 月",
+      "currentlyUsed": "本月已用：{used}/{limit}",
+      "resets": "重置 {date}",
+      "defaultPlaceholder": "默认",
+      "saveButton": "保存覆盖"
+    },
+    "toasts": {
+      "matchingLimitInvalid": "匹配限额须为非负数或留空以使用默认。",
+      "analysisLimitInvalid": "分析限额须为非负数或留空以使用默认。",
+      "updateSuccess": "已更新 {name} 的用量限制",
+      "updateFailed": "更新用量限制失败"
+    }
+  },
+  "AdminApprovals": {
+    "title": "审批",
+    "description": "审核待处理的用户与公司加入申请。",
+    "unknownUser": "未知",
+    "notProvided": "未提供",
+    "cardTitle": "待审批",
+    "cardDescription": "审核新用户注册与公司加入申请",
+    "tabs": {
+      "users": "待审批用户",
+      "requests": "加入申请"
+    },
+    "emptyUsers": "暂无待审批用户",
+    "emptyRequests": "暂无加入申请",
+    "signupTypes": {
+      "individual": "个人",
+      "newCompany": "新公司",
+      "joinCompany": "加入公司"
+    },
+    "hideCompanyDetails": "隐藏公司详情",
+    "viewCompanyDetails": "查看公司详情",
+    "rejectButton": "拒绝",
+    "approveButton": "批准",
+    "companyDetailsHeading": "公司详情",
+    "editButton": "编辑",
+    "aiAnalyzeButton": "AI 分析",
+    "cancelButton": "取消",
+    "saveButton": "保存",
+    "form": {
+      "companyName": "公司名称",
+      "companyNamePlaceholder": "公司名称",
+      "companiesHouse": "Companies House 编号",
+      "companiesHousePlaceholder": "例如 12345678",
+      "website": "网站",
+      "websiteUrl": "网站 URL",
+      "websitePlaceholder": "https://…",
+      "contactPerson": "联系人",
+      "contactPersonPlaceholder": "联系人姓名",
+      "contactEmail": "联系邮箱",
+      "contactEmailPlaceholder": "contact@company.com",
+      "contactPhone": "联系电话",
+      "contactPhonePlaceholder": "+44…"
+    },
+    "messageLabel": "留言：",
+    "awaitingCompanyAdmin": "等待公司管理员审批",
+    "waitingTooltip": "等待公司管理员审批",
+    "companyApprovedBadge": "公司已批准",
+    "rejectDialog": {
+      "title": "拒绝 {name}",
+      "descriptionUser": "请填写拒绝该用户的理由。",
+      "descriptionRequest": "请填写拒绝该加入申请的理由。",
+      "reasonLabel": "理由（选填）",
+      "reasonPlaceholder": "填写拒绝原因…",
+      "cancel": "取消",
+      "confirm": "拒绝"
+    },
+    "approvalDialog": {
+      "title": "批准用户与公司",
+      "description": "此操作将同时批准用户及其公司注册。",
+      "userDetails": "用户详情",
+      "nameLabel": "姓名：",
+      "emailLabel": "邮箱：",
+      "jobTitleLabel": "职位：",
+      "companyHeading": "待批准公司",
+      "companyNameLabel": "公司名称：",
+      "companiesHouseLabel": "Companies House：",
+      "websiteLabel": "网站：",
+      "contactLabel": "联系方式：",
+      "whatHappensTitle": "将发生",
+      "whatHappens1": "用户账户通过审批并可登录",
+      "whatHappens2": "公司状态将变为「活跃」",
+      "whatHappens3": "用户将成为公司管理员",
+      "whatHappens4": "AI 将自动获取并丰富公司数据",
+      "cancel": "取消",
+      "confirm": "同时批准"
+    },
+    "toasts": {
+      "fetchFailed": "获取待审批列表失败",
+      "approveUserSuccess": "已批准 {name}",
+      "approveUserFailed": "批准用户失败",
+      "rejectUserSuccess": "已拒绝 {name}",
+      "rejectUserFailed": "拒绝用户失败",
+      "approveRequestSuccess": "已批准 {name} 的加入申请",
+      "approveRequestFailed": "批准申请失败",
+      "rejectRequestSuccess": "已拒绝加入申请",
+      "rejectRequestFailed": "拒绝申请失败",
+      "updateCompanySuccess": "公司详情已更新",
+      "updateCompanyFailed": "更新公司失败",
+      "analyzeCompanySuccess": "已开始公司分析，数据将很快更新。",
+      "analyzeCompanyFailed": "分析公司失败"
+    }
+  },
+  "AdminUsers": {
+    "title": "用户",
+    "description": "管理平台用户、角色与权限。",
+    "accessDeniedAlert": "您无权访问此页面，需要超级管理员权限。",
+    "loading": "正在加载用户…",
+    "heading": "用户管理",
+    "subheading": "管理平台用户及其权限",
+    "totalUsersBadge": "共 {count} 名用户",
+    "cardTitle": "平台用户",
+    "searchPlaceholder": "搜索用户…",
+    "table": {
+      "user": "用户",
+      "email": "邮箱",
+      "role": "角色",
+      "joined": "加入时间",
+      "actions": "操作"
+    },
+    "noName": "无姓名",
+    "roles": {
+      "superadmin": "超级管理员",
+      "smeOwner": "中小企业所有者"
+    },
+    "buttons": {
+      "viewEvents": "查看事件",
+      "removeSuperadmin": "撤销超级管理员",
+      "makeSuperadmin": "设为超级管理员"
+    },
+    "empty": "没有符合搜索条件的用户。",
+    "instructions": {
+      "heading": "超级管理员说明：",
+      "intro": "创建超级管理员账户需要：",
+      "step1": "通过注册创建普通账户",
+      "step2": "在迁移 SQL 中将您的邮箱插入为超级管理员",
+      "step3": "或对已有用户使用「设为超级管理员」按钮"
+    },
+    "confirmDelete": "确定要删除此用户吗？此操作无法撤销。",
+    "toasts": {
+      "deleteSuccess": "用户已删除",
+      "deleteError": "删除用户失败",
+      "roleChanged": "用户角色已更改为 {role}",
+      "roleUpdateError": "更新用户角色失败",
+      "fetchUsersError": "获取用户失败：{message}",
+      "fetchEventsError": "获取事件失败：{message}"
+    },
+    "eventsDialog": {
+      "title": "用户事件操作",
+      "description": "该用户最近的活动与事件",
+      "loading": "正在加载事件…",
+      "empty": "未找到该用户的事件。",
+      "table": {
+        "action": "操作",
+        "entity": "实体",
+        "status": "状态",
+        "date": "日期",
+        "details": "详情"
+      },
+      "viewDetails": "查看详情",
+      "defaultStatus": "成功"
+    }
+  },
+  "AdminCompanies": {
+    "title": "公司",
+    "description": "管理平台公司、认证状态与数据导入。",
+    "loading": "正在加载公司…",
+    "heading": "公司管理",
+    "stats": {
+      "total": "总计",
+      "user": "用户",
+      "system": "系统",
+      "verified": "已认证",
+      "pending": "待审核",
+      "unverified": "未认证"
+    },
+    "tabs": {
+      "userCompanies": "用户公司",
+      "systemCompanies": "系统 / AI",
+      "importTools": "导入与工具"
+    },
+    "filters": {
+      "all": "全部",
+      "unverified": "未认证",
+      "pending": "待审核",
+      "verified": "已认证"
+    },
+    "search": {
+      "userPlaceholder": "搜索用户公司…",
+      "systemPlaceholder": "搜索系统公司…"
+    },
+    "empty": {
+      "noCompanies": "未找到公司",
+      "noCompaniesHint": "请调整搜索或筛选条件",
+      "noSystemCompanies": "未找到系统公司"
+    },
+    "systemDescription": "由 AI 生成或导入的参考公司，用于招标匹配与平台演示。",
+    "systemWarning": "删除系统公司需要超级管理员权限且不可恢复。",
+    "importToolsDescription": "导入公司数据或触发全公司 AI 重新分析。",
+    "badges": {
+      "verified": "已认证",
+      "pending": "待审核",
+      "unverified": "未认证"
+    },
+    "limits": {
+      "perMonth": "{count}/月",
+      "default": "默认",
+      "matchingCustom": "自定义匹配限额：{count}/月",
+      "matchingDefault": "匹配：平台默认",
+      "analysisCustom": "自定义分析限额：{count}/月",
+      "analysisDefault": "分析：平台默认"
+    },
+    "deleteUser": {
+      "title": "删除用户公司",
+      "description": "确定要删除 <strong>{name}</strong> 吗？此操作无法撤销。",
+      "cancel": "取消",
+      "confirm": "删除公司"
+    },
+    "deleteSystem": {
+      "title": "删除系统公司",
+      "description": "确定要删除 <strong>{name}</strong> 吗？此操作无法撤销，并将删除所有关联数据。",
+      "cancel": "取消",
+      "confirm": "删除公司"
+    },
+    "toasts": {
+      "loadError": "加载公司失败",
+      "deleteSuccess": "已删除 {name}",
+      "deleteError": "删除 {name} 时出错"
+    }
+  },
+  "AdminTenders": {
+    "title": "招标",
+    "description": "管理招标同步、导入与 AI 分析重新生成。",
+    "sectionTitle": "招标管理",
+    "import": {
+      "cardTitle": "导入招标",
+      "tabs": {
+        "findTender": "Find a Tender",
+        "ted": "TED（欧盟）"
+      },
+      "findTenderDescription": "从英国政府 Find a Tender 服务导入招标，将活跃招标抓取并保存到数据库。",
+      "tedDescription": "从 TED（欧盟官方电子招标日报）导入招标。需要 API 密钥，请前往 ",
+      "tedDeveloperPortal": "TED 开发者门户",
+      "tedNotePrefix": "注意：",
+      "tedNote": " TED API 需要 API 密钥。请在环境变量中设置 ",
+      "tedNoteEnvVar": "TED_API_KEY",
+      "tedNoteSuffix": "。获取密钥请访问 ",
+      "fromDateLabel": "开始日期",
+      "toDateLabel": "结束日期",
+      "syncRunningNote": "每周招标同步运行期间无法导入。",
+      "findTenderButton": "从 Find a Tender 导入",
+      "tedButton": "从 TED 导入",
+      "importingFindTender": "正在从 Find a Tender 导入… 已完成 {progress}%（已导入 {imported}，跳过 {skipped}）",
+      "importingTed": "正在从 TED 导入… 已完成 {progress}%（已导入 {imported}，跳过 {skipped}）",
+      "summaryTitle": "导入摘要：",
+      "summaryTotal": "共获取：{count}",
+      "summaryImported": "成功导入：{count}",
+      "summarySkipped": "跳过重复：{count}",
+      "errorTitle": "导入错误：",
+      "toasts": {
+        "findTenderSuccess": "导入完成！从 Find a Tender 导入 {imported} 条招标，跳过 {skipped} 条重复。",
+        "tedSuccess": "导入完成！从 TED 导入 {imported} 条招标，跳过 {skipped} 条重复。",
+        "rateLimitedRetries": "触发速率限制。已重试 {max} 次，请稍后重试。",
+        "rateLimitedWaiting": "速率限制中，{seconds} 秒后重试 {attempt}/{max}…",
+        "adminRequired": "导入招标需要超级管理员权限",
+        "unknownError": "未知错误",
+        "importFailed": "导入失败：{message}",
+        "tedImportFailed": "TED 导入失败：{message}"
+      }
+    }
+  },
+  "AdminVerification": {
+    "title": "认证",
+    "description": "审核公司认证与能力变更申请。",
+    "statuses": {
+      "pending": "待处理",
+      "verified": "已认证",
+      "rejected": "已拒绝",
+      "changesRequested": "要求修改"
+    },
+    "requests": {
+      "cardTitle": "认证申请",
+      "changeReviewBadge": "变更审核",
+      "filters": {
+        "all": "全部申请",
+        "pending": "待审核",
+        "changesRequested": "要求修改",
+        "reviewed": "已审核"
+      },
+      "emptyAll": "暂无认证申请。",
+      "emptyFiltered": "暂无「{filter}」类认证申请。",
+      "submitted": "提交时间：{date}",
+      "websiteLink": "网站",
+      "companiesHouse": "CH：{number}",
+      "reviewButton": "审核"
+    },
+    "competency": {
+      "cardTitle": "能力变更申请",
+      "cardDescription": "已认证公司的能力变更需经批准。",
+      "empty": "暂无待处理的能力变更申请。",
+      "addLabel": "新增（{count}）：",
+      "removeLabel": "移除（{count}）：",
+      "submitted": "提交时间：{date}",
+      "approveButton": "批准",
+      "rejectButton": "拒绝",
+      "dialog": {
+        "approveTitle": "批准 {name} 的能力变更",
+        "rejectTitle": "拒绝 {name} 的能力变更",
+        "notesPlaceholder": "审核备注（选填）…",
+        "cancel": "取消",
+        "approveConfirm": "批准",
+        "rejectConfirm": "拒绝"
+      },
+      "toasts": {
+        "approved": "能力变更已批准并生效",
+        "rejected": "已拒绝能力变更申请",
+        "reviewError": "审核申请失败"
+      }
+    }
+  },
+  "AdminVerificationReview": {
+    "srTitle": "公司认证审核",
+    "srDescription": "审核公司认证申请详情",
+    "loadFailed": "加载审核数据失败。",
+    "changeReviewBadge": "变更审核",
+    "resubmissionBadge": "第 {number} 次重新提交",
+    "submittedOn": "提交于 {date}",
+    "submittedBy": " · {firstName} {lastName}",
+    "submittedByWithTitle": " · {firstName} {lastName}（{jobTitle}）",
+    "statuses": {
+      "pending": "待审核",
+      "approved": "已批准",
+      "rejected": "已拒绝",
+      "changesRequested": "要求修改"
+    },
+    "tabs": {
+      "changes": "变更",
+      "overview": "概览",
+      "details": "公司详情",
+      "competencies": "能力",
+      "ai": "AI 分析",
+      "financial": "财务与合规",
+      "history": "历史"
+    },
+    "footer": {
+      "allChecked": "清单项已全部核实",
+      "partial": "已核实 {checked}/{total} 项清单",
+      "requestChanges": "要求修改",
+      "reject": "拒绝",
+      "approve": "批准",
+      "approveDisabledTooltip": "请先完成所有清单项再批准"
+    },
+    "approveDialog": {
+      "title": "批准认证",
+      "description": "将把 {name} 标记为已认证公司。",
+      "cancel": "取消",
+      "confirm": "确认批准"
+    },
+    "rejectDialog": {
+      "title": "拒绝认证",
+      "description": "将永久拒绝该认证申请。若希望公司修改后重新提交，请使用「要求修改」。",
+      "placeholder": "拒绝原因…",
+      "cancel": "取消",
+      "confirm": "拒绝"
+    },
+    "dataField": {
+      "notProvided": "未提供",
+      "changed": "已变更"
+    },
+    "checklist": {
+      "name": "公司名称已与官方记录核对",
+      "website": "网站可访问且与公司一致",
+      "contact": "联系方式有效",
+      "description": "描述准确完整",
+      "competencies": "能力与资质合理",
+      "compliance": "未发现合规风险"
+    },
+    "changeReview": {
+      "title": "拟议变更",
+      "empty": "快照中未发现变更。",
+      "current": "当前（已批准）",
+      "proposed": "拟议",
+      "emptyValue": "空",
+      "competencies": "能力",
+      "markets": "市场",
+      "standards": "标准",
+      "added": "新增：",
+      "removed": "移除：",
+      "fields": {
+        "companyName": "公司名称",
+        "description": "描述",
+        "keyCapabilities": "核心能力",
+        "certifications": "认证",
+        "equipment": "设备",
+        "pastProjects": "过往项目",
+        "companiesHouseNumber": "Companies House 编号"
+      }
+    },
+    "overview": {
+      "submissionNotes": "提交说明",
+      "previousFeedback": "上次审核反馈",
+      "changedFields": "自上次提交以来变更的字段：",
+      "quickSummary": "简要摘要",
+      "checklist": "审核清单",
+      "capabilitiesSelected": "已选 {count} 项"
+    },
+    "fields": {
+      "companyName": "公司名称",
+      "companiesHouse": "Companies House",
+      "companiesHouseNumber": "Companies House 编号",
+      "website": "网站",
+      "contactEmail": "联系邮箱",
+      "status": "状态",
+      "capabilities": "能力",
+      "description": "描述",
+      "address": "地址",
+      "postcode": "邮编",
+      "contactPerson": "联系人",
+      "email": "邮箱",
+      "phone": "电话",
+      "keyCapabilities": "核心能力",
+      "certifications": "认证",
+      "equipment": "设备",
+      "pastProjects": "过往项目"
+    },
+    "details": {
+      "businessInfo": "工商信息",
+      "contactInfo": "联系信息",
+      "capabilitiesExperience": "能力与经验"
+    },
+    "competencies": {
+      "capabilitiesTitle": "能力（{count}）",
+      "marketsTitle": "市场（{count}）",
+      "standardsTitle": "标准与认证（{count}）",
+      "emptyCapabilities": "未选择能力",
+      "emptyMarkets": "未选择市场",
+      "emptyStandards": "未选择标准",
+      "uncategorized": "未分类",
+      "other": "其他",
+      "aiSuggested": "AI 建议能力"
+    },
+    "ai": {
+      "summary": "AI 摘要",
+      "noSummary": "尚未生成 AI 分析",
+      "ratings": "评估评分",
+      "digitalMaturity": "数字化成熟度",
+      "safetyRating": "安全评级",
+      "marketPosition": "市场地位",
+      "capabilities": "AI 能力",
+      "strengths": "AI 优势",
+      "certifications": "AI 认证",
+      "swot": "SWOT 分析",
+      "swotStrengths": "优势",
+      "swotWeaknesses": "劣势",
+      "swotOpportunities": "机会",
+      "swotThreats": "威胁",
+      "benchmark": "绩效基准",
+      "overallScore": "总分",
+      "executiveSummary": "执行摘要",
+      "notAvailable": "不可用",
+      "noneFound": "无",
+      "na": "不适用"
+    },
+    "financial": {
+      "financialData": "财务数据",
+      "noFinancial": "暂无财务数据",
+      "complianceData": "合规数据",
+      "noCompliance": "暂无合规数据",
+      "systemExtracted": "系统提取数据",
+      "noExtracted": "暂无系统提取数据",
+      "adminVerified": "管理员已核实字段"
+    },
+    "history": {
+      "countOne": "{count} 条认证申请",
+      "countOther": "{count} 条认证申请",
+      "current": "当前",
+      "submissionNotes": "提交说明",
+      "reviewNotes": "审核备注",
+      "structuredFeedback": "结构化反馈",
+      "reviewedOn": "审核于 {date}"
+    },
+    "toasts": {
+      "approveSuccess": "公司已认证",
+      "rejectSuccess": "已拒绝认证申请",
+      "changesRequestedSuccess": "已要求修改 — 已通知公司",
+      "submitFailed": "提交审核失败"
+    }
+  },
+  "AdminSettings": {
+    "title": "设置",
+    "description": "配置 AI 模型、认证规则与平台设置。",
+    "ai": {
+      "cardTitle": "默认 AI 设置",
+      "cardDescription": "未单独覆盖时，适用于应用内所有 AI 请求（匹配、公司/招标分析、聊天等）。",
+      "defaultModelLabel": "默认模型",
+      "reasoningEffortLabel": "推理强度",
+      "reasoningEffortPlaceholder": "默认",
+      "reasoningHint": "越低越快，推理 token 越少",
+      "saveButton": "保存默认",
+      "effort": {
+        "default": "默认",
+        "low": "低",
+        "minimal": "极低",
+        "none": "无",
+        "medium": "中",
+        "high": "高",
+        "xhigh": "极高"
+      },
+      "toasts": {
+        "loadError": "加载设置失败",
+        "saveError": "保存失败",
+        "saveSuccess": "默认 AI 设置已保存，将应用于所有 AI 请求。"
+      }
+    },
+    "verification": {
+      "cardTitle": "认证与用量限制",
+      "cardDescription": "控制已认证与未认证公司的项目、能力与招标匹配次数限制。",
+      "sections": {
+        "projectLimits": "项目与能力限制",
+        "matchingRuns": "每月招标匹配次数",
+        "matchingRunsHelper": "控制每家公司每月可执行「运行分析」的次数。可在「公司」页设置单公司覆盖。",
+        "analysisRuns": "每月 AI 分析次数",
+        "analysisRunsHelper": "控制每家公司每月可执行「AI 分析」的次数。可在「公司」页设置单公司覆盖。"
+      },
+      "fields": {
+        "verifiedProjectLimit": "已认证公司项目上限",
+        "verifiedProjectLimitHelper": "已认证公司最大活跃项目数",
+        "unverifiedProjectLimit": "未认证公司项目上限",
+        "unverifiedProjectLimitHelper": "未认证公司最大活跃项目数",
+        "unverifiedCompetencyLimit": "未认证公司能力上限",
+        "unverifiedCompetencyLimitHelper": "未认证公司最大能力数（无需审核）",
+        "verifiedMatchingRuns": "已认证公司每月匹配次数",
+        "verifiedMatchingRunsHelper": "默认：已认证公司每月 10 次",
+        "unverifiedMatchingRuns": "未认证公司每月匹配次数",
+        "unverifiedMatchingRunsHelper": "默认：未认证公司每月 2 次",
+        "verifiedAnalysisRuns": "已认证公司每月分析次数",
+        "verifiedAnalysisRunsHelper": "默认：已认证公司每月 5 次",
+        "unverifiedAnalysisRuns": "未认证公司每月分析次数",
+        "unverifiedAnalysisRunsHelper": "默认：未认证公司每月 1 次"
+      },
+      "saveButton": "保存限制",
+      "toasts": {
+        "loadError": "加载设置失败",
+        "saveError": "保存失败",
+        "saveSuccess": "设置已保存。"
+      }
+    }
+  },
+  "AdminTaxonomy": {
+    "title": "分类体系",
+    "description": "管理能力类别与层级结构。",
+    "uncategorized": "未分类",
+    "cardTitle": "能力分类编辑器",
+    "cardDescription": "按类别与名称管理公司能力，用于公司与项目匹配。",
+    "resetButton": "重置列表",
+    "resetTitle": "删除全部能力及关联。不可撤销。",
+    "regenerateButton": "重新生成全部公司能力",
+    "refreshButton": "刷新列表",
+    "addButton": "新增能力",
+    "regenerating": "正在重新生成公司能力",
+    "progressPercent": "{progress}%",
+    "batchProgress": "已完成 {completed} / {total} 家公司。",
+    "batchFailed": "（{count} 家失败）",
+    "regenerationDone": "✅ 重新生成完成！",
+    "searchPlaceholder": "搜索能力或类别…",
+    "loading": "正在加载能力…",
+    "emptySearch": "没有符合搜索的能力。",
+    "empty": "暂无能力，请创建第一项。",
+    "total": "共 {count} 项能力，分布在 {categories} 个类别",
+    "resetConfirm": "⚠️ 警告：将删除全部能力及公司与能力的关联！\n\n此操作不可撤销，所有公司的能力将被清空。\n\n可编辑分类将从只读种子表恢复（由 CSV 迁移填充）。\n\n确定继续？",
+    "deleteDialog": {
+      "title": "删除能力",
+      "description": "确定要删除「{name}」吗？此操作不可撤销。",
+      "cancel": "取消",
+      "confirm": "删除"
+    },
+    "createDialog": {
+      "title": "新建能力",
+      "description": "向分类体系添加新能力。",
+      "cancel": "取消",
+      "confirm": "创建"
+    },
+    "editDialog": {
+      "title": "编辑能力",
+      "description": "更新能力详情。",
+      "cancel": "取消",
+      "confirm": "保存更改"
+    },
+    "form": {
+      "nameLabel": "名称 *",
+      "namePlaceholder": "能力名称",
+      "parentLabel": "父级（选填）",
+      "parentPlaceholder": "无",
+      "none": "无",
+      "categoryLabel": "类别（若已设父级则选填）",
+      "categoryPlaceholder": "选择类别"
+    },
+    "toasts": {
+      "loadFailed": "加载能力失败：{error}",
+      "refreshed": "能力列表已刷新",
+      "deleteSuccess": "能力已删除",
+      "deleteFailed": "删除能力失败：{error}",
+      "nameRequired": "名称为必填项",
+      "categoryOrParentRequired": "须填写类别或父级之一",
+      "updateSuccess": "能力已更新",
+      "createSuccess": "能力已创建",
+      "saveFailed": "保存能力失败：{error}",
+      "resetSuccessSeeded": "✅ 重置完成。已删除 {deleted} 项能力与 {links} 条关联，并从种子表重新填充 {reseeded} 项。",
+      "resetSuccessEmpty": "✅ 重置完成。已删除 {deleted} 项能力与 {links} 条关联。种子表为空 — 请运行分类迁移以填充。",
+      "resetFailed": "重置能力失败",
+      "regenerateQueued": "已为 {companies} 家公司排队 {jobs} 个 AI 处理任务",
+      "regenerateFailed": "启动重新生成失败"
+    }
+  },
+  "AdminOnboarding": {
+    "title": "入职",
+    "description": "跟踪用户入职进度与完成率。",
+    "loading": "正在加载入职数据…",
+    "stats": {
+      "totalUsers": "用户总数",
+      "emailPending": "待验证邮箱",
+      "profileStep": "资料步骤",
+      "accountCompany": "账户/公司",
+      "completed": "已完成"
+    },
+    "approval": {
+      "approved": "已批准",
+      "pending": "待审核",
+      "rejected": "已拒绝"
+    },
+    "cardTitle": "用户入职状态",
+    "refreshButton": "刷新",
+    "searchPlaceholder": "按邮箱或姓名搜索…",
+    "table": {
+      "user": "用户",
+      "currentStep": "当前步骤",
+      "accountType": "账户类型",
+      "approval": "审批",
+      "signedUp": "注册时间"
+    },
+    "emptyState": "没有符合条件的用户",
+    "nameNotProvided": "未提供",
+    "dateNA": "不适用",
+    "details": {
+      "heading": "入职进度",
+      "step1": "1. 邮箱验证",
+      "step2": "2. 资料信息",
+      "step3": "3. 账户类型",
+      "step4": "4. 公司信息",
+      "verifiedAt": "已于 {date} 验证",
+      "pendingVerification": "待验证",
+      "nameLabel": "姓名：",
+      "jobLabel": "职位：",
+      "notCompleted": "未完成",
+      "notSelected": "未选择",
+      "skippedIndividual": "已跳过（个人）",
+      "requestingToJoin": "申请加入：",
+      "completedOn": "入职完成："
+    }
+  },
+  "AdminDemoSync": {
+    "title": "演示同步",
+    "description": "使用可配置 AI 模型运行演示招标匹配。",
+    "cardTitle": "测试模式：演示同步与匹配",
+    "cardDescription": "对 50 条招标运行演示匹配并比较模型。结果存入独立表，每次「运行演示」会清空。使用「将用户加入队列」模拟第二用户（共 100 次匹配）。",
+    "runTimerLabel": "运行计时：",
+    "lastRunLabel": "上次运行：",
+    "queueProgress": "队列进度",
+    "modelLabel": "模型：",
+    "thinkingLabel": "思考：",
+    "thinkingHint": "越低越快",
+    "effort": {
+      "default": "默认",
+      "low": "低",
+      "minimal": "极低",
+      "none": "无"
+    },
+    "runDemoButton": "运行演示（50 条招标）",
+    "addUserButton": "将用户加入队列（+50 次匹配）",
+    "resultsTitle": "演示结果",
+    "resultsDescription": "匹配结果、所用模型与 AI 摘要。任务完成后显示行（每 5 秒轮询）。",
+    "loadingResults": "正在加载结果…",
+    "emptyResults": "尚无演示结果，请运行演示。",
+    "table": {
+      "batch": "批次",
+      "tender": "招标",
+      "company": "公司",
+      "score": "分数",
+      "model": "模型",
+      "summary": "摘要"
+    },
+    "rawAiOutput": "原始 AI 输出（批次：{batch}，模型：{model}）",
+    "toasts": {
+      "fetchError": "加载结果失败",
+      "demoStarted": "演示已开始：已排队 {count} 个任务（用户 A）。结果将显示在下方。",
+      "demoFinished": "演示在 {duration} 内完成（{model}）",
+      "runFailed": "运行失败",
+      "addUserSuccess": "已添加用户 B：排队 {count} 个任务。队列中仍有更多任务。",
+      "addUserFailed": "添加用户失败"
+    }
+  },
+  "AdminTenderSync": {
+    "cardTitle": "每周招标同步",
+    "lastSyncLabel": "上次同步结束：",
+    "nextSyncLabel": "下次计划同步：",
+    "never": "从未",
+    "notScheduled": "未计划",
+    "loading": "加载中…",
+    "loadError": "加载状态失败",
+    "triggerButton": "立即触发同步",
+    "syncingButton": "同步中…",
+    "stopButton": "停止同步",
+    "ariaStatus": "招标同步计划状态",
+    "ariaTriggering": "正在同步招标",
+    "ariaTrigger": "立即触发招标同步",
+    "ariaStop": "停止招标同步",
+    "toasts": {
+      "completed": "同步完成。下次在 7 天后。",
+      "failed": "同步失败（见服务器日志）。下次计划在 7 天后。",
+      "notRun": "尚未同步",
+      "stopped": "同步已停止。",
+      "triggerError": "触发同步失败"
+    }
+  },
+  "AdminTenderAIRegen": {
+    "inProgressTitle": "AI 正在重新生成",
+    "inProgressSubtitle": "已完成 {completed}/{total}（{progress}%）",
+    "viewDetails": "查看详情",
+    "openButton": "重新生成全部招标 AI",
+    "dialogTitle": "重新生成招标 AI 摘要与分类",
+    "dialogDescription": "将为所有招标重新生成 AI 摘要与能力分类，可能需要数分钟。",
+    "startDescription": "点击下方按钮为所有招标排队 AI 重新生成任务。",
+    "queuing": "正在排队任务…",
+    "startButton": "开始重新生成",
+    "progressLabel": "进度",
+    "completed": "已完成",
+    "remaining": "剩余",
+    "totalLabel": "总计：",
+    "totalValue": "{count} 条招标",
+    "failedLabel": "失败：",
+    "startProcessingButton": "开始处理任务",
+    "completedMessage": "重新生成完成！",
+    "failedMessage": "重新生成失败",
+    "closeButton": "关闭",
+    "backgroundHint": "可关闭此对话框，处理将在后台继续。请返回此处查看进度。",
+    "toasts": {
+      "queued": "已为 {tenderCount} 条招标排队 {jobCount} 个 AI 处理任务",
+      "startError": "启动重新生成失败",
+      "workerError": "无法启动 Worker。任务已排队但未在处理。",
+      "workerRetryError": "无法启动 Worker，请重试。"
+    }
+  },
+  "AdminDataImport": {
+    "cardTitle": "导入建筑公司数据",
+    "description": "将从 Bolsover Excel 文件导入 {count} 家建筑公司到数据库。",
+    "importButton": "导入公司数据",
+    "importing": "正在导入… {progress}%（{imported}/{total}）",
+    "errorsTitle": "导入错误：",
+    "moreErrors": "…另有 {count} 条错误",
+    "toasts": {
+      "importError": "导入 {name} 时出错：{error}",
+      "importSuccess": "导入完成！已成功处理 {count} 家公司。",
+      "importFailed": "导入失败：{error}"
+    }
+  },
+  "AdminCSVImport": {
+    "cardTitle": "从 CSV 导入公司",
+    "cardDescription": "上传 CSV 文件导入公司，导入的公司将标记为系统公司。",
+    "format": {
+      "title": "CSV 格式要求：",
+      "requiredIntro": "必填列：",
+      "requiredOr": "（或 ",
+      "requiredOrEnd": "）",
+      "supportedIntro": "支持的列：",
+      "supportedSuffix": "（以及 2、3、4）",
+      "note": "说明：类似 "
+    },
+    "noteSuffix": " 的数组值会自动解析。若提供完整地址，将从其中提取邮编。",
+    "fileLabel": "CSV 文件",
+    "updateExistingLabel": "更新已有公司的能力（按 CSV 重新映射能力）",
+    "previewLabel": "预览（前 5 行）",
+    "previewHeader": {
+      "companyName": "公司名称",
+      "contact": "联系人",
+      "location": "地点"
+    },
+    "importButton": "导入公司",
+    "progressLabel": "已完成 {progress}%",
+    "progressCounts": "已导入 {imported}，跳过 {skipped}，错误 {errors}",
+    "errorsTitle": "导入错误（{count}）：",
+    "moreErrors": "…另有 {count} 条错误",
+    "summaryTitle": "导入摘要：",
+    "summaryImported": "成功导入 {count} 家公司",
+    "summarySkipped": "跳过 {count} 家（已存在）",
+    "summaryFailed": "{count} 家导入失败",
+    "toasts": {
+      "invalidFile": "请选择 CSV 文件",
+      "noData": "CSV 中无有效数据",
+      "loaded": "已加载 CSV，共 {count} 家公司。",
+      "parseError": "解析 CSV 失败",
+      "capabilityMatchingDisabled": "能力匹配已禁用 — 加载参考列表失败",
+      "importSuccess": "导入完成！已导入 {imported}，跳过 {skipped}，错误 {errors}。{note}",
+      "importSuccessNote": "能力分类正在后台生成。",
+      "importFailed": "导入失败：{message}"
+    }
+  },
+  "AdminReviewFeedback": {
+    "dialogTitle": "要求修改 — {name}",
+    "dialogDescription": "选择需要关注的版块并分别填写反馈。公司将看到反馈并在重新提交前修改。",
+    "sections": {
+      "companyInfo": "公司信息",
+      "contact": "联系方式",
+      "website": "网站",
+      "competencies": "能力与资质",
+      "certifications": "认证与标准",
+      "description": "公司描述",
+      "financial": "财务数据",
+      "compliance": "合规"
+    },
+    "needsChanges": "需修改",
+    "ok": "正常",
+    "sectionPlaceholder": "「{label}」需要如何修改？",
+    "overallLabel": "总体备注（选填）",
+    "overallPlaceholder": "其他说明或指示…",
+    "flaggedCount": "已标记 {count, plural, one {# 个版块} other {# 个版块}} 需修改",
+    "cancel": "取消",
+    "submit": "发送反馈"
+  },
+  "AdminCompanyAIRegen": {
+    "inProgressTitle": "公司 AI 正在重新生成",
+    "inProgressSubtitle": "已完成 {completed}/{total}（{progress}%）",
+    "viewDetails": "查看详情",
+    "openButton": "重新生成全部公司 AI",
+    "dialogTitle": "重新生成公司 AI 摘要与分类",
+    "dialogDescription": "将为所有公司重新生成 AI 摘要与能力分类，并可能根据公司数据动态创建新能力，可能需要数分钟。",
+    "startButton": "开始重新生成",
+    "progressLabel": "进度",
+    "totalJobs": "总任务数",
+    "completed": "已完成",
+    "failed": "失败",
+    "statusCompleted": "重新生成完成",
+    "statusFailed": "重新生成失败",
+    "statusProcessing": "处理中…",
+    "jobsQueuedTitle": "任务已排队",
+    "jobsQueuedBody": "任务已排队但未处理，点击下方按钮开始处理。",
+    "startProcessingButton": "开始处理任务",
+    "failedMessage": "部分任务失败，请查看日志。",
+    "toasts": {
+      "queued": "已为 {companyCount} 家公司排队 {jobCount} 个 AI 处理任务",
+      "startError": "启动重新生成失败",
+      "workerError": "无法启动 Worker。任务已排队但未在处理。",
+      "workerRetryError": "无法启动 Worker，请重试。"
+    }
+  }
+}

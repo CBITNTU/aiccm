@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { ReviewFeedback, ReviewFeedbackItem } from "@/lib/api/types";
 import {
   Dialog,
@@ -14,16 +15,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 
-const FEEDBACK_SECTIONS = [
-  { section: "companyInfo", label: "Company Information" },
-  { section: "contact", label: "Contact Details" },
-  { section: "website", label: "Website" },
-  { section: "competencies", label: "Competencies & Capabilities" },
-  { section: "certifications", label: "Certifications & Standards" },
-  { section: "description", label: "Company Description" },
-  { section: "financial", label: "Financial Data" },
-  { section: "compliance", label: "Compliance" },
+const FEEDBACK_SECTION_KEYS = [
+  "companyInfo",
+  "contact",
+  "website",
+  "competencies",
+  "certifications",
+  "description",
+  "financial",
+  "compliance",
 ] as const;
+
+type SectionKey = (typeof FEEDBACK_SECTION_KEYS)[number];
 
 interface AdminReviewFeedbackFormProps {
   open: boolean;
@@ -40,11 +43,12 @@ export function AdminReviewFeedbackForm({
   isPending,
   companyName,
 }: AdminReviewFeedbackFormProps) {
+  const t = useTranslations("AdminReviewFeedback");
   const [sectionStates, setSectionStates] = useState<
     Record<string, { status: "ok" | "needs_changes"; notes: string }>
   >(() =>
     Object.fromEntries(
-      FEEDBACK_SECTIONS.map((s) => [s.section, { status: "ok" as const, notes: "" }]),
+      FEEDBACK_SECTION_KEYS.map((s) => [s, { status: "ok" as const, notes: "" }]),
     ),
   );
   const [overallNotes, setOverallNotes] = useState("");
@@ -79,11 +83,11 @@ export function AdminReviewFeedbackForm({
     overallNotes.trim().length > 0;
 
   const handleSubmit = () => {
-    const items: ReviewFeedbackItem[] = FEEDBACK_SECTIONS.map((s) => ({
-      section: s.section,
-      label: s.label,
-      status: sectionStates[s.section].status,
-      notes: sectionStates[s.section].notes.trim(),
+    const items: ReviewFeedbackItem[] = FEEDBACK_SECTION_KEYS.map((s) => ({
+      section: s,
+      label: t(`sections.${s}` as const),
+      status: sectionStates[s].status,
+      notes: sectionStates[s].notes.trim(),
     }));
 
     onSubmit({
@@ -93,10 +97,9 @@ export function AdminReviewFeedbackForm({
   };
 
   const handleClose = () => {
-    // Reset form state
     setSectionStates(
       Object.fromEntries(
-        FEEDBACK_SECTIONS.map((s) => [s.section, { status: "ok" as const, notes: "" }]),
+        FEEDBACK_SECTION_KEYS.map((s) => [s, { status: "ok" as const, notes: "" }]),
       ),
     );
     setOverallNotes("");
@@ -107,31 +110,31 @@ export function AdminReviewFeedbackForm({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Request Changes — {companyName}</DialogTitle>
+          <DialogTitle>{t("dialogTitle", { name: companyName })}</DialogTitle>
           <DialogDescription>
-            Select sections that need attention and provide specific feedback for each.
-            The company will see this feedback and can make changes before resubmitting.
+            {t("dialogDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          {FEEDBACK_SECTIONS.map((s) => {
-            const state = sectionStates[s.section];
+          {FEEDBACK_SECTION_KEYS.map((s) => {
+            const state = sectionStates[s];
             const isFlagged = state.status === "needs_changes";
+            const label = t(`sections.${s}` as const);
 
             return (
               <div
-                key={s.section}
+                key={s}
                 className={`border rounded-lg p-3 transition-colors ${
                   isFlagged ? "border-amber-300 bg-amber-50/50" : "border-border"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{s.label}</span>
+                  <span className="text-sm font-medium">{label}</span>
                   <Button
                     variant={isFlagged ? "outline" : "ghost"}
                     size="sm"
-                    onClick={() => toggleSection(s.section)}
+                    onClick={() => toggleSection(s)}
                     className={`gap-1.5 h-7 text-xs ${
                       isFlagged
                         ? "border-amber-300 text-amber-700 hover:bg-amber-100"
@@ -141,21 +144,21 @@ export function AdminReviewFeedbackForm({
                     {isFlagged ? (
                       <>
                         <AlertTriangle className="h-3 w-3" />
-                        Needs Changes
+                        {t("needsChanges")}
                       </>
                     ) : (
                       <>
                         <CheckCircle className="h-3 w-3" />
-                        OK
+                        {t("ok")}
                       </>
                     )}
                   </Button>
                 </div>
                 {isFlagged && (
                   <Textarea
-                    placeholder={`What needs to change in ${s.label.toLowerCase()}?`}
+                    placeholder={t("sectionPlaceholder", { label: label.toLowerCase() })}
                     value={state.notes}
-                    onChange={(e) => updateNotes(s.section, e.target.value)}
+                    onChange={(e) => updateNotes(s, e.target.value)}
                     rows={2}
                     className="mt-2 text-sm"
                   />
@@ -166,9 +169,9 @@ export function AdminReviewFeedbackForm({
         </div>
 
         <div>
-          <label className="text-sm font-medium">Overall Notes (optional)</label>
+          <label className="text-sm font-medium">{t("overallLabel")}</label>
           <Textarea
-            placeholder="Any additional context or instructions..."
+            placeholder={t("overallPlaceholder")}
             value={overallNotes}
             onChange={(e) => setOverallNotes(e.target.value)}
             rows={3}
@@ -179,13 +182,13 @@ export function AdminReviewFeedbackForm({
         {flaggedCount > 0 && (
           <div className="flex items-center gap-2 text-sm text-amber-700">
             <AlertTriangle className="h-4 w-4" />
-            {flaggedCount} section{flaggedCount !== 1 ? "s" : ""} flagged for changes
+            {t("flaggedCount", { count: flaggedCount })}
           </div>
         )}
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -193,7 +196,7 @@ export function AdminReviewFeedbackForm({
             className="gap-1"
           >
             {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Send Feedback
+            {t("submit")}
           </Button>
         </DialogFooter>
       </DialogContent>

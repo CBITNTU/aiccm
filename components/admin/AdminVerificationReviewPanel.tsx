@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { PastProjectsDisplay, formatPastProjectsValue } from "@/components/company/PastProjectsDisplay";
@@ -54,19 +55,20 @@ interface AdminVerificationReviewPanelProps {
   onClose: () => void;
 }
 
-const CHECKLIST_ITEMS = [
-  { id: "name", label: "Company name verified against official records" },
-  { id: "website", label: "Website is accessible and matches company" },
-  { id: "contact", label: "Contact details appear valid" },
-  { id: "description", label: "Description is accurate and complete" },
-  { id: "competencies", label: "Competencies and capabilities are reasonable" },
-  { id: "compliance", label: "No compliance red flags identified" },
-];
+const CHECKLIST_ITEM_IDS = [
+  "name",
+  "website",
+  "contact",
+  "description",
+  "competencies",
+  "compliance",
+] as const;
 
 export function AdminVerificationReviewPanel({
   requestId,
   onClose,
 }: AdminVerificationReviewPanelProps) {
+  const t = useTranslations("AdminVerificationReview");
   const queryClient = useQueryClient();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [showApproveDialog, setShowApproveDialog] = useState(false);
@@ -97,9 +99,9 @@ export function AdminVerificationReviewPanel({
       api.adminReviewVerification(requestId!, action, reviewNotes, reviewFeedback),
     onSuccess: (_, variables) => {
       const messages: Record<string, string> = {
-        approve: "Company verified successfully",
-        reject: "Verification request rejected",
-        request_changes: "Changes requested — company has been notified",
+        approve: t("toasts.approveSuccess"),
+        reject: t("toasts.rejectSuccess"),
+        request_changes: t("toasts.changesRequestedSuccess"),
       };
       toast.success(messages[variables.action]);
       queryClient.invalidateQueries({ queryKey: queryKeys.adminVerificationRequests() });
@@ -108,12 +110,12 @@ export function AdminVerificationReviewPanel({
       onClose();
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to submit review");
+      toast.error(error instanceof Error ? error.message : t("toasts.submitFailed"));
     },
   });
 
   const isChangeReview = data?.request?.requestType === "change_review";
-  const allChecked = isChangeReview || checkedItems.size === CHECKLIST_ITEMS.length;
+  const allChecked = isChangeReview || checkedItems.size === CHECKLIST_ITEM_IDS.length;
   const isResubmission = (data?.previousRequests?.length ?? 0) > 0;
   const previousSnapshot = data?.previousRequests?.[0]?.companySnapshot as
     | Record<string, string>
@@ -138,15 +140,15 @@ export function AdminVerificationReviewPanel({
           side="right"
           className="w-[95vw] sm:max-w-[1200px] p-0 flex flex-col [&>button]:hidden"
         >
-          <SheetTitle className="sr-only">Company Verification Review</SheetTitle>
-          <SheetDescription className="sr-only">Review company verification request details</SheetDescription>
+          <SheetTitle className="sr-only">{t("srTitle")}</SheetTitle>
+          <SheetDescription className="sr-only">{t("srDescription")}</SheetDescription>
           {isLoading ? (
             <div className="flex items-center justify-center flex-1">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : !data ? (
             <div className="flex items-center justify-center flex-1 text-muted-foreground">
-              Failed to load review data.
+              {t("loadFailed")}
             </div>
           ) : (
             <>
@@ -164,21 +166,29 @@ export function AdminVerificationReviewPanel({
                       <StatusBadge status={data.request.status} />
                       {data.request.requestType === "change_review" && (
                         <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                          Change Review
+                          {t("changeReviewBadge")}
                         </Badge>
                       )}
                       {isResubmission && (
                         <Badge variant="outline" className="text-xs">
-                          Resubmission #{(data.previousRequests?.length ?? 0) + 1}
+                          {t("resubmissionBadge", { number: (data.previousRequests?.length ?? 0) + 1 })}
                         </Badge>
                       )}
                       <span>
-                        Submitted {new Date(data.request.createdAt).toLocaleDateString()}
+                        {t("submittedOn", { date: new Date(data.request.createdAt).toLocaleDateString() })}
                       </span>
                       {data.submitter && (
                         <span>
-                          by {data.submitter.firstName} {data.submitter.lastName}
-                          {data.submitter.jobTitle && ` (${data.submitter.jobTitle})`}
+                          {data.submitter.jobTitle
+                            ? t("submittedByWithTitle", {
+                                firstName: data.submitter.firstName ?? "",
+                                lastName: data.submitter.lastName ?? "",
+                                jobTitle: data.submitter.jobTitle,
+                              })
+                            : t("submittedBy", {
+                                firstName: data.submitter.firstName ?? "",
+                                lastName: data.submitter.lastName ?? "",
+                              })}
                         </span>
                       )}
                     </div>
@@ -191,14 +201,14 @@ export function AdminVerificationReviewPanel({
                 <div className="px-6 border-b shrink-0">
                   <TabsList className="h-10">
                     {data.request.requestType === "change_review" && (
-                      <TabsTrigger value="changes">Changes</TabsTrigger>
+                      <TabsTrigger value="changes">{t("tabs.changes")}</TabsTrigger>
                     )}
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="details">Company Details</TabsTrigger>
-                    <TabsTrigger value="competencies">Competencies</TabsTrigger>
-                    <TabsTrigger value="ai">AI Analysis</TabsTrigger>
-                    <TabsTrigger value="financial">Financial & Compliance</TabsTrigger>
-                    <TabsTrigger value="history">History</TabsTrigger>
+                    <TabsTrigger value="overview">{t("tabs.overview")}</TabsTrigger>
+                    <TabsTrigger value="details">{t("tabs.details")}</TabsTrigger>
+                    <TabsTrigger value="competencies">{t("tabs.competencies")}</TabsTrigger>
+                    <TabsTrigger value="ai">{t("tabs.ai")}</TabsTrigger>
+                    <TabsTrigger value="financial">{t("tabs.financial")}</TabsTrigger>
+                    <TabsTrigger value="history">{t("tabs.history")}</TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -249,8 +259,8 @@ export function AdminVerificationReviewPanel({
                 <div className="border-t px-6 py-4 flex items-center justify-between gap-3 shrink-0 bg-background">
                   <div className="text-sm text-muted-foreground">
                     {allChecked
-                      ? "All checklist items verified"
-                      : `${checkedItems.size}/${CHECKLIST_ITEMS.length} checklist items verified`}
+                      ? t("footer.allChecked")
+                      : t("footer.partial", { checked: checkedItems.size, total: CHECKLIST_ITEM_IDS.length })}
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -259,7 +269,7 @@ export function AdminVerificationReviewPanel({
                       className="gap-1"
                     >
                       <AlertTriangle className="h-3.5 w-3.5" />
-                      Request Changes
+                      {t("footer.requestChanges")}
                     </Button>
                     <Button
                       variant="destructive"
@@ -267,7 +277,7 @@ export function AdminVerificationReviewPanel({
                       className="gap-1"
                     >
                       <XCircle className="h-3.5 w-3.5" />
-                      Reject
+                      {t("footer.reject")}
                     </Button>
                     <Button
                       onClick={() => setShowApproveDialog(true)}
@@ -275,12 +285,12 @@ export function AdminVerificationReviewPanel({
                       className="gap-1"
                       title={
                         !allChecked
-                          ? "Complete all checklist items before approving"
+                          ? t("footer.approveDisabledTooltip")
                           : undefined
                       }
                     >
                       <CheckCircle className="h-3.5 w-3.5" />
-                      Approve
+                      {t("footer.approve")}
                     </Button>
                   </div>
                 </div>
@@ -294,14 +304,14 @@ export function AdminVerificationReviewPanel({
       <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve Verification</DialogTitle>
+            <DialogTitle>{t("approveDialog.title")}</DialogTitle>
             <DialogDescription>
-              This will mark {data?.company.companyName} as a verified company.
+              {t("approveDialog.description", { name: data?.company.companyName ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
-              Cancel
+              {t("approveDialog.cancel")}
             </Button>
             <Button
               disabled={reviewMutation.isPending}
@@ -311,7 +321,7 @@ export function AdminVerificationReviewPanel({
               }}
             >
               {reviewMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Confirm Approval
+              {t("approveDialog.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -321,21 +331,20 @@ export function AdminVerificationReviewPanel({
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Verification</DialogTitle>
+            <DialogTitle>{t("rejectDialog.title")}</DialogTitle>
             <DialogDescription>
-              This will permanently reject the verification request. Use &quot;Request
-              Changes&quot; instead if you want the company to fix issues and resubmit.
+              {t("rejectDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Reason for rejection..."
+            placeholder={t("rejectDialog.placeholder")}
             value={rejectNotes}
             onChange={(e) => setRejectNotes(e.target.value)}
             rows={3}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              Cancel
+              {t("rejectDialog.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -350,7 +359,7 @@ export function AdminVerificationReviewPanel({
               }}
             >
               {reviewMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Reject
+              {t("rejectDialog.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -381,14 +390,16 @@ export function AdminVerificationReviewPanel({
 // =============================================================================
 
 function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, { variant: "default" | "destructive" | "outline" | "secondary"; label: string }> = {
-    pending: { variant: "outline", label: "Pending Review" },
-    approved: { variant: "default", label: "Approved" },
-    rejected: { variant: "destructive", label: "Rejected" },
-    changes_requested: { variant: "secondary", label: "Changes Requested" },
+  const t = useTranslations("AdminVerificationReview");
+  const variants: Record<string, { variant: "default" | "destructive" | "outline" | "secondary"; labelKey: string }> = {
+    pending: { variant: "outline", labelKey: "statuses.pending" },
+    approved: { variant: "default", labelKey: "statuses.approved" },
+    rejected: { variant: "destructive", labelKey: "statuses.rejected" },
+    changes_requested: { variant: "secondary", labelKey: "statuses.changesRequested" },
   };
-  const config = variants[status] ?? { variant: "outline" as const, label: status };
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  const config = variants[status];
+  if (!config) return <Badge variant="outline">{status}</Badge>;
+  return <Badge variant={config.variant}>{t(config.labelKey)}</Badge>;
 }
 
 function DataField({
@@ -404,6 +415,7 @@ function DataField({
   href?: string;
   icon?: React.ComponentType<{ className?: string }>;
 }) {
+  const t = useTranslations("AdminVerificationReview");
   return (
     <div className={`space-y-1 ${changed ? "bg-amber-50 border border-amber-200 rounded p-2 -m-2" : ""}`}>
       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -411,7 +423,7 @@ function DataField({
         {label}
         {changed && (
           <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-300">
-            Changed
+            {t("dataField.changed")}
           </Badge>
         )}
       </div>
@@ -430,7 +442,7 @@ function DataField({
           <p className="text-sm">{value}</p>
         )
       ) : (
-        <p className="text-sm text-muted-foreground italic">Not provided</p>
+        <p className="text-sm text-muted-foreground italic">{t("dataField.notProvided")}</p>
       )}
     </div>
   );
@@ -463,6 +475,7 @@ function SectionCard({
 // =============================================================================
 
 function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, unknown> }) {
+  const t = useTranslations("AdminVerificationReview");
   const scalarFields = resolvedChanges.scalarFields as Record<string, { current: string | null; proposed: string | null }> | undefined;
   const capabilities = resolvedChanges.capabilities as {
     added: string[]; removed: string[];
@@ -480,17 +493,10 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
     removedNames?: string[];
   } | undefined;
 
-  const fieldLabels: Record<string, string> = {
-    companyName: "Company Name",
-    description: "Description",
-    keyCapabilities: "Key Capabilities",
-    certifications: "Certifications",
-    equipment: "Equipment",
-    pastProjects: "Past Projects",
-    companiesHouseNumber: "Companies House Number",
-  };
-
-  const fieldOrder = ["companyName", "description", "keyCapabilities", "certifications", "equipment", "pastProjects", "companiesHouseNumber"];
+  const fieldOrder = ["companyName", "description", "keyCapabilities", "certifications", "equipment", "pastProjects", "companiesHouseNumber"] as const;
+  const fieldLabels: Record<string, string> = Object.fromEntries(
+    fieldOrder.map((k) => [k, t(`changeReview.fields.${k}` as const)]),
+  );
 
   const hasScalarChanges = scalarFields && Object.keys(scalarFields).length > 0;
   const hasCapChanges = capabilities && (capabilities.added.length > 0 || capabilities.removed.length > 0);
@@ -501,11 +507,11 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Proposed Changes</CardTitle>
+          <CardTitle className="text-base">{t("changeReview.title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!hasScalarChanges && !hasCapChanges && !hasMarketChanges && !hasStdChanges && (
-            <p className="text-sm text-muted-foreground">No changes found in snapshot.</p>
+            <p className="text-sm text-muted-foreground">{t("changeReview.empty")}</p>
           )}
 
           {/* Scalar field diffs */}
@@ -518,15 +524,15 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
                 <div className="text-sm font-medium">{fieldLabels[field] ?? field}</div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-xs text-muted-foreground mb-1 font-medium">Current (Approved)</div>
+                    <div className="text-xs text-muted-foreground mb-1 font-medium">{t("changeReview.current")}</div>
                     <div className="text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
-                      {isPastProjects ? formatPastProjectsValue(change.current) : (change.current || <span className="text-muted-foreground italic">Empty</span>)}
+                      {isPastProjects ? formatPastProjectsValue(change.current) : (change.current || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>)}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground mb-1 font-medium">Proposed</div>
+                    <div className="text-xs text-muted-foreground mb-1 font-medium">{t("changeReview.proposed")}</div>
                     <div className="text-sm bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
-                      {isPastProjects ? formatPastProjectsValue(change.proposed) : (change.proposed || <span className="text-muted-foreground italic">Empty</span>)}
+                      {isPastProjects ? formatPastProjectsValue(change.proposed) : (change.proposed || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>)}
                     </div>
                   </div>
                 </div>
@@ -537,10 +543,10 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
           {/* Capability changes */}
           {hasCapChanges && (
             <div className="border rounded-lg p-4 space-y-2">
-              <div className="text-sm font-medium">Competencies</div>
+              <div className="text-sm font-medium">{t("changeReview.competencies")}</div>
               {capabilities!.addedNames && capabilities!.addedNames.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-xs text-muted-foreground mr-1 self-center">Added:</span>
+                  <span className="text-xs text-muted-foreground mr-1 self-center">{t("changeReview.added")}</span>
                   {capabilities!.addedNames.map((cap, i) => (
                     <Badge key={i} variant="outline" className="text-xs bg-green-50 border-green-300 text-green-700">
                       + {typeof cap === "string" ? cap : cap.name}
@@ -550,7 +556,7 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
               )}
               {capabilities!.removedNames && capabilities!.removedNames.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-xs text-muted-foreground mr-1 self-center">Removed:</span>
+                  <span className="text-xs text-muted-foreground mr-1 self-center">{t("changeReview.removed")}</span>
                   {capabilities!.removedNames.map((cap, i) => (
                     <Badge key={i} variant="outline" className="text-xs bg-red-50 border-red-300 text-red-700">
                       - {typeof cap === "string" ? cap : cap.name}
@@ -564,10 +570,10 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
           {/* Market changes */}
           {hasMarketChanges && (
             <div className="border rounded-lg p-4 space-y-2">
-              <div className="text-sm font-medium">Markets</div>
+              <div className="text-sm font-medium">{t("changeReview.markets")}</div>
               {markets!.addedNames && markets!.addedNames.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-xs text-muted-foreground mr-1 self-center">Added:</span>
+                  <span className="text-xs text-muted-foreground mr-1 self-center">{t("changeReview.added")}</span>
                   {markets!.addedNames.map((name, i) => (
                     <Badge key={i} variant="outline" className="text-xs bg-green-50 border-green-300 text-green-700">
                       + {name}
@@ -577,7 +583,7 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
               )}
               {markets!.removedNames && markets!.removedNames.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-xs text-muted-foreground mr-1 self-center">Removed:</span>
+                  <span className="text-xs text-muted-foreground mr-1 self-center">{t("changeReview.removed")}</span>
                   {markets!.removedNames.map((name, i) => (
                     <Badge key={i} variant="outline" className="text-xs bg-red-50 border-red-300 text-red-700">
                       - {name}
@@ -591,10 +597,10 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
           {/* Standard changes */}
           {hasStdChanges && (
             <div className="border rounded-lg p-4 space-y-2">
-              <div className="text-sm font-medium">Standards</div>
+              <div className="text-sm font-medium">{t("changeReview.standards")}</div>
               {standards!.addedNames && standards!.addedNames.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-xs text-muted-foreground mr-1 self-center">Added:</span>
+                  <span className="text-xs text-muted-foreground mr-1 self-center">{t("changeReview.added")}</span>
                   {standards!.addedNames.map((name, i) => (
                     <Badge key={i} variant="outline" className="text-xs bg-green-50 border-green-300 text-green-700">
                       + {name}
@@ -604,7 +610,7 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
               )}
               {standards!.removedNames && standards!.removedNames.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-xs text-muted-foreground mr-1 self-center">Removed:</span>
+                  <span className="text-xs text-muted-foreground mr-1 self-center">{t("changeReview.removed")}</span>
                   {standards!.removedNames.map((name, i) => (
                     <Badge key={i} variant="outline" className="text-xs bg-red-50 border-red-300 text-red-700">
                       - {name}
@@ -635,6 +641,7 @@ function OverviewTab({
   previousSnapshot?: Record<string, string>;
   currentSnapshot?: Record<string, string>;
 }) {
+  const t = useTranslations("AdminVerificationReview");
   const changedFields = useMemo(() => {
     if (!isResubmission || !previousSnapshot || !currentSnapshot) return new Set<string>();
     const changed = new Set<string>();
@@ -651,7 +658,7 @@ function OverviewTab({
     <div className="space-y-6">
       {/* Submission Notes */}
       {data.request.submissionNotes && (
-        <SectionCard title="Submission Notes" icon={FileText}>
+        <SectionCard title={t("overview.submissionNotes")} icon={FileText}>
           <p className="text-sm">{data.request.submissionNotes}</p>
         </SectionCard>
       )}
@@ -662,7 +669,7 @@ function OverviewTab({
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
               <AlertTriangle className="h-4 w-4" />
-              Previous Review Feedback
+              {t("overview.previousFeedback")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -675,7 +682,7 @@ function OverviewTab({
             {changedFields.size > 0 && (
               <div className="pt-2">
                 <p className="text-xs font-medium text-amber-700 mb-1">
-                  Fields changed since last submission:
+                  {t("overview.changedFields")}
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {Array.from(changedFields).map((field) => (
@@ -695,11 +702,11 @@ function OverviewTab({
       )}
 
       {/* Quick Summary */}
-      <SectionCard title="Quick Summary" icon={Building2}>
+      <SectionCard title={t("overview.quickSummary")} icon={Building2}>
         <div className="grid grid-cols-2 gap-4">
-          <DataField label="Company Name" value={data.company.companyName} />
+          <DataField label={t("fields.companyName")} value={data.company.companyName} />
           <DataField
-            label="Companies House"
+            label={t("fields.companiesHouse")}
             value={data.company.companiesHouseNumber}
             href={
               data.company.companiesHouseNumber
@@ -708,35 +715,35 @@ function OverviewTab({
             }
           />
           <DataField
-            label="Website"
+            label={t("fields.website")}
             value={data.company.websiteUrl}
             href={data.company.websiteUrl ?? undefined}
             icon={Globe}
           />
-          <DataField label="Contact Email" value={data.company.contactEmail} icon={Mail} />
-          <DataField label="Status" value={data.company.status} />
+          <DataField label={t("fields.contactEmail")} value={data.company.contactEmail} icon={Mail} />
+          <DataField label={t("fields.status")} value={data.company.status} />
           <DataField
-            label="Capabilities"
-            value={`${data.capabilities.length} selected`}
+            label={t("fields.capabilities")}
+            value={t("overview.capabilitiesSelected", { count: data.capabilities.length })}
           />
         </div>
       </SectionCard>
 
       {/* Review Checklist */}
-      <SectionCard title="Review Checklist" icon={Shield}>
+      <SectionCard title={t("overview.checklist")} icon={Shield}>
         <div className="space-y-3">
-          {CHECKLIST_ITEMS.map((item) => (
-            <div key={item.id} className="flex items-center gap-3">
+          {CHECKLIST_ITEM_IDS.map((id) => (
+            <div key={id} className="flex items-center gap-3">
               <Checkbox
-                id={`check-${item.id}`}
-                checked={checkedItems.has(item.id)}
-                onCheckedChange={() => toggleCheck(item.id)}
+                id={`check-${id}`}
+                checked={checkedItems.has(id)}
+                onCheckedChange={() => toggleCheck(id)}
               />
               <label
-                htmlFor={`check-${item.id}`}
+                htmlFor={`check-${id}`}
                 className="text-sm cursor-pointer select-none"
               >
-                {item.label}
+                {t(`checklist.${id}` as const)}
               </label>
             </div>
           ))}
@@ -751,14 +758,15 @@ function CompanyDetailsTab({
 }: {
   data: ReviewData;
 }) {
+  const t = useTranslations("AdminVerificationReview");
   const company = data.company;
   return (
     <div className="space-y-6">
-      <SectionCard title="Business Information" icon={Building2}>
+      <SectionCard title={t("details.businessInfo")} icon={Building2}>
         <div className="grid grid-cols-2 gap-4">
-          <DataField label="Company Name" value={company.companyName} />
+          <DataField label={t("fields.companyName")} value={company.companyName} />
           <DataField
-            label="Companies House Number"
+            label={t("fields.companiesHouseNumber")}
             value={company.companiesHouseNumber}
             href={
               company.companiesHouseNumber
@@ -767,30 +775,30 @@ function CompanyDetailsTab({
             }
           />
           <div className="col-span-2">
-            <DataField label="Description" value={company.description ?? null} />
+            <DataField label={t("fields.description")} value={company.description ?? null} />
           </div>
-          <DataField label="Address" value={company.address ?? null} icon={MapPin} />
-          <DataField label="Postcode" value={company.postcode ?? null} />
+          <DataField label={t("fields.address")} value={company.address ?? null} icon={MapPin} />
+          <DataField label={t("fields.postcode")} value={company.postcode ?? null} />
         </div>
       </SectionCard>
 
-      <SectionCard title="Contact Information" icon={User}>
+      <SectionCard title={t("details.contactInfo")} icon={User}>
         <div className="grid grid-cols-2 gap-4">
-          <DataField label="Contact Person" value={company.contactPerson} />
+          <DataField label={t("fields.contactPerson")} value={company.contactPerson} />
           <DataField
-            label="Email"
+            label={t("fields.email")}
             value={company.contactEmail}
             href={company.contactEmail ? `mailto:${company.contactEmail}` : undefined}
             icon={Mail}
           />
           <DataField
-            label="Phone"
+            label={t("fields.phone")}
             value={company.contactPhone}
             href={company.contactPhone ? `tel:${company.contactPhone}` : undefined}
             icon={Phone}
           />
           <DataField
-            label="Website"
+            label={t("fields.website")}
             value={company.websiteUrl}
             href={company.websiteUrl ?? undefined}
             icon={Globe}
@@ -798,16 +806,16 @@ function CompanyDetailsTab({
         </div>
       </SectionCard>
 
-      <SectionCard title="Capabilities & Experience" icon={FileText}>
+      <SectionCard title={t("details.capabilitiesExperience")} icon={FileText}>
         <div className="space-y-4">
-          <DataField label="Key Capabilities" value={company.keyCapabilities} />
+          <DataField label={t("fields.keyCapabilities")} value={company.keyCapabilities} />
           <Separator />
-          <DataField label="Certifications" value={company.certifications ?? null} />
+          <DataField label={t("fields.certifications")} value={company.certifications ?? null} />
           <Separator />
-          <DataField label="Equipment" value={company.equipment ?? null} />
+          <DataField label={t("fields.equipment")} value={company.equipment ?? null} />
           <Separator />
           <div className="space-y-1">
-            <div className="text-xs font-medium text-muted-foreground">Past Projects</div>
+            <div className="text-xs font-medium text-muted-foreground">{t("fields.pastProjects")}</div>
             <PastProjectsDisplay value={company.pastProjects} />
           </div>
         </div>
@@ -821,26 +829,29 @@ function CompetenciesTab({
 }: {
   data: ReviewData;
 }) {
+  const t = useTranslations("AdminVerificationReview");
+  const uncategorizedLabel = t("competencies.uncategorized");
   // Group capabilities by category
   const groupedCapabilities = useMemo(() => {
     const groups: Record<string, { id: string; name: string }[]> = {};
     for (const cap of data.capabilities) {
-      const category = cap.category || "Uncategorized";
+      const category = cap.category || uncategorizedLabel;
       if (!groups[category]) groups[category] = [];
       groups[category].push(cap);
     }
     return groups;
-  }, [data.capabilities]);
+  }, [data.capabilities, uncategorizedLabel]);
 
   // Group markets/standards hierarchically
-  const groupedMarkets = useMemo(() => groupHierarchical(data.markets), [data.markets]);
-  const groupedStandards = useMemo(() => groupHierarchical(data.standards), [data.standards]);
+  const otherLabel = t("competencies.other");
+  const groupedMarkets = useMemo(() => groupHierarchical(data.markets, otherLabel), [data.markets, otherLabel]);
+  const groupedStandards = useMemo(() => groupHierarchical(data.standards, otherLabel), [data.standards, otherLabel]);
 
   return (
     <div className="space-y-6">
-      <SectionCard title={`Capabilities (${data.capabilities.length})`}>
+      <SectionCard title={t("competencies.capabilitiesTitle", { count: data.capabilities.length })}>
         {data.capabilities.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No capabilities selected</p>
+          <p className="text-sm text-muted-foreground italic">{t("competencies.emptyCapabilities")}</p>
         ) : (
           <div className="space-y-4">
             {Object.entries(groupedCapabilities).map(([category, caps]) => (
@@ -861,17 +872,17 @@ function CompetenciesTab({
         )}
       </SectionCard>
 
-      <SectionCard title={`Markets (${data.markets.length})`}>
+      <SectionCard title={t("competencies.marketsTitle", { count: data.markets.length })}>
         {data.markets.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No markets selected</p>
+          <p className="text-sm text-muted-foreground italic">{t("competencies.emptyMarkets")}</p>
         ) : (
           <HierarchicalList items={groupedMarkets} />
         )}
       </SectionCard>
 
-      <SectionCard title={`Standards & Certifications (${data.standards.length})`}>
+      <SectionCard title={t("competencies.standardsTitle", { count: data.standards.length })}>
         {data.standards.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No standards selected</p>
+          <p className="text-sm text-muted-foreground italic">{t("competencies.emptyStandards")}</p>
         ) : (
           <HierarchicalList items={groupedStandards} />
         )}
@@ -879,7 +890,7 @@ function CompetenciesTab({
 
       {/* AI-suggested competencies comparison */}
       {data.company.aiCompetencies && (
-        <SectionCard title="AI-Suggested Competencies">
+        <SectionCard title={t("competencies.aiSuggested")}>
           <div className="flex flex-wrap gap-1.5">
             {(data.company.aiCompetencies as string[]).map((comp, i) => (
               <Badge key={i} variant="secondary" className="text-xs">
@@ -898,64 +909,59 @@ function AIAnalysisTab({
 }: {
   data: ReviewData;
 }) {
+  const t = useTranslations("AdminVerificationReview");
   const company = data.company;
   const aiAnalysis = company.aiAnalysis as Record<string, JsonValue> | null | undefined;
 
   return (
     <div className="space-y-6">
-      {/* AI Summary */}
-      <SectionCard title="AI Summary">
+      <SectionCard title={t("ai.summary")}>
         {company.aiSummary ? (
           <p className="text-sm">{company.aiSummary}</p>
         ) : (
           <p className="text-sm text-muted-foreground italic">
-            No AI analysis has been generated yet
+            {t("ai.noSummary")}
           </p>
         )}
       </SectionCard>
 
-      {/* Assessment Ratings */}
-      <SectionCard title="Assessment Ratings">
+      <SectionCard title={t("ai.ratings")}>
         <div className="grid grid-cols-3 gap-4">
-          <RatingField label="Digital Maturity" value={company.digitalMaturity} />
-          <RatingField label="Safety Rating" value={company.safetyRating} />
-          <RatingField label="Market Position" value={company.marketPosition} />
+          <RatingField label={t("ai.digitalMaturity")} value={company.digitalMaturity} />
+          <RatingField label={t("ai.safetyRating")} value={company.safetyRating} />
+          <RatingField label={t("ai.marketPosition")} value={company.marketPosition} />
         </div>
       </SectionCard>
 
-      {/* AI Capabilities & Strengths */}
       <div className="grid grid-cols-2 gap-6">
-        <SectionCard title="AI Capabilities">
+        <SectionCard title={t("ai.capabilities")}>
           <JsonBadgeList data={company.aiCapabilities} />
         </SectionCard>
-        <SectionCard title="AI Strengths">
+        <SectionCard title={t("ai.strengths")}>
           <JsonBadgeList data={company.aiStrengths} />
         </SectionCard>
       </div>
 
-      <SectionCard title="AI Certifications">
+      <SectionCard title={t("ai.certifications")}>
         <JsonBadgeList data={company.aiCertifications} />
       </SectionCard>
 
-      {/* SWOT Analysis */}
       {aiAnalysis?.swotSummary && (
-        <SectionCard title="SWOT Analysis">
+        <SectionCard title={t("ai.swot")}>
           <SwotDisplay swot={aiAnalysis.swotSummary as Record<string, string[]>} />
         </SectionCard>
       )}
 
-      {/* Performance Benchmark */}
       {aiAnalysis?.performanceBenchmark && (
-        <SectionCard title="Performance Benchmark">
+        <SectionCard title={t("ai.benchmark")}>
           <PerformanceBenchmarkDisplay
             benchmark={aiAnalysis.performanceBenchmark as Record<string, number>}
           />
         </SectionCard>
       )}
 
-      {/* Executive Summary */}
       {aiAnalysis?.executiveSummary && (
-        <SectionCard title="Executive Summary">
+        <SectionCard title={t("ai.executiveSummary")}>
           <p className="text-sm">{String(aiAnalysis.executiveSummary)}</p>
         </SectionCard>
       )}
@@ -968,6 +974,7 @@ function FinancialTab({
 }: {
   data: ReviewData;
 }) {
+  const t = useTranslations("AdminVerificationReview");
   const company = data.company;
   const financialData = company.financialData as Record<string, JsonValue> | null;
   const complianceData = company.complianceData as Record<string, JsonValue> | null;
@@ -981,7 +988,7 @@ function FinancialTab({
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Financial Data">
+      <SectionCard title={t("financial.financialData")}>
         {hasFinancial ? (
           <div className="grid grid-cols-3 gap-4">
             {Object.entries(financialData).map(([key, val]) => (
@@ -993,11 +1000,11 @@ function FinancialTab({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No financial data available</p>
+          <p className="text-sm text-muted-foreground italic">{t("financial.noFinancial")}</p>
         )}
       </SectionCard>
 
-      <SectionCard title="Compliance Data">
+      <SectionCard title={t("financial.complianceData")}>
         {hasCompliance ? (
           <div className="grid grid-cols-2 gap-4">
             {Object.entries(complianceData).map(([key, val]) => (
@@ -1009,11 +1016,11 @@ function FinancialTab({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No compliance data available</p>
+          <p className="text-sm text-muted-foreground italic">{t("financial.noCompliance")}</p>
         )}
       </SectionCard>
 
-      <SectionCard title="System-Extracted Data">
+      <SectionCard title={t("financial.systemExtracted")}>
         {hasExtracted ? (
           <div className="space-y-3">
             {Object.entries(systemExtracted).map(([key, val]) => (
@@ -1026,12 +1033,12 @@ function FinancialTab({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No system-extracted data available</p>
+          <p className="text-sm text-muted-foreground italic">{t("financial.noExtracted")}</p>
         )}
       </SectionCard>
 
       {hasVerified && (
-        <SectionCard title="Admin-Verified Fields">
+        <SectionCard title={t("financial.adminVerified")}>
           <div className="grid grid-cols-2 gap-4">
             {Object.entries(humanVerified).map(([key, val]) => (
               <DataField
@@ -1052,12 +1059,15 @@ function HistoryTab({
 }: {
   data: ReviewData;
 }) {
+  const t = useTranslations("AdminVerificationReview");
   const allRequests = [data.request, ...(data.previousRequests ?? [])];
 
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-muted-foreground">
-        {allRequests.length} verification request{allRequests.length !== 1 ? "s" : ""}
+        {allRequests.length === 1
+          ? t("history.countOne", { count: allRequests.length })
+          : t("history.countOther", { count: allRequests.length })}
       </h3>
       {allRequests.map((req, index) => (
         <Card key={req.id} className={index === 0 ? "border-blue-200" : ""}>
@@ -1067,7 +1077,7 @@ function HistoryTab({
                 <StatusBadge status={req.status} />
                 {index === 0 && (
                   <Badge variant="outline" className="text-xs">
-                    Current
+                    {t("history.current")}
                   </Badge>
                 )}
               </div>
@@ -1081,27 +1091,27 @@ function HistoryTab({
           <CardContent className="space-y-3">
             {req.submissionNotes && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Submission Notes</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("history.submissionNotes")}</p>
                 <p className="text-sm mt-1">{req.submissionNotes}</p>
               </div>
             )}
             {req.reviewNotes && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Review Notes</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("history.reviewNotes")}</p>
                 <p className="text-sm mt-1">{req.reviewNotes}</p>
               </div>
             )}
             {req.reviewFeedback && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-2">
-                  Structured Feedback
+                  {t("history.structuredFeedback")}
                 </p>
                 <FeedbackDisplay feedback={req.reviewFeedback} />
               </div>
             )}
             {req.reviewedAt && (
               <p className="text-xs text-muted-foreground">
-                Reviewed on {new Date(req.reviewedAt).toLocaleDateString()}
+                {t("history.reviewedOn", { date: new Date(req.reviewedAt).toLocaleDateString() })}
               </p>
             )}
           </CardContent>
@@ -1147,20 +1157,22 @@ function RatingField({
   label: string;
   value: string | null | undefined;
 }) {
+  const t = useTranslations("AdminVerificationReview");
   return (
     <div className="text-center p-3 bg-muted/50 rounded-lg">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium mt-1">{value ?? "N/A"}</p>
+      <p className="text-sm font-medium mt-1">{value ?? t("ai.na")}</p>
     </div>
   );
 }
 
 function JsonBadgeList({ data }: { data: JsonValue | undefined }) {
-  if (!data) return <p className="text-sm text-muted-foreground italic">Not available</p>;
+  const t = useTranslations("AdminVerificationReview");
+  if (!data) return <p className="text-sm text-muted-foreground italic">{t("ai.notAvailable")}</p>;
 
   const items = Array.isArray(data) ? data : [];
   if (items.length === 0)
-    return <p className="text-sm text-muted-foreground italic">None found</p>;
+    return <p className="text-sm text-muted-foreground italic">{t("ai.noneFound")}</p>;
 
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -1174,11 +1186,12 @@ function JsonBadgeList({ data }: { data: JsonValue | undefined }) {
 }
 
 function SwotDisplay({ swot }: { swot: Record<string, string[]> }) {
+  const t = useTranslations("AdminVerificationReview");
   const sections = [
-    { key: "strengths", label: "Strengths", color: "text-emerald-700 bg-emerald-50" },
-    { key: "weaknesses", label: "Weaknesses", color: "text-red-700 bg-red-50" },
-    { key: "opportunities", label: "Opportunities", color: "text-blue-700 bg-blue-50" },
-    { key: "threats", label: "Threats", color: "text-amber-700 bg-amber-50" },
+    { key: "strengths", label: t("ai.swotStrengths"), color: "text-emerald-700 bg-emerald-50" },
+    { key: "weaknesses", label: t("ai.swotWeaknesses"), color: "text-red-700 bg-red-50" },
+    { key: "opportunities", label: t("ai.swotOpportunities"), color: "text-blue-700 bg-blue-50" },
+    { key: "threats", label: t("ai.swotThreats"), color: "text-amber-700 bg-amber-50" },
   ];
 
   return (
@@ -1202,13 +1215,14 @@ function PerformanceBenchmarkDisplay({
 }: {
   benchmark: Record<string, number>;
 }) {
+  const t = useTranslations("AdminVerificationReview");
   const metrics = Object.entries(benchmark).filter(([key]) => key !== "overallScore");
 
   return (
     <div className="space-y-3">
       {benchmark.overallScore !== undefined && (
         <div className="text-center p-3 bg-muted/50 rounded-lg mb-4">
-          <p className="text-xs font-medium text-muted-foreground">Overall Score</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("ai.overallScore")}</p>
           <p className="text-2xl font-bold mt-1">{benchmark.overallScore}/10</p>
         </div>
       )}
@@ -1284,6 +1298,7 @@ function formatJsonValue(val: JsonValue): string | null {
 
 function groupHierarchical(
   items: { id: string; name: string; parentId: string | null }[],
+  otherLabel: string,
 ): { parentName: string | null; children: { id: string; name: string }[] }[] {
   const parents = items.filter((i) => !i.parentId);
   const children = items.filter((i) => i.parentId);
@@ -1295,16 +1310,14 @@ function groupHierarchical(
     if (childItems.length > 0) {
       groups.push({ parentName: parent.name, children: childItems });
     } else {
-      // Parent with no children listed as standalone
       groups.push({ parentName: null, children: [parent] });
     }
   }
 
-  // Orphan children (parent not in selection)
   const assignedChildIds = new Set(groups.flatMap((g) => g.children.map((c) => c.id)));
   const orphans = children.filter((c) => !assignedChildIds.has(c.id));
   if (orphans.length > 0) {
-    groups.push({ parentName: "Other", children: orphans });
+    groups.push({ parentName: otherLabel, children: orphans });
   }
 
   return groups;

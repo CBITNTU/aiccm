@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = useTranslations("AdminLayout");
   const { isAdmin, loading } = useUserRole();
   const router = useRouter();
   const hasRedirectedRef = useRef(false);
@@ -18,10 +20,10 @@ export default function AdminLayout({
   useEffect(() => {
     if (!loading && !isAdmin && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
-      toast.error("Superadmin access required");
+      toast.error(t("accessDenied"));
       router.replace("/dashboard");
     }
-  }, [isAdmin, loading, router]);
+  }, [isAdmin, loading, router, t]);
 
   if (loading) {
     return (
@@ -30,9 +32,7 @@ export default function AdminLayout({
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Loading superadmin access...
-              </p>
+              <p className="text-muted-foreground">{t("loading")}</p>
             </div>
           </div>
         </div>

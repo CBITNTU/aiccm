@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities -- capabilities/taxonomy row types; copy uses quotes */
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,6 +88,7 @@ function AdminTreeLevel({
   onDelete: (id: string) => void;
   deletingId: string | null;
 }) {
+  const t = useTranslations("AdminTaxonomy");
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedCategories.has(node.id);
   const cap = getCapability(node.id);
@@ -142,19 +144,18 @@ function AdminTreeLevel({
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Capability</AlertDialogTitle>
+                <AlertDialogTitle>{t("deleteDialog.title")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete &quot;{node.name}&quot;? This
-                  action cannot be undone.
+                  {t("deleteDialog.description", { name: node.name })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("deleteDialog.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => onDelete(node.id)}
                   className="bg-destructive text-destructive-foreground"
                 >
-                  Delete
+                  {t("deleteDialog.confirm")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -183,6 +184,7 @@ function AdminTreeLevel({
 }
 
 const AdminTaxonomyEditor = () => {
+  const t = useTranslations("AdminTaxonomy");
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -226,7 +228,7 @@ const AdminTaxonomyEditor = () => {
     const timeoutId = setTimeout(() => {
       console.log("📥 Fetching updated capabilities...");
       fetchCapabilities();
-      toast.success("Capability list refreshed");
+      toast.success(t("toasts.refreshed"));
       // Clear batch ID after refresh to prevent re-triggering
       setRegenerationBatchId(null);
     }, 3000); // Increased delay to ensure DB writes are complete
@@ -251,7 +253,7 @@ const AdminTaxonomyEditor = () => {
       setCapabilities(validCapabilities);
     } catch (error: any) {
       console.error("Error fetching capabilities:", error);
-      toast.error(`Failed to load capabilities: ${error.message}`);
+      toast.error(t("toasts.loadFailed", { error: error.message }));
     } finally {
       setLoading(false);
     }
@@ -281,12 +283,13 @@ const AdminTaxonomyEditor = () => {
     return roots;
   })();
 
+  const uncategorizedLabel = t("uncategorized");
   const categories = Array.from(
-    new Set(capabilities.map((c) => c.category ?? "Uncategorized")),
-  ).toSorted((a, b) => (a === "Uncategorized" ? 1 : b === "Uncategorized" ? -1 : a.localeCompare(b)));
+    new Set(capabilities.map((c) => c.category ?? uncategorizedLabel)),
+  ).toSorted((a, b) => (a === uncategorizedLabel ? 1 : b === uncategorizedLabel ? -1 : a.localeCompare(b)));
 
   const getCapabilitiesByCategory = (category: string) => {
-    const key = category === "Uncategorized" ? null : category;
+    const key = category === uncategorizedLabel ? null : category;
     return capabilities.filter((c) => (c.category ?? null) === key);
   };
 
@@ -301,7 +304,7 @@ const AdminTaxonomyEditor = () => {
   };
 
   const handleCreate = () => {
-    const firstCat = categories.find((c) => c !== "Uncategorized") ?? categories[0] ?? "";
+    const firstCat = categories.find((c) => c !== uncategorizedLabel) ?? categories[0] ?? "";
     setFormData({
       name: "",
       category: firstCat,
@@ -325,11 +328,11 @@ const AdminTaxonomyEditor = () => {
     try {
       await api.adminDeleteCapability(id);
 
-      toast.success("Capability deleted successfully");
+      toast.success(t("toasts.deleteSuccess"));
       await fetchCapabilities();
     } catch (error: any) {
       console.error("Error deleting capability:", error);
-      toast.error(`Failed to delete capability: ${error.message}`);
+      toast.error(t("toasts.deleteFailed", { error: error.message }));
     } finally {
       setDeletingId(null);
     }
@@ -338,13 +341,13 @@ const AdminTaxonomyEditor = () => {
   const handleSave = async () => {
     try {
       if (!formData.name.trim()) {
-        toast.error("Name is required");
+        toast.error(t("toasts.nameRequired"));
         return;
       }
       const category = formData.category.trim() || null;
       const parentId = formData.parentId.trim() || null;
       if (!category && !parentId) {
-        toast.error("Either category or parent must be set");
+        toast.error(t("toasts.categoryOrParentRequired"));
         return;
       }
 
@@ -354,7 +357,7 @@ const AdminTaxonomyEditor = () => {
           category,
           parentId,
         });
-        toast.success("Capability updated successfully");
+        toast.success(t("toasts.updateSuccess"));
         setIsEditDialogOpen(false);
         setEditingCapability(null);
       } else {
@@ -363,7 +366,7 @@ const AdminTaxonomyEditor = () => {
           category,
           parentId,
         });
-        toast.success("Capability created successfully");
+        toast.success(t("toasts.createSuccess"));
         setIsCreateDialogOpen(false);
       }
 
@@ -372,17 +375,12 @@ const AdminTaxonomyEditor = () => {
       await fetchCapabilities();
     } catch (error: any) {
       console.error("Error saving capability:", error);
-      toast.error(`Failed to save capability: ${error.message}`);
+      toast.error(t("toasts.saveFailed", { error: error.message }));
     }
   };
 
   const handleResetCapabilities = async () => {
-    const confirmReset = window.confirm(
-      "⚠️ WARNING: This will DELETE ALL capabilities and company-capability links!\n\n" +
-        "This action cannot be undone. All companies will have their capabilities cleared.\n\n" +
-        "The editable taxonomy will then be restored from the read-only seed table (populated by the CSV migration).\n\n" +
-        "Are you sure you want to proceed?",
-    );
+    const confirmReset = window.confirm(t("resetConfirm"));
 
     if (!confirmReset) return;
 
@@ -397,21 +395,27 @@ const AdminTaxonomyEditor = () => {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to reset capabilities");
+        throw new Error(data.error || t("toasts.resetFailed"));
       }
 
-      // Refresh the capability list to show base capabilities
       await fetchCapabilities();
 
       toast.success(
         data.reseededCapabilities > 0
-          ? `✅ Reset complete. Deleted ${data.deletedCapabilities} capabilities and ${data.deletedLinks} links. Reseeded ${data.reseededCapabilities} from the seed table.`
-          : `✅ Reset complete. Deleted ${data.deletedCapabilities} capabilities and ${data.deletedLinks} links. Seed table is empty — run the taxonomy migration to populate it.`,
+          ? t("toasts.resetSuccessSeeded", {
+              deleted: data.deletedCapabilities,
+              links: data.deletedLinks,
+              reseeded: data.reseededCapabilities,
+            })
+          : t("toasts.resetSuccessEmpty", {
+              deleted: data.deletedCapabilities,
+              links: data.deletedLinks,
+            }),
       );
     } catch (error) {
       console.error("Error resetting capabilities:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reset capabilities",
+        error instanceof Error ? error.message : t("toasts.resetFailed"),
       );
     } finally {
       setIsRegenerating(false);
@@ -435,23 +439,22 @@ const AdminTaxonomyEditor = () => {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to start regeneration");
+        throw new Error(data.error || t("toasts.regenerateFailed"));
       }
 
       setRegenerationBatchId(data.batchId);
 
-      // Refresh UI after a short delay to show reset capabilities
       setTimeout(() => {
         fetchCapabilities();
       }, 2000);
 
       toast.success(
-        `Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`,
+        t("toasts.regenerateQueued", { jobs: data.jobCount, companies: data.companyCount }),
       );
     } catch (error) {
       console.error("Error regenerating company capabilities:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to start regeneration",
+        error instanceof Error ? error.message : t("toasts.regenerateFailed"),
       );
     } finally {
       setIsRegenerating(false);
@@ -489,10 +492,9 @@ const AdminTaxonomyEditor = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Capability Taxonomy Editor</CardTitle>
+              <CardTitle>{t("cardTitle")}</CardTitle>
               <CardDescription>
-                Manage company capabilities by category and name. These are used
-                to match companies with projects.
+                {t("cardDescription")}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -500,10 +502,10 @@ const AdminTaxonomyEditor = () => {
                 variant="destructive"
                 onClick={handleResetCapabilities}
                 disabled={isRegenerating || batch?.status === "processing"}
-                title="Delete ALL capabilities and links. Cannot be undone."
+                title={t("resetTitle")}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Reset List
+                {t("resetButton")}
               </Button>
               <Button
                 variant="outline"
@@ -513,7 +515,7 @@ const AdminTaxonomyEditor = () => {
                 <RefreshCw
                   className={`h-4 w-4 mr-2 ${isRegenerating || batch?.status === "processing" ? "animate-spin" : ""}`}
                 />
-                Regenerate All Company Capabilities
+                {t("regenerateButton")}
               </Button>
               <Button
                 variant="outline"
@@ -523,11 +525,11 @@ const AdminTaxonomyEditor = () => {
                 <RefreshCw
                   className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
                 />
-                Refresh List
+                {t("refreshButton")}
               </Button>
               <Button onClick={handleCreate}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Capability
+                {t("addButton")}
               </Button>
             </div>
           </div>
@@ -539,22 +541,22 @@ const AdminTaxonomyEditor = () => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium">
-                    Regenerating Company Capabilities
+                    {t("regenerating")}
                   </span>
-                  <span>{progress}%</span>
+                  <span>{t("progressPercent", { progress })}</span>
                 </div>
                 <Progress value={progress} />
                 <div className="text-sm text-muted-foreground">
-                  {batch.completedJobs} / {batch.totalJobs} companies completed.
+                  {t("batchProgress", { completed: batch.completedJobs, total: batch.totalJobs })}
                   {batch.failedJobs > 0 && (
                     <span className="text-destructive ml-2">
-                      ({batch.failedJobs} failed)
+                      {t("batchFailed", { count: batch.failedJobs })}
                     </span>
                   )}
                 </div>
                 {batch.status === "completed" && (
                   <div className="text-sm text-green-600 font-medium">
-                    ✅ Regeneration completed!
+                    {t("regenerationDone")}
                   </div>
                 )}
               </div>
@@ -565,7 +567,7 @@ const AdminTaxonomyEditor = () => {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search capabilities or categories..."
+                placeholder={t("searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -575,15 +577,13 @@ const AdminTaxonomyEditor = () => {
 
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
-              Loading capabilities...
+              {t("loading")}
             </div>
           ) : hasParentId ? (
             <div className="space-y-1">
               {filteredTree.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {searchTerm
-                    ? "No capabilities match your search."
-                    : "No capabilities found. Create your first capability."}
+                  {searchTerm ? t("emptySearch") : t("empty")}
                 </div>
               ) : (
                 filteredTree.map((node) => (
@@ -607,7 +607,7 @@ const AdminTaxonomyEditor = () => {
             <div className="space-y-2">
               {filteredCategories.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No capabilities found. Create your first capability.
+                  {t("empty")}
                 </div>
               ) : (
                 filteredCategories.map((category) => {
@@ -675,17 +675,15 @@ const AdminTaxonomyEditor = () => {
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>
-                                        Delete Capability
+                                        {t("deleteDialog.title")}
                                       </AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Are you sure you want to delete "
-                                        {capability.name}"? This action cannot
-                                        be undone.
+                                        {t("deleteDialog.description", { name: capability.name })}
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                       <AlertDialogCancel>
-                                        Cancel
+                                        {t("deleteDialog.cancel")}
                                       </AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() =>
@@ -693,7 +691,7 @@ const AdminTaxonomyEditor = () => {
                                         }
                                         className="bg-destructive text-destructive-foreground"
                                       >
-                                        Delete
+                                        {t("deleteDialog.confirm")}
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -711,8 +709,7 @@ const AdminTaxonomyEditor = () => {
           )}
 
           <div className="mt-4 text-sm text-muted-foreground">
-            Total: {capabilities.length} capabilities across {categories.length}{" "}
-            categories
+            {t("total", { count: capabilities.length, categories: categories.length })}
           </div>
         </CardContent>
       </Card>
@@ -721,26 +718,26 @@ const AdminTaxonomyEditor = () => {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Capability</DialogTitle>
+            <DialogTitle>{t("createDialog.title")}</DialogTitle>
             <DialogDescription>
-              Add a new capability to the taxonomy.
+              {t("createDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">{t("form.nameLabel")}</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="Capability name"
+                placeholder={t("form.namePlaceholder")}
               />
             </div>
 
             <div>
-              <Label>Parent (optional)</Label>
+              <Label>{t("form.parentLabel")}</Label>
               <Select
                 value={formData.parentId || "none"}
                 onValueChange={(v) =>
@@ -751,10 +748,10 @@ const AdminTaxonomyEditor = () => {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="None" />
+                  <SelectValue placeholder={t("form.parentPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">{t("form.none")}</SelectItem>
                   {capabilities.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
@@ -765,7 +762,7 @@ const AdminTaxonomyEditor = () => {
             </div>
 
             <div>
-              <Label htmlFor="category">Category (optional if parent set)</Label>
+              <Label htmlFor="category">{t("form.categoryLabel")}</Label>
               <Select
                 value={formData.category || "none"}
                 onValueChange={(value) =>
@@ -776,10 +773,10 @@ const AdminTaxonomyEditor = () => {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t("form.categoryPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">{t("form.none")}</SelectItem>
                   {categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
@@ -794,9 +791,9 @@ const AdminTaxonomyEditor = () => {
               variant="outline"
               onClick={() => setIsCreateDialogOpen(false)}
             >
-              Cancel
+              {t("createDialog.cancel")}
             </Button>
-            <Button onClick={handleSave}>Create</Button>
+            <Button onClick={handleSave}>{t("createDialog.confirm")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -805,26 +802,26 @@ const AdminTaxonomyEditor = () => {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Capability</DialogTitle>
+            <DialogTitle>{t("editDialog.title")}</DialogTitle>
             <DialogDescription>
-              Update the capability details.
+              {t("editDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-name">Name *</Label>
+              <Label htmlFor="edit-name">{t("form.nameLabel")}</Label>
               <Input
                 id="edit-name"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="Capability name"
+                placeholder={t("form.namePlaceholder")}
               />
             </div>
 
             <div>
-              <Label>Parent (optional)</Label>
+              <Label>{t("form.parentLabel")}</Label>
               <Select
                 value={formData.parentId || "none"}
                 onValueChange={(v) =>
@@ -835,10 +832,10 @@ const AdminTaxonomyEditor = () => {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="None" />
+                  <SelectValue placeholder={t("form.parentPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">{t("form.none")}</SelectItem>
                   {capabilities
                     .filter((c) => c.id !== editingCapability?.id)
                     .map((c) => (
@@ -851,7 +848,7 @@ const AdminTaxonomyEditor = () => {
             </div>
 
             <div>
-              <Label htmlFor="edit-category">Category (optional if parent set)</Label>
+              <Label htmlFor="edit-category">{t("form.categoryLabel")}</Label>
               <Select
                 value={formData.category || "none"}
                 onValueChange={(value) =>
@@ -862,10 +859,10 @@ const AdminTaxonomyEditor = () => {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t("form.categoryPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">{t("form.none")}</SelectItem>
                   {categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
@@ -880,9 +877,9 @@ const AdminTaxonomyEditor = () => {
               variant="outline"
               onClick={() => setIsEditDialogOpen(false)}
             >
-              Cancel
+              {t("editDialog.cancel")}
             </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
+            <Button onClick={handleSave}>{t("editDialog.confirm")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

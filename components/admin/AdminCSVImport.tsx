@@ -2,6 +2,7 @@
 
 /* eslint-disable react/no-unescaped-entities -- CSV row types; copy uses apostrophes */
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -112,6 +113,7 @@ const matchCapability = (
 };
 
 export function AdminCSVImport() {
+  const t = useTranslations("AdminCSVImport");
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -259,7 +261,7 @@ export function AdminCSVImport() {
     if (!selectedFile) return;
 
     if (!selectedFile.name.endsWith(".csv")) {
-      toast.error("Please select a CSV file");
+      toast.error(t("toasts.invalidFile"));
       return;
     }
 
@@ -272,15 +274,15 @@ export function AdminCSVImport() {
       const parsed = parseCSV(text);
 
       if (parsed.length === 0) {
-        toast.error("No valid data found in CSV file");
+        toast.error(t("toasts.noData"));
         return;
       }
 
       setPreview(parsed.slice(0, 5)); // Show first 5 rows as preview
-      toast.success(`CSV file loaded. Found ${parsed.length} companies.`);
+      toast.success(t("toasts.loaded", { count: parsed.length }));
     } catch (error) {
       console.error("Error parsing CSV:", error);
-      toast.error("Failed to parse CSV file");
+      toast.error(t("toasts.parseError"));
     }
   };
 
@@ -312,9 +314,7 @@ export function AdminCSVImport() {
         }));
       } catch (refError) {
         console.warn("Failed to fetch reference capabilities:", refError);
-        toast.warning(
-          "Capability matching disabled - failed to load reference list",
-        );
+        toast.warning(t("toasts.capabilityMatchingDisabled"));
       }
 
       for (let i = 0; i < total; i++) {
@@ -565,13 +565,19 @@ export function AdminCSVImport() {
       }
 
       toast.success(
-        `Import completed! ${successCount} imported, ${skippedCount} skipped, ${errorList.length} errors. ${successCount > 0 ? "Capability taxonomies are being generated in the background." : ""}`,
+        t("toasts.importSuccess", {
+          imported: successCount,
+          skipped: skippedCount,
+          errors: errorList.length,
+          note: successCount > 0 ? t("toasts.importSuccessNote") : "",
+        }),
       );
     } catch (error) {
       console.error("Import error:", error);
       toast.error(
-        "Import failed: " +
-          (error instanceof Error ? error.message : String(error)),
+        t("toasts.importFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        }),
       );
     } finally {
       setIsImporting(false);
@@ -583,12 +589,9 @@ export function AdminCSVImport() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Import Companies from CSV
+          {t("cardTitle")}
         </CardTitle>
-        <CardDescription>
-          Upload a CSV file to import companies into the system. Companies will
-          be marked as system companies.
-        </CardDescription>
+        <CardDescription>{t("cardDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* CSV Format Info */}
@@ -596,14 +599,16 @@ export function AdminCSVImport() {
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             <div className="space-y-2">
-              <p className="font-medium">Expected CSV Format:</p>
+              <p className="font-medium">{t("format.title")}</p>
               <p className="text-sm">
-                Required column:{" "}
-                <code className="bg-muted px-1 rounded">CompanyName</code> (or{" "}
-                <code className="bg-muted px-1 rounded">company_name</code>)
+                {t("format.requiredIntro")}
+                <code className="bg-muted px-1 rounded">CompanyName</code>
+                {t("format.requiredOr")}
+                <code className="bg-muted px-1 rounded">company_name</code>
+                {t("format.requiredOrEnd")}
               </p>
               <p className="text-sm">
-                Supported columns:{" "}
+                {t("format.supportedIntro")}
                 <code className="bg-muted px-1 rounded">CompanyNumber</code>,{" "}
                 <code className="bg-muted px-1 rounded">Email</code>,{" "}
                 <code className="bg-muted px-1 rounded">Phone</code>,{" "}
@@ -611,14 +616,13 @@ export function AdminCSVImport() {
                 <code className="bg-muted px-1 rounded">Description</code>,{" "}
                 <code className="bg-muted px-1 rounded">Website</code>,{" "}
                 <code className="bg-muted px-1 rounded">raw_capabilities</code>,{" "}
-                <code className="bg-muted px-1 rounded">SICCode.SicText_1</code>{" "}
-                (and 2, 3, 4)
+                <code className="bg-muted px-1 rounded">SICCode.SicText_1</code>
+                {t("format.supportedSuffix")}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Note: Array values like{" "}
-                <code className="bg-muted px-1 rounded">['value']</code> are
-                automatically extracted. Postcode is extracted from Full Address
-                if provided.
+                {t("format.note")}
+                <code className="bg-muted px-1 rounded">['value']</code>
+                {t("noteSuffix")}
               </p>
             </div>
           </AlertDescription>
@@ -626,7 +630,7 @@ export function AdminCSVImport() {
 
         {/* File Upload */}
         <div className="space-y-2">
-          <Label htmlFor="csv-file">CSV File</Label>
+          <Label htmlFor="csv-file">{t("fileLabel")}</Label>
           <div className="flex items-center gap-2">
             <Input
               id="csv-file"
@@ -658,20 +662,19 @@ export function AdminCSVImport() {
             htmlFor="update-existing"
             className="text-sm font-normal cursor-pointer"
           >
-            Update existing companies' capabilities (re-map capabilities from
-            CSV)
+            {t("updateExistingLabel")}
           </Label>
         </div>
 
         {/* Preview */}
         {preview.length > 0 && (
           <div className="space-y-2">
-            <Label>Preview (first 5 rows)</Label>
+            <Label>{t("previewLabel")}</Label>
             <div className="border rounded-lg p-4 max-h-48 overflow-y-auto">
               <div className="grid grid-cols-3 gap-2 text-xs font-medium border-b pb-2 mb-2">
-                <div>Company Name</div>
-                <div>Contact</div>
-                <div>Location</div>
+                <div>{t("previewHeader.companyName")}</div>
+                <div>{t("previewHeader.contact")}</div>
+                <div>{t("previewHeader.location")}</div>
               </div>
               {preview.map((row, index) => (
                 <div
@@ -694,7 +697,7 @@ export function AdminCSVImport() {
             className="w-full"
           >
             <Upload className="w-4 h-4 mr-2" />
-            Import Companies
+            {t("importButton")}
           </Button>
         )}
 
@@ -703,10 +706,13 @@ export function AdminCSVImport() {
           <div className="space-y-2">
             <Progress value={progress} className="w-full" />
             <div className="flex justify-between text-sm">
-              <span>{Math.round(progress)}% complete</span>
+              <span>{t("progressLabel", { progress: Math.round(progress) })}</span>
               <span>
-                {importedCount} imported, {skippedCount} skipped, {errorCount}{" "}
-                errors
+                {t("progressCounts", {
+                  imported: importedCount,
+                  skipped: skippedCount,
+                  errors: errorCount,
+                })}
               </span>
             </div>
           </div>
@@ -718,7 +724,7 @@ export function AdminCSVImport() {
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               <div className="space-y-1">
-                <p className="font-medium">Import Errors ({errors.length}):</p>
+                <p className="font-medium">{t("errorsTitle", { count: errors.length })}</p>
                 <div className="max-h-32 overflow-y-auto">
                   {errors.slice(0, 10).map((error, index) => (
                     <p key={index} className="text-xs">
@@ -727,7 +733,7 @@ export function AdminCSVImport() {
                   ))}
                   {errors.length > 10 && (
                     <p className="text-xs">
-                      ...and {errors.length - 10} more errors
+                      {t("moreErrors", { count: errors.length - 10 })}
                     </p>
                   )}
                 </div>
@@ -741,14 +747,14 @@ export function AdminCSVImport() {
           <Alert>
             <CheckCircle2 className="h-4 w-4" />
             <AlertDescription>
-              <p className="font-medium">Import Summary:</p>
+              <p className="font-medium">{t("summaryTitle")}</p>
               <ul className="list-disc list-inside text-sm mt-1 space-y-1">
-                <li>{importedCount} companies imported successfully</li>
+                <li>{t("summaryImported", { count: importedCount })}</li>
                 {skippedCount > 0 && (
-                  <li>{skippedCount} companies skipped (already exist)</li>
+                  <li>{t("summarySkipped", { count: skippedCount })}</li>
                 )}
                 {errorCount > 0 && (
-                  <li>{errorCount} companies failed to import</li>
+                  <li>{t("summaryFailed", { count: errorCount })}</li>
                 )}
               </ul>
             </AlertDescription>

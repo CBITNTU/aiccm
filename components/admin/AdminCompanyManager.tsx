@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
@@ -49,14 +50,14 @@ import { cn } from "@/lib/utils";
 
 type VerificationFilter = "all" | "unverified" | "pending" | "verified";
 
-const VERIFICATION_FILTERS: { value: VerificationFilter; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: "all", label: "All", icon: Building2 },
-  { value: "unverified", label: "Unverified", icon: CircleHelp },
-  { value: "pending", label: "Pending", icon: Clock },
-  { value: "verified", label: "Verified", icon: ShieldCheck },
-];
-
 export function AdminCompanyManager() {
+  const t = useTranslations("AdminCompanies");
+  const verificationFilters: { value: VerificationFilter; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { value: "all", label: t("filters.all"), icon: Building2 },
+    { value: "unverified", label: t("filters.unverified"), icon: CircleHelp },
+    { value: "pending", label: t("filters.pending"), icon: Clock },
+    { value: "verified", label: t("filters.verified"), icon: ShieldCheck },
+  ];
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,7 +83,7 @@ export function AdminCompanyManager() {
       return list;
     } catch (error) {
       console.error("Error fetching companies:", error);
-      toast.error("Failed to load companies");
+      toast.error(t("toasts.loadError"));
       return [];
     } finally {
       setLoading(false);
@@ -93,11 +94,11 @@ export function AdminCompanyManager() {
     setDeleting(companyId);
     try {
       await api.adminDeleteCompany(companyId);
-      toast.success(`Successfully deleted ${companyName}`);
+      toast.success(t("toasts.deleteSuccess", { name: companyName }));
       setCompanies((prev) => prev.filter((c) => c.id !== companyId));
     } catch (error) {
       console.error("Error deleting company:", error);
-      toast.error(`Error deleting ${companyName}`);
+      toast.error(t("toasts.deleteError", { name: companyName }));
     } finally {
       setDeleting(null);
     }
@@ -148,7 +149,7 @@ export function AdminCompanyManager() {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <div className="text-muted-foreground">Loading companies...</div>
+          <div className="text-muted-foreground">{t("loading")}</div>
         </CardContent>
       </Card>
     );
@@ -160,19 +161,19 @@ export function AdminCompanyManager() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Company Management</h2>
+          <h2 className="text-lg font-semibold">{t("heading")}</h2>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
-            <span className="font-medium text-foreground">{companies.length}</span> total
+            <span className="font-medium text-foreground">{companies.length}</span> {t("stats.total")}
           </span>
           <span className="text-border">·</span>
           <span>
-            <span className="font-medium text-foreground">{allUserCompanies.length}</span> user
+            <span className="font-medium text-foreground">{allUserCompanies.length}</span> {t("stats.user")}
           </span>
           <span className="text-border">·</span>
           <span>
-            <span className="font-medium text-foreground">{allSystemCompanies.length}</span> system
+            <span className="font-medium text-foreground">{allSystemCompanies.length}</span> {t("stats.system")}
           </span>
         </div>
       </div>
@@ -182,21 +183,21 @@ export function AdminCompanyManager() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="user-companies" className="gap-2">
             <Users className="h-4 w-4" />
-            User Companies
+            {t("tabs.userCompanies")}
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
               {allUserCompanies.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="system-companies" className="gap-2">
             <Bot className="h-4 w-4" />
-            System / AI
+            {t("tabs.systemCompanies")}
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
               {allSystemCompanies.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="import-tools" className="gap-2">
             <Upload className="h-4 w-4" />
-            Import &amp; Tools
+            {t("tabs.importTools")}
           </TabsTrigger>
         </TabsList>
 
@@ -207,17 +208,17 @@ export function AdminCompanyManager() {
             <div className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-3 py-1.5 text-sm">
               <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
               <span className="font-medium">{verifiedCount}</span>
-              <span className="text-muted-foreground">verified</span>
+              <span className="text-muted-foreground">{t("stats.verified")}</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-3 py-1.5 text-sm">
               <Clock className="h-3.5 w-3.5 text-amber-500" />
               <span className="font-medium">{pendingCount}</span>
-              <span className="text-muted-foreground">pending</span>
+              <span className="text-muted-foreground">{t("stats.pending")}</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-3 py-1.5 text-sm">
               <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="font-medium">{unverifiedCount}</span>
-              <span className="text-muted-foreground">unverified</span>
+              <span className="text-muted-foreground">{t("stats.unverified")}</span>
             </div>
           </div>
 
@@ -226,7 +227,7 @@ export function AdminCompanyManager() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search user companies..."
+                placeholder={t("search.userPlaceholder")}
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
                 className="pl-9"
@@ -235,7 +236,7 @@ export function AdminCompanyManager() {
 
             {/* Verification filter chips */}
             <div className="flex items-center gap-1 rounded-md border p-1">
-              {VERIFICATION_FILTERS.map(({ value, label, icon: Icon }) => (
+              {verificationFilters.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
                   onClick={() => setVerificationFilter(value)}
@@ -257,10 +258,10 @@ export function AdminCompanyManager() {
           {filteredUserCompanies.length === 0 ? (
             <div className="rounded-lg border border-dashed py-12 text-center">
               <Building2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
-              <p className="text-sm font-medium text-muted-foreground">No companies found</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("empty.noCompanies")}</p>
               {(userSearch || verificationFilter !== "all") && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Try adjusting your search or filter
+                  {t("empty.noCompaniesHint")}
                 </p>
               )}
             </div>
@@ -284,14 +285,13 @@ export function AdminCompanyManager() {
         {/* ── Tab 2: System / AI Companies ── */}
         <TabsContent value="system-companies" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            AI-generated and imported reference companies used for tender matching and platform
-            demonstrations.
+            {t("systemDescription")}
           </p>
 
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search system companies..."
+              placeholder={t("search.systemPlaceholder")}
               value={systemSearch}
               onChange={(e) => setSystemSearch(e.target.value)}
               className="pl-9"
@@ -302,7 +302,7 @@ export function AdminCompanyManager() {
             <div className="rounded-lg border border-dashed py-12 text-center">
               <Bot className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
               <p className="text-sm font-medium text-muted-foreground">
-                No system companies found
+                {t("empty.noSystemCompanies")}
               </p>
             </div>
           ) : (
@@ -321,7 +321,7 @@ export function AdminCompanyManager() {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Deleting system companies requires superadmin permissions and cannot be undone.
+              {t("systemWarning")}
             </AlertDescription>
           </Alert>
         </TabsContent>
@@ -330,7 +330,7 @@ export function AdminCompanyManager() {
         <TabsContent value="import-tools" className="space-y-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Import company data or trigger AI re-analysis across all companies.
+              {t("importToolsDescription")}
             </p>
             <CompanyAIRegeneration />
           </div>
@@ -364,6 +364,7 @@ function UserCompanyRow({
   onSelect: (c: Company) => void;
   onDelete: (id: string, name: string) => void;
 }) {
+  const t = useTranslations("AdminCompanies");
   const verificationStatus = company.verificationStatus ?? "unverified";
 
   return (
@@ -390,15 +391,15 @@ function UserCompanyRow({
             <span className="text-xs px-2 py-0.5 rounded border border-dashed border-muted-foreground/40 text-muted-foreground flex items-center gap-1">
               <Zap className="h-3 w-3" />
               {company.matchingRunsLimit != null
-                ? `${company.matchingRunsLimit}/mo`
-                : "default"}
+                ? t("limits.perMonth", { count: company.matchingRunsLimit })
+                : t("limits.default")}
             </span>
           </TooltipTrigger>
           <TooltipContent side="top">
             <p className="text-xs">
               {company.matchingRunsLimit != null
-                ? `Custom matching limit: ${company.matchingRunsLimit}/month`
-                : "Matching: platform default"}
+                ? t("limits.matchingCustom", { count: company.matchingRunsLimit })
+                : t("limits.matchingDefault")}
             </p>
           </TooltipContent>
         </Tooltip>
@@ -408,15 +409,15 @@ function UserCompanyRow({
             <span className="text-xs px-2 py-0.5 rounded border border-dashed border-muted-foreground/40 text-muted-foreground flex items-center gap-1">
               <Brain className="h-3 w-3" />
               {company.analysisRunsLimit != null
-                ? `${company.analysisRunsLimit}/mo`
-                : "default"}
+                ? t("limits.perMonth", { count: company.analysisRunsLimit })
+                : t("limits.default")}
             </span>
           </TooltipTrigger>
           <TooltipContent side="top">
             <p className="text-xs">
               {company.analysisRunsLimit != null
-                ? `Custom analysis limit: ${company.analysisRunsLimit}/month`
-                : "Analysis: platform default"}
+                ? t("limits.analysisCustom", { count: company.analysisRunsLimit })
+                : t("limits.analysisDefault")}
             </p>
           </TooltipContent>
         </Tooltip>
@@ -438,20 +439,22 @@ function UserCompanyRow({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Delete User Company
+              {t("deleteUser.title")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{company.companyName}</strong>? This action
-              cannot be undone.
+              {t.rich("deleteUser.description", {
+                name: company.companyName,
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("deleteUser.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => onDelete(company.id, company.companyName)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete Company
+              {t("deleteUser.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -469,6 +472,7 @@ function SystemCompanyRow({
   deleting: string | null;
   onDelete: (id: string, name: string) => void;
 }) {
+  const t = useTranslations("AdminCompanies");
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
       <div className="flex-1 min-w-0">
@@ -494,20 +498,22 @@ function SystemCompanyRow({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Delete System Company
+              {t("deleteSystem.title")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{company.companyName}</strong>? This action
-              cannot be undone and will remove all associated data.
+              {t.rich("deleteSystem.description", {
+                name: company.companyName,
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("deleteSystem.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => onDelete(company.id, company.companyName)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete Company
+              {t("deleteSystem.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -521,11 +527,12 @@ function SystemCompanyRow({
 // =============================================================================
 
 function VerificationBadge({ status }: { status: string }) {
+  const t = useTranslations("AdminCompanies");
   if (status === "verified") {
     return (
       <Badge variant="default" className="text-[10px] h-4 px-1.5 gap-0.5">
         <ShieldCheck className="h-2.5 w-2.5" />
-        Verified
+        {t("badges.verified")}
       </Badge>
     );
   }
@@ -533,13 +540,13 @@ function VerificationBadge({ status }: { status: string }) {
     return (
       <Badge variant="outline" className="text-[10px] h-4 px-1.5 gap-0.5 border-amber-400 text-amber-600">
         <Clock className="h-2.5 w-2.5" />
-        Pending
+        {t("badges.pending")}
       </Badge>
     );
   }
   return (
     <Badge variant="outline" className="text-[10px] h-4 px-1.5 text-muted-foreground">
-      Unverified
+      {t("badges.unverified")}
     </Badge>
   );
 }

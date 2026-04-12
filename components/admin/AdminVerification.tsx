@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
@@ -48,25 +49,26 @@ export function AdminVerification() {
 // Status Badge Helper
 // ============================================================================
 function RequestStatusBadge({ status }: { status: string }) {
+  const t = useTranslations("AdminVerification.statuses");
   const config: Record<string, { variant: "default" | "destructive" | "outline" | "secondary"; label: string; icon: React.ReactNode }> = {
     pending: {
       variant: "outline",
-      label: "Pending",
+      label: t("pending"),
       icon: <Clock className="h-3 w-3" />,
     },
     approved: {
       variant: "default",
-      label: "Verified",
+      label: t("verified"),
       icon: <CheckCircle className="h-3 w-3" />,
     },
     rejected: {
       variant: "destructive",
-      label: "Rejected",
+      label: t("rejected"),
       icon: <XCircle className="h-3 w-3" />,
     },
     changes_requested: {
       variant: "secondary",
-      label: "Changes Requested",
+      label: t("changesRequested"),
       icon: <AlertTriangle className="h-3 w-3" />,
     },
   };
@@ -83,6 +85,7 @@ function RequestStatusBadge({ status }: { status: string }) {
 // Verification Requests Section
 // ============================================================================
 function VerificationRequests() {
+  const t = useTranslations("AdminVerification.requests");
   const [reviewPanelRequestId, setReviewPanelRequestId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("pending");
 
@@ -124,7 +127,7 @@ function VerificationRequests() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
-              Verification Requests
+              {t("cardTitle")}
               {pendingCount > 0 && (
                 <Badge variant="destructive">{pendingCount}</Badge>
               )}
@@ -137,10 +140,10 @@ function VerificationRequests() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Requests</SelectItem>
-                <SelectItem value="pending">Pending Review</SelectItem>
-                <SelectItem value="changes_requested">Changes Requested</SelectItem>
-                <SelectItem value="reviewed">Reviewed</SelectItem>
+                <SelectItem value="all">{t("filters.all")}</SelectItem>
+                <SelectItem value="pending">{t("filters.pending")}</SelectItem>
+                <SelectItem value="changes_requested">{t("filters.changesRequested")}</SelectItem>
+                <SelectItem value="reviewed">{t("filters.reviewed")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -148,7 +151,9 @@ function VerificationRequests() {
         <CardContent>
           {filteredRequests.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">
-              No {statusFilter === "all" ? "" : statusFilter.replace("_", " ")} verification requests.
+              {statusFilter === "all"
+                ? t("emptyAll")
+                : t("emptyFiltered", { filter: statusFilter.replace("_", " ") })}
             </p>
           ) : (
             <div className="space-y-3">
@@ -166,7 +171,7 @@ function VerificationRequests() {
                         <RequestStatusBadge status={req.status} />
                         {req.requestType === "change_review" && (
                           <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                            Change Review
+                            {t("changeReviewBadge")}
                           </Badge>
                         )}
                       </div>
@@ -177,7 +182,7 @@ function VerificationRequests() {
                       )}
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>
-                          Submitted: {new Date(req.createdAt).toLocaleDateString()}
+                          {t("submitted", { date: new Date(req.createdAt).toLocaleDateString() })}
                         </span>
                         {snapshot?.websiteUrl && (
                           <a
@@ -186,11 +191,11 @@ function VerificationRequests() {
                             rel="noopener noreferrer"
                             className="text-blue-500 hover:underline"
                           >
-                            Website
+                            {t("websiteLink")}
                           </a>
                         )}
                         {snapshot?.companiesHouseNumber && (
-                          <span>CH: {snapshot.companiesHouseNumber}</span>
+                          <span>{t("companiesHouse", { number: snapshot.companiesHouseNumber })}</span>
                         )}
                       </div>
                     </div>
@@ -202,7 +207,7 @@ function VerificationRequests() {
                         className="gap-1"
                       >
                         <Eye className="h-3.5 w-3.5" />
-                        Review
+                        {t("reviewButton")}
                       </Button>
                     </div>
                   </div>
@@ -226,6 +231,8 @@ function VerificationRequests() {
 // Competency Change Requests Section
 // ============================================================================
 function CompetencyRequests() {
+  const t = useTranslations("AdminVerification.competency");
+  const tStatus = useTranslations("AdminVerification.statuses");
   const queryClient = useQueryClient();
   const [reviewDialog, setReviewDialog] = useState<{
     requestId: string;
@@ -252,15 +259,15 @@ function CompetencyRequests() {
     onSuccess: (_, variables) => {
       toast.success(
         variables.action === "approve"
-          ? "Competency changes approved and applied"
-          : "Competency change request rejected",
+          ? t("toasts.approved")
+          : t("toasts.rejected"),
       );
       queryClient.invalidateQueries({ queryKey: queryKeys.adminCompetencyRequests() });
       setReviewDialog(null);
       setReviewNotes("");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to review request");
+      toast.error(error instanceof Error ? error.message : t("toasts.reviewError"));
     },
   });
 
@@ -282,19 +289,19 @@ function CompetencyRequests() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            Competency Change Requests
+            {t("cardTitle")}
             {pendingRequests.length > 0 && (
               <Badge variant="destructive">{pendingRequests.length}</Badge>
             )}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Competency changes from verified companies require approval.
+            {t("cardDescription")}
           </p>
         </CardHeader>
         <CardContent>
           {pendingRequests.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">
-              No pending competency change requests.
+              {t("empty")}
             </p>
           ) : (
             <div className="space-y-4">
@@ -312,13 +319,13 @@ function CompetencyRequests() {
                         <span className="font-medium">{req.companyName}</span>
                         <Badge variant="outline" className="gap-1">
                           <Clock className="h-3 w-3" />
-                          Pending
+                          {tStatus("pending")}
                         </Badge>
                       </div>
                       {additions.length > 0 && (
                         <div>
                           <span className="text-xs font-medium text-emerald-600">
-                            Add ({additions.length}):
+                            {t("addLabel", { count: additions.length })}
                           </span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {additions.map((id) => (
@@ -336,7 +343,7 @@ function CompetencyRequests() {
                       {removals.length > 0 && (
                         <div>
                           <span className="text-xs font-medium text-red-600">
-                            Remove ({removals.length}):
+                            {t("removeLabel", { count: removals.length })}
                           </span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {removals.map((id) => (
@@ -352,7 +359,7 @@ function CompetencyRequests() {
                         </div>
                       )}
                       <p className="text-xs text-muted-foreground">
-                        Submitted: {new Date(req.createdAt).toLocaleDateString()}
+                        {t("submitted", { date: new Date(req.createdAt).toLocaleDateString() })}
                       </p>
                     </div>
                     <div className="flex gap-2 shrink-0">
@@ -368,7 +375,7 @@ function CompetencyRequests() {
                         className="gap-1"
                       >
                         <CheckCircle className="h-3.5 w-3.5" />
-                        Approve
+                        {t("approveButton")}
                       </Button>
                       <Button
                         size="sm"
@@ -383,7 +390,7 @@ function CompetencyRequests() {
                         className="gap-1"
                       >
                         <XCircle className="h-3.5 w-3.5" />
-                        Reject
+                        {t("rejectButton")}
                       </Button>
                     </div>
                   </div>
@@ -398,13 +405,14 @@ function CompetencyRequests() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {reviewDialog?.action === "approve" ? "Approve" : "Reject"}{" "}
-              competency changes for {reviewDialog?.companyName}
+              {reviewDialog?.action === "approve"
+                ? t("dialog.approveTitle", { name: reviewDialog?.companyName ?? "" })
+                : t("dialog.rejectTitle", { name: reviewDialog?.companyName ?? "" })}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Textarea
-              placeholder="Add review notes (optional)..."
+              placeholder={t("dialog.notesPlaceholder")}
               value={reviewNotes}
               onChange={(e) => setReviewNotes(e.target.value)}
               rows={3}
@@ -412,7 +420,7 @@ function CompetencyRequests() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setReviewDialog(null)}>
-              Cancel
+              {t("dialog.cancel")}
             </Button>
             <Button
               variant={reviewDialog?.action === "approve" ? "default" : "destructive"}
@@ -429,7 +437,9 @@ function CompetencyRequests() {
               {reviewMutation.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               )}
-              {reviewDialog?.action === "approve" ? "Approve" : "Reject"}
+              {reviewDialog?.action === "approve"
+                ? t("dialog.approveConfirm")
+                : t("dialog.rejectConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

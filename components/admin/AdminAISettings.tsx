@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import { SUPPORTED_MODELS } from "@/lib/ai/models";
 type ReasoningOption = DefaultReasoningEffort;
 
 export function AdminAISettings() {
+  const t = useTranslations("AdminSettings.ai");
   const [defaultModel, setDefaultModel] = useState<string>("gpt-5-nano");
   const [defaultReasoningEffort, setDefaultReasoningEffort] =
     useState<ReasoningOption>("default");
@@ -38,9 +40,7 @@ export function AdminAISettings() {
         );
       } catch (e) {
         if (!cancelled) {
-          toast.error(
-            e instanceof Error ? e.message : "Failed to load settings",
-          );
+          toast.error(e instanceof Error ? e.message : t("toasts.loadError"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -49,7 +49,7 @@ export function AdminAISettings() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -63,12 +63,10 @@ export function AdminAISettings() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save");
-      toast.success(
-        "Default AI settings saved. They apply to all AI requests.",
-      );
+      if (!res.ok) throw new Error(data.error || t("toasts.saveError"));
+      toast.success(t("toasts.saveSuccess"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : t("toasts.saveError"));
     } finally {
       setSaving(false);
     }
@@ -87,16 +85,13 @@ export function AdminAISettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Default AI settings</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          These apply to all AI requests across the app (matching,
-          company/tender analysis, chat, etc.) when no override is provided.
-        </p>
+        <CardTitle>{t("cardTitle")}</CardTitle>
+        <p className="text-sm text-muted-foreground">{t("cardDescription")}</p>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Default model</span>
+            <span className="text-sm font-medium">{t("defaultModelLabel")}</span>
             <Select value={defaultModel} onValueChange={setDefaultModel}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
@@ -111,7 +106,7 @@ export function AdminAISettings() {
             </Select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Reasoning effort</span>
+            <span className="text-sm font-medium">{t("reasoningEffortLabel")}</span>
             <Select
               value={defaultReasoningEffort}
               onValueChange={(v) =>
@@ -119,21 +114,19 @@ export function AdminAISettings() {
               }
             >
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Default" />
+                <SelectValue placeholder={t("reasoningEffortPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="default">Default</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="minimal">Very low</SelectItem>
-                <SelectItem value="none">None</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="xhigh">Extra high</SelectItem>
+                <SelectItem value="default">{t("effort.default")}</SelectItem>
+                <SelectItem value="low">{t("effort.low")}</SelectItem>
+                <SelectItem value="minimal">{t("effort.minimal")}</SelectItem>
+                <SelectItem value="none">{t("effort.none")}</SelectItem>
+                <SelectItem value="medium">{t("effort.medium")}</SelectItem>
+                <SelectItem value="high">{t("effort.high")}</SelectItem>
+                <SelectItem value="xhigh">{t("effort.xhigh")}</SelectItem>
               </SelectContent>
             </Select>
-            <span className="text-xs text-muted-foreground">
-              Lower = faster, fewer reasoning tokens
-            </span>
+            <span className="text-xs text-muted-foreground">{t("reasoningHint")}</span>
           </div>
         </div>
         <Button onClick={handleSave} disabled={saving} className="gap-2">
@@ -142,7 +135,7 @@ export function AdminAISettings() {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Save defaults
+          {t("saveButton")}
         </Button>
       </CardContent>
     </Card>

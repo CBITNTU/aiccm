@@ -121,7 +121,7 @@
         "description": "{inviterName} has invited you to join their team. Create your account to get started.",
         "emailLabel": "Email:",
         "passwordLabel": "Password *",
-        "passwordPlaceholder": "Min. 6 characters",
+        "passwordPlaceholder": "Min. 8 characters",
         "confirmPasswordLabel": "Confirm Password *",
         "confirmPasswordPlaceholder": "Confirm your password",
         "submit": "Create Account & Join",
@@ -325,6 +325,946 @@
         "continue": "Continue",
         "pleaseWait": "Please wait..."
       }
+    }
+  },
+  "AdminLayout": {
+    "loading": "Loading superadmin access...",
+    "accessDenied": "Superadmin access required"
+  },
+  "AdminOverview": {
+    "title": "Overview",
+    "description": "Platform statistics and items requiring your attention.",
+    "stats": {
+      "totalCompanies": "Total Companies",
+      "totalUsers": "Total Users",
+      "activeTenders": "Active Tenders",
+      "pendingActions": "Pending Actions"
+    },
+    "attention": {
+      "title": "Items Requiring Attention",
+      "review": "Review"
+    },
+    "actionItems": {
+      "pendingUserApprovalsLabel": "Pending User Approvals",
+      "pendingUserApprovalsDescription": "Users awaiting account approval",
+      "pendingJoinRequestsLabel": "Pending Join Requests",
+      "pendingJoinRequestsDescription": "Company join requests to review",
+      "verificationRequestsLabel": "Verification Requests",
+      "verificationRequestsDescription": "Company verification submissions"
+    }
+  },
+  "AdminCompanyDetail": {
+    "srTitle": "Company Details",
+    "srDescription": "View company details and manage settings",
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "notProvided": "Not provided",
+    "notAssessed": "Not assessed",
+    "none": "None",
+    "tabs": {
+      "overview": "Overview",
+      "capabilities": "Capabilities",
+      "ai": "AI Analysis",
+      "settings": "Settings"
+    },
+    "sections": {
+      "businessInformation": "Business Information",
+      "contactInformation": "Contact Information",
+      "status": "Status",
+      "keyCapabilities": "Key Capabilities",
+      "certifications": "Certifications",
+      "equipment": "Equipment",
+      "pastProjects": "Past Projects",
+      "aiSuggestedCompetencies": "AI-Suggested Competencies",
+      "aiSummary": "AI Summary",
+      "assessmentRatings": "Assessment Ratings",
+      "aiCapabilities": "AI Capabilities",
+      "aiStrengths": "AI Strengths",
+      "performanceBenchmark": "Performance Benchmark",
+      "executiveSummary": "Executive Summary",
+      "usageOverrides": "Per-Company Usage Overrides"
+    },
+    "fields": {
+      "companyName": "Company Name",
+      "companiesHouse": "Companies House Number",
+      "description": "Description",
+      "address": "Address",
+      "postcode": "Postcode",
+      "contactPerson": "Contact Person",
+      "email": "Email",
+      "phone": "Phone",
+      "website": "Website",
+      "verificationStatus": "Verification Status",
+      "verifiedAt": "Verified At",
+      "created": "Created",
+      "updated": "Updated",
+      "digitalMaturity": "Digital Maturity",
+      "safetyRating": "Safety Rating",
+      "marketPosition": "Market Position"
+    },
+    "empty": {
+      "capabilities": "No capabilities listed",
+      "certifications": "No certifications listed",
+      "equipment": "No equipment listed",
+      "aiSummary": "No AI analysis has been generated yet"
+    },
+    "scoreOutOf": "{score}/100",
+    "usage": {
+      "description": "Set custom limits for this company. Leave blank to use the platform defaults.",
+      "matchingLabel": "Tender Matching Runs / Month",
+      "analysisLabel": "AI Analysis Runs / Month",
+      "currentlyUsed": "Currently used: {used}/{limit} this month",
+      "resets": "Resets {date}",
+      "defaultPlaceholder": "Default",
+      "saveButton": "Save Overrides"
+    },
+    "toasts": {
+      "matchingLimitInvalid": "Matching limit must be a non-negative number or blank for default.",
+      "analysisLimitInvalid": "Analysis limit must be a non-negative number or blank for default.",
+      "updateSuccess": "Usage limits updated for {name}",
+      "updateFailed": "Failed to update usage limits"
+    }
+  },
+  "AdminApprovals": {
+    "title": "Approvals",
+    "description": "Review and approve pending user and company join requests.",
+    "unknownUser": "Unknown",
+    "notProvided": "Not provided",
+    "cardTitle": "Pending Approvals",
+    "cardDescription": "Review and approve new user registrations and company join requests",
+    "tabs": {
+      "users": "Pending Users",
+      "requests": "Join Requests"
+    },
+    "emptyUsers": "No pending user approvals",
+    "emptyRequests": "No pending join requests",
+    "signupTypes": {
+      "individual": "Individual",
+      "newCompany": "New Company",
+      "joinCompany": "Join Company"
+    },
+    "hideCompanyDetails": "Hide Company Details",
+    "viewCompanyDetails": "View Company Details",
+    "rejectButton": "Reject",
+    "approveButton": "Approve",
+    "companyDetailsHeading": "Company Details",
+    "editButton": "Edit",
+    "aiAnalyzeButton": "AI Analyze",
+    "cancelButton": "Cancel",
+    "saveButton": "Save",
+    "form": {
+      "companyName": "Company Name",
+      "companyNamePlaceholder": "Company name",
+      "companiesHouse": "Companies House No.",
+      "companiesHousePlaceholder": "e.g. 12345678",
+      "website": "Website",
+      "websiteUrl": "Website URL",
+      "websitePlaceholder": "https://...",
+      "contactPerson": "Contact Person",
+      "contactPersonPlaceholder": "Contact name",
+      "contactEmail": "Contact Email",
+      "contactEmailPlaceholder": "contact@company.com",
+      "contactPhone": "Contact Phone",
+      "contactPhonePlaceholder": "+44..."
+    },
+    "messageLabel": "Message:",
+    "awaitingCompanyAdmin": "Awaiting company admin approval",
+    "waitingTooltip": "Waiting for company admin approval",
+    "companyApprovedBadge": "Company Approved",
+    "rejectDialog": {
+      "title": "Reject {name}",
+      "descriptionUser": "Please provide a reason for rejecting this user.",
+      "descriptionRequest": "Please provide a reason for rejecting this join request.",
+      "reasonLabel": "Reason (optional)",
+      "reasonPlaceholder": "Enter reason for rejection...",
+      "cancel": "Cancel",
+      "confirm": "Reject"
+    },
+    "approvalDialog": {
+      "title": "Approve User & Company",
+      "description": "This action will approve both the user and their company registration.",
+      "userDetails": "User Details",
+      "nameLabel": "Name:",
+      "emailLabel": "Email:",
+      "jobTitleLabel": "Job Title:",
+      "companyHeading": "Company to be Approved",
+      "companyNameLabel": "Company Name:",
+      "companiesHouseLabel": "Companies House:",
+      "websiteLabel": "Website:",
+      "contactLabel": "Contact:",
+      "whatHappensTitle": "What will happen",
+      "whatHappens1": "User account will be approved and can sign in",
+      "whatHappens2": "Company status will change to \"Active\"",
+      "whatHappens3": "User will become admin of the company",
+      "whatHappens4": "AI will fetch & enrich company data automatically",
+      "cancel": "Cancel",
+      "confirm": "Approve Both"
+    },
+    "toasts": {
+      "fetchFailed": "Failed to fetch pending approvals",
+      "approveUserSuccess": "{name} has been approved",
+      "approveUserFailed": "Failed to approve user",
+      "rejectUserSuccess": "{name} has been rejected",
+      "rejectUserFailed": "Failed to reject user",
+      "approveRequestSuccess": "{name}'s join request has been approved",
+      "approveRequestFailed": "Failed to approve request",
+      "rejectRequestSuccess": "Join request has been rejected",
+      "rejectRequestFailed": "Failed to reject request",
+      "updateCompanySuccess": "Company details updated",
+      "updateCompanyFailed": "Failed to update company",
+      "analyzeCompanySuccess": "Company analysis started. Data will be updated shortly.",
+      "analyzeCompanyFailed": "Failed to analyze company"
+    }
+  },
+  "AdminUsers": {
+    "title": "Users",
+    "description": "Manage platform users, roles, and permissions.",
+    "accessDeniedAlert": "You don't have permission to access this page. Superadmin access required.",
+    "loading": "Loading users...",
+    "heading": "User Management",
+    "subheading": "Manage platform users and their permissions",
+    "totalUsersBadge": "{count} Total Users",
+    "cardTitle": "Platform Users",
+    "searchPlaceholder": "Search users...",
+    "table": {
+      "user": "User",
+      "email": "Email",
+      "role": "Role",
+      "joined": "Joined",
+      "actions": "Actions"
+    },
+    "noName": "No name",
+    "roles": {
+      "superadmin": "Superadmin",
+      "smeOwner": "SME Owner"
+    },
+    "buttons": {
+      "viewEvents": "View Events",
+      "removeSuperadmin": "Remove Superadmin",
+      "makeSuperadmin": "Make Superadmin"
+    },
+    "empty": "No users found matching your search.",
+    "instructions": {
+      "heading": "Superadmin Instructions:",
+      "intro": "To create a superadmin account, you need to:",
+      "step1": "Create a regular account through signup",
+      "step2": "Update the migration SQL to insert your email as superadmin",
+      "step3": "Or use the \"Make Superadmin\" button on an existing user"
+    },
+    "confirmDelete": "Are you sure you want to delete this user? This action cannot be undone.",
+    "toasts": {
+      "deleteSuccess": "User has been successfully deleted",
+      "deleteError": "Failed to delete user",
+      "roleChanged": "User role changed to {role}",
+      "roleUpdateError": "Failed to update user role",
+      "fetchUsersError": "Failed to fetch users: {message}",
+      "fetchEventsError": "Failed to fetch events: {message}"
+    },
+    "eventsDialog": {
+      "title": "User Event Actions",
+      "description": "Recent activity and events for this user",
+      "loading": "Loading events...",
+      "empty": "No events found for this user.",
+      "table": {
+        "action": "Action",
+        "entity": "Entity",
+        "status": "Status",
+        "date": "Date",
+        "details": "Details"
+      },
+      "viewDetails": "View details",
+      "defaultStatus": "success"
+    }
+  },
+  "AdminCompanies": {
+    "title": "Companies",
+    "description": "Manage platform companies, verification status, and data imports.",
+    "loading": "Loading companies...",
+    "heading": "Company Management",
+    "stats": {
+      "total": "total",
+      "user": "user",
+      "system": "system",
+      "verified": "verified",
+      "pending": "pending",
+      "unverified": "unverified"
+    },
+    "tabs": {
+      "userCompanies": "User Companies",
+      "systemCompanies": "System / AI",
+      "importTools": "Import & Tools"
+    },
+    "filters": {
+      "all": "All",
+      "unverified": "Unverified",
+      "pending": "Pending",
+      "verified": "Verified"
+    },
+    "search": {
+      "userPlaceholder": "Search user companies...",
+      "systemPlaceholder": "Search system companies..."
+    },
+    "empty": {
+      "noCompanies": "No companies found",
+      "noCompaniesHint": "Try adjusting your search or filter",
+      "noSystemCompanies": "No system companies found"
+    },
+    "systemDescription": "AI-generated and imported reference companies used for tender matching and platform demonstrations.",
+    "systemWarning": "Deleting system companies requires superadmin permissions and cannot be undone.",
+    "importToolsDescription": "Import company data or trigger AI re-analysis across all companies.",
+    "badges": {
+      "verified": "Verified",
+      "pending": "Pending",
+      "unverified": "Unverified"
+    },
+    "limits": {
+      "perMonth": "{count}/mo",
+      "default": "default",
+      "matchingCustom": "Custom matching limit: {count}/month",
+      "matchingDefault": "Matching: platform default",
+      "analysisCustom": "Custom analysis limit: {count}/month",
+      "analysisDefault": "Analysis: platform default"
+    },
+    "deleteUser": {
+      "title": "Delete User Company",
+      "description": "Are you sure you want to delete <strong>{name}</strong>? This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete Company"
+    },
+    "deleteSystem": {
+      "title": "Delete System Company",
+      "description": "Are you sure you want to delete <strong>{name}</strong>? This action cannot be undone and will remove all associated data.",
+      "cancel": "Cancel",
+      "confirm": "Delete Company"
+    },
+    "toasts": {
+      "loadError": "Failed to load companies",
+      "deleteSuccess": "Successfully deleted {name}",
+      "deleteError": "Error deleting {name}"
+    }
+  },
+  "AdminTenders": {
+    "title": "Tenders",
+    "description": "Manage tender sync, imports, and AI analysis regeneration.",
+    "sectionTitle": "Tender Management",
+    "import": {
+      "cardTitle": "Import Tenders",
+      "tabs": {
+        "findTender": "Find a Tender",
+        "ted": "TED (EU)"
+      },
+      "findTenderDescription": "Import tenders from the UK government's Find a Tender service. This will fetch active tenders and save them to the database.",
+      "tedDescription": "Import tenders from TED (Tenders Electronic Daily) - the EU's official journal for public procurement. Requires API key from ",
+      "tedDeveloperPortal": "TED Developer Portal",
+      "tedNotePrefix": "Note:",
+      "tedNote": " TED API requires an API key. Set ",
+      "tedNoteEnvVar": "TED_API_KEY",
+      "tedNoteSuffix": " in your environment variables. Get your API key from the ",
+      "fromDateLabel": "From Date",
+      "toDateLabel": "To Date",
+      "syncRunningNote": "Import is disabled while the weekly tender sync is running.",
+      "findTenderButton": "Import from Find a Tender",
+      "tedButton": "Import from TED",
+      "importingFindTender": "Importing from Find a Tender... {progress}% complete ({imported} imported, {skipped} skipped)",
+      "importingTed": "Importing from TED... {progress}% complete ({imported} imported, {skipped} skipped)",
+      "summaryTitle": "Import Summary:",
+      "summaryTotal": "Total fetched: {count}",
+      "summaryImported": "Successfully imported: {count}",
+      "summarySkipped": "Duplicates skipped: {count}",
+      "errorTitle": "Import Error:",
+      "toasts": {
+        "findTenderSuccess": "Import completed! {imported} tenders imported from Find a Tender. {skipped} duplicates skipped.",
+        "tedSuccess": "Import completed! {imported} tenders imported from TED. {skipped} duplicates skipped.",
+        "rateLimitedRetries": "Rate limited. Tried {max} times. Please try again later.",
+        "rateLimitedWaiting": "Rate limited. Waiting {seconds}s before retry {attempt}/{max}...",
+        "adminRequired": "Superadmin access required to import tenders",
+        "unknownError": "Unknown error",
+        "importFailed": "Import failed: {message}",
+        "tedImportFailed": "TED Import failed: {message}"
+      }
+    }
+  },
+  "AdminVerification": {
+    "title": "Verification",
+    "description": "Review company verification and competency change requests.",
+    "statuses": {
+      "pending": "Pending",
+      "verified": "Verified",
+      "rejected": "Rejected",
+      "changesRequested": "Changes Requested"
+    },
+    "requests": {
+      "cardTitle": "Verification Requests",
+      "changeReviewBadge": "Change Review",
+      "filters": {
+        "all": "All Requests",
+        "pending": "Pending Review",
+        "changesRequested": "Changes Requested",
+        "reviewed": "Reviewed"
+      },
+      "emptyAll": "No verification requests.",
+      "emptyFiltered": "No {filter} verification requests.",
+      "submitted": "Submitted: {date}",
+      "websiteLink": "Website",
+      "companiesHouse": "CH: {number}",
+      "reviewButton": "Review"
+    },
+    "competency": {
+      "cardTitle": "Competency Change Requests",
+      "cardDescription": "Competency changes from verified companies require approval.",
+      "empty": "No pending competency change requests.",
+      "addLabel": "Add ({count}):",
+      "removeLabel": "Remove ({count}):",
+      "submitted": "Submitted: {date}",
+      "approveButton": "Approve",
+      "rejectButton": "Reject",
+      "dialog": {
+        "approveTitle": "Approve competency changes for {name}",
+        "rejectTitle": "Reject competency changes for {name}",
+        "notesPlaceholder": "Add review notes (optional)...",
+        "cancel": "Cancel",
+        "approveConfirm": "Approve",
+        "rejectConfirm": "Reject"
+      },
+      "toasts": {
+        "approved": "Competency changes approved and applied",
+        "rejected": "Competency change request rejected",
+        "reviewError": "Failed to review request"
+      }
+    }
+  },
+  "AdminVerificationReview": {
+    "srTitle": "Company Verification Review",
+    "srDescription": "Review company verification request details",
+    "loadFailed": "Failed to load review data.",
+    "changeReviewBadge": "Change Review",
+    "resubmissionBadge": "Resubmission #{number}",
+    "submittedOn": "Submitted {date}",
+    "submittedBy": "by {firstName} {lastName}",
+    "submittedByWithTitle": "by {firstName} {lastName} ({jobTitle})",
+    "statuses": {
+      "pending": "Pending Review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "changesRequested": "Changes Requested"
+    },
+    "tabs": {
+      "changes": "Changes",
+      "overview": "Overview",
+      "details": "Company Details",
+      "competencies": "Competencies",
+      "ai": "AI Analysis",
+      "financial": "Financial & Compliance",
+      "history": "History"
+    },
+    "footer": {
+      "allChecked": "All checklist items verified",
+      "partial": "{checked}/{total} checklist items verified",
+      "requestChanges": "Request Changes",
+      "reject": "Reject",
+      "approve": "Approve",
+      "approveDisabledTooltip": "Complete all checklist items before approving"
+    },
+    "approveDialog": {
+      "title": "Approve Verification",
+      "description": "This will mark {name} as a verified company.",
+      "cancel": "Cancel",
+      "confirm": "Confirm Approval"
+    },
+    "rejectDialog": {
+      "title": "Reject Verification",
+      "description": "This will permanently reject the verification request. Use \"Request Changes\" instead if you want the company to fix issues and resubmit.",
+      "placeholder": "Reason for rejection...",
+      "cancel": "Cancel",
+      "confirm": "Reject"
+    },
+    "dataField": {
+      "notProvided": "Not provided",
+      "changed": "Changed"
+    },
+    "checklist": {
+      "name": "Company name verified against official records",
+      "website": "Website is accessible and matches company",
+      "contact": "Contact details appear valid",
+      "description": "Description is accurate and complete",
+      "competencies": "Competencies and capabilities are reasonable",
+      "compliance": "No compliance red flags identified"
+    },
+    "changeReview": {
+      "title": "Proposed Changes",
+      "empty": "No changes found in snapshot.",
+      "current": "Current (Approved)",
+      "proposed": "Proposed",
+      "emptyValue": "Empty",
+      "competencies": "Competencies",
+      "markets": "Markets",
+      "standards": "Standards",
+      "added": "Added:",
+      "removed": "Removed:",
+      "fields": {
+        "companyName": "Company Name",
+        "description": "Description",
+        "keyCapabilities": "Key Capabilities",
+        "certifications": "Certifications",
+        "equipment": "Equipment",
+        "pastProjects": "Past Projects",
+        "companiesHouseNumber": "Companies House Number"
+      }
+    },
+    "overview": {
+      "submissionNotes": "Submission Notes",
+      "previousFeedback": "Previous Review Feedback",
+      "changedFields": "Fields changed since last submission:",
+      "quickSummary": "Quick Summary",
+      "checklist": "Review Checklist",
+      "capabilitiesSelected": "{count} selected"
+    },
+    "fields": {
+      "companyName": "Company Name",
+      "companiesHouse": "Companies House",
+      "companiesHouseNumber": "Companies House Number",
+      "website": "Website",
+      "contactEmail": "Contact Email",
+      "status": "Status",
+      "capabilities": "Capabilities",
+      "description": "Description",
+      "address": "Address",
+      "postcode": "Postcode",
+      "contactPerson": "Contact Person",
+      "email": "Email",
+      "phone": "Phone",
+      "keyCapabilities": "Key Capabilities",
+      "certifications": "Certifications",
+      "equipment": "Equipment",
+      "pastProjects": "Past Projects"
+    },
+    "details": {
+      "businessInfo": "Business Information",
+      "contactInfo": "Contact Information",
+      "capabilitiesExperience": "Capabilities & Experience"
+    },
+    "competencies": {
+      "capabilitiesTitle": "Capabilities ({count})",
+      "marketsTitle": "Markets ({count})",
+      "standardsTitle": "Standards & Certifications ({count})",
+      "emptyCapabilities": "No capabilities selected",
+      "emptyMarkets": "No markets selected",
+      "emptyStandards": "No standards selected",
+      "uncategorized": "Uncategorized",
+      "other": "Other",
+      "aiSuggested": "AI-Suggested Competencies"
+    },
+    "ai": {
+      "summary": "AI Summary",
+      "noSummary": "No AI analysis has been generated yet",
+      "ratings": "Assessment Ratings",
+      "digitalMaturity": "Digital Maturity",
+      "safetyRating": "Safety Rating",
+      "marketPosition": "Market Position",
+      "capabilities": "AI Capabilities",
+      "strengths": "AI Strengths",
+      "certifications": "AI Certifications",
+      "swot": "SWOT Analysis",
+      "swotStrengths": "Strengths",
+      "swotWeaknesses": "Weaknesses",
+      "swotOpportunities": "Opportunities",
+      "swotThreats": "Threats",
+      "benchmark": "Performance Benchmark",
+      "overallScore": "Overall Score",
+      "executiveSummary": "Executive Summary",
+      "notAvailable": "Not available",
+      "noneFound": "None found",
+      "na": "N/A"
+    },
+    "financial": {
+      "financialData": "Financial Data",
+      "noFinancial": "No financial data available",
+      "complianceData": "Compliance Data",
+      "noCompliance": "No compliance data available",
+      "systemExtracted": "System-Extracted Data",
+      "noExtracted": "No system-extracted data available",
+      "adminVerified": "Admin-Verified Fields"
+    },
+    "history": {
+      "countOne": "{count} verification request",
+      "countOther": "{count} verification requests",
+      "current": "Current",
+      "submissionNotes": "Submission Notes",
+      "reviewNotes": "Review Notes",
+      "structuredFeedback": "Structured Feedback",
+      "reviewedOn": "Reviewed on {date}"
+    },
+    "toasts": {
+      "approveSuccess": "Company verified successfully",
+      "rejectSuccess": "Verification request rejected",
+      "changesRequestedSuccess": "Changes requested — company has been notified",
+      "submitFailed": "Failed to submit review"
+    }
+  },
+  "AdminSettings": {
+    "title": "Settings",
+    "description": "Configure AI models, verification rules, and platform settings.",
+    "ai": {
+      "cardTitle": "Default AI settings",
+      "cardDescription": "These apply to all AI requests across the app (matching, company/tender analysis, chat, etc.) when no override is provided.",
+      "defaultModelLabel": "Default model",
+      "reasoningEffortLabel": "Reasoning effort",
+      "reasoningEffortPlaceholder": "Default",
+      "reasoningHint": "Lower = faster, fewer reasoning tokens",
+      "saveButton": "Save defaults",
+      "effort": {
+        "default": "Default",
+        "low": "Low",
+        "minimal": "Very low",
+        "none": "None",
+        "medium": "Medium",
+        "high": "High",
+        "xhigh": "Extra high"
+      },
+      "toasts": {
+        "loadError": "Failed to load settings",
+        "saveError": "Failed to save",
+        "saveSuccess": "Default AI settings saved. They apply to all AI requests."
+      }
+    },
+    "verification": {
+      "cardTitle": "Verification & Usage Limits",
+      "cardDescription": "Control project, competency, and tender matching limits for verified and unverified companies.",
+      "sections": {
+        "projectLimits": "Project & Competency Limits",
+        "matchingRuns": "Tender Matching Runs per Month",
+        "matchingRunsHelper": "Controls how many times a company can run \"Run Analysis\" per calendar month. Per-company overrides can be set in the Companies tab.",
+        "analysisRuns": "AI Analysis Runs per Month",
+        "analysisRunsHelper": "Controls how many times a company can run \"AI Analysis\" per calendar month. Per-company overrides can be set in the Companies tab."
+      },
+      "fields": {
+        "verifiedProjectLimit": "Verified company project limit",
+        "verifiedProjectLimitHelper": "Max active projects for verified companies",
+        "unverifiedProjectLimit": "Unverified company project limit",
+        "unverifiedProjectLimitHelper": "Max active projects for unverified companies",
+        "unverifiedCompetencyLimit": "Unverified company competency limit",
+        "unverifiedCompetencyLimitHelper": "Max competencies for unverified companies (no review needed)",
+        "verifiedMatchingRuns": "Verified company matching runs / month",
+        "verifiedMatchingRunsHelper": "Default: 10 runs per month for verified companies",
+        "unverifiedMatchingRuns": "Unverified company matching runs / month",
+        "unverifiedMatchingRunsHelper": "Default: 2 runs per month for unverified companies",
+        "verifiedAnalysisRuns": "Verified company analysis runs / month",
+        "verifiedAnalysisRunsHelper": "Default: 5 runs per month for verified companies",
+        "unverifiedAnalysisRuns": "Unverified company analysis runs / month",
+        "unverifiedAnalysisRunsHelper": "Default: 1 run per month for unverified companies"
+      },
+      "saveButton": "Save limits",
+      "toasts": {
+        "loadError": "Failed to load settings",
+        "saveError": "Failed to save",
+        "saveSuccess": "Settings saved."
+      }
+    }
+  },
+  "AdminTaxonomy": {
+    "title": "Taxonomy",
+    "description": "Manage capability categories and hierarchical taxonomy structure.",
+    "uncategorized": "Uncategorized",
+    "cardTitle": "Capability Taxonomy Editor",
+    "cardDescription": "Manage company capabilities by category and name. These are used to match companies with projects.",
+    "resetButton": "Reset List",
+    "resetTitle": "Delete ALL capabilities and links. Cannot be undone.",
+    "regenerateButton": "Regenerate All Company Capabilities",
+    "refreshButton": "Refresh List",
+    "addButton": "Add Capability",
+    "regenerating": "Regenerating Company Capabilities",
+    "progressPercent": "{progress}%",
+    "batchProgress": "{completed} / {total} companies completed.",
+    "batchFailed": "({count} failed)",
+    "regenerationDone": "✅ Regeneration completed!",
+    "searchPlaceholder": "Search capabilities or categories...",
+    "loading": "Loading capabilities...",
+    "emptySearch": "No capabilities match your search.",
+    "empty": "No capabilities found. Create your first capability.",
+    "total": "Total: {count} capabilities across {categories} categories",
+    "resetConfirm": "⚠️ WARNING: This will DELETE ALL capabilities and company-capability links!\n\nThis action cannot be undone. All companies will have their capabilities cleared.\n\nThe editable taxonomy will then be restored from the read-only seed table (populated by the CSV migration).\n\nAre you sure you want to proceed?",
+    "deleteDialog": {
+      "title": "Delete Capability",
+      "description": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "createDialog": {
+      "title": "Create New Capability",
+      "description": "Add a new capability to the taxonomy.",
+      "cancel": "Cancel",
+      "confirm": "Create"
+    },
+    "editDialog": {
+      "title": "Edit Capability",
+      "description": "Update the capability details.",
+      "cancel": "Cancel",
+      "confirm": "Save Changes"
+    },
+    "form": {
+      "nameLabel": "Name *",
+      "namePlaceholder": "Capability name",
+      "parentLabel": "Parent (optional)",
+      "parentPlaceholder": "None",
+      "none": "None",
+      "categoryLabel": "Category (optional if parent set)",
+      "categoryPlaceholder": "Select category"
+    },
+    "toasts": {
+      "loadFailed": "Failed to load capabilities: {error}",
+      "refreshed": "Capability list refreshed",
+      "deleteSuccess": "Capability deleted successfully",
+      "deleteFailed": "Failed to delete capability: {error}",
+      "nameRequired": "Name is required",
+      "categoryOrParentRequired": "Either category or parent must be set",
+      "updateSuccess": "Capability updated successfully",
+      "createSuccess": "Capability created successfully",
+      "saveFailed": "Failed to save capability: {error}",
+      "resetSuccessSeeded": "✅ Reset complete. Deleted {deleted} capabilities and {links} links. Reseeded {reseeded} from the seed table.",
+      "resetSuccessEmpty": "✅ Reset complete. Deleted {deleted} capabilities and {links} links. Seed table is empty — run the taxonomy migration to populate it.",
+      "resetFailed": "Failed to reset capabilities",
+      "regenerateQueued": "Queued {jobs} AI processing jobs for {companies} companies",
+      "regenerateFailed": "Failed to start regeneration"
+    }
+  },
+  "AdminOnboarding": {
+    "title": "Onboarding",
+    "description": "Track user onboarding progress and completion rates.",
+    "loading": "Loading onboarding data...",
+    "stats": {
+      "totalUsers": "Total Users",
+      "emailPending": "Email Pending",
+      "profileStep": "Profile Step",
+      "accountCompany": "Account/Company",
+      "completed": "Completed"
+    },
+    "approval": {
+      "approved": "Approved",
+      "pending": "Pending",
+      "rejected": "Rejected"
+    },
+    "cardTitle": "User Onboarding Status",
+    "refreshButton": "Refresh",
+    "searchPlaceholder": "Search by email or name...",
+    "table": {
+      "user": "User",
+      "currentStep": "Current Step",
+      "accountType": "Account Type",
+      "approval": "Approval",
+      "signedUp": "Signed Up"
+    },
+    "emptyState": "No users found matching your criteria",
+    "nameNotProvided": "Not provided",
+    "dateNA": "N/A",
+    "details": {
+      "heading": "Onboarding Progress",
+      "step1": "1. Email Verification",
+      "step2": "2. Profile Info",
+      "step3": "3. Account Type",
+      "step4": "4. Company Info",
+      "verifiedAt": "Verified {date}",
+      "pendingVerification": "Pending verification",
+      "nameLabel": "Name:",
+      "jobLabel": "Job:",
+      "notCompleted": "Not completed",
+      "notSelected": "Not selected",
+      "skippedIndividual": "Skipped (Individual)",
+      "requestingToJoin": "Requesting to join:",
+      "completedOn": "Onboarding completed:"
+    }
+  },
+  "AdminDemoSync": {
+    "title": "Demo Sync",
+    "description": "Run demo tender matching with configurable AI models.",
+    "cardTitle": "Test mode: demo sync & match",
+    "cardDescription": "Run a demo match of 50 tenders and compare models. Results are stored in a separate table and truncated on each \"Run demo\". Use \"Add user to queue\" to simulate a second user (100 matches total).",
+    "runTimerLabel": "Run timer:",
+    "lastRunLabel": "Last run:",
+    "queueProgress": "Queue progress",
+    "modelLabel": "Model:",
+    "thinkingLabel": "Thinking:",
+    "thinkingHint": "Lower = faster",
+    "effort": {
+      "default": "Default",
+      "low": "Low",
+      "minimal": "Very low",
+      "none": "None"
+    },
+    "runDemoButton": "Run demo (50 tenders)",
+    "addUserButton": "Add user to queue (+50 matches)",
+    "resultsTitle": "Demo results",
+    "resultsDescription": "Match result, model used, and AI summary. Rows appear as jobs complete (polling every 5s).",
+    "loadingResults": "Loading results...",
+    "emptyResults": "No demo results yet. Run a demo to see matches here.",
+    "table": {
+      "batch": "Batch",
+      "tender": "Tender",
+      "company": "Company",
+      "score": "Score",
+      "model": "Model",
+      "summary": "Summary"
+    },
+    "rawAiOutput": "Raw AI output (batch: {batch}, model: {model})",
+    "toasts": {
+      "fetchError": "Failed to load results",
+      "demoStarted": "Demo started: {count} jobs queued (User A). Results will appear below.",
+      "demoFinished": "Demo run finished in {duration} ({model})",
+      "runFailed": "Run failed",
+      "addUserSuccess": "Added User B: {count} jobs queued. Total queue has more jobs.",
+      "addUserFailed": "Add user failed"
+    }
+  },
+  "AdminTenderSync": {
+    "cardTitle": "Weekly Tender Sync",
+    "lastSyncLabel": "Last sync finished:",
+    "nextSyncLabel": "Next scheduled sync:",
+    "never": "Never",
+    "notScheduled": "Not scheduled",
+    "loading": "Loading…",
+    "loadError": "Failed to load status",
+    "triggerButton": "Trigger sync now",
+    "syncingButton": "Syncing…",
+    "stopButton": "Stop sync",
+    "ariaStatus": "Tender sync schedule status",
+    "ariaTriggering": "Syncing tenders",
+    "ariaTrigger": "Trigger tender sync now",
+    "ariaStop": "Stop tender sync",
+    "toasts": {
+      "completed": "Sync completed. Next run in 7 days.",
+      "failed": "Sync failed (see server logs). Next run scheduled in 7 days.",
+      "notRun": "Sync not run",
+      "stopped": "Sync stopped.",
+      "triggerError": "Failed to trigger sync"
+    }
+  },
+  "AdminTenderAIRegen": {
+    "inProgressTitle": "AI Regeneration in Progress",
+    "inProgressSubtitle": "{completed}/{total} completed ({progress}%)",
+    "viewDetails": "View Details",
+    "openButton": "Regenerate All Tender AI",
+    "dialogTitle": "Regenerate Tender AI Summaries & Taxonomies",
+    "dialogDescription": "This will regenerate AI summaries and capability taxonomies for all tenders. This process may take several minutes.",
+    "startDescription": "Click the button below to queue AI regeneration jobs for all tenders.",
+    "queuing": "Queuing Jobs...",
+    "startButton": "Start Regeneration",
+    "progressLabel": "Progress",
+    "completed": "Completed",
+    "remaining": "Remaining",
+    "totalLabel": "Total:",
+    "totalValue": "{count} tenders",
+    "failedLabel": "Failed:",
+    "startProcessingButton": "Start Processing Jobs",
+    "completedMessage": "Regeneration Complete!",
+    "failedMessage": "Regeneration Failed",
+    "closeButton": "Close",
+    "backgroundHint": "You can close this dialog - processing will continue in the background. Check back here to see progress.",
+    "toasts": {
+      "queued": "Queued {jobCount} AI processing jobs for {tenderCount} tenders",
+      "startError": "Failed to start regeneration",
+      "workerError": "Failed to start worker. Jobs are queued but not processing.",
+      "workerRetryError": "Failed to start worker. Please try again."
+    }
+  },
+  "AdminDataImport": {
+    "cardTitle": "Import Construction Companies Data",
+    "description": "This will import {count} construction companies from the Bolsover Excel file into the database.",
+    "importButton": "Import Companies Data",
+    "importing": "Importing... {progress}% complete ({imported} of {total})",
+    "errorsTitle": "Import Errors:",
+    "moreErrors": "...and {count} more errors",
+    "toasts": {
+      "importError": "Error importing {name}: {error}",
+      "importSuccess": "Import completed! {count} companies processed successfully.",
+      "importFailed": "Import failed: {error}"
+    }
+  },
+  "AdminCSVImport": {
+    "cardTitle": "Import Companies from CSV",
+    "cardDescription": "Upload a CSV file to import companies into the system. Companies will be marked as system companies.",
+    "format": {
+      "title": "Expected CSV Format:",
+      "requiredIntro": "Required column: ",
+      "requiredOr": " (or ",
+      "requiredOrEnd": ")",
+      "supportedIntro": "Supported columns: ",
+      "supportedSuffix": " (and 2, 3, 4)",
+      "note": "Note: Array values like "
+    },
+    "noteSuffix": " are automatically extracted. Postcode is extracted from Full Address if provided.",
+    "fileLabel": "CSV File",
+    "updateExistingLabel": "Update existing companies' capabilities (re-map capabilities from CSV)",
+    "previewLabel": "Preview (first 5 rows)",
+    "previewHeader": {
+      "companyName": "Company Name",
+      "contact": "Contact",
+      "location": "Location"
+    },
+    "importButton": "Import Companies",
+    "progressLabel": "{progress}% complete",
+    "progressCounts": "{imported} imported, {skipped} skipped, {errors} errors",
+    "errorsTitle": "Import Errors ({count}):",
+    "moreErrors": "...and {count} more errors",
+    "summaryTitle": "Import Summary:",
+    "summaryImported": "{count} companies imported successfully",
+    "summarySkipped": "{count} companies skipped (already exist)",
+    "summaryFailed": "{count} companies failed to import",
+    "toasts": {
+      "invalidFile": "Please select a CSV file",
+      "noData": "No valid data found in CSV file",
+      "loaded": "CSV file loaded. Found {count} companies.",
+      "parseError": "Failed to parse CSV file",
+      "capabilityMatchingDisabled": "Capability matching disabled - failed to load reference list",
+      "importSuccess": "Import completed! {imported} imported, {skipped} skipped, {errors} errors. {note}",
+      "importSuccessNote": "Capability taxonomies are being generated in the background.",
+      "importFailed": "Import failed: {message}"
+    }
+  },
+  "AdminReviewFeedback": {
+    "dialogTitle": "Request Changes — {name}",
+    "dialogDescription": "Select sections that need attention and provide specific feedback for each. The company will see this feedback and can make changes before resubmitting.",
+    "sections": {
+      "companyInfo": "Company Information",
+      "contact": "Contact Details",
+      "website": "Website",
+      "competencies": "Competencies & Capabilities",
+      "certifications": "Certifications & Standards",
+      "description": "Company Description",
+      "financial": "Financial Data",
+      "compliance": "Compliance"
+    },
+    "needsChanges": "Needs Changes",
+    "ok": "OK",
+    "sectionPlaceholder": "What needs to change in {label}?",
+    "overallLabel": "Overall Notes (optional)",
+    "overallPlaceholder": "Any additional context or instructions...",
+    "flaggedCount": "{count, plural, one {# section} other {# sections}} flagged for changes",
+    "cancel": "Cancel",
+    "submit": "Send Feedback"
+  },
+  "AdminCompanyAIRegen": {
+    "inProgressTitle": "Company AI Regeneration in Progress",
+    "inProgressSubtitle": "{completed}/{total} completed ({progress}%)",
+    "viewDetails": "View Details",
+    "openButton": "Regenerate All Company AI",
+    "dialogTitle": "Regenerate Company AI Summaries & Taxonomies",
+    "dialogDescription": "This will regenerate AI summaries and capability taxonomies for all companies. This will dynamically create new capabilities based on company data. This process may take several minutes.",
+    "startButton": "Start Regeneration",
+    "progressLabel": "Progress",
+    "totalJobs": "Total Jobs",
+    "completed": "Completed",
+    "failed": "Failed",
+    "statusCompleted": "Regeneration Complete",
+    "statusFailed": "Regeneration Failed",
+    "statusProcessing": "Processing...",
+    "jobsQueuedTitle": "Jobs Queued",
+    "jobsQueuedBody": "Jobs are queued but not processing. Click the button below to start processing.",
+    "startProcessingButton": "Start Processing Jobs",
+    "failedMessage": "Some jobs failed. Check the logs for details.",
+    "toasts": {
+      "queued": "Queued {jobCount} AI processing jobs for {companyCount} companies",
+      "startError": "Failed to start regeneration",
+      "workerError": "Failed to start worker. Jobs are queued but not processing.",
+      "workerRetryError": "Failed to start worker. Please try again."
     }
   }
 }

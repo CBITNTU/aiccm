@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +25,7 @@ import { toast } from "sonner";
 const STORAGE_KEY = "company_ai_regeneration_batch_id";
 
 export function CompanyAIRegeneration() {
+  const t = useTranslations("AdminCompanyAIRegen");
   const [isOpen, setIsOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
@@ -70,15 +72,13 @@ export function CompanyAIRegeneration() {
 
       if (!response.ok) {
         console.error("❌ Worker error:", data);
-        toast.error(
-          "Failed to start worker. Jobs are queued but not processing.",
-        );
+        toast.error(t("toasts.workerError"));
       } else {
         console.log(`✅ Worker processing: ${data.processed} jobs processed`);
       }
     } catch (error) {
       console.error("❌ Failed to trigger worker:", error);
-      toast.error("Failed to start worker. Please try again.");
+      toast.error(t("toasts.workerRetryError"));
     }
   };
 
@@ -94,12 +94,12 @@ export function CompanyAIRegeneration() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to start regeneration");
+        throw new Error(data.error || t("toasts.startError"));
       }
 
       setBatchId(data.batchId);
       toast.success(
-        `Queued ${data.jobCount} AI processing jobs for ${data.companyCount} companies`,
+        t("toasts.queued", { jobCount: data.jobCount, companyCount: data.companyCount }),
       );
 
       // Manually trigger the worker to start processing
@@ -107,7 +107,7 @@ export function CompanyAIRegeneration() {
     } catch (error) {
       console.error("Error regenerating company AI:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to start regeneration",
+        error instanceof Error ? error.message : t("toasts.startError"),
       );
     } finally {
       setIsRegenerating(false);
@@ -126,10 +126,14 @@ export function CompanyAIRegeneration() {
           <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
           <div className="flex-1">
             <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-              Company AI Regeneration in Progress
+              {t("inProgressTitle")}
             </p>
             <p className="text-xs text-blue-700 dark:text-blue-300">
-              {batch.completedJobs}/{batch.totalJobs} completed ({progress}%)
+              {t("inProgressSubtitle", {
+                completed: batch.completedJobs,
+                total: batch.totalJobs,
+                progress,
+              })}
             </p>
           </div>
           <Button
@@ -138,7 +142,7 @@ export function CompanyAIRegeneration() {
             onClick={() => setIsOpen(true)}
             className="text-blue-600 hover:text-blue-700"
           >
-            View Details
+            {t("viewDetails")}
           </Button>
         </div>
       )}
@@ -147,26 +151,20 @@ export function CompanyAIRegeneration() {
         <DialogTrigger asChild>
           <Button variant="outline" disabled={isRegenerating}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Regenerate All Company AI
+            {t("openButton")}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>
-              Regenerate Company AI Summaries & Taxonomies
-            </DialogTitle>
-            <DialogDescription>
-              This will regenerate AI summaries and capability taxonomies for
-              all companies. This will dynamically create new capabilities based
-              on company data. This process may take several minutes.
-            </DialogDescription>
+            <DialogTitle>{t("dialogTitle")}</DialogTitle>
+            <DialogDescription>{t("dialogDescription")}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             {!batch && !isRegenerating && (
               <Button onClick={handleRegenerate} className="w-full">
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Start Regeneration
+                {t("startButton")}
               </Button>
             )}
 
@@ -180,7 +178,7 @@ export function CompanyAIRegeneration() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Progress</span>
+                    <span>{t("progressLabel")}</span>
                     <span>{progress}%</span>
                   </div>
                   <Progress value={progress} />
@@ -189,19 +187,19 @@ export function CompanyAIRegeneration() {
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
                     <div className="font-medium">{batch.totalJobs}</div>
-                    <p className="text-muted-foreground">Total Jobs</p>
+                    <p className="text-muted-foreground">{t("totalJobs")}</p>
                   </div>
                   <div>
                     <div className="font-medium text-green-600">
                       {batch.completedJobs}
                     </div>
-                    <p className="text-muted-foreground">Completed</p>
+                    <p className="text-muted-foreground">{t("completed")}</p>
                   </div>
                   <div>
                     <div className="font-medium text-red-600">
                       {batch.failedJobs}
                     </div>
-                    <p className="text-muted-foreground">Failed</p>
+                    <p className="text-muted-foreground">{t("failed")}</p>
                   </div>
                 </div>
 
@@ -217,10 +215,10 @@ export function CompanyAIRegeneration() {
                   )}
                   <span className="text-sm font-medium">
                     {batch.status === "completed"
-                      ? "Regeneration Complete"
+                      ? t("statusCompleted")
                       : batch.status === "failed"
-                        ? "Regeneration Failed"
-                        : "Processing..."}
+                        ? t("statusFailed")
+                        : t("statusProcessing")}
                   </span>
                 </div>
 
@@ -230,11 +228,10 @@ export function CompanyAIRegeneration() {
                       <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
-                          Jobs Queued
+                          {t("jobsQueuedTitle")}
                         </p>
                         <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                          Jobs are queued but not processing. Click the button
-                          below to start processing.
+                          {t("jobsQueuedBody")}
                         </p>
                         <Button
                           variant="outline"
@@ -243,7 +240,7 @@ export function CompanyAIRegeneration() {
                           className="mt-2"
                         >
                           <RefreshCw className="mr-2 h-3 w-3" />
-                          Start Processing Jobs
+                          {t("startProcessingButton")}
                         </Button>
                       </div>
                     </div>
@@ -252,9 +249,7 @@ export function CompanyAIRegeneration() {
 
                 {batch.status === "failed" && (
                   <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-sm text-red-900 dark:text-red-100">
-                      Some jobs failed. Check the logs for details.
-                    </p>
+                    <p className="text-sm text-red-900 dark:text-red-100">{t("failedMessage")}</p>
                   </div>
                 )}
               </div>

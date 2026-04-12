@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- profile/user row types */
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +41,7 @@ interface User {
 }
 
 export default function AdminUsers() {
+  const t = useTranslations("AdminUsers");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -105,31 +107,27 @@ export default function AdminUsers() {
       setUsers(formattedUsers);
     } catch (error: any) {
       console.error("Error fetching users:", error);
-      toast.error(`Failed to fetch users: ${error.message}`);
+      toast.error(t("toasts.fetchUsersError", { message: error.message }));
     } finally {
       setLoading(false);
     }
   };
 
   const deleteUser = async (userId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this user? This action cannot be undone.",
-      )
-    ) {
+    if (!confirm(t("confirmDelete"))) {
       return;
     }
 
     try {
       await api.adminDeleteUser(userId);
 
-      toast.success("User has been successfully deleted");
+      toast.success(t("toasts.deleteSuccess"));
 
       // Refresh users list
       fetchUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
-      toast.error("Failed to delete user");
+      toast.error(t("toasts.deleteError"));
     }
   };
 
@@ -140,7 +138,7 @@ export default function AdminUsers() {
       setUserEvents(events || []);
     } catch (error: any) {
       console.error("Error fetching user events:", error);
-      toast.error(`Failed to fetch events: ${error.message}`);
+      toast.error(t("toasts.fetchEventsError", { message: error.message }));
     } finally {
       setLoadingEvents(false);
     }
@@ -167,13 +165,13 @@ export default function AdminUsers() {
         await api.adminRemoveUserRole(userId, "superadmin");
       }
 
-      toast.success(`User role changed to ${newRole}`);
+      toast.success(t("toasts.roleChanged", { role: newRole }));
 
       // Refresh users list
       fetchUsers();
     } catch (error) {
       console.error("Error updating user role:", error);
-      toast.error("Failed to update user role");
+      toast.error(t("toasts.roleUpdateError"));
     }
   };
 
@@ -190,10 +188,7 @@ export default function AdminUsers() {
       <div className="space-y-6">
         <Alert>
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            You don&apos;t have permission to access this page. Superadmin
-            access required.
-          </AlertDescription>
+          <AlertDescription>{t("accessDeniedAlert")}</AlertDescription>
         </Alert>
       </div>
     );
@@ -203,7 +198,7 @@ export default function AdminUsers() {
     return (
       <div className="text-center py-8">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Loading users...</p>
+        <p className="text-muted-foreground">{t("loading")}</p>
       </div>
     );
   }
@@ -212,18 +207,14 @@ export default function AdminUsers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            User Management
-          </h2>
-          <p className="text-muted-foreground mt-2">
-            Manage platform users and their permissions
-          </p>
+          <h2 className="text-2xl font-bold text-foreground">{t("heading")}</h2>
+          <p className="text-muted-foreground mt-2">{t("subheading")}</p>
         </div>
 
         <div className="flex items-center gap-4">
           <Badge variant="secondary" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
-            {users.length} Total Users
+            {t("totalUsersBadge", { count: users.length })}
           </Badge>
         </div>
       </div>
@@ -233,13 +224,13 @@ export default function AdminUsers() {
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
-              Platform Users
+              {t("cardTitle")}
             </CardTitle>
 
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search users..."
+                placeholder={t("searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 w-64"
@@ -253,11 +244,11 @@ export default function AdminUsers() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("table.user")}</TableHead>
+                  <TableHead>{t("table.email")}</TableHead>
+                  <TableHead>{t("table.role")}</TableHead>
+                  <TableHead>{t("table.joined")}</TableHead>
+                  <TableHead className="text-right">{t("table.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -267,7 +258,7 @@ export default function AdminUsers() {
                       <div className="font-medium">
                         {userData.firstName && userData.lastName
                           ? `${userData.firstName} ${userData.lastName}`
-                          : "No name"}
+                          : t("noName")}
                       </div>
                     </TableCell>
                     <TableCell>{userData.email}</TableCell>
@@ -280,12 +271,9 @@ export default function AdminUsers() {
                         }
                         className="capitalize"
                       >
-                        {(() => {
-                          // Handle both new and old role values for display
-                          return userData.role === "superadmin"
-                            ? "Superadmin"
-                            : "SME Owner";
-                        })()}
+                        {userData.role === "superadmin"
+                          ? t("roles.superadmin")
+                          : t("roles.smeOwner")}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -299,7 +287,7 @@ export default function AdminUsers() {
                           onClick={() => handleViewEvents(userData.id)}
                         >
                           <Activity className="w-4 h-4 mr-1" />
-                          View Events
+                          {t("buttons.viewEvents")}
                         </Button>
                         <Button
                           variant="outline"
@@ -313,8 +301,8 @@ export default function AdminUsers() {
                         >
                           <Shield className="w-4 h-4 mr-1" />
                           {userData.role === "superadmin"
-                            ? "Remove Superadmin"
-                            : "Make Superadmin"}
+                            ? t("buttons.removeSuperadmin")
+                            : t("buttons.makeSuperadmin")}
                         </Button>
                         <Button
                           variant="destructive"
@@ -333,9 +321,7 @@ export default function AdminUsers() {
 
             {filteredUsers.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  No users found matching your search.
-                </p>
+                <p className="text-muted-foreground">{t("empty")}</p>
               </div>
             )}
           </div>
@@ -346,14 +332,13 @@ export default function AdminUsers() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Superadmin Instructions:</strong> To create a superadmin
-            account, you need to:
+            <strong>{t("instructions.heading")}</strong> {t("instructions.intro")}
             <br />
-            1. Create a regular account through signup
+            1. {t("instructions.step1")}
             <br />
-            2. Update the migration SQL to insert your email as superadmin
+            2. {t("instructions.step2")}
             <br />
-            3. Or use the &quot;Make Superadmin&quot; button on an existing user
+            3. {t("instructions.step3")}
           </AlertDescription>
         </Alert>
       </div>
@@ -362,32 +347,28 @@ export default function AdminUsers() {
       <Dialog open={eventsDialogOpen} onOpenChange={setEventsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>User Event Actions</DialogTitle>
-            <DialogDescription>
-              Recent activity and events for this user
-            </DialogDescription>
+            <DialogTitle>{t("eventsDialog.title")}</DialogTitle>
+            <DialogDescription>{t("eventsDialog.description")}</DialogDescription>
           </DialogHeader>
           {loadingEvents ? (
             <div className="text-center py-8">
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading events...</p>
+              <p className="text-muted-foreground">{t("eventsDialog.loading")}</p>
             </div>
           ) : userEvents.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                No events found for this user.
-              </p>
+              <p className="text-muted-foreground">{t("eventsDialog.empty")}</p>
             </div>
           ) : (
             <div className="space-y-2">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Details</TableHead>
+                    <TableHead>{t("eventsDialog.table.action")}</TableHead>
+                    <TableHead>{t("eventsDialog.table.entity")}</TableHead>
+                    <TableHead>{t("eventsDialog.table.status")}</TableHead>
+                    <TableHead>{t("eventsDialog.table.date")}</TableHead>
+                    <TableHead>{t("eventsDialog.table.details")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -420,7 +401,7 @@ export default function AdminUsers() {
                                 : "secondary"
                           }
                         >
-                          {event.status || "success"}
+                          {event.status || t("eventsDialog.defaultStatus")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -431,7 +412,7 @@ export default function AdminUsers() {
                         Object.keys(event.details).length > 0 ? (
                           <details className="text-xs">
                             <summary className="cursor-pointer text-primary hover:underline">
-                              View details
+                              {t("eventsDialog.viewDetails")}
                             </summary>
                             <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
                               {JSON.stringify(event.details, null, 2)}

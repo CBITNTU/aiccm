@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CoverageMapProps {
   analysis: {
@@ -16,22 +17,23 @@ interface CoverageMapProps {
 }
 
 export function CoverageMap({ analysis }: CoverageMapProps) {
+  const t = useTranslations("CoverageMap");
   if (!analysis) return null;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Coverage Map</span>
+          <span>{t("title")}</span>
           <div className="flex items-center gap-4">
             <div className="text-sm font-normal">
-              <span className="text-muted-foreground">Coverage: </span>
+              <span className="text-muted-foreground">{t("coverageLabel")} </span>
               <span className="font-semibold">
                 {analysis.coveragePercentage}%
               </span>
             </div>
             <div className="text-sm font-normal">
-              <span className="text-muted-foreground">Readiness: </span>
+              <span className="text-muted-foreground">{t("readinessLabel")} </span>
               <span className="font-semibold">
                 {analysis.readinessScore}/100
               </span>
@@ -43,7 +45,7 @@ export function CoverageMap({ analysis }: CoverageMapProps) {
         {/* Overall Progress */}
         <div>
           <div className="flex justify-between text-sm mb-2">
-            <span>Overall Competency Coverage</span>
+            <span>{t("overallCoverage")}</span>
             <span className="font-medium">{analysis.coveragePercentage}%</span>
           </div>
           <Progress value={analysis.coveragePercentage} className="h-2" />
@@ -54,7 +56,7 @@ export function CoverageMap({ analysis }: CoverageMapProps) {
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              Your Competencies ({analysis.companyCompetencies.length})
+              {t("yourCompetencies", { count: analysis.companyCompetencies.length })}
             </h4>
             <div className="space-y-2">
               {analysis.companyCompetencies.map((comp, idx) => (
@@ -70,7 +72,7 @@ export function CoverageMap({ analysis }: CoverageMapProps) {
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <XCircle className="h-4 w-4 text-red-600" />
-              Missing Competencies ({analysis.missingCompetencies.length})
+              {t("missingCompetencies", { count: analysis.missingCompetencies.length })}
             </h4>
             <div className="space-y-2">
               {analysis.missingCompetencies.map((comp, idx) => (
@@ -88,7 +90,7 @@ export function CoverageMap({ analysis }: CoverageMapProps) {
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              Identified Risks
+              {t("identifiedRisks")}
             </h4>
             <div className="space-y-2">
               {analysis.risks.map((risk, idx) => (

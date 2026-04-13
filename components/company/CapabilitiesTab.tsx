@@ -13,6 +13,7 @@ import type { SectionPendingStatus } from "@/hooks/useCompanyPageData";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
+import { useTranslations } from "next-intl";
 
 interface CapabilitiesTabProps {
   companyId: string;
@@ -49,6 +50,7 @@ export function CapabilitiesTab({
   pendingChanges,
   onDataRefresh,
 }: CapabilitiesTabProps) {
+  const t = useTranslations("CompanyPage");
   const [editCompetencies, setEditCompetencies] = useState(false);
   const [editMarkets, setEditMarkets] = useState(false);
   const [editStandards, setEditStandards] = useState(false);
@@ -143,7 +145,7 @@ export function CapabilitiesTab({
       <div className="space-y-6">
         {/* Competencies */}
         <SectionCard
-          title="Competencies"
+          title={t("capabilities.competencies")}
           icon={Tag}
           hasPendingChange={sectionPendingStatus.capabilities}
           isEditLocked={isEditLocked}
@@ -153,7 +155,7 @@ export function CapabilitiesTab({
           <div className="flex flex-wrap gap-1.5">
             {capabilities.length === 0 ? (
               <span className="text-sm text-muted-foreground italic">
-                No competencies selected
+                {t("capabilities.noCompetenciesSelected")}
               </span>
             ) : (
               capabilities.map((cap) => (
@@ -175,7 +177,7 @@ export function CapabilitiesTab({
 
         {/* Markets */}
         <SectionCard
-          title="Markets"
+          title={t("capabilities.markets")}
           icon={Globe}
           hasPendingChange={sectionPendingStatus.markets}
           isEditLocked={isEditLocked}
@@ -185,7 +187,7 @@ export function CapabilitiesTab({
           <div className="flex flex-wrap gap-1.5">
             {markets.length === 0 ? (
               <span className="text-sm text-muted-foreground italic">
-                No markets selected
+                {t("capabilities.noMarketsSelected")}
               </span>
             ) : (
               markets.map((m) => (
@@ -207,7 +209,7 @@ export function CapabilitiesTab({
 
         {/* Standards */}
         <SectionCard
-          title="Standards & Certifications"
+          title={t("capabilities.standardsCertifications")}
           icon={Award}
           hasPendingChange={sectionPendingStatus.standards}
           isEditLocked={isEditLocked}
@@ -217,7 +219,7 @@ export function CapabilitiesTab({
           <div className="flex flex-wrap gap-1.5">
             {standards.length === 0 ? (
               <span className="text-sm text-muted-foreground italic">
-                No standards selected
+                {t("capabilities.noStandardsSelected")}
               </span>
             ) : (
               standards.map((s) => (

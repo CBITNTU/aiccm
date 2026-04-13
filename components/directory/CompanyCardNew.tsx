@@ -12,6 +12,7 @@ import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 type PublicCompany = Pick<
   Company,
   | "id"
@@ -46,6 +47,7 @@ export function CompanyCardNew({
   taxonomies: propTaxonomies,
   distanceMiles,
 }: CompanyCardNewProps) {
+  const t = useTranslations("Directory");
   const [showAllCategories, setShowAllCategories] = useState(false);
   const taxonomies = propTaxonomies || [];
 
@@ -93,7 +95,7 @@ export function CompanyCardNew({
         ) : company.isSystemCompany && !company.userId ? (
           <Badge className="shrink-0 gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
             <Sparkles className="h-3 w-3" />
-            AI Generated
+            {t("companyCard.aiGenerated")}
           </Badge>
         ) : null}
       </div>
@@ -116,8 +118,8 @@ export function CompanyCardNew({
         {distanceMiles != null && (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary rounded-md font-medium">
             {distanceMiles < 1
-              ? "< 1 mi"
-              : `${distanceMiles.toFixed(1)} mi`}
+              ? t("companyCard.distanceLessThan1")
+              : `${distanceMiles.toFixed(1)} ${t("companyCard.distanceUnit")}`}
           </span>
         )}
       </div>
@@ -137,7 +139,7 @@ export function CompanyCardNew({
             ))}
             {capabilities.length > 4 && (
               <Badge variant="outline" className="text-xs font-normal">
-                +{capabilities.length - 4} more
+                +{capabilities.length - 4} {t("companyCard.more")}
               </Badge>
             )}
           </div>
@@ -158,7 +160,7 @@ export function CompanyCardNew({
           >
             <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
               <Tag className="h-3 w-3" />
-              Categories
+              {t("companyCard.categories")}
             </span>
             {taxonomies.length > 3 && (
               <Button
@@ -172,12 +174,12 @@ export function CompanyCardNew({
               >
                 {showAllCategories ? (
                   <>
-                    Show less
+                    {t("companyCard.showLess")}
                     <ChevronUp className="h-3 w-3 ml-1" />
                   </>
                 ) : (
                   <>
-                    +{taxonomies.length - 3} more
+                    +{taxonomies.length - 3} {t("companyCard.more")}
                     <ChevronDown className="h-3 w-3 ml-1" />
                   </>
                 )}

@@ -11,6 +11,7 @@ import type { PastProject } from "@/hooks/useCompanyProjects";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { SectionPendingStatus } from "@/hooks/useCompanyPageData";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
+import { useTranslations } from "next-intl";
 
 function parsePastProjectsJson(raw: string | null | undefined): PastProject[] {
   if (!raw) return [];
@@ -46,6 +47,7 @@ export function ExperienceTab({
   onSaved,
   onDataRefresh,
 }: ExperienceTabProps) {
+  const t = useTranslations("CompanyPage");
   const [editOpen, setEditOpen] = useState(false);
   const { data, isLoading } = useCompanyProjects(companyId);
 
@@ -62,7 +64,7 @@ export function ExperienceTab({
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Past Projects */}
         <SectionCard
-          title="Past Projects"
+          title={t("experience.pastProjects")}
           icon={Briefcase}
           hasPendingChange={sectionPendingStatus.experience}
           isEditLocked={isEditLocked}
@@ -81,13 +83,13 @@ export function ExperienceTab({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground italic">
-              No past projects recorded. {isOwner && "Add your project history to improve tender matching scores."}
+              {t("experience.noPastProjects")} {isOwner && t("experience.addProjectHistory")}
             </p>
           )}
 
           {/* Draft changes */}
           {pendingPastProjects.length > 0 && (
-            <DraftBlock label="Proposed past projects">
+            <DraftBlock label={t("experience.proposedPastProjects")}>
               <div className="space-y-3">
                 {pendingPastProjects.map((project, idx) => (
                   <div key={idx} className="p-2 bg-amber-50 rounded border border-amber-200 space-y-1">
@@ -130,8 +132,8 @@ export function ExperienceTab({
 
         {/* Platform Projects (VO) */}
         <SectionCard
-          title="Platform Projects"
-          description="Virtual Organization projects on TNDRX"
+          title={t("experience.platformProjects")}
+          description={t("experience.platformProjectsDescription")}
           icon={Building2}
           hideEdit
         >
@@ -188,7 +190,7 @@ export function ExperienceTab({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground italic">
-              No platform projects yet. Create a Virtual Organization project to collaborate with other companies.
+              {t("experience.noPlatformProjects")}
             </p>
           )}
         </SectionCard>

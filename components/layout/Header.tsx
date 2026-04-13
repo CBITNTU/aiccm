@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Building2, Menu, LogOut } from "lucide-react";
-import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 
 interface HeaderProps {
   variant?: "landing" | "app";
@@ -45,7 +44,6 @@ export function Header({
 
           {/* Actions */}
           <div className="flex items-center space-x-3">
-            <LocaleSwitcher />
             {variant === "landing" ? (
               <div className="flex space-x-4">
                 {user ? (

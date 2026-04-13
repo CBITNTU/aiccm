@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
 import { VerifiedBadge } from "@/components/company/VerifiedBadge";
+import { useTranslations } from "next-intl";
 type PublicCompany = Pick<
   Company,
   | "id"
@@ -172,6 +173,7 @@ export function CompanyDetailView({
   markets = [],
   standards = [],
 }: CompanyDetailViewProps) {
+  const t = useTranslations("Directory");
   const { user } = useAuth();
   const router = useRouter();
   const [analysis, setAnalysis] = useState<CompanyAnalysis | null>(null);
@@ -213,32 +215,32 @@ export function CompanyDetailView({
   const radarData = analysis?.performanceBenchmark
     ? [
         {
-          subject: "Technical Expertise",
+          subject: t("companyDetailView.technicalExpertise"),
           A: analysis.performanceBenchmark.technicalExpertise || 0,
           fullMark: 100,
         },
         {
-          subject: "Safety Standards",
+          subject: t("companyDetailView.safetyStandards"),
           A: analysis.performanceBenchmark.safetyStandards || 0,
           fullMark: 100,
         },
         {
-          subject: "Innovation",
+          subject: t("companyDetailView.innovation"),
           A: analysis.performanceBenchmark.innovation || 0,
           fullMark: 100,
         },
         {
-          subject: "Project Experience",
+          subject: t("companyDetailView.projectExperience"),
           A: analysis.performanceBenchmark.projectExperience || 0,
           fullMark: 100,
         },
         {
-          subject: "Certifications",
+          subject: t("companyDetailView.certifications"),
           A: analysis.performanceBenchmark.certifications || 0,
           fullMark: 100,
         },
         {
-          subject: "Market Reputation",
+          subject: t("companyDetailView.marketReputation"),
           A: analysis.performanceBenchmark.marketReputation || 0,
           fullMark: 100,
         },
@@ -262,7 +264,7 @@ export function CompanyDetailView({
                 }
               >
                 <UserPlus className="h-4 w-4" />
-                Join this company
+                {t("companyDetailView.joinCompany")}
               </Button>
             )}
             {analysis?.performanceBenchmark?.overallScore && (
@@ -292,10 +294,10 @@ export function CompanyDetailView({
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Tag className="h-4 w-4" />
-                Competency, Market & Standards
+                {t("companyDetailView.competencyMarketStandards")}
                 {analysis && capabilitiesProp?.length === 0 && (
                   <Badge variant="outline" className="text-xs font-normal">
-                    AI Analyzed
+                    {t("companyDetailView.aiAnalyzed")}
                   </Badge>
                 )}
               </CardTitle>
@@ -305,7 +307,7 @@ export function CompanyDetailView({
               <div>
                 <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
                   <Tag className="h-3.5 w-3.5" />
-                  Competency
+                  {t("companyDetailView.competency")}
                 </h4>
                 {capabilitiesProp && capabilitiesProp.length > 0 ? (
                   <TaxonomyTree
@@ -341,7 +343,7 @@ export function CompanyDetailView({
                     if (fallback.filter(Boolean).length === 0) {
                       return (
                         <span className="text-sm text-muted-foreground">
-                          No competencies listed.
+                          {t("companyDetailView.noCompetencies")}
                         </span>
                       );
                     }
@@ -365,7 +367,7 @@ export function CompanyDetailView({
               <div>
                 <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
                   <Globe className="h-3.5 w-3.5" />
-                  Market
+                  {t("companyDetailView.market")}
                 </h4>
                 {markets.length > 0 ? (
                   <TaxonomyTree
@@ -377,7 +379,7 @@ export function CompanyDetailView({
                   />
                 ) : (
                   <span className="text-sm text-muted-foreground">
-                    No markets selected.
+                    {t("companyDetailView.noMarkets")}
                   </span>
                 )}
               </div>
@@ -386,7 +388,7 @@ export function CompanyDetailView({
               <div>
                 <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
                   <Award className="h-3.5 w-3.5" />
-                  Standards & Certifications
+                  {t("companyDetailView.standardsCertifications")}
                 </h4>
                 {standards.length > 0 ? (
                   <TaxonomyTree
@@ -404,7 +406,7 @@ export function CompanyDetailView({
                 )}
                 {standards.length === 0 && !company.certifications && (
                   <span className="text-sm text-muted-foreground">
-                    No standards selected.
+                    {t("companyDetailView.noStandards")}
                   </span>
                 )}
               </div>
@@ -418,7 +420,7 @@ export function CompanyDetailView({
         <div className="space-y-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Phone className="h-5 w-5" />
-            Contact Information
+            {t("companyDetailView.contactInformation")}
           </h3>
 
           <div className="space-y-3">
@@ -472,14 +474,14 @@ export function CompanyDetailView({
             ) : (
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Mail className="h-4 w-4" />
-                <span>Contact details available to verified partners</span>
+                <span>{t("companyDetailView.contactAvailableToPartners")}</span>
               </div>
             )}
 
             {isFullCompany(company) && company.companiesHouseNumber && (
               <div className="flex items-center gap-3">
                 <Building2 className="h-4 w-4 text-primary" />
-                <span>Companies House: {company.companiesHouseNumber}</span>
+                <span>{t("companyDetailView.companiesHouse")}{company.companiesHouseNumber}</span>
               </div>
             )}
           </div>
@@ -489,7 +491,7 @@ export function CompanyDetailView({
         <div className="space-y-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Company Metrics
+            {t("companyDetailView.companyMetrics")}
           </h3>
 
           <div className="space-y-3">
@@ -497,7 +499,7 @@ export function CompanyDetailView({
               <div className="border border-border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground block">
-                    Digital Maturity
+                    {t("companyDetailView.digitalMaturity")}
                   </label>
                   <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                     {company.digitalMaturity}
@@ -511,10 +513,10 @@ export function CompanyDetailView({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <label className="text-sm font-medium text-foreground block">
-                      Company Status
+                      {t("companyDetailView.companyStatus")}
                     </label>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Current operational status
+                      {t("companyDetailView.currentOperationalStatus")}
                     </p>
                   </div>
                   <div className="flex-shrink-0">
@@ -540,7 +542,7 @@ export function CompanyDetailView({
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Award className="h-5 w-5" />
-              Performance Benchmark
+              {t("companyDetailView.performanceBenchmark")}
             </h3>
             {isOwner && !readOnly && (
               <Button
@@ -552,12 +554,12 @@ export function CompanyDetailView({
                 {loadingAnalysis ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing...
+                    {t("companyDetailView.analyzing")}
                   </>
                 ) : analysis ? (
-                  "Re-analyze Performance"
+                  t("companyDetailView.reanalyzePerformance")
                 ) : (
-                  "Analyze Performance"
+                  t("companyDetailView.analyzePerformance")
                 )}
               </Button>
             )}
@@ -576,7 +578,7 @@ export function CompanyDetailView({
                       tick={{ fontSize: 9 }}
                     />
                     <Radar
-                      name="Performance Score"
+                      name={t("companyDetailView.performanceScore")}
                       dataKey="A"
                       stroke="hsl(var(--primary))"
                       fill="hsl(var(--primary))"
@@ -613,12 +615,11 @@ export function CompanyDetailView({
                 <div className="flex items-center gap-2 mb-2">
                   <Award className="h-4 w-4 text-primary" />
                   <strong className="text-foreground">
-                    Overall Score:{" "}
-                    {analysis?.performanceBenchmark?.overallScore || 0}/100
+                    {t("companyDetailView.overallScore", { score: `${analysis?.performanceBenchmark?.overallScore || 0}/100` })}
                   </strong>
                 </div>
-                <strong className="text-foreground">Executive Summary:</strong>{" "}
-                {analysis?.executiveSummary || "No summary available"}
+                <strong className="text-foreground">{t("companyDetailView.executiveSummary")}</strong>{" "}
+                {analysis?.executiveSummary || t("companyDetailView.noSummary")}
               </div>
             </div>
           ) : (
@@ -626,16 +627,15 @@ export function CompanyDetailView({
               <div className="text-center">
                 <Award className="h-16 w-16 mx-auto mb-3 opacity-40" />
                 <p className="font-medium mb-1">
-                  No Performance Benchmark Available
+                  {t("companyDetailView.noBenchmarkAvailable")}
                 </p>
                 {isOwner ? (
                   <p className="text-sm">
-                    Click &quot;Analyze Performance&quot; to generate your
-                    company&apos;s benchmark scores
+                    {t("companyDetailView.benchmarkOwnerHelper")}
                   </p>
                 ) : (
                   <p className="text-sm">
-                    Performance analysis not available for this company
+                    {t("companyDetailView.benchmarkNonOwnerHelper")}
                   </p>
                 )}
               </div>
@@ -652,7 +652,7 @@ export function CompanyDetailView({
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <Building2 className="h-5 w-5" />
-              Past Projects
+              {t("companyDetailView.pastProjects")}
             </h3>
             <PastProjectsDisplay value={company.pastProjects} />
           </div>

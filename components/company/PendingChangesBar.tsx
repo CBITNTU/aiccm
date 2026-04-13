@@ -39,6 +39,7 @@ import {
 import { queryKeys } from "@/lib/queryKeys";
 import { formatPastProjectsValue } from "@/components/company/PastProjectsDisplay";
 import type { PendingReviewRequest, ResolvedReviewRequest } from "@/hooks/useCompanyPageData";
+import { useTranslations } from "next-intl";
 
 const SCALAR_FIELD_ORDER = [
   "companyName",
@@ -67,6 +68,7 @@ function ScalarFieldDiff({
   current: string | null;
   proposed: string | null;
 }) {
+  const t = useTranslations("CompanyPage");
   const label = FIELD_LABELS[field] ?? field;
   const isPastProjects = field === "pastProjects";
 
@@ -75,15 +77,15 @@ function ScalarFieldDiff({
       <div className="text-sm font-medium">{label}</div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="text-xs text-blue-700 mb-1">Current</div>
+          <div className="text-xs text-blue-700 mb-1">{t("pendingChanges.current")}</div>
           <div className="text-sm text-foreground bg-blue-50 border border-blue-200 rounded p-2 min-h-[2rem]">
-            {isPastProjects ? formatPastProjectsValue(current) : (current || <span className="text-muted-foreground italic">Empty</span>)}
+            {isPastProjects ? formatPastProjectsValue(current) : (current || <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-blue-700 mb-1">Proposed</div>
+          <div className="text-xs text-blue-700 mb-1">{t("pendingChanges.proposed")}</div>
           <div className="text-sm text-foreground bg-blue-100 border border-blue-300 rounded p-2 min-h-[2rem]">
-            {isPastProjects ? formatPastProjectsValue(proposed) : (proposed || <span className="text-muted-foreground italic">Empty</span>)}
+            {isPastProjects ? formatPastProjectsValue(proposed) : (proposed || <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>)}
           </div>
         </div>
       </div>
@@ -104,6 +106,7 @@ function RelationFieldDiff({
   nameMap?: Record<string, string>;
   namesLoading?: boolean;
 }) {
+  const t = useTranslations("CompanyPage");
   const label = FIELD_LABELS[field] ?? field;
   const getName = (id: string) => nameMap?.[id] ?? id;
 
@@ -113,11 +116,11 @@ function RelationFieldDiff({
     <div className="border rounded-lg p-3 space-y-2">
       <div className="text-sm font-medium">{label}</div>
       {namesLoading && (
-        <p className="text-xs text-muted-foreground">Loading labels...</p>
+        <p className="text-xs text-muted-foreground">{t("pendingChanges.loading")}</p>
       )}
       {added.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          <span className="text-xs text-blue-800 mr-1">Added:</span>
+          <span className="text-xs text-blue-800 mr-1">{t("pendingChanges.added")}</span>
           {added.map((id) => (
             <Badge
               key={id}
@@ -131,7 +134,7 @@ function RelationFieldDiff({
       )}
       {removed.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          <span className="text-xs text-slate-600 mr-1">Removed:</span>
+          <span className="text-xs text-slate-600 mr-1">{t("pendingChanges.removed")}</span>
           {removed.map((id) => (
             <Badge
               key={id}
@@ -154,6 +157,7 @@ export function PendingChangesBar({
   latestResolvedRequest,
   onSuccess,
 }: PendingChangesBarProps) {
+  const t = useTranslations("CompanyPage");
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitNotes, setSubmitNotes] = useState("");
 
@@ -319,7 +323,7 @@ export function PendingChangesBar({
                     ? "bg-red-100 text-red-800 border-red-300"
                     : "bg-amber-100 text-amber-800 border-amber-300"
               }`}>
-                {isChangesRequested ? "Changes Requested" : isRejected ? "Rejected" : "Draft"}
+                {isChangesRequested ? t("pendingChanges.changesRequested") : isRejected ? "Rejected" : t("sectionCard.draft")}
               </Badge>
             )}
             {isSubmitted && (

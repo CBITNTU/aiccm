@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import type { CompanyRecord } from "@/lib/api/types";
 import { useUpdateCompany } from "@/hooks/useCompanyMutations";
+import { useTranslations } from "next-intl";
 
 interface EditBasicInfoSheetProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function EditBasicInfoSheet({
   const [address, setAddress] = useState(companyData.address || "");
   const [website, setWebsite] = useState(companyData.websiteUrl || "");
 
+  const t = useTranslations("CompanyPage");
   const updateMutation = useUpdateCompany();
 
   const handleSave = async () => {
@@ -50,13 +52,13 @@ export function EditBasicInfoSheet({
       onSaved(result.company);
       toast.success(
         isVerified
-          ? "Contact details updated. Company name change saved as draft."
-          : "Company information updated successfully",
+          ? t("editInfo.successWithDraft")
+          : t("editInfo.success"),
       );
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error("Failed to save changes");
+      toast.error(t("editInfo.error"));
     }
   };
 
@@ -64,8 +66,8 @@ export function EditBasicInfoSheet({
     <EditSheetLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Company Info"
-      description="Update your company's basic information and contact details."
+      title={t("editInfo.title")}
+      description={t("editInfo.description")}
       isReviewable={false}
       isVerified={isVerified}
       isEditLocked={isEditLocked}
@@ -77,12 +79,12 @@ export function EditBasicInfoSheet({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="h-px bg-border flex-1" />
-          <span>Saves immediately</span>
+          <span>{t("editInfo.savesImmediately")}</span>
           <div className="h-px bg-border flex-1" />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Contact Email</Label>
+          <Label htmlFor="email">{t("editInfo.contactEmail")}</Label>
           <Input
             id="email"
             type="email"
@@ -93,7 +95,7 @@ export function EditBasicInfoSheet({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone Number</Label>
+          <Label htmlFor="phone">{t("editInfo.phoneNumber")}</Label>
           <Input
             id="phone"
             type="tel"
@@ -104,7 +106,7 @@ export function EditBasicInfoSheet({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="address">Address / Location</Label>
+          <Label htmlFor="address">{t("editInfo.address")}</Label>
           <Input
             id="address"
             value={address}
@@ -114,7 +116,7 @@ export function EditBasicInfoSheet({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="website">Website</Label>
+          <Label htmlFor="website">{t("editInfo.website")}</Label>
           <Input
             id="website"
             type="url"
@@ -131,12 +133,12 @@ export function EditBasicInfoSheet({
         {isVerified && (
           <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>Company name changes require admin review</span>
+            <span>{t("editInfo.nameReviewRequired")}</span>
           </div>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="companyName">Company Name</Label>
+          <Label htmlFor="companyName">{t("editInfo.companyName")}</Label>
           <Input
             id="companyName"
             value={companyName}

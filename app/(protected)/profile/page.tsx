@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ interface ProfileData {
 }
 
 export default function ProfilePage() {
+  const t = useTranslations("Profile");
   const { user } = useAuth();
   const { data: profileData, isLoading } = useProfile(user?.id);
   const updateProfile = useUpdateProfile(user?.id);
@@ -58,7 +60,7 @@ export default function ProfilePage() {
       !formData.lastName.trim() ||
       !formData.jobTitle.trim()
     ) {
-      setError("Please fill in all required fields");
+      setError(t("errorRequired"));
       return;
     }
 
@@ -74,7 +76,7 @@ export default function ProfilePage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Loading your profile...</p>
+        <p className="text-muted-foreground">{t("loading")}</p>
       </div>
     );
   }
@@ -83,10 +85,8 @@ export default function ProfilePage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-2xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Profile</h1>
-          <p className="text-muted-foreground">
-            Manage your personal information
-          </p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
 
         <Card>
@@ -96,9 +96,9 @@ export default function ProfilePage() {
                 <User className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-xl">Personal Information</CardTitle>
+                <CardTitle className="text-xl">{t("cardTitle")}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Update your personal details below
+                  {t("cardDescription")}
                 </p>
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function ProfilePage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email (read-only) */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("emailLabel")}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -118,23 +118,22 @@ export default function ProfilePage() {
                     disabled
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Email cannot be changed
-                </p>
+                <p className="text-xs text-muted-foreground">{t("emailHint")}</p>
               </div>
 
               {/* First Name and Last Name */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">
-                    First Name <span className="text-destructive">*</span>
+                    {t("firstNameLabel")}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="firstName"
                       type="text"
-                      placeholder="First name"
+                      placeholder={t("firstNamePlaceholder")}
                       value={formData.firstName}
                       onChange={(e) =>
                         setFormData({ ...formData, firstName: e.target.value })
@@ -147,12 +146,13 @@ export default function ProfilePage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="lastName">
-                    Last Name <span className="text-destructive">*</span>
+                    {t("lastNameLabel")}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="lastName"
                     type="text"
-                    placeholder="Last name"
+                    placeholder={t("lastNamePlaceholder")}
                     value={formData.lastName}
                     onChange={(e) =>
                       setFormData({ ...formData, lastName: e.target.value })
@@ -165,14 +165,15 @@ export default function ProfilePage() {
               {/* Job Title */}
               <div className="space-y-2">
                 <Label htmlFor="jobTitle">
-                  Job Title / Role <span className="text-destructive">*</span>
+                  {t("jobTitleLabel")}{" "}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <div className="relative">
                   <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="jobTitle"
                     type="text"
-                    placeholder="e.g. CEO, Project Manager, Engineer"
+                    placeholder={t("jobTitlePlaceholder")}
                     value={formData.jobTitle}
                     onChange={(e) =>
                       setFormData({ ...formData, jobTitle: e.target.value })
@@ -185,13 +186,13 @@ export default function ProfilePage() {
 
               {/* Phone */}
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">{t("phoneLabel")}</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="Your phone number"
+                    placeholder={t("phonePlaceholder")}
                     value={formData.phone}
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
@@ -211,10 +212,10 @@ export default function ProfilePage() {
                 {updateProfile.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
+                    {t("saving")}
                   </>
                 ) : (
-                  "Save Changes"
+                  t("save")
                 )}
               </Button>
             </form>

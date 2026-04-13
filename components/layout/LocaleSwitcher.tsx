@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { Globe } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -10,9 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { locales as LOCALES } from "@/i18n/locales";
+import { locales as LOCALES, localeMeta, type Locale } from "@/i18n/locales";
+import { cn } from "@/lib/utils";
 
-export function LocaleSwitcher() {
+interface LocaleSwitcherProps {
+  size?: "default" | "sm";
+}
+
+export function LocaleSwitcher({ size = "default" }: LocaleSwitcherProps) {
   const t = useTranslations("LocaleSwitcher");
   const locale = useLocale();
   const router = useRouter();
@@ -29,20 +35,36 @@ export function LocaleSwitcher() {
     });
   };
 
+  const isSmall = size === "sm";
+  const currentMeta = localeMeta[locale as Locale];
+
   return (
     <Select value={locale} onValueChange={onChange} disabled={isPending}>
       <SelectTrigger
-        className="h-9 min-w-[110px] w-[min(100%,140px)]"
+        className={cn(
+          isSmall
+            ? "h-7 min-w-0 w-auto px-2 gap-1 text-xs"
+            : "h-9 min-w-[110px] w-[min(100%,140px)]",
+        )}
         aria-label={t("label")}
       >
-        <SelectValue />
+        {isSmall && (
+          <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
+        )}
+        <SelectValue>
+          {currentMeta?.nativeName ?? locale}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {LOCALES.map((code) => (
-          <SelectItem key={code} value={code}>
-            {t(code)}
-          </SelectItem>
-        ))}
+        {LOCALES.map((code) => {
+          const meta = localeMeta[code];
+          const isSame = meta.nativeName === meta.englishName;
+          return (
+            <SelectItem key={code} value={code}>
+              {isSame ? meta.nativeName : `${meta.nativeName} · ${meta.englishName}`}
+            </SelectItem>
+          );
+        })}
       </SelectContent>
     </Select>
   );

@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
 import { useGeocode } from "@/hooks/useGeocode";
+import { useTranslations } from "next-intl";
 
 export interface DirectoryFiltersState {
   searchTerm: string;
@@ -54,22 +55,23 @@ interface DirectorySearchBarProps {
   defaultLocationQuery?: string;
 }
 
-const RADIUS_OPTIONS = [
-  { value: "any", label: "Any distance" },
-  { value: "25", label: "Within 25 miles" },
-  { value: "50", label: "Within 50 miles" },
-  { value: "100", label: "Within 100 miles" },
-  { value: "200", label: "Within 200 miles" },
-];
-
 export function DirectorySearchBar({
   filters,
   onFiltersChange,
   onReset,
-  placeholder = "Search companies...",
+  placeholder,
   defaultLocationQuery,
 }: DirectorySearchBarProps) {
+  const t = useTranslations("Directory");
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const RADIUS_OPTIONS = [
+    { value: "any", label: t("searchBar.anyDistance") },
+    { value: "25", label: t("searchBar.within25Miles") },
+    { value: "50", label: t("searchBar.within50Miles") },
+    { value: "100", label: t("searchBar.within100Miles") },
+    { value: "200", label: t("searchBar.within200Miles") },
+  ];
   const [tempTaxonomies, setTempTaxonomies] = useState<string[]>(
     filters.selectedTaxonomies,
   );
@@ -107,8 +109,8 @@ export function DirectorySearchBar({
     if (filters.selectedTaxonomies.length > 0) {
       pills.push({
         key: "taxonomies",
-        label: "Categories",
-        value: `${filters.selectedTaxonomies.length} selected`,
+        label: t("searchBar.categoriesLabel"),
+        value: `${filters.selectedTaxonomies.length} ${t("searchBar.selected")}`,
       });
     }
 
@@ -169,9 +171,9 @@ export function DirectorySearchBar({
           displayName = result.displayName;
         } else {
           if (isEnabled === false) {
-            setGeocodeError("Location search is not configured on this server.");
+            setGeocodeError(t("searchBar.errorLocationNotConfigured"));
           } else {
-            setGeocodeError("Could not find that location. Try a different search.");
+            setGeocodeError(t("searchBar.errorLocationNotFound"));
           }
           return;
         }
@@ -204,7 +206,7 @@ export function DirectorySearchBar({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-10 h-11"
-            placeholder={placeholder}
+            placeholder={placeholder ?? t("searchBar.placeholder")}
             value={filters.searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
           />
@@ -213,7 +215,7 @@ export function DirectorySearchBar({
           <SheetTrigger asChild>
             <Button variant="outline" className="h-11 gap-2">
               <Filter className="h-4 w-4" />
-              Filters
+              {t("searchBar.filtersButton")}
               {activeFilterCount > 0 && (
                 <Badge
                   variant="secondary"
@@ -229,9 +231,9 @@ export function DirectorySearchBar({
             className="w-full sm:max-w-md overflow-y-auto"
           >
             <SheetHeader>
-              <SheetTitle>Filter Companies</SheetTitle>
+              <SheetTitle>{t("searchBar.filterTitle")}</SheetTitle>
               <SheetDescription>
-                Refine your company search results
+                {t("searchBar.filterDescription")}
               </SheetDescription>
             </SheetHeader>
 
@@ -241,10 +243,10 @@ export function DirectorySearchBar({
                 <div className="space-y-3">
                   <Label className="text-sm font-medium flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" />
-                    Location
+                    {t("searchBar.locationLabel")}
                   </Label>
                   <Input
-                    placeholder="Enter a city, postcode, or address..."
+                    placeholder={t("searchBar.locationPlaceholder")}
                     value={tempLocationQuery}
                     onChange={(e) => {
                       setTempLocationQuery(e.target.value);
@@ -253,7 +255,7 @@ export function DirectorySearchBar({
                   />
                   <Select value={tempRadius} onValueChange={setTempRadius}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Any distance" />
+                      <SelectValue placeholder={t("searchBar.anyDistance")} />
                     </SelectTrigger>
                     <SelectContent>
                       {RADIUS_OPTIONS.map((opt) => (
@@ -272,10 +274,10 @@ export function DirectorySearchBar({
               {/* Taxonomy Filter */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Categories</Label>
+                  <Label className="text-sm font-medium">{t("searchBar.categoriesLabel")}</Label>
                   {tempTaxonomies.length > 0 && (
                     <Badge variant="secondary" className="text-xs">
-                      {tempTaxonomies.length} selected
+                      {tempTaxonomies.length} {t("searchBar.selected")}
                     </Badge>
                   )}
                 </div>
@@ -289,7 +291,7 @@ export function DirectorySearchBar({
             <SheetFooter className="flex gap-2 sm:flex-row">
               <Button variant="outline" onClick={onReset} className="flex-1">
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Reset
+                {t("searchBar.reset")}
               </Button>
               <Button
                 className="flex-1"
@@ -297,7 +299,7 @@ export function DirectorySearchBar({
                 disabled={isGeocoding}
               >
                 {isGeocoding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Apply Filters
+                {t("searchBar.applyFilters")}
               </Button>
             </SheetFooter>
           </SheetContent>
@@ -325,7 +327,7 @@ export function DirectorySearchBar({
               className="h-6 text-xs"
               onClick={onReset}
             >
-              Clear all
+              {t("searchBar.clearAll")}
             </Button>
           )}
         </div>
@@ -341,6 +343,7 @@ function TaxonomyFilterContent({
   selectedTaxonomies: string[];
   onTaxonomiesChange: (taxonomies: string[]) => void;
 }) {
+  const t = useTranslations("Directory");
   const [expandedLevel1, setExpandedLevel1] = useState<Record<string, boolean>>(
     {},
   );
@@ -368,7 +371,7 @@ function TaxonomyFilterContent({
   if (loading) {
     return (
       <div className="text-sm text-muted-foreground py-4">
-        Loading categories...
+        {t("searchBar.loadingCategories")}
       </div>
     );
   }

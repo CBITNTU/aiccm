@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TenderSearchDialog } from "./TenderSearchDialog";
+import { useTranslations } from "next-intl";
 
 interface Tender {
   id: string;
@@ -46,6 +47,7 @@ export function ProjectCreationDialog({
   onProjectCreated,
   companyId,
 }: ProjectCreationDialogProps) {
+  const t = useTranslations("ProjectCreationDialog");
   const [loading, setLoading] = useState(false);
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
@@ -71,7 +73,7 @@ export function ProjectCreationDialog({
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "No deadline";
+    if (!dateStr) return t("noDeadline");
     return new Date(dateStr).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -81,7 +83,7 @@ export function ProjectCreationDialog({
 
   const handleCreate = async () => {
     if (!formData.name.trim()) {
-      toast.error("Please enter a project name");
+      toast.error(t("errorNameRequired"));
       return;
     }
 
@@ -97,7 +99,7 @@ export function ProjectCreationDialog({
 
       const project = result.project as { id: string };
 
-      toast.success("Project created!");
+      toast.success(t("successCreated"));
       onProjectCreated(project.id);
       onOpenChange(false);
     } catch (error: unknown) {
@@ -105,7 +107,7 @@ export function ProjectCreationDialog({
       const message =
         error instanceof Error
           ? error.message
-          : "Failed to create project. Please try again.";
+          : t("errorFallback");
       toast.error(message);
     } finally {
       setLoading(false);
@@ -119,19 +121,19 @@ export function ProjectCreationDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Briefcase className="h-5 w-5" />
-              Create Project
+              {t("title")}
             </DialogTitle>
             <DialogDescription>
-              Start a new project and build your team to bid on tenders
+              {t("description")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="project-name">Project Name *</Label>
+              <Label htmlFor="project-name">{t("nameLabel")}</Label>
               <Input
                 id="project-name"
-                placeholder="e.g., Digital Transformation Project"
+                placeholder={t("namePlaceholder")}
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
@@ -140,10 +142,10 @@ export function ProjectCreationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="project-description">Description</Label>
+              <Label htmlFor="project-description">{t("descriptionLabel")}</Label>
               <Textarea
                 id="project-description"
-                placeholder="Describe the project goals and objectives..."
+                placeholder={t("descriptionPlaceholder")}
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
@@ -153,7 +155,7 @@ export function ProjectCreationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Target Tender (Optional)</Label>
+              <Label>{t("tenderLabel")}</Label>
               {selectedTender ? (
                 <Card>
                   <CardContent className="p-3">
@@ -179,7 +181,7 @@ export function ProjectCreationDialog({
                           size="sm"
                           onClick={() => setSearchDialogOpen(true)}
                         >
-                          Change
+                          {t("tenderChangeButton")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -200,11 +202,11 @@ export function ProjectCreationDialog({
                   onClick={() => setSearchDialogOpen(true)}
                 >
                   <Search className="h-4 w-4 mr-2" />
-                  Search for a tender...
+                  {t("tenderSearchPlaceholder")}
                 </Button>
               )}
               <p className="text-xs text-muted-foreground">
-                You can link a tender later from the project setup
+                {t("tenderLinkLater")}
               </p>
             </div>
 
@@ -214,16 +216,16 @@ export function ProjectCreationDialog({
                 onClick={() => onOpenChange(false)}
                 disabled={loading}
               >
-                Cancel
+                {t("cancelButton")}
               </Button>
               <Button onClick={handleCreate} disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
+                    {t("creatingButton")}
                   </>
                 ) : (
-                  "Create Project"
+                  t("createButton")
                 )}
               </Button>
             </div>

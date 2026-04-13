@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Mail, Phone, MapPin } from "lucide-react";
 import type { TeamMember } from "@/hooks/useProjectDetails";
@@ -9,6 +10,7 @@ interface TeamContactsCardProps {
 }
 
 export function TeamContactsCard({ teamMembers }: TeamContactsCardProps) {
+  const t = useTranslations("TeamContactsCard");
   const membersWithContact = teamMembers.filter(
     (m) => m.companies?.contactEmail || m.companies?.location,
   );
@@ -22,7 +24,7 @@ export function TeamContactsCard({ teamMembers }: TeamContactsCardProps) {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Building2 className="h-4 w-4" />
-          Team Contact Information
+          {t("title")}
         </CardTitle>
       </CardHeader>
       <CardContent>

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyRecord as Company } from "@/lib/api/types";
+import { useTranslations } from "next-intl";
 
 interface VerificationBannerProps {
   companyId: string;
@@ -59,6 +60,7 @@ export function VerificationBanner({
   pendingReviewRequest,
   latestResolvedRequest,
 }: VerificationBannerProps) {
+  const t = useTranslations("CompanyPage");
   const { data, isLoading } = useVerificationStatus(companyId);
   const submitMutation = useSubmitVerification();
   const [showDialog, setShowDialog] = useState(false);
@@ -71,11 +73,11 @@ export function VerificationBanner({
   // Check completeness for submission
   const missingFields: string[] = [];
   if (companyData) {
-    if (!companyData.companyName) missingFields.push("Company Name");
-    if (!companyData.contactEmail) missingFields.push("Contact Email");
-    if (!companyData.websiteUrl) missingFields.push("Website");
-    if (!companyData.contactPhone) missingFields.push("Phone");
-    if (!companyData.address) missingFields.push("Address");
+    if (!companyData.companyName) missingFields.push(t("verification.missingFields.companyName"));
+    if (!companyData.contactEmail) missingFields.push(t("verification.missingFields.contactEmail"));
+    if (!companyData.websiteUrl) missingFields.push(t("verification.missingFields.website"));
+    if (!companyData.contactPhone) missingFields.push(t("verification.missingFields.phone"));
+    if (!companyData.address) missingFields.push(t("verification.missingFields.address"));
   }
   const isComplete = missingFields.length === 0;
 
@@ -101,12 +103,12 @@ export function VerificationBanner({
       return (
         <Alert className="border-amber-200 bg-amber-50">
           <Clock className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800">Changes Under Review</AlertTitle>
+          <AlertTitle className="text-amber-800">{t("verification.underReview.title")}</AlertTitle>
           <AlertDescription className="text-amber-700">
-            Your profile changes are being reviewed by our team. Editing of reviewed fields is locked until the review is complete.
+            {t("verification.underReview.description")}
             {pendingReviewRequest.createdAt && (
               <span className="ml-1">
-                Submitted on {new Date(pendingReviewRequest.createdAt).toLocaleDateString()}.
+                {t("verification.underReview.submittedOn")}{new Date(pendingReviewRequest.createdAt).toLocaleDateString()}.
               </span>
             )}
           </AlertDescription>
@@ -122,12 +124,11 @@ export function VerificationBanner({
       return (
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800">Changes Requested</AlertTitle>
+          <AlertTitle className="text-amber-800">{t("verification.changesRequested.title")}</AlertTitle>
           <AlertDescription className="text-amber-700">
             <div className="space-y-3">
               <p>
-                Our team reviewed your submitted changes and has requested some modifications.
-                Please address the feedback below and resubmit.
+                {t("verification.changesRequested.description")}
               </p>
 
               {hasResolvedStructuredFeedback && (

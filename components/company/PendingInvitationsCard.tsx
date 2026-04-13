@@ -28,6 +28,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface Invitation {
   id: string;
@@ -46,6 +47,7 @@ export function PendingInvitationsCard({
   companyId,
   refreshTrigger,
 }: PendingInvitationsCardProps) {
+  const t = useTranslations("CompanyPage");
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -95,7 +97,7 @@ export function PendingInvitationsCard({
         throw new Error(data.error || "Failed to cancel invitation");
       }
 
-      toast.success("Invitation cancelled");
+      toast.success(t("invitations.cancelled"));
       setCancelDialog(null);
       fetchInvitations();
     } catch (error) {

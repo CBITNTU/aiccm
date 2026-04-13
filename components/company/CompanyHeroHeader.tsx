@@ -27,6 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslations } from "next-intl";
 
 interface CompanyHeroHeaderProps {
   companyData: CompanyRecord;
@@ -55,6 +56,7 @@ export function CompanyHeroHeader({
   analysisUsage,
   analysisLimitReached,
 }: CompanyHeroHeaderProps) {
+  const t = useTranslations("CompanyPage");
   return (
     <Card className="card-professional">
       <CardHeader className="pb-3">
@@ -71,7 +73,7 @@ export function CompanyHeroHeader({
               <p className="text-sm text-muted-foreground">
                 {companyData.companiesHouseNumber ? (
                   <>
-                    Companies House:{" "}
+                    {t("heroHeader.companiesHouse")}{" "}
                     <a
                       href={`https://find-and-update.company-information.service.gov.uk/company/${companyData.companiesHouseNumber}`}
                       target="_blank"
@@ -82,7 +84,7 @@ export function CompanyHeroHeader({
                     </a>
                   </>
                 ) : (
-                  <span className="italic">No Companies House number</span>
+                  <span className="italic">{t("heroHeader.noCompaniesHouse")}</span>
                 )}
               </p>
             </div>
@@ -93,7 +95,7 @@ export function CompanyHeroHeader({
             <div className="flex gap-2 shrink-0">
               <Button variant="outline" size="sm" onClick={onEditInfo}>
                 <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-                Edit Info
+                {t("heroHeader.editInfo")}
               </Button>
               <TooltipProvider>
                 <div className="flex items-center gap-1.5">
@@ -108,7 +110,7 @@ export function CompanyHeroHeader({
                         <RefreshCw
                           className={`w-3.5 h-3.5 mr-1.5 ${isAnalyzing ? "animate-spin" : ""}`}
                         />
-                        {isAnalyzing ? "Analyzing..." : hasAnalysis ? "Re-analyze" : "Analyze"}
+                        {isAnalyzing ? t("heroHeader.analyzing") : hasAnalysis ? t("heroHeader.reanalyze") : t("heroHeader.analyze")}
                       </Button>
                     </TooltipTrigger>
                     {analysisLimitReached && (
@@ -155,17 +157,17 @@ export function CompanyHeroHeader({
           {isVerified ? (
             <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
               <ShieldCheck className="h-3 w-3 mr-1" />
-              Verified
+              {t("heroHeader.verified")}
             </Badge>
           ) : (
             <Badge variant="outline" className="text-amber-600 border-amber-200">
               <Clock className="h-3 w-3 mr-1" />
-              Unverified
+              {t("heroHeader.unverified")}
             </Badge>
           )}
           {capabilitiesCount > 0 && (
             <Badge variant="secondary">
-              {capabilitiesCount} competencies
+              {capabilitiesCount} {t("heroHeader.competencies")}
             </Badge>
           )}
           {companyData.digitalMaturity && (
@@ -189,16 +191,16 @@ export function CompanyHeroHeader({
                 {companyData.websiteUrl}
               </a>
             ) : (
-              <span className="italic">No website</span>
+              <span className="italic">{t("heroHeader.noWebsite")}</span>
             )}
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Mail className="h-4 w-4 shrink-0" />
-            <span className="truncate">{companyData.contactEmail || "Not specified"}</span>
+            <span className="truncate">{companyData.contactEmail || t("heroHeader.notSpecified")}</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="h-4 w-4 shrink-0" />
-            <span>{companyData.contactPhone || "Not specified"}</span>
+            <span>{companyData.contactPhone || t("heroHeader.notSpecified")}</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0" />
@@ -214,7 +216,7 @@ export function CompanyHeroHeader({
                 {companyData.address || companyData.postcode}
               </a>
             ) : (
-              <span className="italic">No location</span>
+              <span className="italic">{t("heroHeader.noLocation")}</span>
             )}
           </div>
         </div>

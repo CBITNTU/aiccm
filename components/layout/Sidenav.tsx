@@ -375,54 +375,56 @@ function SidebarContent({
         <Separator className="my-3" />
 
         <TooltipProvider delayDuration={0}>
-          {/* Language switcher */}
-          {(!isCollapsed || isMobile) ? (
-            <div className="mb-2">
-              <LocaleSwitcher />
-            </div>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center px-2 mb-1"
-                  onClick={toggleCollapsed}
-                  aria-label={t("language")}
-                >
-                  <Globe className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={10}>
-                {t("language")}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          {/* Sign out */}
           {isCollapsed && !isMobile ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center px-2"
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={10}>
-                {t("signOut")}
-              </TooltipContent>
-            </Tooltip>
+            /* Collapsed desktop: stacked icon buttons with tooltips */
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center px-2 mb-1"
+                    onClick={toggleCollapsed}
+                    aria-label={t("language")}
+                  >
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>
+                  {t("language")}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center px-2"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>
+                  {t("signOut")}
+                </TooltipContent>
+              </Tooltip>
+            </>
           ) : (
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-4 w-4 mr-3" />
-              {t("signOut")}
-            </Button>
+            /* Expanded desktop or mobile: single inline row */
+            <div className="flex items-center gap-1">
+              <div className="flex-1 min-w-0">
+                <LocaleSwitcher size="sm" />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 shrink-0"
+                onClick={handleSignOut}
+                aria-label={t("signOut")}
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="ml-1.5 text-xs">{t("signOut")}</span>
+              </Button>
+            </div>
           )}
         </TooltipProvider>
       </div>

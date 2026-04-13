@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 
 interface TeamMember {
   id: string;
@@ -34,6 +35,7 @@ export function InvitationManager({
   onSendInvitations,
   projectTitle,
 }: InvitationManagerProps) {
+  const t = useTranslations("InvitationManager");
   const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
 
   // Filter out lead and already accepted members
@@ -62,10 +64,10 @@ export function InvitationManager({
           <div>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
-              Invitations
+              {t("title")}
             </CardTitle>
             <CardDescription className="mt-1">
-              Send collaboration invitations to selected partners
+              {t("description")}
             </CardDescription>
           </div>
           <Button
@@ -73,14 +75,14 @@ export function InvitationManager({
             disabled={selectedPartners.length === 0}
           >
             <Send className="h-4 w-4 mr-2" />
-            Send {selectedPartners.length > 0 && `(${selectedPartners.length})`}
+            {t("sendButton", { count: selectedPartners.length })}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         {invitableMembers.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            No partners to invite. Add partners to your team first.
+            {t("noPartners")}
           </p>
         ) : (
           <div className="space-y-3">
@@ -99,14 +101,14 @@ export function InvitationManager({
                       {member.companies?.companyName}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {member.companies?.contactEmail || "No email available"}
+                      {member.companies?.contactEmail || t("noEmail")}
                     </div>
                   </div>
                 </div>
                 <Badge
                   variant={member.role === "invited" ? "secondary" : "default"}
                 >
-                  {member.role === "invited" ? "Pending" : "Accepted"}
+                  {member.role === "invited" ? t("statusPending") : t("statusAccepted")}
                 </Badge>
               </div>
             ))}
@@ -115,18 +117,10 @@ export function InvitationManager({
 
         {invitableMembers.length > 0 && (
           <div className="mt-4 p-4 bg-muted rounded-lg">
-            <h4 className="font-medium mb-2">Invitation Preview</h4>
+            <h4 className="font-medium mb-2">{t("previewTitle")}</h4>
             <div className="text-sm text-muted-foreground">
-              <p>
-                <strong>Subject:</strong> Invitation to collaborate on{" "}
-                {projectTitle}
-              </p>
-              <p className="mt-2">
-                <strong>Message:</strong> You&apos;ve been invited to join a
-                consulting team for the tender &quot;{projectTitle}&quot;.
-                Please review the project details and accept the invitation to
-                collaborate.
-              </p>
+              <p>{t("previewSubject", { projectTitle: projectTitle || "Unknown Project" })}</p>
+              <p className="mt-2">{t("previewMessage", { projectTitle: projectTitle || "Unknown Project" })}</p>
             </div>
           </div>
         )}

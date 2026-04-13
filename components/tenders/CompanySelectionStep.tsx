@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable react/no-unescaped-entities -- company/query result types; copy uses quotes */
+ 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";

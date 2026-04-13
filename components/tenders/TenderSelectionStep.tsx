@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ export function TenderSelectionStep({
   selectedTenderId,
   onTenderSelect,
 }: TenderSelectionStepProps) {
+  const t = useTranslations("TenderSelectionStep");
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,7 +43,7 @@ export function TenderSelectionStep({
         setTenders((result.tenders as unknown as Tender[]) || []);
       } catch (error) {
         console.error("Error fetching tenders:", error);
-        toast.error("Failed to load tenders");
+        toast.error(t("loadError"));
       } finally {
         setLoading(false);
       }
@@ -62,7 +64,7 @@ export function TenderSelectionStep({
   });
 
   const formatDate = (dateString: string | null): string => {
-    if (!dateString) return "Not specified";
+    if (!dateString) return t("notSpecified");
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -71,13 +73,13 @@ export function TenderSelectionStep({
   };
 
   const formatBudget = (min?: number | null, max?: number | null): string => {
-    if (!min && !max) return "Not specified";
+    if (!min && !max) return t("notSpecified");
     if (min && max && min !== max) {
       return `£${(min / 1000).toFixed(0)}k - £${(max / 1000).toFixed(0)}k`;
     }
     if (min) return `£${(min / 1000).toFixed(0)}k+`;
     if (max) return `Up to £${(max / 1000).toFixed(0)}k`;
-    return "Not specified";
+    return t("notSpecified");
   };
 
   const isDeadlineSoon = (deadline: string | null): boolean => {
@@ -94,7 +96,7 @@ export function TenderSelectionStep({
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Loading tenders...</span>
+        <span className="ml-3 text-muted-foreground">{t("loading")}</span>
       </div>
     );
   }
@@ -103,13 +105,12 @@ export function TenderSelectionStep({
     <div className="space-y-4">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Select the tender you want to create a project for. This will be the
-          target tender for your project team.
+          {t("description")}
         </p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search tenders by title, buyer, location..."
+            placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -121,8 +122,8 @@ export function TenderSelectionStep({
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             {tenders.length === 0
-              ? "No open tenders available."
-              : "No tenders match your search."}
+              ? t("noOpenTenders")
+              : t("noMatchingTenders")}
           </CardContent>
         </Card>
       ) : (
@@ -163,7 +164,7 @@ export function TenderSelectionStep({
                               </h3>
                             {tender.referenceNumber && (
                                 <p className="text-xs text-muted-foreground mb-2">
-                                  Ref: {tender.referenceNumber}
+                                  {t("ref", { ref: tender.referenceNumber })}
                                 </p>
                               )}
                               {tender.description && (
@@ -179,7 +180,7 @@ export function TenderSelectionStep({
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-muted-foreground" />
                               <span className="text-muted-foreground">
-                                Buyer:{" "}
+                                {t("buyer")}{" "}
                               </span>
                               <span className="font-medium">
                                 {tender.buyer}
@@ -189,7 +190,7 @@ export function TenderSelectionStep({
                               <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">
-                                  Location:{" "}
+                                  {t("location")}{" "}
                                 </span>
                                 <span className="font-medium">
                                   {tender.location}
@@ -206,7 +207,7 @@ export function TenderSelectionStep({
                                   }`}
                                 />
                                 <span className="text-muted-foreground">
-                                  Deadline:{" "}
+                                  {t("deadline")}{" "}
                                 </span>
                                 <span
                                   className={`font-medium ${
@@ -221,7 +222,7 @@ export function TenderSelectionStep({
                               <div className="flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">
-                                  Budget:{" "}
+                                  {t("budget")}{" "}
                                 </span>
                                 <span className="font-medium">
                                   {formatBudget(
@@ -248,9 +249,9 @@ export function TenderSelectionStep({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Tender selected</p>
+                <p className="font-medium">{t("selectedTitle")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Continue to select capabilities needed for this tender
+                  {t("selectedDescription")}
                 </p>
               </div>
             </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, FileText, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { TenderCard } from "./TenderCard";
 import { ResultsHeader } from "./ResultsHeader";
@@ -34,6 +35,7 @@ export function DatabaseTenderFeed({
   onCreateProject: _onCreateProject,
   readOnly: _readOnly = false,
 }: DatabaseTenderFeedProps) {
+  const t = useTranslations("DatabaseTenderFeed");
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
@@ -93,13 +95,13 @@ export function DatabaseTenderFeed({
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading tenders...</span>
+          <span className="ml-2 text-muted-foreground">{t("loading")}</span>
         </div>
       ) : tenders.length === 0 ? (
         <div className="text-center py-16">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground">
-            No tenders found matching your criteria
+            {t("noResults")}
           </p>
         </div>
       ) : (
@@ -127,7 +129,7 @@ export function DatabaseTenderFeed({
                 disabled={currentPage === 1 || loading}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
+                {t("previous")}
               </Button>
 
               <div className="flex items-center gap-1">
@@ -172,7 +174,7 @@ export function DatabaseTenderFeed({
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages || loading}
               >
-                Next
+                {t("next")}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ export function ProjectSummaryStep({
   onProjectCreated,
   onClose,
 }: ProjectSummaryStepProps) {
+  const t = useTranslations("ProjectSummaryStep");
   const { user } = useAuth();
   const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(
     new Map(),
@@ -93,12 +95,12 @@ export function ProjectSummaryStep({
 
   const handleCreateProject = async () => {
     if (!projectName.trim()) {
-      toast.error("Please enter a project name");
+      toast.error(t("validationProjectName"));
       return;
     }
 
     if (!user) {
-      toast.error("User session not available");
+      toast.error(t("errorNoSession"));
       return;
     }
 
@@ -123,7 +125,7 @@ export function ProjectSummaryStep({
         }
       }
 
-      toast.success("Project created successfully!");
+      toast.success(t("successCreated"));
       onProjectCreated(project.id);
       onClose();
     } catch (error) {
@@ -131,7 +133,7 @@ export function ProjectSummaryStep({
       const message =
         error instanceof Error
           ? error.message
-          : "Failed to create project. Please try again.";
+          : t("errorFallback");
       toast.error(message);
     } finally {
       setCreating(false);
@@ -144,13 +146,13 @@ export function ProjectSummaryStep({
       {tenderInfo && (
         <Card className="bg-primary/5">
           <CardHeader>
-            <CardTitle className="text-lg">Selected Tender</CardTitle>
+            <CardTitle className="text-lg">{t("selectedTender")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div>
               <p className="font-medium">{tenderInfo.title}</p>
               <p className="text-sm text-muted-foreground">
-                Buyer: {tenderInfo.buyer}
+                {t("buyer", { buyer: tenderInfo.buyer })}
               </p>
             </div>
           </CardContent>
@@ -159,10 +161,10 @@ export function ProjectSummaryStep({
 
       <div className="space-y-4">
         <div>
-          <Label htmlFor="project-name">Project Name *</Label>
+          <Label htmlFor="project-name">{t("projectNameLabel")}</Label>
           <Input
             id="project-name"
-            placeholder="e.g., Metal Fabrication Project"
+            placeholder={t("projectNamePlaceholder")}
             value={projectName}
             onChange={(e) => onProjectNameChange(e.target.value)}
             className="mt-1"
@@ -170,10 +172,10 @@ export function ProjectSummaryStep({
         </div>
 
         <div>
-          <Label htmlFor="project-description">Project Description</Label>
+          <Label htmlFor="project-description">{t("projectDescriptionLabel")}</Label>
           <Textarea
             id="project-description"
-            placeholder="Describe the project goals and requirements..."
+            placeholder={t("projectDescriptionPlaceholder")}
             value={projectDescription}
             onChange={(e) => onProjectDescriptionChange(e.target.value)}
             rows={4}
@@ -185,12 +187,12 @@ export function ProjectSummaryStep({
       {/* Selected Capabilities */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Selected Capabilities</CardTitle>
+          <CardTitle className="text-lg">{t("selectedCapabilities")}</CardTitle>
         </CardHeader>
         <CardContent>
           {selectedCapabilities.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No capabilities selected
+              {t("noCapabilities")}
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -212,13 +214,13 @@ export function ProjectSummaryStep({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Selected Companies ({selectedCompanies.length})
+            {t("selectedCompanies", { count: selectedCompanies.length })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {selectedCompanies.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No companies selected
+              {t("noCompanies")}
             </p>
           ) : (
             <div className="space-y-3">
@@ -247,7 +249,7 @@ export function ProjectSummaryStep({
       {/* Create Button */}
       <div className="flex justify-end gap-2 pt-4 border-t">
         <Button variant="outline" onClick={onClose} disabled={creating}>
-          Cancel
+          {t("cancel")}
         </Button>
         <Button
           onClick={handleCreateProject}
@@ -256,10 +258,10 @@ export function ProjectSummaryStep({
           {creating ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating...
+              {t("creating")}
             </>
           ) : (
-            "Create Project"
+            t("createProject")
           )}
         </Button>
       </div>

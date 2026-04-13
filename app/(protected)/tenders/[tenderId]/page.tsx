@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,7 @@ interface Taxonomy {
 }
 
 export default function TenderDetailPage() {
+  const t = useTranslations("TenderDetail");
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -90,7 +92,7 @@ export default function TenderDetailPage() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">
-            Loading tender details...
+            {t("loading")}
           </span>
         </div>
       </div>
@@ -102,13 +104,13 @@ export default function TenderDetailPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center py-16">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-lg font-semibold mb-2">Tender not found</h2>
+          <h2 className="text-lg font-semibold mb-2">{t("notFoundTitle")}</h2>
           <p className="text-muted-foreground mb-4">
-            The tender you are looking for does not exist or has been removed.
+            {t("notFoundDescription")}
           </p>
           <Button variant="outline" onClick={() => router.push("/tenders")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Tenders
+            {t("backToTenders")}
           </Button>
         </div>
       </div>
@@ -116,12 +118,12 @@ export default function TenderDetailPage() {
   }
 
   const formatBudget = (min?: number | null, max?: number | null) => {
-    if (!min && !max) return "Budget not disclosed";
+    if (!min && !max) return t("budgetNotDisclosed");
     if (min && max)
-      return `£${min.toLocaleString()} - £${max.toLocaleString()}`;
-    if (min) return `From £${min.toLocaleString()}`;
-    if (max) return `Up to £${max.toLocaleString()}`;
-    return "Budget not disclosed";
+      return t("budgetRange", { min: min.toLocaleString(), max: max.toLocaleString() });
+    if (min) return t("budgetFrom", { amount: min.toLocaleString() });
+    if (max) return t("budgetUpTo", { amount: max.toLocaleString() });
+    return t("budgetNotDisclosed");
   };
 
   const formatDate = (dateString: string) => {
@@ -161,10 +163,10 @@ export default function TenderDetailPage() {
         ((tender.documents as { specification_url?: string } | null)?.specification_url ||
           (tender.documents as { application_url?: string } | null)?.application_url) ||
         "";
-      if (url.includes("ted.europa.eu")) return "TED (EU)";
-      if (url.includes("find-tender.service.gov.uk")) return "Find a Tender (UK)";
+      if (url.includes("ted.europa.eu")) return t("sourceTed");
+      if (url.includes("find-tender.service.gov.uk")) return t("sourceFindATender");
       if (url.includes("contracts-finder.service.gov.uk"))
-        return "Contracts Finder (UK)";
+        return t("sourceContractsFinder");
       return null;
     })();
 
@@ -213,7 +215,7 @@ export default function TenderDetailPage() {
           className="flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Tenders
+          {t("backToTenders")}
         </Button>
       </div>
 
@@ -231,7 +233,7 @@ export default function TenderDetailPage() {
                 </h1>
                 {tender.referenceNumber && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Ref: {tender.referenceNumber}
+                    {t("ref", { ref: tender.referenceNumber })}
                   </p>
                 )}
               </div>
@@ -243,7 +245,7 @@ export default function TenderDetailPage() {
                 </Badge>
               )}
               {tender.deadline && isDeadlineSoon(tender.deadline) && (
-                <Badge variant="destructive">Deadline Soon</Badge>
+                <Badge variant="destructive">{t("deadlineSoon")}</Badge>
               )}
               {tender.status && (
                 <TenderStatusBadge status={tender.status} />
@@ -253,7 +255,7 @@ export default function TenderDetailPage() {
                   variant={getScoreVariant(matchData.overallScore ?? 0)}
                   className="text-lg px-3 py-1"
                 >
-                  {matchData.overallScore ?? 0}% Match
+                  {t("matchPercent", { score: matchData.overallScore ?? 0 })}
                 </Badge>
               )}
             </div>
@@ -266,45 +268,45 @@ export default function TenderDetailPage() {
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">Buyer</p>
+                <p className="text-xs text-muted-foreground">{t("buyer")}</p>
                 <p className="font-medium">{tender.buyer}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">Location</p>
+                <p className="text-xs text-muted-foreground">{t("location")}</p>
                 <p className="font-medium">
-                  {tender.location || "Not specified"}
+                  {tender.location || t("notSpecified")}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">Published</p>
+                <p className="text-xs text-muted-foreground">{t("published")}</p>
                 <p className="font-medium">
                   {tender.publicationDate
                     ? formatDate(tender.publicationDate)
-                    : "Not specified"}
+                    : t("notSpecified")}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">Deadline</p>
+                <p className="text-xs text-muted-foreground">{t("deadline")}</p>
                 <p className="font-medium">
                   {tender.deadline
                     ? formatDate(tender.deadline)
-                    : "Not specified"}
+                    : t("notSpecified")}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 col-span-2 md:col-span-1">
               <PoundSterling className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">Budget</p>
+                <p className="text-xs text-muted-foreground">{t("budget")}</p>
                 <p className="font-medium">
                   {formatBudget(tender.budgetMin, tender.budgetMax)}
                 </p>
@@ -317,19 +319,19 @@ export default function TenderDetailPage() {
             {tender.referenceNumber && (
               <Button variant="outline" onClick={handleViewExternal}>
                 <ExternalLink className="w-4 h-4 mr-2" />
-                View on Find a Tender
+                {t("viewOnFindATender")}
               </Button>
             )}
             {!isRestricted && (
               <Button onClick={handleCreateProject}>
                 <Plus className="w-4 h-4 mr-2" />
-                Create Project
+                {t("createProject")}
               </Button>
             )}
             {companyId && matchData && !isRestricted && (
               <Button variant="outline" onClick={handleBuildTeam}>
                 <Users className="w-4 h-4 mr-2" />
-                Build Consulting Team
+                {t("buildConsultingTeam")}
               </Button>
             )}
           </div>
@@ -344,7 +346,7 @@ export default function TenderDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="text-blue-500">✨</span>
-                AI Summary
+                {t("aiSummary")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -358,11 +360,11 @@ export default function TenderDetailPage() {
         {/* Description */}
         <Card>
           <CardHeader>
-            <CardTitle>Description</CardTitle>
+            <CardTitle>{t("description")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {tender.description || "No description available"}
+              {tender.description || t("noDescription")}
             </p>
           </CardContent>
         </Card>
@@ -373,7 +375,7 @@ export default function TenderDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Tag className="w-5 h-5" />
-                CPV Codes
+                {t("cpvCodes")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -397,7 +399,7 @@ export default function TenderDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Tag className="w-5 h-5" />
-                Tender Categories
+                {t("tenderCategories")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -417,12 +419,12 @@ export default function TenderDetailPage() {
       {matchData && (
         <>
           <Separator className="mb-8" />
-          <h2 className="text-xl font-semibold mb-6">Match Analysis</h2>
+          <h2 className="text-xl font-semibold mb-6">{t("matchAnalysis")}</h2>
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Score Breakdown */}
             <Card>
               <CardHeader>
-                <CardTitle>Score Breakdown</CardTitle>
+                <CardTitle>{t("scoreBreakdown")}</CardTitle>
               </CardHeader>
               <CardContent>
                 {(() => {
@@ -437,22 +439,22 @@ export default function TenderDetailPage() {
 
                   const scores = [
                     {
-                      label: "Capability",
+                      label: t("scoreCapability"),
                       value: matchData.capabilityScore ?? 0,
                       explanation: scoreExplanations.capability,
                     },
                     {
-                      label: "Experience",
+                      label: t("scoreExperience"),
                       value: matchData.experienceScore ?? 0,
                       explanation: scoreExplanations.experience,
                     },
                     {
-                      label: "Location",
+                      label: t("scoreLocation"),
                       value: matchData.locationScore ?? 0,
                       explanation: scoreExplanations.location,
                     },
                     {
-                      label: "Certification",
+                      label: t("scoreCertification"),
                       value: matchData.certificationScore ?? 0,
                       explanation: scoreExplanations.certification,
                     },
@@ -486,7 +488,7 @@ export default function TenderDetailPage() {
             {(matchData.aiAnalysis as { summary?: string } | null)?.summary && (
               <Card>
                 <CardHeader>
-                  <CardTitle>AI Analysis Summary</CardTitle>
+                  <CardTitle>{t("aiAnalysisSummary")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
@@ -502,7 +504,7 @@ export default function TenderDetailPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Award className="h-5 w-5" />
-                    Key Strengths
+                    {t("keyStrengths")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -528,7 +530,7 @@ export default function TenderDetailPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Lightbulb className="h-5 w-5" />
-                      Improvement Suggestions
+                      {t("improvementSuggestions")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

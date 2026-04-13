@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useSavedTenders } from "@/hooks/useSavedTenders";
@@ -48,6 +49,7 @@ export function SavedTenders({
   companyId,
   readOnly = false,
 }: SavedTendersProps) {
+  const t = useTranslations("SavedTenders");
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: savedData, isLoading: loading } = useSavedTenders(companyId);
@@ -85,14 +87,14 @@ export function SavedTenders({
   const removeBookmark = async (resultId: string) => {
     try {
       await api.toggleBookmark(resultId, false);
-      toast.success("Removed from saved tenders");
+      toast.success(t("toastRemoved"));
       if (companyId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.savedTenders(companyId) });
         queryClient.invalidateQueries({ queryKey: ["matchingResults", companyId] });
       }
     } catch (error) {
       console.error("Error removing bookmark:", error);
-      toast.error("Failed to remove bookmark");
+      toast.error(t("toastAddError"));
     }
   };
 
@@ -101,12 +103,11 @@ export function SavedTenders({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Saved Tenders</h2>
+          <h2 className="text-lg font-semibold">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
-            {savedResults.length} saved tender
-            {savedResults.length !== 1 ? "s" : ""}
+            {t("count", { count: savedResults.length })}
             {keyword && filteredResults.length !== savedResults.length && (
-              <span className="ml-1">({filteredResults.length} shown)</span>
+              <span className="ml-1">{t("countShown", { count: filteredResults.length })}</span>
             )}
           </p>
         </div>
@@ -117,7 +118,7 @@ export function SavedTenders({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-10 h-11"
-          placeholder="Search saved tenders..."
+          placeholder={t("searchPlaceholder")}
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
         />
@@ -137,27 +138,26 @@ export function SavedTenders({
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">
-            Loading saved tenders...
+            {t("loading")}
           </span>
         </div>
       ) : savedResults.length === 0 ? (
         <div className="text-center py-16">
           <Bookmark className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No saved tenders yet</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("emptyTitle")}</h3>
           <p className="text-muted-foreground">
-            Go to &quot;Your Matches&quot; and click the bookmark icon to save
-            tenders for later review.
+            {t("emptyDescription")}
           </p>
         </div>
       ) : filteredResults.length === 0 ? (
         <div className="text-center py-16">
           <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No matching results</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("noMatchTitle")}</h3>
           <p className="text-muted-foreground mb-4">
-            No saved tenders match your search &quot;{keyword}&quot;
+            {t("noMatchDescription", { keyword })}
           </p>
           <Button variant="outline" onClick={() => setKeyword("")}>
-            Clear Search
+            {t("clearSearch")}
           </Button>
         </div>
       ) : (

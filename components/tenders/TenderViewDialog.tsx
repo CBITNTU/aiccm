@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -38,15 +39,17 @@ export function TenderViewDialog({
   onCreateProject,
   readOnly: _readOnly = false,
 }: TenderViewDialogProps) {
+  const t = useTranslations("TenderViewDialog");
+
   if (!tender) return null;
 
   const formatBudget = (min?: number | null, max?: number | null) => {
-    if (!min && !max) return "Budget not disclosed";
+    if (!min && !max) return t("budgetNotDisclosed");
     if (min && max)
-      return `£${min.toLocaleString()} - £${max.toLocaleString()}`;
-    if (min) return `From £${min.toLocaleString()}`;
-    if (max) return `Up to £${max.toLocaleString()}`;
-    return "Budget not disclosed";
+      return t("budgetRange", { min: min.toLocaleString(), max: max.toLocaleString() });
+    if (min) return t("budgetFrom", { amount: min.toLocaleString() });
+    if (max) return t("budgetUpTo", { amount: max.toLocaleString() });
+    return t("budgetNotDisclosed");
   };
 
   const formatDate = (dateString: string) => {
@@ -76,14 +79,14 @@ export function TenderViewDialog({
               <DialogDescription className="mt-2">
                 {tender.referenceNumber && (
                   <span className="text-sm">
-                    Ref: {tender.referenceNumber}
+                    {t("ref", { ref: tender.referenceNumber })}
                   </span>
                 )}
               </DialogDescription>
             </div>
             <div className="flex gap-2 flex-shrink-0">
               {tender.deadline && isDeadlineSoon(tender.deadline) && (
-                <Badge variant="destructive">Deadline Soon</Badge>
+                <Badge variant="destructive">{t("deadlineSoon")}</Badge>
               )}
               <TenderStatusBadge status={tender.status} />
             </div>
@@ -96,45 +99,45 @@ export function TenderViewDialog({
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Buyer</p>
+                <p className="text-xs text-muted-foreground">{t("buyer")}</p>
                 <p className="font-medium">{tender.buyer}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Location</p>
+                <p className="text-xs text-muted-foreground">{t("location")}</p>
                 <p className="font-medium">
-                  {tender.location || "Not specified"}
+                  {tender.location || t("notSpecified")}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Published</p>
+                <p className="text-xs text-muted-foreground">{t("published")}</p>
                 <p className="font-medium">
                   {tender.publicationDate
                     ? formatDate(tender.publicationDate)
-                    : "Not specified"}
+                    : t("notSpecified")}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Deadline</p>
+                <p className="text-xs text-muted-foreground">{t("deadline")}</p>
                 <p className="font-medium">
                   {tender.deadline
                     ? formatDate(tender.deadline)
-                    : "Not specified"}
+                    : t("notSpecified")}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 col-span-2">
               <PoundSterling className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Budget</p>
+                <p className="text-xs text-muted-foreground">{t("budget")}</p>
                 <p className="font-medium">
                   {formatBudget(tender.budgetMin, tender.budgetMax)}
                 </p>
@@ -150,7 +153,7 @@ export function TenderViewDialog({
               <div>
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
                   <span className="text-blue-500">✨</span>
-                  AI Summary
+                  {t("aiSummary")}
                 </h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                   {tender.aiSummary}
@@ -162,9 +165,9 @@ export function TenderViewDialog({
 
           {/* Description */}
           <div>
-            <h4 className="font-semibold mb-2">Description</h4>
+            <h4 className="font-semibold mb-2">{t("description")}</h4>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {tender.description || "No description available"}
+              {tender.description || t("noDescription")}
             </p>
           </div>
 
@@ -175,7 +178,7 @@ export function TenderViewDialog({
               <div>
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
                   <TagIcon className="w-4 h-4" />
-                  CPV Codes
+                  {t("cpvCodes")}
                 </h4>
                 <div className="flex flex-wrap gap-2">
                   {tender.cpvCodes.map((code) => {
@@ -203,7 +206,7 @@ export function TenderViewDialog({
                 variant="default"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Create Project
+                {t("createProject")}
               </Button>
             )}
             <div className="flex gap-2 ml-auto">
@@ -215,7 +218,7 @@ export function TenderViewDialog({
                     rel="noopener noreferrer"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    View on Find a Tender
+                    {t("viewOnFindATender")}
                   </a>
                 </Button>
               )}

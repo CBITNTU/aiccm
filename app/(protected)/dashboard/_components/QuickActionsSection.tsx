@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -10,6 +11,7 @@ import {
 import { FileText, Building2, Users } from "lucide-react";
 
 export function QuickActionsSection() {
+  const t = useTranslations("Dashboard");
   const router = useRouter();
 
   return (
@@ -21,12 +23,12 @@ export function QuickActionsSection() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Building2 className="h-5 w-5" />
-            Manage Companies
+            {t("quickActions.manageCompanies")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            Update your company profiles and capabilities
+            {t("quickActions.manageCompaniesDesc")}
           </p>
         </CardContent>
       </Card>
@@ -38,12 +40,12 @@ export function QuickActionsSection() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <FileText className="h-5 w-5" />
-            Browse Tenders
+            {t("quickActions.browseTenders")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            Discover new tender opportunities
+            {t("quickActions.browseTendersDesc")}
           </p>
         </CardContent>
       </Card>
@@ -55,12 +57,12 @@ export function QuickActionsSection() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Users className="h-5 w-5" />
-            Partnerships
+            {t("quickActions.partnerships")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            Build consulting teams and partnerships
+            {t("quickActions.partnershipsDesc")}
           </p>
         </CardContent>
       </Card>

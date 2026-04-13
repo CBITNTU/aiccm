@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, PoundSterling, ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import {
   Collapsible,
@@ -33,20 +34,21 @@ interface TenderCardProps {
 }
 
 export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
+  const t = useTranslations("TenderCard");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const sourceLabel = getTenderSourceLabel(tender.documents);
 
   const formatBudget = (min?: number, max?: number) => {
-    if (!min && !max) return "Not disclosed";
+    if (!min && !max) return t("budgetNotDisclosed");
     if (min && max && min !== max)
       return `${min.toLocaleString()} - ${max.toLocaleString()}`;
     if (min) return `${min.toLocaleString()}`;
     if (max) return `${max.toLocaleString()}`;
-    return "Not disclosed";
+    return t("budgetNotDisclosed");
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return "Not specified";
+    if (!dateString) return t("notSpecified");
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -82,7 +84,7 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
           )}
           {tender.deadline && isDeadlineSoon(tender.deadline) && (
             <Badge variant="destructive" className="text-xs">
-              Closing Soon
+              {t("closingSoon")}
             </Badge>
           )}
           <TenderStatusBadge status={tender.status} size="sm" />
@@ -139,8 +141,7 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
             className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             onClick={(e) => e.stopPropagation()}
           >
-            {taxonomies.length}{" "}
-            {taxonomies.length === 1 ? "category" : "categories"}
+            {t("category", { count: taxonomies.length })}
             <ChevronDown
               className={`h-3 w-3 transition-transform ${
                 categoriesOpen ? "rotate-180" : ""

@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import {
   AlertCircle,
   Calendar,
@@ -59,6 +60,7 @@ export function TenderMatchCard({
   isDeleting,
   readOnly,
 }: TenderMatchCardProps) {
+  const t = useTranslations("TenderMatchCard");
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
     if (score >= 60) return "text-yellow-600";
@@ -72,17 +74,17 @@ export function TenderMatchCard({
   };
 
   const formatBudget = (min?: number, max?: number): string => {
-    if (!min && !max) return "Not specified";
+    if (!min && !max) return t("notSpecified");
     if (min && max && min !== max) {
       return `${min.toLocaleString()} - ${max.toLocaleString()}`;
     }
     if (min) return `${min.toLocaleString()}`;
     if (max) return `${max.toLocaleString()}`;
-    return "Not specified";
+    return t("notSpecified");
   };
 
   const formatDate = (dateString: string): string => {
-    if (!dateString) return "Not specified";
+    if (!dateString) return t("notSpecified");
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -127,12 +129,12 @@ export function TenderMatchCard({
         <div className="flex items-center gap-2 flex-shrink-0">
           {result.isApplied && (
             <Badge variant="secondary" className="text-xs">
-              Applied
+              {t("applied")}
             </Badge>
           )}
           {result.isBookmarked && (
             <Badge variant="outline" className="text-xs">
-              Saved
+              {t("saved")}
             </Badge>
           )}
           <TenderStatusBadge status={result.tenders.status} size="sm" />
@@ -150,7 +152,7 @@ export function TenderMatchCard({
       {result.tenders.status === "closed" && (
         <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-muted/50 rounded-md text-xs text-muted-foreground border border-muted">
           <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-          This tender has closed
+          {t("tenderClosed")}
         </div>
       )}
 
@@ -165,7 +167,7 @@ export function TenderMatchCard({
               <>
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">Capability:</span>
+                    <span className="text-muted-foreground">{t("capability")}</span>
                     <span
                       className={`font-medium ${getScoreColor(result.capabilityScore)}`}
                     >
@@ -175,7 +177,7 @@ export function TenderMatchCard({
                 </div>
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">Experience:</span>
+                    <span className="text-muted-foreground">{t("experience")}</span>
                     <span
                       className={`font-medium ${getScoreColor(result.experienceScore)}`}
                     >
@@ -185,7 +187,7 @@ export function TenderMatchCard({
                 </div>
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">Location:</span>
+                    <span className="text-muted-foreground">{t("location")}</span>
                     <span
                       className={`font-medium ${getScoreColor(result.locationScore)}`}
                     >
@@ -196,7 +198,7 @@ export function TenderMatchCard({
                 <div className="flex flex-col gap-0.5 text-xs group">
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">
-                      Certification:
+                      {t("certification")}
                     </span>
                     <span
                       className={`font-medium ${getScoreColor(result.certificationScore)}`}
@@ -229,7 +231,7 @@ export function TenderMatchCard({
               : result.matchReasons[0]}
             {result.matchReasons.length > 1 && (
               <span className="ml-1 text-xs opacity-75">
-                (+{result.matchReasons.length - 1} more)
+                {t("moreReasons", { count: result.matchReasons.length - 1 })}
               </span>
             )}
           </p>
@@ -260,7 +262,7 @@ export function TenderMatchCard({
         <div className="flex items-center gap-1">
           <Button variant="outline" size="sm" onClick={onViewDetails}>
             <Eye className="h-4 w-4 mr-1" />
-            Details
+            {t("details")}
           </Button>
           <Button
             variant={result.isBookmarked ? "default" : "ghost"}
@@ -271,7 +273,7 @@ export function TenderMatchCard({
             }}
             disabled={readOnly}
             title={
-              readOnly ? "Action restricted for pending accounts" : undefined
+              readOnly ? t("pendingAccountRestricted") : undefined
             }
           >
             <Bookmark
@@ -287,7 +289,7 @@ export function TenderMatchCard({
             }}
             disabled={isDeleting || readOnly}
             title={
-              readOnly ? "Action restricted for pending accounts" : undefined
+              readOnly ? t("pendingAccountRestricted") : undefined
             }
           >
             {isDeleting ? (

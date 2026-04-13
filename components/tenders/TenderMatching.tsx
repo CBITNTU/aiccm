@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -93,6 +94,7 @@ export function TenderMatching({
   onCreateProject: _onCreateProject,
   readOnly = false,
 }: TenderMatchingProps) {
+  const t = useTranslations("TenderMatching");
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -276,7 +278,7 @@ export function TenderMatching({
       setMatchingProgress(null);
 
       console.log(`✅ Cleared all local state for company ${companyId}`);
-      toast.success("Cancelled - any running jobs will finish in background");
+      toast.success(t("cancelledInfo"));
 
       setTimeout(() => {
         refetchMatchingResults();
@@ -351,11 +353,9 @@ export function TenderMatching({
           setMatchingProgress(null);
           invalidateMatchingResults();
           if (data.status === "completed") {
-            toast.success(
-              `Matching completed: ${data.completedJobs} tenders analyzed`,
-            );
+            toast.success(t("matchingCompleted", { count: data.completedJobs }));
           } else {
-            toast.error(`Matching failed: ${data.failedJobs} jobs failed`);
+            toast.error(t("matchingFailed", { count: data.failedJobs }));
           }
         }
 
@@ -380,9 +380,7 @@ export function TenderMatching({
               }
               localStorage.removeItem(staleCheckKey);
               setMatchingProgress(null);
-              toast.info(
-                "Previous matching was stuck. Click 'Run Analysis' to restart.",
-              );
+              toast.info(t("stuckInfo"));
               return;
             }
           }
@@ -464,7 +462,7 @@ export function TenderMatching({
           const resetsAt = parsedData.resetsAt
             ? new Date(parsedData.resetsAt as string).toLocaleDateString("en-GB", { day: "numeric", month: "long" })
             : "next month";
-          toast.error(`Monthly matching limit reached. Resets on ${resetsAt}.`, { duration: 6000 });
+          toast.error(t("limitReachedResetsOn", { date: resetsAt }), { duration: 6000 });
           fetchMatchingUsage();
           setInternalAnalyzing(false);
           return;
@@ -490,12 +488,12 @@ export function TenderMatching({
         console.log(
           `ℹ️ Batch ${data.batchId} already running for this company`,
         );
-        toast.info("Matching already in progress - resuming...");
+        toast.info(t("matchingResuming"));
       } else {
         console.log(
           `✅ Created new batch: ${data.batchId} (${data.totalTenders} tenders)`,
         );
-        toast.success(`Matching started: ${data.totalTenders} tenders queued`);
+        toast.success(t("matchingStarted", { count: data.totalTenders }));
       }
 
       if (data.batchId && companyId) {
@@ -535,19 +533,17 @@ export function TenderMatching({
 
   const runAnalysis = useCallback(() => {
     if (!companyId) {
-      toast.error("Please select a company to analyze");
+      toast.error(t("pleaseSelectCompany"));
       return;
     }
 
     if (analyzing) {
-      toast.info("Analysis already in progress");
+      toast.info(t("analysisAlreadyInProgress"));
       return;
     }
 
     if (matchingProgress && matchingProgress.status === "processing") {
-      toast.info(
-        "Matching already in progress. Click 'Clear & Restart' to cancel.",
-      );
+      toast.info(t("matchingAlreadyInProgress"));
       return;
     }
 
@@ -578,7 +574,7 @@ export function TenderMatching({
     setDeleting(resultId);
     try {
       await api.deleteMatchingResult(resultId);
-      toast.success("Match result deleted successfully");
+      toast.success(t("deleteSuccess"));
       invalidateMatchingResults();
       if (companyId) {
         queryClient.invalidateQueries({
@@ -587,7 +583,7 @@ export function TenderMatching({
       }
     } catch (error) {
       console.error("Error deleting result:", error);
-      toast.error("Failed to delete match result");
+      toast.error(t("deleteError"));
     } finally {
       setDeleting(null);
     }
@@ -596,9 +592,7 @@ export function TenderMatching({
   const toggleBookmark = async (resultId: string, currentStatus: boolean) => {
     try {
       await api.toggleBookmark(resultId, !currentStatus);
-      toast.success(
-        currentStatus ? "Removed from saved tenders" : "Added to saved tenders",
-      );
+      toast.success(currentStatus ? t("bookmarkRemoved") : t("bookmarkAdded"));
       invalidateMatchingResults();
       if (companyId) {
         queryClient.invalidateQueries({
@@ -607,7 +601,7 @@ export function TenderMatching({
       }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
-      toast.error("Failed to update bookmark");
+      toast.error(t("bookmarkError"));
     }
   };
 
@@ -616,7 +610,7 @@ export function TenderMatching({
       <div className="text-center py-16">
         <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <p className="text-muted-foreground">
-          Select a company above to view and analyze tender opportunities
+          {t("selectCompany")}
         </p>
       </div>
     );
@@ -643,13 +637,13 @@ export function TenderMatching({
                   <TooltipTrigger asChild>
                     <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${limitReached ? "border-destructive/40 text-destructive bg-destructive/5" : "border-muted-foreground/30 text-muted-foreground"}`}>
                       <Zap className="h-3 w-3" />
-                      {matchingUsage.used}/{matchingUsage.limit} this month
+                      {t("usedThisMonth", { used: matchingUsage.used, limit: matchingUsage.limit })}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     {limitReached
-                      ? `Monthly limit reached. Resets on ${new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.`
-                      : `${matchingUsage.remaining} matching run${matchingUsage.remaining === 1 ? "" : "s"} remaining this month.`}
+                      ? t("limitReachedResetsOn", { date: new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) })
+                      : t("runsRemaining", { remaining: matchingUsage.remaining, runs: matchingUsage.remaining === 1 ? t("monthlyRun") : t("matchingRuns") })}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -660,21 +654,21 @@ export function TenderMatching({
               size="sm"
               title={
                 readOnly
-                  ? "Action restricted for pending accounts"
+                  ? t("pendingAccountRestricted")
                   : limitReached
-                    ? `Monthly matching limit reached (${matchingUsage?.used}/${matchingUsage?.limit}). Resets on ${matchingUsage ? new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : "next month"}.`
+                    ? t("limitReachedDetail", { used: matchingUsage?.used ?? 0, limit: matchingUsage?.limit ?? 0, date: matchingUsage ? new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : "" })
                     : undefined
               }
             >
               {analyzing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Analyzing...
+                  {t("analyzing")}
                 </>
               ) : (
                 <>
                   <Target className="w-4 h-4 mr-2" />
-                  Re-run Analysis
+                  {t("reRunAnalysis")}
                 </>
               )}
             </Button>
@@ -688,12 +682,12 @@ export function TenderMatching({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span className="font-medium">Matching in progress...</span>
+              <span className="font-medium">{t("matchingInProgress")}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">
                 {matchingProgress.completedJobs} / {matchingProgress.totalJobs}{" "}
-                tenders
+                {t("tenders")}
               </span>
               <Button
                 variant="outline"
@@ -704,16 +698,16 @@ export function TenderMatching({
                 <X className="h-3 w-3 mr-1" />
                 {matchingProgress.completedJobs === 0 &&
                 matchingProgress.failedJobs === 0
-                  ? "Clear & Restart"
-                  : "Cancel"}
+                  ? t("clearAndRestart")
+                  : t("cancel")}
               </Button>
             </div>
           </div>
           <Progress value={matchingProgress.progressPercent} className="h-2" />
           <p className="text-xs text-muted-foreground mt-2">
-            Analyzing tenders... {matchingProgress.progressPercent}% complete
+            {t("analyzingProgress", { percent: matchingProgress.progressPercent })}
             {matchingProgress.failedJobs > 0 &&
-              ` (${matchingProgress.failedJobs} failed)`}
+              ` ${t("failedCount", { count: matchingProgress.failedJobs })}`}
           </p>
         </div>
       )}
@@ -721,18 +715,18 @@ export function TenderMatching({
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading matches...</span>
+          <span className="ml-2 text-muted-foreground">{t("loading")}</span>
         </div>
       ) : matchingResults.length === 0 ? (
         <div className="text-center py-16">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">
-            No matching results found
+            {t("noResultsTitle")}
           </h3>
           <p className="text-muted-foreground mb-4">
             {totalCount === 0 && currentPage === 1
-              ? "No tender matches found for this company yet. Click 'Run Analysis' to analyze available tenders."
-              : "No matches found with the current filters. Adjust your filters to see results."}
+              ? t("noResultsDescription")
+              : t("noResultsFiltered")}
           </p>
           {totalCount === 0 && currentPage === 1 && !readOnly && (
             <div className="flex flex-col items-center gap-2">
@@ -741,19 +735,19 @@ export function TenderMatching({
                 disabled={analyzing || limitReached}
                 title={
                   limitReached
-                    ? `Monthly matching limit reached (${matchingUsage?.used}/${matchingUsage?.limit}). Resets on ${matchingUsage ? new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : "next month"}.`
+                    ? t("limitReachedDetail", { used: matchingUsage?.used ?? 0, limit: matchingUsage?.limit ?? 0, date: matchingUsage ? new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : "" })
                     : undefined
                 }
               >
                 <Target className="w-4 h-4 mr-2" />
-                {analyzing ? "Analyzing..." : "Start Analysis"}
+                {analyzing ? t("analyzing") : t("startAnalysis")}
               </Button>
               {matchingUsage && (
                 <span className={`flex items-center gap-1 text-xs ${limitReached ? "text-destructive" : "text-muted-foreground"}`}>
                   <Zap className="h-3 w-3" />
                   {limitReached
-                    ? `Limit reached (${matchingUsage.used}/${matchingUsage.limit}). Resets ${new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.`
-                    : `${matchingUsage.used}/${matchingUsage.limit} matching runs used this month`}
+                    ? t("limitReachedShort", { used: matchingUsage.used, limit: matchingUsage.limit, date: new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) })
+                    : t("usedMatchingRuns", { used: matchingUsage.used, limit: matchingUsage.limit })}
                 </span>
               )}
             </div>
@@ -791,7 +785,7 @@ export function TenderMatching({
                 disabled={currentPage === 1 || loading}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
+                {t("previous")}
               </Button>
 
               <div className="flex items-center gap-1">
@@ -838,7 +832,7 @@ export function TenderMatching({
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages || loading}
               >
-                Next
+                {t("next")}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>

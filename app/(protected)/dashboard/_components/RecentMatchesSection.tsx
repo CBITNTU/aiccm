@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -24,6 +25,7 @@ export function RecentMatchesSection({
   companyName,
   onViewDetails,
 }: RecentMatchesSectionProps) {
+  const t = useTranslations("Dashboard");
   const router = useRouter();
 
   return (
@@ -33,12 +35,12 @@ export function RecentMatchesSection({
           <div>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Recent Matches
+              {t("recentMatches.title")}
             </CardTitle>
             <CardDescription>
               {companyName
-                ? `Latest matches for ${companyName}`
-                : "Your latest tender matching opportunities"}
+                ? t("recentMatches.description", { companyName })
+                : t("recentMatches.descriptionFallback")}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -47,13 +49,13 @@ export function RecentMatchesSection({
               onClick={() => router.push("/tenders?tab=matches")}
             >
               <Target className="mr-2 h-4 w-4" />
-              Run Analysis
+              {t("recentMatches.runAnalysis")}
             </Button>
             <Button
               variant="outline"
               onClick={() => router.push("/tenders")}
             >
-              View All
+              {t("recentMatches.viewAll")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -69,10 +71,10 @@ export function RecentMatchesSection({
               <div className="flex-1">
                 <h4 className="font-semibold">{match.tenders?.title}</h4>
                 <p className="text-sm text-muted-foreground">
-                  {match.tenders?.buyer} - Due:{" "}
+                  {match.tenders?.buyer} - {t("recentMatches.due")}{" "}
                   {match.tenders?.deadline
                     ? new Date(match.tenders.deadline).toLocaleDateString()
-                    : "N/A"}
+                    : t("recentMatches.notAvailable")}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge variant="secondary">
@@ -83,7 +85,7 @@ export function RecentMatchesSection({
                       (match.overallScore ?? 0) >= 80 ? "default" : "secondary"
                     }
                   >
-                    {match.overallScore ?? 0}% Match
+                    {match.overallScore ?? 0}{t("recentMatches.matchSuffix")}
                   </Badge>
                 </div>
               </div>
@@ -92,7 +94,7 @@ export function RecentMatchesSection({
                 size="sm"
                 onClick={() => onViewDetails(match)}
               >
-                View Details
+                {t("recentMatches.viewDetails")}
               </Button>
             </div>
           ))}

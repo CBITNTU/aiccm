@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -24,8 +25,10 @@ import type { CompanyAnalysis } from "./types";
 
 const PerformanceChart = memo(function PerformanceChart({
   data,
+  scoreLabel,
 }: {
   data: { subject: string; A: number; fullMark: number }[];
+  scoreLabel: string;
 }) {
   if (data.length === 0) return null;
   return (
@@ -43,7 +46,7 @@ const PerformanceChart = memo(function PerformanceChart({
             fontSize: "12px",
           }}
           labelStyle={{ color: "hsl(var(--foreground))" }}
-          formatter={(value) => [`${value}/100`, "Score"]}
+          formatter={(value) => [`${value}/100`, scoreLabel]}
         />
         <Radar
           name="Performance Score"
@@ -73,6 +76,7 @@ export function PerformanceBenchmarkCard({
   isAnalyzing,
   onAnalyze,
 }: PerformanceBenchmarkCardProps) {
+  const t = useTranslations("Dashboard");
   return (
     <Card>
       <CardHeader>
@@ -80,10 +84,10 @@ export function PerformanceBenchmarkCard({
           <div>
             <CardTitle className="flex items-center gap-2">
               <Award className="h-5 w-5" />
-              Company Performance Benchmark
+              {t("performance.title")}
             </CardTitle>
             <CardDescription>
-              AI-powered assessment of {companyName}
+              {t("performance.description", { companyName })}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -99,10 +103,10 @@ export function PerformanceBenchmarkCard({
               disabled={isAnalyzing}
             >
               {isAnalyzing
-                ? "Analyzing..."
+                ? t("performance.analyzing")
                 : companyAnalysis
-                  ? "Re-analyze"
-                  : "Analyze"}
+                  ? t("performance.reAnalyze")
+                  : t("performance.analyze")}
             </Button>
           </div>
         </div>
@@ -110,13 +114,13 @@ export function PerformanceBenchmarkCard({
       <CardContent>
         {companyAnalysis ? (
           <div className="space-y-4">
-            <PerformanceChart data={radarData} />
+            <PerformanceChart data={radarData} scoreLabel={t("performance.score")} />
             <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg border border-border">
               <strong className="text-foreground">
-                Executive Summary:
+                {t("performance.executiveSummary")}
               </strong>{" "}
               {companyAnalysis?.executiveSummary ||
-                "No summary available"}
+                t("performance.noSummary")}
             </div>
           </div>
         ) : (
@@ -124,11 +128,10 @@ export function PerformanceBenchmarkCard({
             <div className="text-center">
               <Award className="h-16 w-16 mx-auto mb-3 opacity-40" />
               <p className="font-medium mb-1">
-                No Performance Benchmark Available
+                {t("performance.emptyTitle")}
               </p>
               <p className="text-sm mb-4">
-                Click &quot;Analyze&quot; to generate your company&apos;s
-                performance benchmark
+                {t("performance.emptyDescription")}
               </p>
             </div>
           </div>

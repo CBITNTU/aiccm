@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { EmailVerificationStep } from "@/components/onboarding/EmailVerificationStep";
 import { ProfileInfoStep } from "@/components/onboarding/ProfileInfoStep";
@@ -30,16 +31,16 @@ interface OnboardingState {
   } | null;
 }
 
-const STEP_LABELS = [
-  { step: ONBOARDING_STEPS.EMAIL_VERIFICATION, label: "Verify Email" },
-  { step: ONBOARDING_STEPS.PROFILE_INFO, label: "Profile" },
-  { step: ONBOARDING_STEPS.ACCOUNT_TYPE, label: "Account Type" },
-  { step: ONBOARDING_STEPS.COMPANY_INFO, label: "Company" },
-  { step: ONBOARDING_STEPS.COMPLETE, label: "Complete" },
-];
-
 export default function OnboardingPage() {
   const router = useRouter();
+  const t = useTranslations("Onboarding.page");
+  const STEP_LABELS = [
+    { step: ONBOARDING_STEPS.EMAIL_VERIFICATION, label: t("verifyEmail") },
+    { step: ONBOARDING_STEPS.PROFILE_INFO, label: t("profile") },
+    { step: ONBOARDING_STEPS.ACCOUNT_TYPE, label: t("accountType") },
+    { step: ONBOARDING_STEPS.COMPANY_INFO, label: t("company") },
+    { step: ONBOARDING_STEPS.COMPLETE, label: t("complete") },
+  ];
   const [isLoading, setIsLoading] = useState(true);
   const [state, setState] = useState<OnboardingState>({
     currentStep: ONBOARDING_STEPS.EMAIL_VERIFICATION,
@@ -197,9 +198,9 @@ export default function OnboardingPage() {
     // Invited users: skip email verification and account type steps
     if (state.signupType === "invited") {
       return [
-        { step: ONBOARDING_STEPS.PROFILE_INFO, label: "Profile" },
-        { step: ONBOARDING_STEPS.COMPANY_INFO, label: "Company" },
-        { step: ONBOARDING_STEPS.COMPLETE, label: "Complete" },
+        { step: ONBOARDING_STEPS.PROFILE_INFO, label: t("profile") },
+        { step: ONBOARDING_STEPS.COMPANY_INFO, label: t("company") },
+        { step: ONBOARDING_STEPS.COMPLETE, label: t("complete") },
       ];
     }
 
@@ -217,7 +218,7 @@ export default function OnboardingPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
         <div className="flex flex-col items-center justify-center min-h-[400px]">
           <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading your progress...</p>
+          <p className="text-muted-foreground">{t("loadingProgress")}</p>
         </div>
       </div>
     );

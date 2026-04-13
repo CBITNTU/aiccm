@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -184,6 +185,7 @@ function toJoinRequest(input: unknown): JoinRequest | null {
 }
 
 export default function AdminApprovals() {
+  const t = useTranslations("AdminApprovals");
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -248,7 +250,7 @@ export default function AdminApprovals() {
       }
     } catch (error) {
       console.error("Error fetching approval data:", error);
-      toast.error("Failed to fetch pending approvals");
+      toast.error(t("toasts.fetchFailed"));
     } finally {
       setLoading(false);
     }
@@ -261,12 +263,10 @@ export default function AdminApprovals() {
   // Show confirmation dialog for new-company users, approve directly for others
   const handleApproveClick = (user: PendingUser) => {
     if (user.signupType === "new-company" && user.company) {
-      // Show confirmation dialog for new-company users
       setApprovalDialog({ open: true, user });
     } else {
-      // Directly approve for individual or join-company users
       const userName =
-        `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unknown";
+        `${user.firstName || ""} ${user.lastName || ""}`.trim() || t("unknownUser");
       handleApproveUser(user.userId, userName);
     }
   };
@@ -283,15 +283,15 @@ export default function AdminApprovals() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to approve user");
+        throw new Error(data.error || t("toasts.approveUserFailed"));
       }
 
-      toast.success(`${userName} has been approved`);
+      toast.success(t("toasts.approveUserSuccess", { name: userName }));
       fetchData();
     } catch (error) {
       console.error("Error approving user:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to approve user",
+        error instanceof Error ? error.message : t("toasts.approveUserFailed"),
       );
     } finally {
       setActionLoading(null);
@@ -315,17 +315,17 @@ export default function AdminApprovals() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to reject user");
+        throw new Error(data.error || t("toasts.rejectUserFailed"));
       }
 
-      toast.success(`${rejectDialog.name} has been rejected`);
+      toast.success(t("toasts.rejectUserSuccess", { name: rejectDialog.name }));
       setRejectDialog(null);
       setRejectionReason("");
       fetchData();
     } catch (error) {
       console.error("Error rejecting user:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reject user",
+        error instanceof Error ? error.message : t("toasts.rejectUserFailed"),
       );
     } finally {
       setActionLoading(null);
@@ -346,15 +346,15 @@ export default function AdminApprovals() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to approve request");
+        throw new Error(data.error || t("toasts.approveRequestFailed"));
       }
 
-      toast.success(`${userName}'s join request has been approved`);
+      toast.success(t("toasts.approveRequestSuccess", { name: userName }));
       fetchData();
     } catch (error) {
       console.error("Error approving request:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to approve request",
+        error instanceof Error ? error.message : t("toasts.approveRequestFailed"),
       );
     } finally {
       setActionLoading(null);
@@ -378,17 +378,17 @@ export default function AdminApprovals() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to reject request");
+        throw new Error(data.error || t("toasts.rejectRequestFailed"));
       }
 
-      toast.success(`Join request has been rejected`);
+      toast.success(t("toasts.rejectRequestSuccess"));
       setRejectDialog(null);
       setRejectionReason("");
       fetchData();
     } catch (error) {
       console.error("Error rejecting request:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reject request",
+        error instanceof Error ? error.message : t("toasts.rejectRequestFailed"),
       );
     } finally {
       setActionLoading(null);
@@ -427,17 +427,17 @@ export default function AdminApprovals() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to update company");
+        throw new Error(data.error || t("toasts.updateCompanyFailed"));
       }
 
-      toast.success("Company details updated");
+      toast.success(t("toasts.updateCompanySuccess"));
       setEditingCompanyId(null);
       setEditFormData(null);
       fetchData();
     } catch (error) {
       console.error("Error updating company:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to update company",
+        error instanceof Error ? error.message : t("toasts.updateCompanyFailed"),
       );
     } finally {
       setActionLoading(null);
@@ -455,15 +455,15 @@ export default function AdminApprovals() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to analyze company");
+        throw new Error(data.error || t("toasts.analyzeCompanyFailed"));
       }
 
-      toast.success("Company analysis started. Data will be updated shortly.");
+      toast.success(t("toasts.analyzeCompanySuccess"));
       fetchData();
     } catch (error) {
       console.error("Error analyzing company:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to analyze company",
+        error instanceof Error ? error.message : t("toasts.analyzeCompanyFailed"),
       );
     } finally {
       setAnalyzingCompanyId(null);
@@ -473,14 +473,14 @@ export default function AdminApprovals() {
   const getSignupTypeBadge = (signupType: string) => {
     switch (signupType) {
       case "individual":
-        return <Badge variant="secondary">Individual</Badge>;
+        return <Badge variant="secondary">{t("signupTypes.individual")}</Badge>;
       case "new-company":
         return (
-          <Badge className="bg-green-100 text-green-800">New Company</Badge>
+          <Badge className="bg-green-100 text-green-800">{t("signupTypes.newCompany")}</Badge>
         );
       case "join-company":
         return (
-          <Badge className="bg-primary/10 text-primary">Join Company</Badge>
+          <Badge className="bg-primary/10 text-primary">{t("signupTypes.joinCompany")}</Badge>
         );
       default:
         return <Badge variant="outline">{signupType}</Badge>;
@@ -520,10 +520,10 @@ export default function AdminApprovals() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Pending Approvals
+            {t("cardTitle")}
           </CardTitle>
           <CardDescription>
-            Review and approve new user registrations and company join requests
+            {t("cardDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -531,7 +531,7 @@ export default function AdminApprovals() {
             <TabsList className="mb-4">
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
-                Pending Users
+                {t("tabs.users")}
                 {pendingCount > 0 && (
                   <Badge variant="destructive" className="ml-1">
                     {pendingCount}
@@ -540,7 +540,7 @@ export default function AdminApprovals() {
               </TabsTrigger>
               <TabsTrigger value="requests" className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
-                Join Requests
+                {t("tabs.requests")}
                 {requestsCount > 0 && (
                   <Badge variant="destructive" className="ml-1">
                     {requestsCount}
@@ -553,7 +553,7 @@ export default function AdminApprovals() {
               {pendingUsers.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />
-                  <p>No pending user approvals</p>
+                  <p>{t("emptyUsers")}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -561,7 +561,7 @@ export default function AdminApprovals() {
                     const userName =
                       `${user.firstName || ""} ${
                         user.lastName || ""
-                      }`.trim() || "Unknown";
+                      }`.trim() || t("unknownUser");
                     const isExpanded = expandedUserId === user.userId;
                     const isEditing = editingCompanyId === user.company?.id;
                     const hasCompanyDetails =
@@ -616,12 +616,12 @@ export default function AdminApprovals() {
                                 {isExpanded ? (
                                   <>
                                     <ChevronUp className="w-4 h-4 mr-1" />
-                                    Hide Company Details
+                                    {t("hideCompanyDetails")}
                                   </>
                                 ) : (
                                   <>
                                     <ChevronDown className="w-4 h-4 mr-1" />
-                                    View Company Details
+                                    {t("viewCompanyDetails")}
                                   </>
                                 )}
                               </Button>
@@ -642,7 +642,7 @@ export default function AdminApprovals() {
                               disabled={actionLoading === user.userId}
                             >
                               <XCircle className="w-4 h-4 mr-1" />
-                              Reject
+                              {t("rejectButton")}
                             </Button>
                             <Button
                               size="sm"
@@ -654,7 +654,7 @@ export default function AdminApprovals() {
                               ) : (
                                 <CheckCircle className="w-4 h-4 mr-1" />
                               )}
-                              Approve
+                              {t("approveButton")}
                             </Button>
                           </div>
                         </div>
@@ -664,7 +664,7 @@ export default function AdminApprovals() {
                           <div className="mt-4 pt-4 border-t">
                             <div className="flex items-center justify-between mb-3">
                               <h5 className="font-medium text-sm">
-                                Company Details
+                                {t("companyDetailsHeading")}
                               </h5>
                               <div className="flex gap-2">
                                 {!isEditing ? (
@@ -677,7 +677,7 @@ export default function AdminApprovals() {
                                       }
                                     >
                                       <Pencil className="w-3 h-3 mr-1" />
-                                      Edit
+                                      {t("editButton")}
                                     </Button>
                                     <Button
                                       size="sm"
@@ -695,7 +695,7 @@ export default function AdminApprovals() {
                                       ) : (
                                         <Sparkles className="w-3 h-3 mr-1" />
                                       )}
-                                      AI Analyze
+                                      {t("aiAnalyzeButton")}
                                     </Button>
                                   </>
                                 ) : (
@@ -706,7 +706,7 @@ export default function AdminApprovals() {
                                       onClick={handleCancelEdit}
                                     >
                                       <X className="w-3 h-3 mr-1" />
-                                      Cancel
+                                      {t("cancelButton")}
                                     </Button>
                                     <Button
                                       size="sm"
@@ -720,7 +720,7 @@ export default function AdminApprovals() {
                                       ) : (
                                         <Save className="w-3 h-3 mr-1" />
                                       )}
-                                      Save
+                                      {t("saveButton")}
                                     </Button>
                                   </>
                                 )}
@@ -732,7 +732,7 @@ export default function AdminApprovals() {
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">
-                                    Company Name
+                                    {t("form.companyName")}
                                   </Label>
                                   <Input
                                     value={editFormData.companyName}
@@ -742,12 +742,12 @@ export default function AdminApprovals() {
                                         companyName: e.target.value,
                                       })
                                     }
-                                    placeholder="Company name"
+                                    placeholder={t("form.companyNamePlaceholder")}
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">
-                                    Companies House No.
+                                    {t("form.companiesHouse")}
                                   </Label>
                                   <Input
                                     value={
@@ -760,13 +760,13 @@ export default function AdminApprovals() {
                                           e.target.value || null,
                                       })
                                     }
-                                    placeholder="e.g. 12345678"
+                                    placeholder={t("form.companiesHousePlaceholder")}
                                     maxLength={8}
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">
-                                    Website URL
+                                    {t("form.websiteUrl")}
                                   </Label>
                                   <Input
                                     value={editFormData.websiteUrl || ""}
@@ -776,12 +776,12 @@ export default function AdminApprovals() {
                                         websiteUrl: e.target.value || null,
                                       })
                                     }
-                                    placeholder="https://..."
+                                    placeholder={t("form.websitePlaceholder")}
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">
-                                    Contact Person
+                                    {t("form.contactPerson")}
                                   </Label>
                                   <Input
                                     value={editFormData.contactPerson || ""}
@@ -791,12 +791,12 @@ export default function AdminApprovals() {
                                         contactPerson: e.target.value || null,
                                       })
                                     }
-                                    placeholder="Contact name"
+                                    placeholder={t("form.contactPersonPlaceholder")}
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">
-                                    Contact Email
+                                    {t("form.contactEmail")}
                                   </Label>
                                   <Input
                                     value={editFormData.contactEmail || ""}
@@ -806,13 +806,13 @@ export default function AdminApprovals() {
                                         contactEmail: e.target.value || null,
                                       })
                                     }
-                                    placeholder="contact@company.com"
+                                    placeholder={t("form.contactEmailPlaceholder")}
                                     type="email"
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">
-                                    Contact Phone
+                                    {t("form.contactPhone")}
                                   </Label>
                                   <Input
                                     value={editFormData.contactPhone || ""}
@@ -822,7 +822,7 @@ export default function AdminApprovals() {
                                         contactPhone: e.target.value || null,
                                       })
                                     }
-                                    placeholder="+44..."
+                                    placeholder={t("form.contactPhonePlaceholder")}
                                     type="tel"
                                   />
                                 </div>
@@ -834,7 +834,7 @@ export default function AdminApprovals() {
                                   <Building2 className="w-4 h-4 text-muted-foreground" />
                                   <div>
                                     <span className="text-muted-foreground text-xs block">
-                                      Company Name
+                                      {t("form.companyName")}
                                     </span>
                                     <span>{user.company.companyName}</span>
                                   </div>
@@ -843,11 +843,11 @@ export default function AdminApprovals() {
                                   <Building2 className="w-4 h-4 text-muted-foreground" />
                                   <div>
                                     <span className="text-muted-foreground text-xs block">
-                                      Companies House No.
+                                      {t("form.companiesHouse")}
                                     </span>
                                     <span>
                                       {user.company.companiesHouseNumber ||
-                                        "Not provided"}
+                                        t("notProvided")}
                                     </span>
                                   </div>
                                 </div>
@@ -855,7 +855,7 @@ export default function AdminApprovals() {
                                   <Globe className="w-4 h-4 text-muted-foreground" />
                                   <div>
                                     <span className="text-muted-foreground text-xs block">
-                                      Website
+                                      {t("form.website")}
                                     </span>
                                     {user.company.websiteUrl ? (
                                       <a
@@ -867,7 +867,7 @@ export default function AdminApprovals() {
                                         {user.company.websiteUrl}
                                       </a>
                                     ) : (
-                                      <span>Not provided</span>
+                                      <span>{t("notProvided")}</span>
                                     )}
                                   </div>
                                 </div>
@@ -875,11 +875,11 @@ export default function AdminApprovals() {
                                   <User className="w-4 h-4 text-muted-foreground" />
                                   <div>
                                     <span className="text-muted-foreground text-xs block">
-                                      Contact Person
+                                      {t("form.contactPerson")}
                                     </span>
                                     <span>
                                       {user.company.contactPerson ||
-                                        "Not provided"}
+                                        t("notProvided")}
                                     </span>
                                   </div>
                                 </div>
@@ -887,11 +887,11 @@ export default function AdminApprovals() {
                                   <Mail className="w-4 h-4 text-muted-foreground" />
                                   <div>
                                     <span className="text-muted-foreground text-xs block">
-                                      Contact Email
+                                      {t("form.contactEmail")}
                                     </span>
                                     <span>
                                       {user.company.contactEmail ||
-                                        "Not provided"}
+                                        t("notProvided")}
                                     </span>
                                   </div>
                                 </div>
@@ -899,11 +899,11 @@ export default function AdminApprovals() {
                                   <Phone className="w-4 h-4 text-muted-foreground" />
                                   <div>
                                     <span className="text-muted-foreground text-xs block">
-                                      Contact Phone
+                                      {t("form.contactPhone")}
                                     </span>
                                     <span>
                                       {user.company.contactPhone ||
-                                        "Not provided"}
+                                        t("notProvided")}
                                     </span>
                                   </div>
                                 </div>
@@ -922,7 +922,7 @@ export default function AdminApprovals() {
               {joinRequests.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />
-                  <p>No pending join requests</p>
+                  <p>{t("emptyRequests")}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -930,8 +930,8 @@ export default function AdminApprovals() {
                     const userName = request.user
                       ? `${request.user.firstName || ""} ${
                           request.user.lastName || ""
-                        }`.trim() || "Unknown"
-                      : "Unknown";
+                        }`.trim() || t("unknownUser")
+                      : t("unknownUser");
                     const isReadyForApproval =
                       request.status === "approved_by_admin";
 
@@ -954,7 +954,7 @@ export default function AdminApprovals() {
                               </span>
                               {isReadyForApproval && (
                                 <Badge className="bg-green-100 text-green-800">
-                                  Company Approved
+                                  {t("companyApprovedBadge")}
                                 </Badge>
                               )}
                             </div>
@@ -978,14 +978,14 @@ export default function AdminApprovals() {
                             </div>
                             {request.message && (
                               <div className="mt-2 p-2 bg-muted rounded text-sm">
-                                <span className="font-medium">Message:</span>{" "}
+                                <span className="font-medium">{t("messageLabel")}</span>{" "}
                                 {request.message}
                               </div>
                             )}
                             {!isReadyForApproval && (
                               <div className="mt-2 flex items-center gap-1 text-sm text-amber-600">
                                 <AlertCircle className="w-4 h-4" />
-                                Awaiting company admin approval
+                                {t("awaitingCompanyAdmin")}
                               </div>
                             )}
                           </div>
@@ -1004,7 +1004,7 @@ export default function AdminApprovals() {
                               disabled={actionLoading === request.id}
                             >
                               <XCircle className="w-4 h-4 mr-1" />
-                              Reject
+                              {t("rejectButton")}
                             </Button>
                             <Button
                               size="sm"
@@ -1017,7 +1017,7 @@ export default function AdminApprovals() {
                               }
                               title={
                                 !isReadyForApproval
-                                  ? "Waiting for company admin approval"
+                                  ? t("waitingTooltip")
                                   : undefined
                               }
                             >
@@ -1026,7 +1026,7 @@ export default function AdminApprovals() {
                               ) : (
                                 <CheckCircle className="w-4 h-4 mr-1" />
                               )}
-                              Approve
+                              {t("approveButton")}
                             </Button>
                           </div>
                         </div>
@@ -1052,18 +1052,19 @@ export default function AdminApprovals() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject {rejectDialog?.name}</DialogTitle>
+            <DialogTitle>{t("rejectDialog.title", { name: rejectDialog?.name ?? "" })}</DialogTitle>
             <DialogDescription>
-              Please provide a reason for rejecting this{" "}
-              {rejectDialog?.type === "user" ? "user" : "join request"}.
+              {rejectDialog?.type === "user"
+                ? t("rejectDialog.descriptionUser")
+                : t("rejectDialog.descriptionRequest")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="rejection-reason">Reason (optional)</Label>
+              <Label htmlFor="rejection-reason">{t("rejectDialog.reasonLabel")}</Label>
               <Textarea
                 id="rejection-reason"
-                placeholder="Enter reason for rejection..."
+                placeholder={t("rejectDialog.reasonPlaceholder")}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={3}
@@ -1078,7 +1079,7 @@ export default function AdminApprovals() {
                 setRejectionReason("");
               }}
             >
-              Cancel
+              {t("rejectDialog.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -1094,7 +1095,7 @@ export default function AdminApprovals() {
               ) : (
                 <XCircle className="w-4 h-4 mr-1" />
               )}
-              Reject
+              {t("rejectDialog.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1113,11 +1114,10 @@ export default function AdminApprovals() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
-              Approve User & Company
+              {t("approvalDialog.title")}
             </DialogTitle>
             <DialogDescription>
-              This action will approve both the user and their company
-              registration.
+              {t("approvalDialog.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -1127,24 +1127,24 @@ export default function AdminApprovals() {
               <div className="p-3 rounded-lg bg-muted/50">
                 <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  User Details
+                  {t("approvalDialog.userDetails")}
                 </h4>
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Name:</span>
+                    <span className="text-muted-foreground">{t("approvalDialog.nameLabel")}</span>
                     <span className="font-medium">
                       {`${approvalDialog.user.firstName || ""} ${
                         approvalDialog.user.lastName || ""
-                      }`.trim() || "Not provided"}
+                      }`.trim() || t("notProvided")}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Email:</span>
+                    <span className="text-muted-foreground">{t("approvalDialog.emailLabel")}</span>
                     <span>{approvalDialog.user.email}</span>
                   </div>
                   {approvalDialog.user.jobTitle && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Job Title:</span>
+                      <span className="text-muted-foreground">{t("approvalDialog.jobTitleLabel")}</span>
                       <span>{approvalDialog.user.jobTitle}</span>
                     </div>
                   )}
@@ -1156,12 +1156,12 @@ export default function AdminApprovals() {
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
                   <h4 className="text-sm font-medium mb-2 flex items-center gap-2 text-green-800 dark:text-green-200">
                     <Building2 className="w-4 h-4" />
-                    Company to be Approved
+                    {t("approvalDialog.companyHeading")}
                   </h4>
                   <div className="text-sm space-y-1">
                     <div className="flex justify-between">
                       <span className="text-green-700 dark:text-green-300">
-                        Company Name:
+                        {t("approvalDialog.companyNameLabel")}
                       </span>
                       <span className="font-medium text-gray-900 dark:text-gray-100">
                         {approvalDialog.user.company.companyName}
@@ -1170,7 +1170,7 @@ export default function AdminApprovals() {
                     {approvalDialog.user.company.companiesHouseNumber && (
                       <div className="flex justify-between">
                         <span className="text-green-700 dark:text-green-300">
-                          Companies House:
+                          {t("approvalDialog.companiesHouseLabel")}
                         </span>
                         <span className="text-gray-900 dark:text-gray-100">
                           {approvalDialog.user.company.companiesHouseNumber}
@@ -1180,7 +1180,7 @@ export default function AdminApprovals() {
                     {approvalDialog.user.company.websiteUrl && (
                       <div className="flex justify-between">
                         <span className="text-green-700 dark:text-green-300">
-                          Website:
+                          {t("approvalDialog.websiteLabel")}
                         </span>
                         <a
                           href={approvalDialog.user.company.websiteUrl}
@@ -1195,7 +1195,7 @@ export default function AdminApprovals() {
                     {approvalDialog.user.company.contactEmail && (
                       <div className="flex justify-between">
                         <span className="text-green-700 dark:text-green-300">
-                          Contact:
+                          {t("approvalDialog.contactLabel")}
                         </span>
                         <span className="text-gray-900 dark:text-gray-100">
                           {approvalDialog.user.company.contactEmail}
@@ -1210,28 +1210,24 @@ export default function AdminApprovals() {
               <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
                 <h4 className="text-sm font-medium mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200">
                   <Sparkles className="w-4 h-4" />
-                  What will happen
+                  {t("approvalDialog.whatHappensTitle")}
                 </h4>
                 <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-3 h-3 mt-1 flex-shrink-0" />
-                    <span>User account will be approved and can sign in</span>
+                    <span>{t("approvalDialog.whatHappens1")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-3 h-3 mt-1 flex-shrink-0" />
-                    <span>
-                      Company status will change to &quot;Active&quot;
-                    </span>
+                    <span>{t("approvalDialog.whatHappens2")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-3 h-3 mt-1 flex-shrink-0" />
-                    <span>User will become admin of the company</span>
+                    <span>{t("approvalDialog.whatHappens3")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Sparkles className="w-3 h-3 mt-1 flex-shrink-0" />
-                    <span>
-                      AI will fetch & enrich company data automatically
-                    </span>
+                    <span>{t("approvalDialog.whatHappens4")}</span>
                   </li>
                 </ul>
               </div>
@@ -1240,7 +1236,7 @@ export default function AdminApprovals() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setApprovalDialog(null)}>
-              Cancel
+              {t("approvalDialog.cancel")}
             </Button>
             <Button
               onClick={() => {
@@ -1248,7 +1244,7 @@ export default function AdminApprovals() {
                   const userName =
                     `${approvalDialog.user.firstName || ""} ${
                       approvalDialog.user.lastName || ""
-                    }`.trim() || "Unknown";
+                    }`.trim() || t("unknownUser");
                   handleApproveUser(approvalDialog.user.userId, userName);
                 }
               }}
@@ -1260,7 +1256,7 @@ export default function AdminApprovals() {
               ) : (
                 <CheckCircle className="w-4 h-4 mr-1" />
               )}
-              Approve Both
+              {t("approvalDialog.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

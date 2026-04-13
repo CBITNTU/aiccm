@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -306,6 +307,7 @@ const CONSTRUCTION_COMPANIES = [
 ];
 
 export function AdminDataImport() {
+  const t = useTranslations("AdminDataImport");
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
@@ -336,7 +338,7 @@ export function AdminDataImport() {
         } catch (err) {
           setErrors((prev) => [
             ...prev,
-            `Error importing ${company.companyName}: ${err}`,
+            t("toasts.importError", { name: company.companyName, error: String(err) }),
           ]);
         }
 
@@ -345,10 +347,10 @@ export function AdminDataImport() {
       }
 
       toast.success(
-        `Import completed! ${successCount} companies processed successfully.`,
+        t("toasts.importSuccess", { count: successCount }),
       );
     } catch (error) {
-      toast.error("Import failed: " + error);
+      toast.error(t("toasts.importFailed", { error: String(error) }));
     } finally {
       setIsImporting(false);
     }
@@ -357,13 +359,12 @@ export function AdminDataImport() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Import Construction Companies Data</CardTitle>
+        <CardTitle>{t("cardTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
           <p className="text-sm text-muted-foreground mb-4">
-            This will import {CONSTRUCTION_COMPANIES.length} construction
-            companies from the Bolsover Excel file into the database.
+            {t("description", { count: CONSTRUCTION_COMPANIES.length })}
           </p>
 
           {!isImporting && (
@@ -371,7 +372,7 @@ export function AdminDataImport() {
               onClick={handleImportCompanies}
               className="w-full"
             >
-              Import Companies Data
+              {t("importButton")}
             </Button>
           )}
 
@@ -379,8 +380,11 @@ export function AdminDataImport() {
             <div className="space-y-2">
               <Progress value={progress} className="w-full" />
               <p className="text-sm text-center">
-                Importing... {Math.round(progress)}% complete ({importedCount}{" "}
-                of {CONSTRUCTION_COMPANIES.length})
+                {t("importing", {
+                  progress: Math.round(progress),
+                  imported: importedCount,
+                  total: CONSTRUCTION_COMPANIES.length,
+                })}
               </p>
             </div>
           )}
@@ -390,7 +394,7 @@ export function AdminDataImport() {
           <Alert variant="destructive">
             <AlertDescription>
               <div className="space-y-1">
-                <p className="font-medium">Import Errors:</p>
+                <p className="font-medium">{t("errorsTitle")}</p>
                 {errors.slice(0, 5).map((error, index) => (
                   <p key={index} className="text-xs">
                     {error}
@@ -398,7 +402,7 @@ export function AdminDataImport() {
                 ))}
                 {errors.length > 5 && (
                   <p className="text-xs">
-                    ...and {errors.length - 5} more errors
+                    {t("moreErrors", { count: errors.length - 5 })}
                   </p>
                 )}
               </div>

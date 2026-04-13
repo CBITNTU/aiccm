@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ export function ProfileInfoStep({
   companyContext,
   onComplete,
 }: ProfileInfoStepProps) {
+  const t = useTranslations("Onboarding.profileInfo");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -45,7 +47,7 @@ export function ProfileInfoStep({
       !formData.lastName.trim() ||
       !formData.jobTitle.trim()
     ) {
-      setError("Please fill in all fields");
+      setError(t("errorRequired"));
       setIsLoading(false);
       return;
     }
@@ -67,14 +69,14 @@ export function ProfileInfoStep({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save profile");
+        throw new Error(data.error || t("errorFallback"));
       }
 
       onComplete();
     } catch (error) {
       console.error("Error saving profile:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to save profile";
+        error instanceof Error ? error.message : t("errorFallback");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -90,26 +92,24 @@ export function ProfileInfoStep({
           </div>
           <CardTitle className="text-2xl">
             {companyContext
-              ? `Complete Your Profile to Join ${companyContext.companyName}`
-              : "Your Profile"}
+              ? t("titleJoining", { companyName: companyContext.companyName })
+              : t("title")}
           </CardTitle>
           <p className="text-muted-foreground mt-2">
-            {companyContext
-              ? "Tell us a bit about yourself before joining your team"
-              : "Tell us a bit about yourself"}
+            {companyContext ? t("descriptionJoining") : t("description")}
           </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName">{t("firstNameLabel")}</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="firstName"
                     type="text"
-                    placeholder="First name"
+                    placeholder={t("firstNamePlaceholder")}
                     value={formData.firstName}
                     onChange={(e) =>
                       setFormData({ ...formData, firstName: e.target.value })
@@ -121,11 +121,11 @@ export function ProfileInfoStep({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName">{t("lastNameLabel")}</Label>
                 <Input
                   id="lastName"
                   type="text"
-                  placeholder="Last name"
+                  placeholder={t("lastNamePlaceholder")}
                   value={formData.lastName}
                   onChange={(e) =>
                     setFormData({ ...formData, lastName: e.target.value })
@@ -136,13 +136,13 @@ export function ProfileInfoStep({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="jobTitle">Job Title / Role</Label>
+              <Label htmlFor="jobTitle">{t("jobTitleLabel")}</Label>
               <div className="relative">
                 <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="jobTitle"
                   type="text"
-                  placeholder="e.g. CEO, Project Manager, Engineer"
+                  placeholder={t("jobTitlePlaceholder")}
                   value={formData.jobTitle}
                   onChange={(e) =>
                     setFormData({ ...formData, jobTitle: e.target.value })
@@ -167,10 +167,10 @@ export function ProfileInfoStep({
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {t("saving")}
                 </>
               ) : (
-                "Continue"
+                t("continue")
               )}
             </Button>
           </form>

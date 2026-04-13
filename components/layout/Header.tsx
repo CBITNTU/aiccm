@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Building2, Menu, LogOut } from "lucide-react";
+import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 
 interface HeaderProps {
   variant?: "landing" | "app";
@@ -14,6 +16,7 @@ export function Header({
   variant = "landing",
   onMobileMenuToggle,
 }: HeaderProps) {
+  const t = useTranslations("Header");
   const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -33,37 +36,38 @@ export function Header({
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-primary">TNDRX</h1>
+              <h1 className="text-xl font-bold text-primary">{t("brand")}</h1>
               <p className="text-xs text-muted-foreground leading-none">
-                Collaborative Commerce Marketplace
+                {t("tagline")}
               </p>
             </div>
           </Link>
 
           {/* Actions */}
           <div className="flex items-center space-x-3">
+            <LocaleSwitcher />
             {variant === "landing" ? (
               <div className="flex space-x-4">
                 {user ? (
                   <div className="flex items-center space-x-4">
                     <Button variant="outline" asChild>
-                      <Link href="/dashboard">Dashboard</Link>
+                      <Link href="/dashboard">{t("dashboard")}</Link>
                     </Button>
                     <Button
                       onClick={handleSignOut}
                       className="flex items-center"
                     >
                       <LogOut className="w-4 h-4 mr-2" />
-                      Sign Out
+                      {t("signOut")}
                     </Button>
                   </div>
                 ) : (
                   <div className="flex space-x-4">
                     <Button variant="outline" asChild>
-                      <Link href="/auth">Sign In</Link>
+                      <Link href="/auth">{t("signIn")}</Link>
                     </Button>
                     <Button asChild>
-                      <Link href="/auth">Get Started</Link>
+                      <Link href="/auth">{t("getStarted")}</Link>
                     </Button>
                   </div>
                 )}
@@ -75,7 +79,7 @@ export function Header({
                 size="sm"
                 className="md:hidden"
                 onClick={onMobileMenuToggle}
-                aria-label="Toggle navigation menu"
+                aria-label={t("menuToggle")}
               >
                 <Menu className="w-5 h-5" />
               </Button>

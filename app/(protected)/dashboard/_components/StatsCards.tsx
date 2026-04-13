@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -11,6 +12,7 @@ import { FileText, Building2, Users, Target } from "lucide-react";
 import type { DashboardStats } from "./types";
 
 export function StatsCards({ stats }: { stats: DashboardStats }) {
+  const t = useTranslations("Dashboard");
   const router = useRouter();
 
   return (
@@ -20,12 +22,12 @@ export function StatsCards({ stats }: { stats: DashboardStats }) {
         onClick={() => router.push("/tenders")}
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Tenders</CardTitle>
+          <CardTitle className="text-sm font-medium">{t("stats.totalTenders")}</CardTitle>
           <FileText className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.totalTenders}</div>
-          <p className="text-xs text-muted-foreground">Active tenders</p>
+          <p className="text-xs text-muted-foreground">{t("stats.activeTenders")}</p>
         </CardContent>
       </Card>
 
@@ -35,13 +37,13 @@ export function StatsCards({ stats }: { stats: DashboardStats }) {
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Matched Opportunities
+            {t("stats.matchedOpportunities")}
           </CardTitle>
           <Target className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.matchingResults}</div>
-          <p className="text-xs text-muted-foreground">Matched to your company</p>
+          <p className="text-xs text-muted-foreground">{t("stats.matchedToCompany")}</p>
         </CardContent>
       </Card>
 
@@ -50,12 +52,12 @@ export function StatsCards({ stats }: { stats: DashboardStats }) {
         onClick={() => router.push("/my-company")}
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">My Company</CardTitle>
+          <CardTitle className="text-sm font-medium">{t("stats.myCompany")}</CardTitle>
           <Building2 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.companies}</div>
-          <p className="text-xs text-muted-foreground">Active companies</p>
+          <p className="text-xs text-muted-foreground">{t("stats.activeCompanies")}</p>
         </CardContent>
       </Card>
 
@@ -65,13 +67,13 @@ export function StatsCards({ stats }: { stats: DashboardStats }) {
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Projects Created
+            {t("stats.projectsCreated")}
           </CardTitle>
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.projects}</div>
-          <p className="text-xs text-muted-foreground">Consulting projects</p>
+          <p className="text-xs text-muted-foreground">{t("stats.consultingProjects")}</p>
         </CardContent>
       </Card>
     </div>

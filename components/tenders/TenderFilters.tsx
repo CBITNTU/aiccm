@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Filter, RotateCcw, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface TenderFilters {
   keyword?: string;
@@ -35,6 +36,8 @@ export function TenderFilters({
   filters,
   onReset,
 }: TenderFiltersProps) {
+  const t = useTranslations("TenderFilters");
+
   const handleFilterChange = (key: string, value: string | number | null) => {
     const newFilters = { ...filters, [key]: value };
     onFiltersChange(newFilters);
@@ -51,7 +54,7 @@ export function TenderFilters({
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Filter className="w-4 h-4" />
-          <span>Filters</span>
+          <span>{t("title")}</span>
           <Button
             variant="ghost"
             size="sm"
@@ -59,7 +62,7 @@ export function TenderFilters({
             className="ml-auto"
           >
             <RotateCcw className="w-4 h-4 mr-1" />
-            Reset
+            {t("reset")}
           </Button>
         </CardTitle>
       </CardHeader>
@@ -68,11 +71,11 @@ export function TenderFilters({
         <div className="space-y-2">
           <Label htmlFor="keyword" className="flex items-center gap-2">
             <Search className="w-4 h-4" />
-            Keyword Search
+            {t("keywordLabel")}
           </Label>
           <Input
             id="keyword"
-            placeholder="Search by title, description, buyer, or location..."
+            placeholder={t("keywordPlaceholder")}
             value={filters.keyword || ""}
             onChange={(e) => handleFilterChange("keyword", e.target.value)}
             className="w-full"
@@ -82,7 +85,7 @@ export function TenderFilters({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Date Range */}
           <div className="space-y-2">
-            <Label htmlFor="dateFrom">Date From</Label>
+            <Label htmlFor="dateFrom">{t("dateFrom")}</Label>
             <Input
               id="dateFrom"
               type="date"
@@ -93,7 +96,7 @@ export function TenderFilters({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dateTo">Date To</Label>
+            <Label htmlFor="dateTo">{t("dateTo")}</Label>
             <Input
               id="dateTo"
               type="date"
@@ -105,11 +108,11 @@ export function TenderFilters({
 
           {/* Budget Range */}
           <div className="space-y-2">
-            <Label htmlFor="budgetMin">Min Budget (£)</Label>
+            <Label htmlFor="budgetMin">{t("budgetMin")}</Label>
             <Input
               id="budgetMin"
               type="number"
-              placeholder="e.g. 10000"
+              placeholder={t("budgetMinPlaceholder")}
               value={filters.budgetMin || ""}
               onChange={(e) =>
                 handleFilterChange(
@@ -122,11 +125,11 @@ export function TenderFilters({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="budgetMax">Max Budget (£)</Label>
+            <Label htmlFor="budgetMax">{t("budgetMax")}</Label>
             <Input
               id="budgetMax"
               type="number"
-              placeholder="e.g. 1000000"
+              placeholder={t("budgetMaxPlaceholder")}
               value={filters.budgetMax || ""}
               onChange={(e) =>
                 handleFilterChange(
@@ -142,7 +145,7 @@ export function TenderFilters({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Status Filter */}
           <div className="space-y-2">
-            <Label>Status</Label>
+            <Label>{t("statusLabel")}</Label>
             <Select
               value={filters.status || "all"}
               onValueChange={(value) =>
@@ -150,25 +153,25 @@ export function TenderFilters({
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="All statuses" />
+                <SelectValue placeholder={t("statusPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closing_soon">Closing Soon</SelectItem>
-                <SelectItem value="framework">Framework</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="awarded">Awarded</SelectItem>
+                <SelectItem value="all">{t("statusAllStatuses")}</SelectItem>
+                <SelectItem value="open">{t("statusOpen")}</SelectItem>
+                <SelectItem value="closing_soon">{t("statusClosingSoon")}</SelectItem>
+                <SelectItem value="framework">{t("statusFramework")}</SelectItem>
+                <SelectItem value="closed">{t("statusClosed")}</SelectItem>
+                <SelectItem value="awarded">{t("statusAwarded")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Location Filter */}
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="location">{t("locationLabel")}</Label>
             <Input
               id="location"
-              placeholder="e.g. London, Manchester"
+              placeholder={t("locationPlaceholder")}
               value={filters.location || ""}
               onChange={(e) => handleFilterChange("location", e.target.value)}
               className="w-full"

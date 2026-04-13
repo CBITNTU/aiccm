@@ -34,8 +34,11 @@ import {
   Tags,
   SlidersHorizontal,
   FlaskConical,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { VerificationStatusIndicator } from "@/components/layout/VerificationStatusIndicator";
 
@@ -46,7 +49,7 @@ interface SidenavProps {
 }
 
 interface NavigationItem {
-  name: string;
+  labelKey: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   hideForPending: boolean;
@@ -55,37 +58,37 @@ interface NavigationItem {
 
 const mainNavItems: NavigationItem[] = [
   {
-    name: "Dashboard",
+    labelKey: "nav.dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
     hideForPending: true,
   },
   {
-    name: "Tenders",
+    labelKey: "nav.tenders",
     href: "/tenders",
     icon: FileText,
     hideForPending: false,
   },
   {
-    name: "Company Directory",
+    labelKey: "nav.directory",
     href: "/directory",
     icon: Search,
     hideForPending: false,
   },
   {
-    name: "Projects",
+    labelKey: "nav.projects",
     href: "/projects",
     icon: FolderKanban,
     hideForPending: true,
   },
   {
-    name: "My Company",
+    labelKey: "nav.myCompany",
     href: "/my-company",
     icon: Building2,
     hideForPending: true,
   },
   {
-    name: "Profile",
+    labelKey: "nav.profile",
     href: "/profile",
     icon: User,
     hideForPending: true,
@@ -99,24 +102,24 @@ interface AdminNavGroup {
 const adminNavGroups: AdminNavGroup[] = [
   {
     items: [
-      { name: "Overview", href: "/admin/overview", icon: BarChart3, hideForPending: true },
-      { name: "Approvals", href: "/admin/approvals", icon: ClipboardCheck, hideForPending: true, badgeKey: "pendingApprovalsTotal" },
-      { name: "Verification", href: "/admin/verification", icon: ShieldCheck, hideForPending: true, badgeKey: "pendingVerificationTotal" },
+      { labelKey: "admin.overview", href: "/admin/overview", icon: BarChart3, hideForPending: true },
+      { labelKey: "admin.approvals", href: "/admin/approvals", icon: ClipboardCheck, hideForPending: true, badgeKey: "pendingApprovalsTotal" },
+      { labelKey: "admin.verification", href: "/admin/verification", icon: ShieldCheck, hideForPending: true, badgeKey: "pendingVerificationTotal" },
     ],
   },
   {
     items: [
-      { name: "Companies", href: "/admin/companies", icon: Building2, hideForPending: true },
-      { name: "Users", href: "/admin/users", icon: UserCog, hideForPending: true },
-      { name: "Tenders", href: "/admin/tenders", icon: FileText, hideForPending: true },
-      { name: "Onboarding", href: "/admin/onboarding", icon: UserPlus, hideForPending: true },
+      { labelKey: "admin.companies", href: "/admin/companies", icon: Building2, hideForPending: true },
+      { labelKey: "admin.users", href: "/admin/users", icon: UserCog, hideForPending: true },
+      { labelKey: "admin.tenders", href: "/admin/tenders", icon: FileText, hideForPending: true },
+      { labelKey: "admin.onboarding", href: "/admin/onboarding", icon: UserPlus, hideForPending: true },
     ],
   },
   {
     items: [
-      { name: "Taxonomy", href: "/admin/taxonomy", icon: Tags, hideForPending: true },
-      { name: "Settings", href: "/admin/settings", icon: SlidersHorizontal, hideForPending: true },
-      { name: "Demo Sync", href: "/admin/demo-sync", icon: FlaskConical, hideForPending: true },
+      { labelKey: "admin.taxonomy", href: "/admin/taxonomy", icon: Tags, hideForPending: true },
+      { labelKey: "admin.settings", href: "/admin/settings", icon: SlidersHorizontal, hideForPending: true },
+      { labelKey: "admin.demoSync", href: "/admin/demo-sync", icon: FlaskConical, hideForPending: true },
     ],
   },
 ];
@@ -157,6 +160,8 @@ function NavItem({
   badgeCount?: number;
   onClick: () => void;
 }) {
+  const t = useTranslations("Sidenav");
+  const label = t(item.labelKey as Parameters<typeof t>[0]);
   const showBadge = badgeCount !== undefined && badgeCount > 0;
 
   const NavButton = (
@@ -182,7 +187,7 @@ function NavItem({
         </div>
         {(!isCollapsed || isMobile) && (
           <>
-            <span className="truncate flex-1">{item.name}</span>
+            <span className="truncate flex-1">{label}</span>
             {showBadge && (
               <span className="ml-auto flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-medium flex items-center justify-center">
                 {badgeCount}
@@ -199,7 +204,7 @@ function NavItem({
       <Tooltip>
         <TooltipTrigger asChild>{NavButton}</TooltipTrigger>
         <TooltipContent side="right" sideOffset={10}>
-          {item.name}
+          {label}
           {showBadge && ` (${badgeCount})`}
         </TooltipContent>
       </Tooltip>
@@ -224,6 +229,7 @@ function SidebarContent({
   userEmail,
   userInitials,
 }: SidebarContentProps) {
+  const t = useTranslations("Sidenav");
   return (
     <div className="flex flex-col h-full">
       {/* Logo section */}
@@ -258,7 +264,7 @@ function SidebarContent({
               "h-8 w-8 flex-shrink-0",
               isCollapsed && "absolute -right-3 bg-background border shadow-sm",
             )}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={isCollapsed ? t("expandSidebar") : t("collapseSidebar")}
           >
             {isCollapsed ? (
               <ChevronRight className="h-4 w-4" />
@@ -287,7 +293,7 @@ function SidebarContent({
                 {(!isCollapsed || isMobile) && (
                   <div className="px-3 py-1.5">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Admin
+                      {t("admin.label")}
                     </span>
                   </div>
                 )}
@@ -369,6 +375,30 @@ function SidebarContent({
         <Separator className="my-3" />
 
         <TooltipProvider delayDuration={0}>
+          {/* Language switcher */}
+          {(!isCollapsed || isMobile) ? (
+            <div className="mb-2">
+              <LocaleSwitcher />
+            </div>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-center px-2 mb-1"
+                  onClick={toggleCollapsed}
+                  aria-label={t("language")}
+                >
+                  <Globe className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={10}>
+                {t("language")}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Sign out */}
           {isCollapsed && !isMobile ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -381,7 +411,7 @@ function SidebarContent({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={10}>
-                Sign Out
+                {t("signOut")}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -391,7 +421,7 @@ function SidebarContent({
               onClick={handleSignOut}
             >
               <LogOut className="h-4 w-4 mr-3" />
-              Sign Out
+              {t("signOut")}
             </Button>
           )}
         </TooltipProvider>

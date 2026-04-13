@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ export function MatchingReadinessDialog({
   readiness,
   onRunAnyway,
 }: MatchingReadinessDialogProps) {
+  const t = useTranslations("MatchingReadinessDialog");
   const router = useRouter();
 
   const requiredFields = readiness.fields.filter((f) => f.required);
@@ -39,11 +41,11 @@ export function MatchingReadinessDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Company Profile Readiness</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
             {hasMissingRequired
-              ? "Some required data is missing. Matching results may be incomplete or inaccurate."
-              : "Your company profile has the basics covered. Filling in recommended fields will improve accuracy."}
+              ? t("warningMessage")
+              : t("infoMessage")}
           </DialogDescription>
         </DialogHeader>
 
@@ -66,7 +68,7 @@ export function MatchingReadinessDialog({
 
           {/* Required fields */}
           <div>
-            <h4 className="text-sm font-medium mb-2">Required</h4>
+            <h4 className="text-sm font-medium mb-2">{t("required")}</h4>
             <div className="space-y-2">
               {requiredFields.map((field) => (
                 <div key={field.name} className="flex items-start gap-2">
@@ -91,7 +93,7 @@ export function MatchingReadinessDialog({
           {/* Recommended fields */}
           {recommendedFields.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium mb-2">Recommended</h4>
+              <h4 className="text-sm font-medium mb-2">{t("recommended")}</h4>
               <div className="space-y-2">
                 {recommendedFields.map((field) => (
                   <div key={field.name} className="flex items-start gap-2">
@@ -122,7 +124,7 @@ export function MatchingReadinessDialog({
             }}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
-            Edit Company Profile
+            {t("editProfile")}
           </Button>
           <Button
             onClick={() => {
@@ -130,13 +132,13 @@ export function MatchingReadinessDialog({
               onRunAnyway();
             }}
           >
-            Run Anyway
+            {t("runAnyway")}
           </Button>
         </DialogFooter>
 
         {hasMissingRequired && (
           <p className="text-xs text-muted-foreground text-center">
-            Results may be less accurate with incomplete data
+            {t("incompleteNote")}
           </p>
         )}
       </DialogContent>

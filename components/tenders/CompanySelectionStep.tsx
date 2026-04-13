@@ -1,7 +1,8 @@
 "use client";
 
-/* eslint-disable react/no-unescaped-entities -- company/query result types; copy uses quotes */
+ 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,7 @@ export function CompanySelectionStep({
   selectedCompanies,
   onSelectionChange,
 }: CompanySelectionStepProps) {
+  const t = useTranslations("CompanySelectionStep");
   const [companies, setCompanies] = useState<CompanyWithCapabilities[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,9 +91,7 @@ export function CompanySelectionStep({
       setCompanies((result.companies as unknown as CompanyWithCapabilities[]) || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
-      toast.error(
-        "Failed to load companies. Make sure companies have been processed and have capabilities assigned.",
-      );
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ export function CompanySelectionStep({
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Loading companies...</span>
+        <span className="ml-3 text-muted-foreground">{t("loading")}</span>
       </div>
     );
   }
@@ -140,7 +140,7 @@ export function CompanySelectionStep({
   if (selectedCapabilityIds.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        Please select capabilities in the previous step.
+        {t("selectCapabilitiesFirst")}
       </div>
     );
   }
@@ -149,13 +149,12 @@ export function CompanySelectionStep({
     <div className="space-y-4">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Select companies that have the capabilities you need. You can view
-          full company profiles and select multiple companies for your project.
+          {t("description")}
         </p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search companies..."
+            placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -168,38 +167,26 @@ export function CompanySelectionStep({
           <CardContent className="py-12 text-center space-y-4">
             <p className="text-muted-foreground">
               {companies.length === 0
-                ? "No companies found with the selected capabilities."
-                : "No companies match your search."}
+                ? t("noCompaniesFound")
+                : t("noMatchingCompanies")}
             </p>
             {companies.length === 0 && (
               <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-left max-w-2xl mx-auto">
                 <p className="text-sm text-yellow-900 dark:text-yellow-100 font-medium mb-2">
-                  Why no companies are showing:
+                  {t("whyNoCompaniesTitle")}
                 </p>
                 <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
-                  The selected capabilities are not assigned to any companies
-                  yet. This can happen when:
+                  {t("whyNoCompaniesExplanation")}
                 </p>
                 <ul className="text-sm text-yellow-800 dark:text-yellow-200 list-disc list-inside mb-2 space-y-1">
-                  <li>
-                    The AI created new capabilities that companies don't have
-                    yet
-                  </li>
-                  <li>
-                    Companies haven't been processed to have these specific
-                    capabilities assigned
-                  </li>
+                  <li>{t("reasonNewCapabilities")}</li>
+                  <li>{t("reasonNotProcessed")}</li>
                 </ul>
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>Solution:</strong> Go back to Step 2 and select
-                  capabilities that companies actually have. If you're an admin,
-                  you can run "Regenerate All Company Capabilities" to process
-                  companies, but note that newly created capabilities won't be
-                  assigned unless companies are manually updated.
+                  {t("solution")}
                 </p>
                 <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
-                  Tip: The AI should suggest capabilities from companies that
-                  already exist, not create brand new ones.
+                  {t("tip")}
                 </p>
               </div>
             )}
@@ -255,7 +242,7 @@ export function CompanySelectionStep({
                               ))
                             ) : (
                               <span className="text-xs text-muted-foreground">
-                                No matching capabilities shown
+                                {t("noCapabilitiesShown")}
                               </span>
                             )}
                           </div>
@@ -264,7 +251,7 @@ export function CompanySelectionStep({
                             {company.postcode && (
                               <div>
                                 <span className="text-muted-foreground">
-                                  Location:{" "}
+                                  {t("location")}{" "}
                                 </span>
                                 <span>{company.postcode}</span>
                               </div>
@@ -272,7 +259,7 @@ export function CompanySelectionStep({
                             {company.contactEmail && (
                               <div>
                                 <span className="text-muted-foreground">
-                                  Email:{" "}
+                                  {t("email")}{" "}
                                 </span>
                                 <span>{company.contactEmail}</span>
                               </div>
@@ -280,7 +267,7 @@ export function CompanySelectionStep({
                             {company.certifications && (
                               <div className="col-span-2">
                                 <span className="text-muted-foreground">
-                                  Certifications:{" "}
+                                  {t("certifications")}{" "}
                                 </span>
                                 <span className="line-clamp-1">
                                   {company.certifications}
@@ -297,7 +284,7 @@ export function CompanySelectionStep({
                             onClick={() => viewCompanyDetails(company)}
                           >
                             <Eye className="w-4 h-4 mr-2" />
-                            View Profile
+                            {t("viewProfile")}
                           </Button>
                           {isSelected && (
                             <CheckCircle2 className="w-5 h-5 text-primary mt-1" />
@@ -319,11 +306,10 @@ export function CompanySelectionStep({
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">
-                  {selectedCompanies.length} compan
-                  {selectedCompanies.length === 1 ? "y" : "ies"} selected
+                  {t("companiesSelected", { count: selectedCompanies.length })}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Continue to review and create your project
+                  {t("continueReview")}
                 </p>
               </div>
             </div>
@@ -345,7 +331,7 @@ export function CompanySelectionStep({
             <div className="space-y-6 mt-4">
               {selectedCompanyDetail.description && (
                 <div>
-                  <h4 className="font-semibold mb-2">Description</h4>
+                  <h4 className="font-semibold mb-2">{t("descriptionLabel")}</h4>
                   <p className="text-sm text-muted-foreground">
                     {selectedCompanyDetail.description}
                   </p>
@@ -355,7 +341,7 @@ export function CompanySelectionStep({
               <div className="grid grid-cols-2 gap-4">
                 {selectedCompanyDetail.postcode && (
                   <div>
-                    <h4 className="font-semibold mb-1">Location</h4>
+                    <h4 className="font-semibold mb-1">{t("locationLabel")}</h4>
                     <p className="text-sm text-muted-foreground">
                       {selectedCompanyDetail.postcode}
                     </p>
@@ -363,7 +349,7 @@ export function CompanySelectionStep({
                 )}
                 {selectedCompanyDetail.contactEmail && (
                   <div>
-                    <h4 className="font-semibold mb-1">Email</h4>
+                    <h4 className="font-semibold mb-1">{t("emailLabel")}</h4>
                     <p className="text-sm text-muted-foreground">
                       {selectedCompanyDetail.contactEmail}
                     </p>
@@ -371,7 +357,7 @@ export function CompanySelectionStep({
                 )}
                 {selectedCompanyDetail.contactPhone && (
                   <div>
-                    <h4 className="font-semibold mb-1">Phone</h4>
+                    <h4 className="font-semibold mb-1">{t("phoneLabel")}</h4>
                     <p className="text-sm text-muted-foreground">
                       {selectedCompanyDetail.contactPhone}
                     </p>
@@ -379,7 +365,7 @@ export function CompanySelectionStep({
                 )}
                 {selectedCompanyDetail.websiteUrl && (
                   <div>
-                    <h4 className="font-semibold mb-1">Website</h4>
+                    <h4 className="font-semibold mb-1">{t("websiteLabel")}</h4>
                     <a
                       href={selectedCompanyDetail.websiteUrl}
                       target="_blank"
@@ -395,7 +381,7 @@ export function CompanySelectionStep({
 
               {selectedCompanyDetail.certifications && (
                 <div>
-                  <h4 className="font-semibold mb-2">Certifications</h4>
+                  <h4 className="font-semibold mb-2">{t("certificationsLabel")}</h4>
                   <p className="text-sm text-muted-foreground">
                     {selectedCompanyDetail.certifications}
                   </p>
@@ -404,7 +390,7 @@ export function CompanySelectionStep({
 
               {selectedCompanyDetail.keyCapabilities && (
                 <div>
-                  <h4 className="font-semibold mb-2">Key Capabilities</h4>
+                  <h4 className="font-semibold mb-2">{t("keyCapabilitiesLabel")}</h4>
                   <p className="text-sm text-muted-foreground">
                     {selectedCompanyDetail.keyCapabilities}
                   </p>
@@ -415,7 +401,7 @@ export function CompanySelectionStep({
                 selectedCompanyDetail.capabilities.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-2">
-                      Matching Capabilities
+                      {t("matchingCapabilitiesLabel")}
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedCompanyDetail.capabilities.map((cap) => (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +24,7 @@ import { toast } from "sonner";
 const STORAGE_KEY = "tender_ai_regeneration_batch_id";
 
 export function TenderAIRegeneration() {
+  const t = useTranslations("AdminTenderAIRegen");
   const [isOpen, setIsOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
@@ -70,15 +72,13 @@ export function TenderAIRegeneration() {
 
       if (!response.ok) {
         console.error("❌ Worker error:", data);
-        toast.error(
-          "Failed to start worker. Jobs are queued but not processing.",
-        );
+        toast.error(t("toasts.workerError"));
       } else {
         console.log(`✅ Worker processing: ${data.processed} jobs processed`);
       }
     } catch (error) {
       console.error("❌ Failed to trigger worker:", error);
-      toast.error("Failed to start worker. Please try again.");
+      toast.error(t("toasts.workerRetryError"));
     }
   };
 
@@ -94,12 +94,12 @@ export function TenderAIRegeneration() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to start regeneration");
+        throw new Error(data.error || t("toasts.startError"));
       }
 
       setBatchId(data.batchId);
       toast.success(
-        `Queued ${data.jobCount} AI processing jobs for ${data.tenderCount} tenders`,
+        t("toasts.queued", { jobCount: data.jobCount, tenderCount: data.tenderCount }),
       );
 
       // Manually trigger the worker to start processing
@@ -107,7 +107,7 @@ export function TenderAIRegeneration() {
     } catch (error) {
       console.error("Error regenerating tender AI:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to start regeneration",
+        error instanceof Error ? error.message : t("toasts.startError"),
       );
     } finally {
       setIsRegenerating(false);
@@ -126,10 +126,14 @@ export function TenderAIRegeneration() {
           <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
           <div className="flex-1">
             <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-              AI Regeneration in Progress
+              {t("inProgressTitle")}
             </p>
             <p className="text-xs text-blue-700 dark:text-blue-300">
-              {batch.completedJobs}/{batch.totalJobs} completed ({progress}%)
+              {t("inProgressSubtitle", {
+                completed: batch.completedJobs,
+                total: batch.totalJobs,
+                progress,
+              })}
             </p>
           </div>
           <Button
@@ -138,7 +142,7 @@ export function TenderAIRegeneration() {
             onClick={() => setIsOpen(true)}
             className="text-blue-600 hover:text-blue-700"
           >
-            View Details
+            {t("viewDetails")}
           </Button>
         </div>
       )}
@@ -147,27 +151,19 @@ export function TenderAIRegeneration() {
         <DialogTrigger asChild>
           <Button variant="outline" disabled={isRegenerating}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Regenerate All Tender AI
+            {t("openButton")}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>
-              Regenerate Tender AI Summaries & Taxonomies
-            </DialogTitle>
-            <DialogDescription>
-              This will regenerate AI summaries and capability taxonomies for
-              all tenders. This process may take several minutes.
-            </DialogDescription>
+            <DialogTitle>{t("dialogTitle")}</DialogTitle>
+            <DialogDescription>{t("dialogDescription")}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             {!batchId ? (
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Click the button below to queue AI regeneration jobs for all
-                  tenders.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("startDescription")}</p>
                 <Button
                   onClick={handleRegenerate}
                   disabled={isRegenerating}
@@ -176,12 +172,12 @@ export function TenderAIRegeneration() {
                   {isRegenerating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Queuing Jobs...
+                      {t("queuing")}
                     </>
                   ) : (
                     <>
                       <RefreshCw className="mr-2 h-4 w-4" />
-                      Start Regeneration
+                      {t("startButton")}
                     </>
                   )}
                 </Button>
@@ -190,7 +186,7 @@ export function TenderAIRegeneration() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Progress</span>
+                    <span>{t("progressLabel")}</span>
                     <span>{progress}%</span>
                   </div>
                   <Progress value={progress} />
@@ -204,7 +200,7 @@ export function TenderAIRegeneration() {
                         {batch?.completedJobs || 0}
                       </span>
                     </div>
-                    <p className="text-muted-foreground">Completed</p>
+                    <p className="text-muted-foreground">{t("completed")}</p>
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -225,18 +221,18 @@ export function TenderAIRegeneration() {
                           : 0}
                       </span>
                     </div>
-                    <p className="text-muted-foreground">Remaining</p>
+                    <p className="text-muted-foreground">{t("remaining")}</p>
                   </div>
                 </div>
 
                 {batch && (
                   <div className="text-sm">
                     <p>
-                      <span className="font-medium">Total:</span>{" "}
-                      {batch.totalJobs} tenders
+                      <span className="font-medium">{t("totalLabel")}</span>{" "}
+                      {t("totalValue", { count: batch.totalJobs })}
                     </p>
                     <p>
-                      <span className="font-medium">Failed:</span>{" "}
+                      <span className="font-medium">{t("failedLabel")}</span>{" "}
                       {batch.failedJobs}
                     </p>
                   </div>
@@ -250,7 +246,7 @@ export function TenderAIRegeneration() {
                     disabled={isLoading}
                   >
                     <RefreshCw className="mr-2 h-4 w-4" />
-                    Start Processing Jobs
+                    {t("startProcessingButton")}
                   </Button>
                 )}
 
@@ -269,8 +265,8 @@ export function TenderAIRegeneration() {
                           className={`font-medium ${batch.status === "completed" ? "text-green-900 dark:text-green-100" : "text-red-900 dark:text-red-100"}`}
                         >
                           {batch.status === "completed"
-                            ? "Regeneration Complete!"
-                            : "Regeneration Failed"}
+                            ? t("completedMessage")
+                            : t("failedMessage")}
                         </span>
                       </div>
                     </div>
@@ -281,16 +277,13 @@ export function TenderAIRegeneration() {
                       }}
                       className="w-full"
                     >
-                      Close
+                      {t("closeButton")}
                     </Button>
                   </div>
                 )}
 
                 {!isComplete && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    You can close this dialog - processing will continue in the
-                    background. Check back here to see progress.
-                  </p>
+                  <p className="text-xs text-muted-foreground text-center">{t("backgroundHint")}</p>
                 )}
               </div>
             )}

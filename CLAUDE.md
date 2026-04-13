@@ -238,6 +238,42 @@ Schema is defined in Drizzle format under `lib/db/schema/`. Tables use snake_cas
 - **profiles** — User profiles with roles
 - **performanceBenchmarks** — Company performance data
 
+### Internationalization (i18n)
+
+The app uses **`next-intl`** for all user-facing strings. Configuration lives in `i18n/request.ts` and translations in `messages/en.json`.
+
+- **Only English is supported right now.** `locales = ["en"]` in `i18n/request.ts`. Do not add other locale files or wire up additional locales unless explicitly asked.
+- **Any new feature must use `next-intl` for user-facing strings** — no hardcoded UI text. Add the key to `messages/en.json` and read it via `useTranslations("Namespace")` in client components or `getTranslations("Namespace")` in server components.
+- **Namespacing**: group keys by component or feature name, matching the existing style in `en.json` (e.g. `Header`, `HeroSection`, `Onboarding`, `Auth`).
+- **Migration status** — only these areas have been migrated so far:
+  - Landing page (`app/page.tsx`, `components/layout/HeroSection.tsx`, `components/layout/Header.tsx`)
+  - Auth pages (`app/auth/**`)
+  - Onboarding flow (`app/(protected)/onboarding/**`, `components/onboarding/**`)
+
+  Other screens still contain hardcoded strings. When editing an unmigrated screen you don't need to migrate the whole file, but **any new strings you add must go through `next-intl` and `messages/en.json`**.
+
+**Example (client component)**:
+
+```tsx
+"use client";
+import { useTranslations } from "next-intl";
+
+export function SaveButton() {
+  const t = useTranslations("TenderActions");
+  return <button>{t("save")}</button>;
+}
+```
+
+And in `messages/en.json`:
+
+```json
+{
+  "TenderActions": {
+    "save": "Save tender"
+  }
+}
+```
+
 ### Services & Job Queue
 
 - `lib/services/queueService.ts` — enqueue/dequeue jobs from the `processingQueue` table

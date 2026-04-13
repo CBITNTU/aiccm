@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ export function PendingApprovalStep({
 }: PendingApprovalStepProps) {
   const router = useRouter();
   const { refreshProfile } = useAuth();
+  const t = useTranslations("Onboarding.pendingApproval");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleComplete = async () => {
@@ -48,36 +50,36 @@ export function PendingApprovalStep({
 
   // Determine the message based on signup type
   const getMessage = () => {
+    const cn = companyName ?? "";
     switch (signupType) {
       case "new-company":
         return {
-          title: "Company Registration Complete!",
-          description: `Your company "${companyName}" has been registered and is pending approval.`,
+          title: t("newCompany.title"),
+          description: t("newCompany.description", { companyName: cn }),
           steps: [
-            "Our team will review your company information",
-            "You'll receive an email once your account is approved",
-            "After approval, you can complete your company profile and start exploring tenders",
+            t("newCompany.step1"),
+            t("newCompany.step2"),
+            t("newCompany.step3"),
           ],
         };
       case "join-company":
         return {
-          title: "Join Request Submitted!",
-          description: `Your request to join "${companyName}" has been sent to the company administrator.`,
+          title: t("joinCompany.title"),
+          description: t("joinCompany.description", { companyName: cn }),
           steps: [
-            "The company administrator will review your request",
-            "Our platform team will also verify your account",
-            "You'll receive an email once both approvals are complete",
+            t("joinCompany.step1"),
+            t("joinCompany.step2"),
+            t("joinCompany.step3"),
           ],
         };
       default:
         return {
-          title: "Profile Complete!",
-          description:
-            "Your individual account has been set up and is pending approval.",
+          title: t("individual.title"),
+          description: t("individual.description"),
           steps: [
-            "Our team will review your account",
-            "You'll receive an email once your account is approved",
-            "After approval, you can explore tenders and join companies",
+            t("individual.step1"),
+            t("individual.step2"),
+            t("individual.step3"),
           ],
         };
     }
@@ -97,7 +99,9 @@ export function PendingApprovalStep({
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
-            <h3 className="font-medium text-foreground">What happens next?</h3>
+            <h3 className="font-medium text-foreground">
+              {t("shared.whatHappensNext")}
+            </h3>
             <ul className="space-y-3">
               {content.steps.map((step, index) => (
                 <li key={index} className="flex items-start gap-3">
@@ -117,11 +121,10 @@ export function PendingApprovalStep({
               <Mail className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Keep an eye on your inbox
+                  {t("shared.keepEyeOnInbox")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  We&apos;ll send you an email as soon as your account is
-                  approved. This usually takes 1-2 business days.
+                  {t("shared.emailHint")}
                 </p>
               </div>
             </div>
@@ -136,12 +139,12 @@ export function PendingApprovalStep({
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Please wait...
+                  {t("shared.pleaseWait")}
                 </>
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  Continue
+                  {t("shared.continue")}
                 </>
               )}
             </Button>

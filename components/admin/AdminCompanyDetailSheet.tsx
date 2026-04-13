@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { JsonValue } from "@/lib/api/types";
 import { api } from "@/lib/api/client";
@@ -56,14 +57,15 @@ export function AdminCompanyDetailSheet({
   onClose,
   onCompanyUpdated,
 }: AdminCompanyDetailSheetProps) {
+  const t = useTranslations("AdminCompanyDetail");
   return (
     <Sheet open={!!company} onOpenChange={() => onClose()}>
       <SheetContent
         side="right"
         className="w-[95vw] sm:max-w-[900px] p-0 flex flex-col [&>button]:hidden"
       >
-        <SheetTitle className="sr-only">Company Details</SheetTitle>
-        <SheetDescription className="sr-only">View company details and manage settings</SheetDescription>
+        <SheetTitle className="sr-only">{t("srTitle")}</SheetTitle>
+        <SheetDescription className="sr-only">{t("srDescription")}</SheetDescription>
         {company && (
           <SheetInner
             company={company}
@@ -85,6 +87,7 @@ function SheetInner({
   onClose: () => void;
   onCompanyUpdated: () => void;
 }) {
+  const t = useTranslations("AdminCompanyDetail");
   const isVerified = company.verificationStatus === "verified";
 
   return (
@@ -103,11 +106,11 @@ function SheetInner({
               {isVerified ? (
                 <Badge variant="default" className="text-xs gap-1">
                   <ShieldCheck className="h-3 w-3" />
-                  Verified
+                  {t("verified")}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-xs">
-                  Unverified
+                  {t("unverified")}
                 </Badge>
               )}
               {company.postcode && <span>{company.postcode}</span>}
@@ -123,10 +126,10 @@ function SheetInner({
       <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
         <div className="px-6 border-b shrink-0">
           <TabsList className="h-10">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
-            <TabsTrigger value="ai">AI Analysis</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="overview">{t("tabs.overview")}</TabsTrigger>
+            <TabsTrigger value="capabilities">{t("tabs.capabilities")}</TabsTrigger>
+            <TabsTrigger value="ai">{t("tabs.ai")}</TabsTrigger>
+            <TabsTrigger value="settings">{t("tabs.settings")}</TabsTrigger>
           </TabsList>
         </div>
 
@@ -172,6 +175,7 @@ function DataField({
   href?: string;
   icon?: React.ComponentType<{ className?: string }>;
 }) {
+  const t = useTranslations("AdminCompanyDetail");
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -193,7 +197,7 @@ function DataField({
           <p className="text-sm">{value}</p>
         )
       ) : (
-        <p className="text-sm text-muted-foreground italic">Not provided</p>
+        <p className="text-sm text-muted-foreground italic">{t("notProvided")}</p>
       )}
     </div>
   );
@@ -226,13 +230,14 @@ function SectionCard({
 // =============================================================================
 
 function OverviewTab({ company }: { company: CompanyRecord }) {
+  const t = useTranslations("AdminCompanyDetail");
   return (
     <div className="space-y-6">
-      <SectionCard title="Business Information" icon={Building2}>
+      <SectionCard title={t("sections.businessInformation")} icon={Building2}>
         <div className="grid grid-cols-2 gap-4">
-          <DataField label="Company Name" value={company.companyName} />
+          <DataField label={t("fields.companyName")} value={company.companyName} />
           <DataField
-            label="Companies House Number"
+            label={t("fields.companiesHouse")}
             value={company.companiesHouseNumber}
             href={
               company.companiesHouseNumber
@@ -241,30 +246,30 @@ function OverviewTab({ company }: { company: CompanyRecord }) {
             }
           />
           <div className="col-span-2">
-            <DataField label="Description" value={company.description ?? null} />
+            <DataField label={t("fields.description")} value={company.description ?? null} />
           </div>
-          <DataField label="Address" value={company.address ?? null} icon={MapPin} />
-          <DataField label="Postcode" value={company.postcode ?? null} />
+          <DataField label={t("fields.address")} value={company.address ?? null} icon={MapPin} />
+          <DataField label={t("fields.postcode")} value={company.postcode ?? null} />
         </div>
       </SectionCard>
 
-      <SectionCard title="Contact Information" icon={User}>
+      <SectionCard title={t("sections.contactInformation")} icon={User}>
         <div className="grid grid-cols-2 gap-4">
-          <DataField label="Contact Person" value={company.contactPerson} />
+          <DataField label={t("fields.contactPerson")} value={company.contactPerson} />
           <DataField
-            label="Email"
+            label={t("fields.email")}
             value={company.contactEmail}
             href={company.contactEmail ? `mailto:${company.contactEmail}` : undefined}
             icon={Mail}
           />
           <DataField
-            label="Phone"
+            label={t("fields.phone")}
             value={company.contactPhone}
             href={company.contactPhone ? `tel:${company.contactPhone}` : undefined}
             icon={Phone}
           />
           <DataField
-            label="Website"
+            label={t("fields.website")}
             value={company.websiteUrl}
             href={company.websiteUrl ?? undefined}
             icon={Globe}
@@ -272,19 +277,19 @@ function OverviewTab({ company }: { company: CompanyRecord }) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Status" icon={Clock}>
+      <SectionCard title={t("sections.status")} icon={Clock}>
         <div className="grid grid-cols-2 gap-4">
-          <DataField label="Verification Status" value={company.verificationStatus ?? "Unverified"} />
+          <DataField label={t("fields.verificationStatus")} value={company.verificationStatus ?? t("unverified")} />
           <DataField
-            label="Verified At"
+            label={t("fields.verifiedAt")}
             value={company.verifiedAt ? new Date(company.verifiedAt).toLocaleDateString() : null}
           />
           <DataField
-            label="Created"
+            label={t("fields.created")}
             value={new Date(company.createdAt).toLocaleDateString()}
           />
           <DataField
-            label="Updated"
+            label={t("fields.updated")}
             value={new Date(company.updatedAt).toLocaleDateString()}
           />
         </div>
@@ -294,9 +299,10 @@ function OverviewTab({ company }: { company: CompanyRecord }) {
 }
 
 function CapabilitiesTab({ company }: { company: CompanyRecord }) {
+  const t = useTranslations("AdminCompanyDetail");
   return (
     <div className="space-y-6">
-      <SectionCard title="Key Capabilities">
+      <SectionCard title={t("sections.keyCapabilities")}>
         {company.keyCapabilities ? (
           <div className="flex flex-wrap gap-1.5">
             {company.keyCapabilities.split(",").map((cap, i) => (
@@ -306,32 +312,32 @@ function CapabilitiesTab({ company }: { company: CompanyRecord }) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No capabilities listed</p>
+          <p className="text-sm text-muted-foreground italic">{t("empty.capabilities")}</p>
         )}
       </SectionCard>
 
-      <SectionCard title="Certifications">
+      <SectionCard title={t("sections.certifications")}>
         {company.certifications ? (
           <p className="text-sm">{company.certifications}</p>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No certifications listed</p>
+          <p className="text-sm text-muted-foreground italic">{t("empty.certifications")}</p>
         )}
       </SectionCard>
 
-      <SectionCard title="Equipment">
+      <SectionCard title={t("sections.equipment")}>
         {company.equipment ? (
           <p className="text-sm">{company.equipment}</p>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No equipment listed</p>
+          <p className="text-sm text-muted-foreground italic">{t("empty.equipment")}</p>
         )}
       </SectionCard>
 
-      <SectionCard title="Past Projects">
+      <SectionCard title={t("sections.pastProjects")}>
         <PastProjectsDisplay value={company.pastProjects} />
       </SectionCard>
 
       {company.aiCompetencies && (
-        <SectionCard title="AI-Suggested Competencies">
+        <SectionCard title={t("sections.aiSuggestedCompetencies")}>
           <div className="flex flex-wrap gap-1.5">
             {(company.aiCompetencies as string[]).map((comp, i) => (
               <Badge key={i} variant="secondary" className="text-xs">
@@ -346,39 +352,40 @@ function CapabilitiesTab({ company }: { company: CompanyRecord }) {
 }
 
 function AIAnalysisTab({ company }: { company: CompanyRecord }) {
+  const t = useTranslations("AdminCompanyDetail");
   const aiAnalysis = company.aiAnalysis as Record<string, JsonValue> | null | undefined;
 
   return (
     <div className="space-y-6">
-      <SectionCard title="AI Summary">
+      <SectionCard title={t("sections.aiSummary")}>
         {company.aiSummary ? (
           <p className="text-sm">{company.aiSummary}</p>
         ) : (
           <p className="text-sm text-muted-foreground italic">
-            No AI analysis has been generated yet
+            {t("empty.aiSummary")}
           </p>
         )}
       </SectionCard>
 
-      <SectionCard title="Assessment Ratings">
+      <SectionCard title={t("sections.assessmentRatings")}>
         <div className="grid grid-cols-3 gap-4">
-          <RatingField label="Digital Maturity" value={company.digitalMaturity} />
-          <RatingField label="Safety Rating" value={company.safetyRating} />
-          <RatingField label="Market Position" value={company.marketPosition} />
+          <RatingField label={t("fields.digitalMaturity")} value={company.digitalMaturity} />
+          <RatingField label={t("fields.safetyRating")} value={company.safetyRating} />
+          <RatingField label={t("fields.marketPosition")} value={company.marketPosition} />
         </div>
       </SectionCard>
 
       <div className="grid grid-cols-2 gap-6">
-        <SectionCard title="AI Capabilities">
+        <SectionCard title={t("sections.aiCapabilities")}>
           <JsonBadgeList data={company.aiCapabilities} />
         </SectionCard>
-        <SectionCard title="AI Strengths">
+        <SectionCard title={t("sections.aiStrengths")}>
           <JsonBadgeList data={company.aiStrengths} />
         </SectionCard>
       </div>
 
       {aiAnalysis?.performanceBenchmark && (
-        <SectionCard title="Performance Benchmark">
+        <SectionCard title={t("sections.performanceBenchmark")}>
           <div className="grid grid-cols-2 gap-3">
             {Object.entries(
               aiAnalysis.performanceBenchmark as Record<string, number>,
@@ -387,7 +394,7 @@ function AIAnalysisTab({ company }: { company: CompanyRecord }) {
                 <span className="text-xs capitalize">
                   {key.replace(/([A-Z])/g, " $1").trim()}
                 </span>
-                <span className="text-sm font-bold">{score}/100</span>
+                <span className="text-sm font-bold">{t("scoreOutOf", { score })}</span>
               </div>
             ))}
           </div>
@@ -395,7 +402,7 @@ function AIAnalysisTab({ company }: { company: CompanyRecord }) {
       )}
 
       {aiAnalysis?.executiveSummary && (
-        <SectionCard title="Executive Summary">
+        <SectionCard title={t("sections.executiveSummary")}>
           <p className="text-sm">{String(aiAnalysis.executiveSummary)}</p>
         </SectionCard>
       )}
@@ -410,6 +417,7 @@ function SettingsTab({
   company: CompanyRecord;
   onCompanyUpdated: () => void;
 }) {
+  const t = useTranslations("AdminCompanyDetail");
   const [matchingLimit, setMatchingLimit] = useState(
     company.matchingRunsLimit != null ? String(company.matchingRunsLimit) : "",
   );
@@ -441,11 +449,11 @@ function SettingsTab({
       const analysisVal = analysisLimit.trim() === "" ? null : parseInt(analysisLimit, 10);
 
       if (matchingLimit.trim() !== "" && (isNaN(matchingVal!) || matchingVal! < 0)) {
-        toast.error("Matching limit must be a non-negative number or blank for default.");
+        toast.error(t("toasts.matchingLimitInvalid"));
         return;
       }
       if (analysisLimit.trim() !== "" && (isNaN(analysisVal!) || analysisVal! < 0)) {
-        toast.error("Analysis limit must be a non-negative number or blank for default.");
+        toast.error(t("toasts.analysisLimitInvalid"));
         return;
       }
 
@@ -455,10 +463,10 @@ function SettingsTab({
       });
 
       onCompanyUpdated();
-      toast.success(`Usage limits updated for ${company.companyName}`);
+      toast.success(t("toasts.updateSuccess", { name: company.companyName }));
     } catch (error) {
       console.error("Error updating limits:", error);
-      toast.error("Failed to update usage limits");
+      toast.error(t("toasts.updateFailed"));
     } finally {
       setSaving(false);
     }
@@ -466,9 +474,9 @@ function SettingsTab({
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Per-Company Usage Overrides" icon={Zap}>
+      <SectionCard title={t("sections.usageOverrides")} icon={Zap}>
         <p className="text-xs text-muted-foreground mb-4">
-          Set custom limits for this company. Leave blank to use the platform defaults.
+          {t("usage.description")}
         </p>
 
         <div className="space-y-4">
@@ -477,13 +485,13 @@ function SettingsTab({
             <div className="flex-1">
               <Label htmlFor="matching-limit" className="text-sm font-medium flex items-center gap-1.5">
                 <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-                Tender Matching Runs / Month
+                {t("usage.matchingLabel")}
               </Label>
               {matchingUsage && (
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Currently used: {matchingUsage.used}/{matchingUsage.limit} this month
+                  {t("usage.currentlyUsed", { used: matchingUsage.used, limit: matchingUsage.limit })}
                   {matchingUsage.resetsAt && (
-                    <> &middot; Resets {new Date(matchingUsage.resetsAt).toLocaleDateString()}</>
+                    <> &middot; {t("usage.resets", { date: new Date(matchingUsage.resetsAt).toLocaleDateString() })}</>
                   )}
                 </p>
               )}
@@ -492,7 +500,7 @@ function SettingsTab({
               id="matching-limit"
               type="number"
               min={0}
-              placeholder="Default"
+              placeholder={t("usage.defaultPlaceholder")}
               value={matchingLimit}
               onChange={(e) => setMatchingLimit(e.target.value)}
               className="h-9 w-24 text-sm"
@@ -504,13 +512,13 @@ function SettingsTab({
             <div className="flex-1">
               <Label htmlFor="analysis-limit" className="text-sm font-medium flex items-center gap-1.5">
                 <Brain className="h-3.5 w-3.5 text-muted-foreground" />
-                AI Analysis Runs / Month
+                {t("usage.analysisLabel")}
               </Label>
               {analysisUsage && (
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Currently used: {analysisUsage.used}/{analysisUsage.limit} this month
+                  {t("usage.currentlyUsed", { used: analysisUsage.used, limit: analysisUsage.limit })}
                   {analysisUsage.resetsAt && (
-                    <> &middot; Resets {new Date(analysisUsage.resetsAt).toLocaleDateString()}</>
+                    <> &middot; {t("usage.resets", { date: new Date(analysisUsage.resetsAt).toLocaleDateString() })}</>
                   )}
                 </p>
               )}
@@ -519,7 +527,7 @@ function SettingsTab({
               id="analysis-limit"
               type="number"
               min={0}
-              placeholder="Default"
+              placeholder={t("usage.defaultPlaceholder")}
               value={analysisLimit}
               onChange={(e) => setAnalysisLimit(e.target.value)}
               className="h-9 w-24 text-sm"
@@ -535,7 +543,7 @@ function SettingsTab({
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Save Overrides
+          {t("usage.saveButton")}
         </Button>
       </SectionCard>
     </div>
@@ -547,21 +555,23 @@ function SettingsTab({
 // =============================================================================
 
 function RatingField({ label, value }: { label: string; value?: string | null }) {
+  const t = useTranslations("AdminCompanyDetail");
   return (
     <div className="space-y-1">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <p className="text-sm font-medium">{value || "Not assessed"}</p>
+      <p className="text-sm font-medium">{value || t("notAssessed")}</p>
     </div>
   );
 }
 
 function JsonBadgeList({ data }: { data?: JsonValue }) {
+  const t = useTranslations("AdminCompanyDetail");
   if (!data) {
-    return <p className="text-sm text-muted-foreground italic">None</p>;
+    return <p className="text-sm text-muted-foreground italic">{t("none")}</p>;
   }
   const items = Array.isArray(data) ? data : [];
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground italic">None</p>;
+    return <p className="text-sm text-muted-foreground italic">{t("none")}</p>;
   }
   return (
     <div className="flex flex-wrap gap-1.5">

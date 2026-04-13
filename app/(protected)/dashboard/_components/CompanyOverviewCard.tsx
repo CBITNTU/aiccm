@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import type { Company } from "./types";
 
 export function CompanyOverviewCard({ company }: { company: Company }) {
+  const t = useTranslations("Dashboard");
   const router = useRouter();
 
   return (
@@ -23,16 +25,16 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Building2 className="h-5 w-5" />
-          Company Overview
+          {t("companyOverview.title")}
         </CardTitle>
         <CardDescription>
-          Key information and business insights
+          {t("companyOverview.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-            <span className="text-sm font-medium">Company Name</span>
+            <span className="text-sm font-medium">{t("companyOverview.companyName")}</span>
             <span className="text-sm">
               {company.companyName}
             </span>
@@ -47,7 +49,7 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
                 <Separator className="my-2" />
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold">
-                    Financial Information
+                    {t("companyOverview.financialInformation")}
                   </h4>
                   {Object.entries(
                     company.financialData as Record<
@@ -67,7 +69,7 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
                         <span className="text-sm font-semibold">
                           {typeof field.value === "number"
                             ? `£${field.value.toLocaleString()}`
-                            : field.value || "N/A"}
+                            : field.value || t("companyOverview.notAvailable")}
                         </span>
                       </div>
                     ))}
@@ -76,7 +78,7 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
             )}
 
           <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-            <span className="text-sm font-medium">Status</span>
+            <span className="text-sm font-medium">{t("companyOverview.status")}</span>
             <Badge
               className={
                 company.status === "active"
@@ -87,21 +89,21 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
               {company.status
                 ? company.status.charAt(0).toUpperCase() +
                   company.status.slice(1)
-                : "Active"}
+                : t("companyOverview.statusActive")}
             </Badge>
           </div>
 
           <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-            <span className="text-sm font-medium">Verification</span>
+            <span className="text-sm font-medium">{t("companyOverview.verification")}</span>
             {company.verificationStatus === "verified" ? (
               <VerifiedBadge />
             ) : company.verificationStatus === "pending_verification" ? (
               <Badge className="gap-1 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">
-                Pending
+                {t("companyOverview.verificationPending")}
               </Badge>
             ) : (
               <Badge className="gap-1 bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100">
-                Not Verified
+                {t("companyOverview.verificationNot")}
               </Badge>
             )}
           </div>
@@ -112,14 +114,14 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
               className="flex-1"
               onClick={() => router.push("/profile")}
             >
-              View Profile
+              {t("companyOverview.viewProfile")}
             </Button>
             <Button
               variant="outline"
               className="flex-1"
               onClick={() => router.push("/directory")}
             >
-              Browse Directory
+              {t("companyOverview.browseDirectory")}
             </Button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -16,6 +17,7 @@ import { useAdminTenderSyncOptional } from "@/components/admin/AdminTenderSyncCo
 type TenderSource = "find-tender" | "ted";
 
 export function AdminTenderImport() {
+  const t = useTranslations("AdminTenders.import");
   const { isSyncInProgress } = useAdminTenderSyncOptional();
   const [source, setSource] = useState<TenderSource>("find-tender");
   const [isImporting, setIsImporting] = useState(false);
@@ -76,7 +78,7 @@ export function AdminTenderImport() {
           if (isRateLimit) {
             if (attempt >= maxRetries) {
               throw new Error(
-                `Rate limited. Tried ${maxRetries} times. Please try again later.`,
+                t("toasts.rateLimitedRetries", { max: maxRetries }),
               );
             }
 
@@ -87,7 +89,11 @@ export function AdminTenderImport() {
             );
 
             toast.warning(
-              `Rate limited. Waiting ${waitTime / 1000}s before retry ${attempt + 1}/${maxRetries}...`,
+              t("toasts.rateLimitedWaiting", {
+                seconds: waitTime / 1000,
+                attempt: attempt + 1,
+                max: maxRetries,
+              }),
             );
 
             await new Promise((resolve) => setTimeout(resolve, waitTime));
@@ -110,7 +116,7 @@ export function AdminTenderImport() {
         const data = await fetchWithRetry(cursor);
 
         if (!data.isAdmin) {
-          throw new Error("Superadmin access required to import tenders");
+          throw new Error(t("toasts.adminRequired"));
         }
 
         // When adminImport is true, the API saves to DB and returns actual counts
@@ -160,13 +166,16 @@ export function AdminTenderImport() {
       setProgress(100);
 
       toast.success(
-        `Import completed! ${totalImported} tenders imported from Find a Tender. ${totalDuplicates} duplicates skipped.`,
+        t("toasts.findTenderSuccess", {
+          imported: totalImported,
+          skipped: totalDuplicates,
+        }),
       );
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      const errorMessage = err instanceof Error ? err.message : t("toasts.unknownError");
       console.error("Import error:", err);
       setError(errorMessage);
-      toast.error("Import failed: " + errorMessage);
+      toast.error(t("toasts.importFailed", { message: errorMessage }));
     } finally {
       setIsImporting(false);
     }
@@ -231,7 +240,7 @@ export function AdminTenderImport() {
           if (isRateLimit) {
             if (attempt >= maxRetries) {
               throw new Error(
-                `Rate limited. Tried ${maxRetries} times. Please try again later.`,
+                t("toasts.rateLimitedRetries", { max: maxRetries }),
               );
             }
 
@@ -242,7 +251,11 @@ export function AdminTenderImport() {
             );
 
             toast.warning(
-              `Rate limited. Waiting ${waitTime / 1000}s before retry ${attempt + 1}/${maxRetries}...`,
+              t("toasts.rateLimitedWaiting", {
+                seconds: waitTime / 1000,
+                attempt: attempt + 1,
+                max: maxRetries,
+              }),
             );
 
             await new Promise((resolve) => setTimeout(resolve, waitTime));
@@ -260,7 +273,7 @@ export function AdminTenderImport() {
         const data = await fetchWithRetry(currentPage, nextToken);
 
         if (!data.isAdmin) {
-          throw new Error("Superadmin access required to import tenders");
+          throw new Error(t("toasts.adminRequired"));
         }
 
         if (batchCount === 0 && (data.totalFetched || 0) === 0 && (data as { message?: string }).message) {
@@ -312,13 +325,16 @@ export function AdminTenderImport() {
       setProgress(100);
 
       toast.success(
-        `Import completed! ${totalImported} tenders imported from TED. ${totalDuplicates} duplicates skipped.`,
+        t("toasts.tedSuccess", {
+          imported: totalImported,
+          skipped: totalDuplicates,
+        }),
       );
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      const errorMessage = err instanceof Error ? err.message : t("toasts.unknownError");
       console.error("TED Import error:", err);
       setError(errorMessage);
-      toast.error("TED Import failed: " + errorMessage);
+      toast.error(t("toasts.tedImportFailed", { message: errorMessage }));
     } finally {
       setIsImporting(false);
     }
@@ -327,7 +343,7 @@ export function AdminTenderImport() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Import Tenders</CardTitle>
+        <CardTitle>{t("cardTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Tabs
@@ -340,27 +356,25 @@ export function AdminTenderImport() {
               className="flex items-center gap-2"
             >
               <Globe className="w-4 h-4" />
-              Find a Tender
+              {t("tabs.findTender")}
             </TabsTrigger>
             <TabsTrigger value="ted" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
-              TED (EU)
+              {t("tabs.ted")}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="find-tender" className="space-y-4 mt-4">
             <div>
               <p className="text-sm text-muted-foreground mb-4">
-                Import tenders from the UK government&apos;s Find a Tender
-                service. This will fetch active tenders and save them to the
-                database.
+                {t("findTenderDescription")}
               </p>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <Label htmlFor="dateFrom" className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    From Date
+                    {t("fromDateLabel")}
                   </Label>
                   <Input
                     id="dateFrom"
@@ -373,7 +387,7 @@ export function AdminTenderImport() {
                 <div>
                   <Label htmlFor="dateTo" className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    To Date
+                    {t("toDateLabel")}
                   </Label>
                   <Input
                     id="dateTo"
@@ -387,7 +401,7 @@ export function AdminTenderImport() {
 
               {isSyncInProgress && (
                 <p className="text-sm text-muted-foreground mb-2">
-                  Import is disabled while the weekly tender sync is running.
+                  {t("syncRunningNote")}
                 </p>
               )}
               {!isImporting && (
@@ -396,7 +410,7 @@ export function AdminTenderImport() {
                   className="w-full"
                   disabled={isSyncInProgress}
                 >
-                  Import from Find a Tender
+                  {t("findTenderButton")}
                 </Button>
               )}
             </div>
@@ -405,16 +419,14 @@ export function AdminTenderImport() {
           <TabsContent value="ted" className="space-y-4 mt-4">
             <div>
               <p className="text-sm text-muted-foreground mb-4">
-                Import tenders from TED (Tenders Electronic Daily) - the
-                EU&apos;s official journal for public procurement. Requires API
-                key from{" "}
+                {t("tedDescription")}
                 <a
                   href="https://docs.ted.europa.eu/api/latest/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary underline"
                 >
-                  TED Developer Portal
+                  {t("tedDeveloperPortal")}
                 </a>
                 .
               </p>
@@ -422,16 +434,17 @@ export function AdminTenderImport() {
               <Alert className="mb-4">
                 <AlertDescription>
                   <p className="text-sm">
-                    <strong>Note:</strong> TED API requires an API key. Set{" "}
-                    <code className="bg-muted px-1 rounded">TED_API_KEY</code>{" "}
-                    in your environment variables. Get your API key from the{" "}
+                    <strong>{t("tedNotePrefix")}</strong>
+                    {t("tedNote")}
+                    <code className="bg-muted px-1 rounded">{t("tedNoteEnvVar")}</code>
+                    {t("tedNoteSuffix")}
                     <a
                       href="https://docs.ted.europa.eu/api/latest/"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary underline"
                     >
-                      TED Developer Portal
+                      {t("tedDeveloperPortal")}
                     </a>
                     .
                   </p>
@@ -445,7 +458,7 @@ export function AdminTenderImport() {
                     className="flex items-center gap-2"
                   >
                     <Calendar className="w-4 h-4" />
-                    From Date
+                    {t("fromDateLabel")}
                   </Label>
                   <Input
                     id="tedDateFrom"
@@ -461,7 +474,7 @@ export function AdminTenderImport() {
                     className="flex items-center gap-2"
                   >
                     <Calendar className="w-4 h-4" />
-                    To Date
+                    {t("toDateLabel")}
                   </Label>
                   <Input
                     id="tedDateTo"
@@ -479,7 +492,7 @@ export function AdminTenderImport() {
                   className="w-full"
                   disabled={isSyncInProgress}
                 >
-                  Import from TED
+                  {t("tedButton")}
                 </Button>
               )}
             </div>
@@ -491,10 +504,17 @@ export function AdminTenderImport() {
           <div className="space-y-2">
             <Progress value={progress} className="w-full" />
             <p className="text-sm text-center">
-              Importing from{" "}
-              {source === "find-tender" ? "Find a Tender" : "TED"}...{" "}
-              {Math.round(progress)}% complete ({importedCount} imported,{" "}
-              {duplicatesSkipped} skipped)
+              {source === "find-tender"
+                ? t("importingFindTender", {
+                    progress: Math.round(progress),
+                    imported: importedCount,
+                    skipped: duplicatesSkipped,
+                  })
+                : t("importingTed", {
+                    progress: Math.round(progress),
+                    imported: importedCount,
+                    skipped: duplicatesSkipped,
+                  })}
             </p>
           </div>
         )}
@@ -503,13 +523,13 @@ export function AdminTenderImport() {
           <Alert>
             <AlertDescription>
               <div className="space-y-1">
-                <p className="font-medium">Import Summary:</p>
-                <p className="text-sm">Total fetched: {totalFetched}</p>
+                <p className="font-medium">{t("summaryTitle")}</p>
+                <p className="text-sm">{t("summaryTotal", { count: totalFetched })}</p>
                 <p className="text-sm">
-                  Successfully imported: {importedCount}
+                  {t("summaryImported", { count: importedCount })}
                 </p>
                 <p className="text-sm">
-                  Duplicates skipped: {duplicatesSkipped}
+                  {t("summarySkipped", { count: duplicatesSkipped })}
                 </p>
               </div>
             </AlertDescription>
@@ -527,7 +547,7 @@ export function AdminTenderImport() {
         {error && (
           <Alert variant="destructive">
             <AlertDescription>
-              <p className="font-medium">Import Error:</p>
+              <p className="font-medium">{t("errorTitle")}</p>
               <p className="text-sm">{error}</p>
             </AlertDescription>
           </Alert>

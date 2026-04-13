@@ -32,24 +32,7 @@ import {
   TrendingDown,
   ArrowUpDown,
 } from "lucide-react";
-
-const DATABASE_SORT_OPTIONS = [
-  { value: "deadline:desc", label: "Deadline (newest first)" },
-  { value: "deadline:asc", label: "Deadline (oldest first)" },
-  { value: "publication_date:desc", label: "Published (newest first)" },
-  { value: "publication_date:asc", label: "Published (oldest first)" },
-  { value: "budget_max:desc", label: "Budget (highest first)" },
-  { value: "budget_min:asc", label: "Budget (lowest first)" },
-  { value: "title:asc", label: "Title (A-Z)" },
-] as const;
-
-// Tender source filter values (match documents URL)
-const TENDER_SOURCE_OPTIONS = [
-  { value: "all", label: "All Sources" },
-  { value: "ted", label: "TED (EU)" },
-  { value: "find-tender", label: "Find a Tender (UK)" },
-  { value: "contracts-finder", label: "Contracts Finder (UK)" },
-] as const;
+import { useTranslations } from "next-intl";
 
 // Database filters interface
 interface TenderFiltersState {
@@ -102,7 +85,25 @@ export function TenderSearchBar({
   onReset,
   placeholder = "Search tenders...",
 }: TenderSearchBarProps) {
+  const t = useTranslations("TenderSearchBar");
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const DATABASE_SORT_OPTIONS = [
+    { value: "deadline:desc", label: t("sortDeadlineNewest") },
+    { value: "deadline:asc", label: t("sortDeadlineOldest") },
+    { value: "publication_date:desc", label: t("sortPublishedNewest") },
+    { value: "publication_date:asc", label: t("sortPublishedOldest") },
+    { value: "budget_max:desc", label: t("sortBudgetHighest") },
+    { value: "budget_min:asc", label: t("sortBudgetLowest") },
+    { value: "title:asc", label: t("sortTitleAZ") },
+  ] as const;
+
+  const SOURCE_LABELS: Record<string, string> = {
+    all: t("allSources"),
+    ted: t("sourceTed"),
+    "find-tender": t("sourceFindATender"),
+    "contracts-finder": t("sourceContractsFinder"),
+  };
 
   // Get keyword based on filter type
   const keyword =
@@ -168,45 +169,44 @@ export function TenderSearchBar({
       if (databaseFilters.location)
         pills.push({
           key: "location",
-          label: "Location",
+          label: t("pillLocation"),
           value: databaseFilters.location,
         });
       if (databaseFilters.status)
         pills.push({
           key: "status",
-          label: "Status",
+          label: t("pillStatus"),
           value: databaseFilters.status,
         });
       if (databaseFilters.source) {
-        const opt = TENDER_SOURCE_OPTIONS.find((o) => o.value === databaseFilters.source);
         pills.push({
           key: "source",
-          label: "Source",
-          value: opt?.label || databaseFilters.source,
+          label: t("pillSource"),
+          value: SOURCE_LABELS[databaseFilters.source] || databaseFilters.source,
         });
       }
       if (databaseFilters.budgetMin)
         pills.push({
           key: "budgetMin",
-          label: "Min Budget",
+          label: t("pillMinBudget"),
           value: `£${databaseFilters.budgetMin.toLocaleString()}`,
         });
       if (databaseFilters.budgetMax)
         pills.push({
           key: "budgetMax",
-          label: "Max Budget",
+          label: t("pillMaxBudget"),
           value: `£${databaseFilters.budgetMax.toLocaleString()}`,
         });
       if (databaseFilters.dateFrom)
         pills.push({
           key: "dateFrom",
-          label: "From",
+          label: t("pillFrom"),
           value: databaseFilters.dateFrom,
         });
       if (databaseFilters.dateTo)
         pills.push({
           key: "dateTo",
-          label: "To",
+          label: t("pillTo"),
           value: databaseFilters.dateTo,
         });
       if (databaseFilters.sortBy && databaseFilters.sortBy !== "deadline") {
@@ -215,40 +215,40 @@ export function TenderSearchBar({
         );
         pills.push({
           key: "sort",
-          label: "Sort",
+          label: t("pillSort"),
           value: sortOption?.label || `${databaseFilters.sortBy}`,
         });
       }
     } else if (filterType === "matching" && matchingFilters) {
       if (matchingFilters.tenderStatus && matchingFilters.tenderStatus !== "active") {
         const statusLabels: Record<string, string> = {
-          all: "All Statuses",
-          open: "Open",
-          closed: "Closed",
-          awarded: "Awarded",
+          all: t("statusAllStatuses"),
+          open: t("tenderStatusOpen"),
+          closed: t("tenderStatusClosed"),
+          awarded: t("tenderStatusAwarded"),
         };
         pills.push({
           key: "tenderStatus",
-          label: "Status",
+          label: t("pillStatus"),
           value: statusLabels[matchingFilters.tenderStatus] || matchingFilters.tenderStatus,
         });
       }
       if (matchingFilters.minScore > 0 || matchingFilters.maxScore < 100)
         pills.push({
           key: "scoreRange",
-          label: "Score",
+          label: t("pillScore"),
           value: `${matchingFilters.minScore}-${matchingFilters.maxScore}%`,
         });
       if (matchingFilters.showApplied !== "all")
         pills.push({
           key: "showApplied",
-          label: "Show",
+          label: t("pillShow"),
           value: matchingFilters.showApplied,
         });
       if (matchingFilters.quickFilter)
         pills.push({
           key: "quickFilter",
-          label: "Quick",
+          label: t("pillQuick"),
           value: matchingFilters.quickFilter.replace("_", " "),
         });
     }
@@ -334,7 +334,7 @@ export function TenderSearchBar({
           <SheetTrigger asChild>
             <Button variant="outline" className="h-11 gap-2">
               <Filter className="h-4 w-4" />
-              Filters
+              {t("filtersButton")}
               {activeFilterCount > 0 && (
                 <Badge
                   variant="secondary"
@@ -352,13 +352,13 @@ export function TenderSearchBar({
             <SheetHeader>
               <SheetTitle>
                 {filterType === "database"
-                  ? "Filter Tenders"
-                  : "Filter & Sort Matches"}
+                  ? t("filterSheetTitle")
+                  : t("matchingSheetTitle")}
               </SheetTitle>
               <SheetDescription>
                 {filterType === "database"
-                  ? "Refine your tender search results"
-                  : "Filter and sort your matching results"}
+                  ? t("filterSheetDescription")
+                  : t("matchingSheetDescription")}
               </SheetDescription>
             </SheetHeader>
 
@@ -384,10 +384,10 @@ export function TenderSearchBar({
             <SheetFooter className="flex gap-2 sm:flex-row">
               <Button variant="outline" onClick={onReset} className="flex-1">
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Reset
+                {t("reset")}
               </Button>
               <SheetClose asChild>
-                <Button className="flex-1">Apply Filters</Button>
+                <Button className="flex-1">{t("applyFilters")}</Button>
               </SheetClose>
             </SheetFooter>
           </SheetContent>
@@ -415,7 +415,7 @@ export function TenderSearchBar({
               className="h-6 text-xs"
               onClick={onReset}
             >
-              Clear all
+              {t("clearAll")}
             </Button>
           )}
         </div>
@@ -432,6 +432,8 @@ function DatabaseFilterContent({
   filters: TenderFiltersState;
   onFiltersChange: (filters: TenderFiltersState) => void;
 }) {
+  const t = useTranslations("TenderSearchBar");
+
   const handleChange = (key: string, value: string | number | null) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -445,11 +447,11 @@ function DatabaseFilterContent({
     <>
       {/* Date Range */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Date Range</Label>
+        <Label className="text-sm font-medium">{t("dateRangeLabel")}</Label>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">
-              From
+              {t("fromLabel")}
             </Label>
             <Input
               type="date"
@@ -459,7 +461,7 @@ function DatabaseFilterContent({
           </div>
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">
-              To
+              {t("toLabel")}
             </Label>
             <Input
               type="date"
@@ -472,15 +474,15 @@ function DatabaseFilterContent({
 
       {/* Budget Range */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Budget Range (£)</Label>
+        <Label className="text-sm font-medium">{t("budgetRangeLabel")}</Label>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">
-              Minimum
+              {t("minimumLabel")}
             </Label>
             <Input
               type="number"
-              placeholder="e.g. 10,000"
+              placeholder={t("budgetMinPlaceholder")}
               value={filters.budgetMin || ""}
               onChange={(e) =>
                 handleChange(
@@ -492,11 +494,11 @@ function DatabaseFilterContent({
           </div>
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">
-              Maximum
+              {t("maximumLabel")}
             </Label>
             <Input
               type="number"
-              placeholder="e.g. 1,000,000"
+              placeholder={t("budgetMaxPlaceholder")}
               value={filters.budgetMax || ""}
               onChange={(e) =>
                 handleChange(
@@ -511,7 +513,7 @@ function DatabaseFilterContent({
 
       {/* Status */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Status</Label>
+        <Label className="text-sm font-medium">{t("statusLabel")}</Label>
         <Select
           value={filters.status || "all"}
           onValueChange={(value) =>
@@ -519,22 +521,22 @@ function DatabaseFilterContent({
           }
         >
           <SelectTrigger>
-            <SelectValue placeholder="All statuses" />
+            <SelectValue placeholder={t("allStatuses")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="closing_soon">Closing Soon</SelectItem>
-            <SelectItem value="framework">Framework</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-            <SelectItem value="awarded">Awarded</SelectItem>
+            <SelectItem value="all">{t("allStatuses")}</SelectItem>
+            <SelectItem value="open">{t("statusOpen")}</SelectItem>
+            <SelectItem value="closing_soon">{t("statusClosingSoon")}</SelectItem>
+            <SelectItem value="framework">{t("statusFramework")}</SelectItem>
+            <SelectItem value="closed">{t("statusClosed")}</SelectItem>
+            <SelectItem value="awarded">{t("statusAwarded")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Source */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Source</Label>
+        <Label className="text-sm font-medium">{t("sourceLabel")}</Label>
         <Select
           value={filters.source || "all"}
           onValueChange={(value) =>
@@ -542,12 +544,15 @@ function DatabaseFilterContent({
           }
         >
           <SelectTrigger>
-            <SelectValue placeholder="All sources" />
+            <SelectValue placeholder={t("allSources")} />
           </SelectTrigger>
           <SelectContent>
-            {TENDER_SOURCE_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+            {(["all", "ted", "find-tender", "contracts-finder"] as const).map((val) => (
+              <SelectItem key={val} value={val}>
+                {val === "all" ? t("allSources")
+                  : val === "ted" ? t("sourceTed")
+                  : val === "find-tender" ? t("sourceFindATender")
+                  : t("sourceContractsFinder")}
               </SelectItem>
             ))}
           </SelectContent>
@@ -556,9 +561,9 @@ function DatabaseFilterContent({
 
       {/* Location */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Location</Label>
+        <Label className="text-sm font-medium">{t("locationLabel")}</Label>
         <Input
-          placeholder="e.g. London, Manchester"
+          placeholder={t("locationPlaceholder")}
           value={filters.location || ""}
           onChange={(e) => handleChange("location", e.target.value || null)}
         />
@@ -575,6 +580,8 @@ function MatchingFilterContent({
   filters: MatchingFiltersState;
   onFiltersChange: (filters: MatchingFiltersState) => void;
 }) {
+  const t = useTranslations("TenderSearchBar");
+
   const handleChange = (
     key: keyof MatchingFiltersState,
     value: string | number | null,
@@ -594,7 +601,7 @@ function MatchingFilterContent({
     <>
       {/* Sort Options */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Sort By</Label>
+        <Label className="text-sm font-medium">{t("sortBy")}</Label>
         <div className="grid grid-cols-2 gap-3">
           <Select
             value={filters.sortBy || "overall_score"}
@@ -604,16 +611,14 @@ function MatchingFilterContent({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="overall_score">Overall Score</SelectItem>
-              <SelectItem value="capability_score">Capability Match</SelectItem>
-              <SelectItem value="experience_score">Experience Match</SelectItem>
-              <SelectItem value="location_score">Location Match</SelectItem>
-              <SelectItem value="certification_score">
-                Certification Match
-              </SelectItem>
-              <SelectItem value="created_at">Date Analyzed</SelectItem>
-              <SelectItem value="deadline">Tender Deadline</SelectItem>
-              <SelectItem value="budget">Budget</SelectItem>
+              <SelectItem value="overall_score">{t("sortOverallScore")}</SelectItem>
+              <SelectItem value="capability_score">{t("sortCapabilityMatch")}</SelectItem>
+              <SelectItem value="experience_score">{t("sortExperienceMatch")}</SelectItem>
+              <SelectItem value="location_score">{t("sortLocationMatch")}</SelectItem>
+              <SelectItem value="certification_score">{t("sortCertificationMatch")}</SelectItem>
+              <SelectItem value="created_at">{t("sortDateAnalyzed")}</SelectItem>
+              <SelectItem value="deadline">{t("sortTenderDeadline")}</SelectItem>
+              <SelectItem value="budget">{t("sortBudget")}</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -627,13 +632,13 @@ function MatchingFilterContent({
               <SelectItem value="desc">
                 <div className="flex items-center">
                   <TrendingDown className="w-4 h-4 mr-2" />
-                  High to Low
+                  {t("sortHighToLow")}
                 </div>
               </SelectItem>
               <SelectItem value="asc">
                 <div className="flex items-center">
                   <TrendingUp className="w-4 h-4 mr-2" />
-                  Low to High
+                  {t("sortLowToHigh")}
                 </div>
               </SelectItem>
             </SelectContent>
@@ -643,7 +648,7 @@ function MatchingFilterContent({
 
       {/* Status Filter */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Show</Label>
+        <Label className="text-sm font-medium">{t("showLabel")}</Label>
         <Select
           value={filters.showApplied || "all"}
           onValueChange={(value) => handleChange("showApplied", value)}
@@ -652,17 +657,17 @@ function MatchingFilterContent({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Matches</SelectItem>
-            <SelectItem value="not_applied">Not Applied</SelectItem>
-            <SelectItem value="applied">Applied</SelectItem>
-            <SelectItem value="bookmarked">Bookmarked</SelectItem>
+            <SelectItem value="all">{t("showAll")}</SelectItem>
+            <SelectItem value="not_applied">{t("showNotApplied")}</SelectItem>
+            <SelectItem value="applied">{t("showApplied")}</SelectItem>
+            <SelectItem value="bookmarked">{t("showBookmarked")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Tender Status */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Tender Status</Label>
+        <Label className="text-sm font-medium">{t("tenderStatusLabel")}</Label>
         <Select
           value={filters.tenderStatus || "active"}
           onValueChange={(value) => handleChange("tenderStatus", value)}
@@ -671,11 +676,11 @@ function MatchingFilterContent({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="active">Active (excludes closed)</SelectItem>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-            <SelectItem value="awarded">Awarded</SelectItem>
+            <SelectItem value="active">{t("tenderStatusActive")}</SelectItem>
+            <SelectItem value="all">{t("tenderStatusAll")}</SelectItem>
+            <SelectItem value="open">{t("tenderStatusOpen")}</SelectItem>
+            <SelectItem value="closed">{t("tenderStatusClosed")}</SelectItem>
+            <SelectItem value="awarded">{t("tenderStatusAwarded")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -683,7 +688,7 @@ function MatchingFilterContent({
       {/* Score Range */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Score Range</Label>
+          <Label className="text-sm font-medium">{t("scoreRangeLabel")}</Label>
           <Badge variant="secondary">
             {filters.minScore || 0} - {filters.maxScore || 100}%
           </Badge>
@@ -705,7 +710,7 @@ function MatchingFilterContent({
 
       {/* Quick Filters */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Quick Filters</Label>
+        <Label className="text-sm font-medium">{t("quickFiltersLabel")}</Label>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -720,7 +725,7 @@ function MatchingFilterContent({
               )
             }
           >
-            High Score (80%+)
+            {t("quickFilterHighScore")}
           </Button>
           <Button
             type="button"
@@ -733,7 +738,7 @@ function MatchingFilterContent({
               )
             }
           >
-            Urgent (7 days)
+            {t("quickFilterUrgent")}
           </Button>
           <Button
             type="button"
@@ -748,10 +753,11 @@ function MatchingFilterContent({
               )
             }
           >
-            High Value (£1M+)
+            {t("quickFilterHighValue")}
           </Button>
         </div>
       </div>
     </>
   );
 }
+

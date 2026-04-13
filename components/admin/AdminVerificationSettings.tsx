@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
 export function AdminVerificationSettings() {
+  const t = useTranslations("AdminSettings.verification");
   const [verifiedProjectLimit, setVerifiedProjectLimit] = useState(5);
   const [unverifiedProjectLimit, setUnverifiedProjectLimit] = useState(1);
   const [unverifiedCompetencyLimit, setUnverifiedCompetencyLimit] = useState(5);
@@ -37,14 +39,14 @@ export function AdminVerificationSettings() {
         setUnverifiedAnalysisRunsPerMonth(data.unverifiedAnalysisRunsPerMonth ?? 1);
       } catch (e) {
         if (!cancelled) {
-          toast.error(e instanceof Error ? e.message : "Failed to load settings");
+          toast.error(e instanceof Error ? e.message : t("toasts.loadError"));
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [t]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -63,10 +65,10 @@ export function AdminVerificationSettings() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save");
-      toast.success("Settings saved.");
+      if (!res.ok) throw new Error(data.error || t("toasts.saveError"));
+      toast.success(t("toasts.saveSuccess"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : t("toasts.saveError"));
     } finally {
       setSaving(false);
     }
@@ -85,19 +87,15 @@ export function AdminVerificationSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Verification & Usage Limits</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Control project, competency, and tender matching limits for verified and unverified companies.
-        </p>
+        <CardTitle>{t("cardTitle")}</CardTitle>
+        <p className="text-sm text-muted-foreground">{t("cardDescription")}</p>
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-          <h3 className="text-sm font-medium mb-3">Project & Competency Limits</h3>
+          <h3 className="text-sm font-medium mb-3">{t("sections.projectLimits")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="verified-project-limit">
-                Verified company project limit
-              </Label>
+              <Label htmlFor="verified-project-limit">{t("fields.verifiedProjectLimit")}</Label>
               <Input
                 id="verified-project-limit"
                 type="number"
@@ -105,14 +103,10 @@ export function AdminVerificationSettings() {
                 value={verifiedProjectLimit}
                 onChange={(e) => setVerifiedProjectLimit(parseInt(e.target.value) || 0)}
               />
-              <p className="text-xs text-muted-foreground">
-                Max active projects for verified companies
-              </p>
+              <p className="text-xs text-muted-foreground">{t("fields.verifiedProjectLimitHelper")}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="unverified-project-limit">
-                Unverified company project limit
-              </Label>
+              <Label htmlFor="unverified-project-limit">{t("fields.unverifiedProjectLimit")}</Label>
               <Input
                 id="unverified-project-limit"
                 type="number"
@@ -120,14 +114,10 @@ export function AdminVerificationSettings() {
                 value={unverifiedProjectLimit}
                 onChange={(e) => setUnverifiedProjectLimit(parseInt(e.target.value) || 0)}
               />
-              <p className="text-xs text-muted-foreground">
-                Max active projects for unverified companies
-              </p>
+              <p className="text-xs text-muted-foreground">{t("fields.unverifiedProjectLimitHelper")}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="unverified-competency-limit">
-                Unverified company competency limit
-              </Label>
+              <Label htmlFor="unverified-competency-limit">{t("fields.unverifiedCompetencyLimit")}</Label>
               <Input
                 id="unverified-competency-limit"
                 type="number"
@@ -135,9 +125,7 @@ export function AdminVerificationSettings() {
                 value={unverifiedCompetencyLimit}
                 onChange={(e) => setUnverifiedCompetencyLimit(parseInt(e.target.value) || 0)}
               />
-              <p className="text-xs text-muted-foreground">
-                Max competencies for unverified companies (no review needed)
-              </p>
+              <p className="text-xs text-muted-foreground">{t("fields.unverifiedCompetencyLimitHelper")}</p>
             </div>
           </div>
         </div>
@@ -145,15 +133,11 @@ export function AdminVerificationSettings() {
         <Separator />
 
         <div>
-          <h3 className="text-sm font-medium mb-1">Tender Matching Runs per Month</h3>
-          <p className="text-xs text-muted-foreground mb-3">
-            Controls how many times a company can run &quot;Run Analysis&quot; per calendar month. Per-company overrides can be set in the Companies tab.
-          </p>
+          <h3 className="text-sm font-medium mb-1">{t("sections.matchingRuns")}</h3>
+          <p className="text-xs text-muted-foreground mb-3">{t("sections.matchingRunsHelper")}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="verified-matching-runs">
-                Verified company matching runs / month
-              </Label>
+              <Label htmlFor="verified-matching-runs">{t("fields.verifiedMatchingRuns")}</Label>
               <Input
                 id="verified-matching-runs"
                 type="number"
@@ -161,14 +145,10 @@ export function AdminVerificationSettings() {
                 value={verifiedMatchingRunsPerMonth}
                 onChange={(e) => setVerifiedMatchingRunsPerMonth(parseInt(e.target.value) || 0)}
               />
-              <p className="text-xs text-muted-foreground">
-                Default: 10 runs per month for verified companies
-              </p>
+              <p className="text-xs text-muted-foreground">{t("fields.verifiedMatchingRunsHelper")}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="unverified-matching-runs">
-                Unverified company matching runs / month
-              </Label>
+              <Label htmlFor="unverified-matching-runs">{t("fields.unverifiedMatchingRuns")}</Label>
               <Input
                 id="unverified-matching-runs"
                 type="number"
@@ -176,9 +156,7 @@ export function AdminVerificationSettings() {
                 value={unverifiedMatchingRunsPerMonth}
                 onChange={(e) => setUnverifiedMatchingRunsPerMonth(parseInt(e.target.value) || 0)}
               />
-              <p className="text-xs text-muted-foreground">
-                Default: 2 runs per month for unverified companies
-              </p>
+              <p className="text-xs text-muted-foreground">{t("fields.unverifiedMatchingRunsHelper")}</p>
             </div>
           </div>
         </div>
@@ -186,15 +164,11 @@ export function AdminVerificationSettings() {
         <Separator />
 
         <div>
-          <h3 className="text-sm font-medium mb-1">AI Analysis Runs per Month</h3>
-          <p className="text-xs text-muted-foreground mb-3">
-            Controls how many times a company can run &quot;AI Analysis&quot; per calendar month. Per-company overrides can be set in the Companies tab.
-          </p>
+          <h3 className="text-sm font-medium mb-1">{t("sections.analysisRuns")}</h3>
+          <p className="text-xs text-muted-foreground mb-3">{t("sections.analysisRunsHelper")}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="verified-analysis-runs">
-                Verified company analysis runs / month
-              </Label>
+              <Label htmlFor="verified-analysis-runs">{t("fields.verifiedAnalysisRuns")}</Label>
               <Input
                 id="verified-analysis-runs"
                 type="number"
@@ -202,14 +176,10 @@ export function AdminVerificationSettings() {
                 value={verifiedAnalysisRunsPerMonth}
                 onChange={(e) => setVerifiedAnalysisRunsPerMonth(parseInt(e.target.value) || 0)}
               />
-              <p className="text-xs text-muted-foreground">
-                Default: 5 runs per month for verified companies
-              </p>
+              <p className="text-xs text-muted-foreground">{t("fields.verifiedAnalysisRunsHelper")}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="unverified-analysis-runs">
-                Unverified company analysis runs / month
-              </Label>
+              <Label htmlFor="unverified-analysis-runs">{t("fields.unverifiedAnalysisRuns")}</Label>
               <Input
                 id="unverified-analysis-runs"
                 type="number"
@@ -217,9 +187,7 @@ export function AdminVerificationSettings() {
                 value={unverifiedAnalysisRunsPerMonth}
                 onChange={(e) => setUnverifiedAnalysisRunsPerMonth(parseInt(e.target.value) || 0)}
               />
-              <p className="text-xs text-muted-foreground">
-                Default: 1 run per month for unverified companies
-              </p>
+              <p className="text-xs text-muted-foreground">{t("fields.unverifiedAnalysisRunsHelper")}</p>
             </div>
           </div>
         </div>
@@ -230,7 +198,7 @@ export function AdminVerificationSettings() {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Save limits
+          {t("saveButton")}
         </Button>
       </CardContent>
     </Card>

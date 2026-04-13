@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import { useDashboard } from "@/hooks/useDashboard";
@@ -30,6 +31,7 @@ const BusinessChatbot = dynamic(
 );
 
 export default function DashboardPage() {
+  const t = useTranslations("Dashboard");
   const { user } = useAuth();
   const { selectedOrg } = useOrg();
   const { data: dashboardData, isLoading: loading } = useDashboard(user?.id ?? null);
@@ -124,10 +126,9 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">{t("page.title")}</h1>
         <p className="text-muted-foreground mt-2">
-          Welcome back! Here&apos;s what&apos;s happening with your tenders and
-          opportunities.
+          {t("page.welcome")}
         </p>
       </div>
 

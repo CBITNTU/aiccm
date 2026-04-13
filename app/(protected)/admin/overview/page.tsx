@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAdminStats } from "@/hooks/useAdminStats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,26 +19,27 @@ import {
 } from "lucide-react";
 
 export default function AdminOverviewPage() {
+  const t = useTranslations("AdminOverview");
   const { data: stats, isLoading } = useAdminStats();
 
   const statCards = [
     {
-      label: "Total Companies",
+      label: t("stats.totalCompanies"),
       value: stats?.totalCompanies ?? 0,
       icon: Building2,
     },
     {
-      label: "Total Users",
+      label: t("stats.totalUsers"),
       value: stats?.totalUsers ?? 0,
       icon: Users2,
     },
     {
-      label: "Active Tenders",
+      label: t("stats.activeTenders"),
       value: stats?.activeTenders ?? 0,
       icon: FileText,
     },
     {
-      label: "Pending Actions",
+      label: t("stats.pendingActions"),
       value: (stats?.pendingApprovalsTotal ?? 0) + (stats?.pendingVerificationTotal ?? 0),
       icon: AlertCircle,
     },
@@ -45,35 +47,33 @@ export default function AdminOverviewPage() {
 
   const actionItems = [
     {
-      label: "Pending User Approvals",
+      label: t("actionItems.pendingUserApprovalsLabel"),
       count: stats?.pendingUserApprovals ?? 0,
       href: "/admin/approvals",
       icon: UserPlus,
-      description: "Users awaiting account approval",
+      description: t("actionItems.pendingUserApprovalsDescription"),
     },
     {
-      label: "Pending Join Requests",
+      label: t("actionItems.pendingJoinRequestsLabel"),
       count: stats?.pendingJoinRequests ?? 0,
       href: "/admin/approvals",
       icon: ClipboardCheck,
-      description: "Company join requests to review",
+      description: t("actionItems.pendingJoinRequestsDescription"),
     },
     {
-      label: "Verification Requests",
+      label: t("actionItems.verificationRequestsLabel"),
       count: stats?.pendingVerifications ?? 0,
       href: "/admin/verification",
       icon: ShieldCheck,
-      description: "Company verification submissions",
+      description: t("actionItems.verificationRequestsDescription"),
     },
   ];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Overview</h1>
-        <p className="text-muted-foreground">
-          Platform statistics and items requiring your attention.
-        </p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("description")}</p>
       </div>
 
       {/* Stats Cards */}
@@ -106,7 +106,7 @@ export default function AdminOverviewPage() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <AlertCircle className="w-5 h-5 mr-2 text-primary" />
-            Items Requiring Attention
+            {t("attention.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -161,7 +161,7 @@ export default function AdminOverviewPage() {
                     {hasItems && (
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={item.href}>
-                          Review
+                          {t("attention.review")}
                           <ArrowRight className="w-3 h-3 ml-1" />
                         </Link>
                       </Button>

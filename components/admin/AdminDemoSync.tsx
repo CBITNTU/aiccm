@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -70,6 +71,7 @@ interface DemoRow {
 }
 
 export function AdminDemoSync() {
+  const t = useTranslations("AdminDemoSync");
   const [model, setModel] = useState<DemoModel>("gpt-5-nano");
   const [reasoningEffort, setReasoningEffort] =
     useState<ReasoningEffortOption>("default");
@@ -102,12 +104,12 @@ export function AdminDemoSync() {
       const data = await res.json();
       setResults(Array.isArray(data) ? data : []);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load results");
+      toast.error(e instanceof Error ? e.message : t("toasts.fetchError"));
       setResults([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchResults();
@@ -159,7 +161,10 @@ export function AdminDemoSync() {
           setRunCompletedJobs(null);
           if (status === "completed") {
             toast.success(
-              `Demo run finished in ${formatDurationMs(end - (runStartTime ?? end))} (${runModel ?? "model"})`,
+              t("toasts.demoFinished", {
+                duration: formatDurationMs(end - (runStartTime ?? end)),
+                model: runModel ?? "model",
+              }),
             );
           }
         }
@@ -170,7 +175,7 @@ export function AdminDemoSync() {
     check();
     const interval = setInterval(check, 5000);
     return () => clearInterval(interval);
-  }, [runBatchId, runStartTime, runModel]);
+  }, [runBatchId, runStartTime, runModel, t]);
 
   const handleRunDemo = async () => {
     setRunLoading(true);
@@ -187,19 +192,17 @@ export function AdminDemoSync() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Run failed");
+      if (!res.ok) throw new Error(data.error || t("toasts.runFailed"));
       setRunStartTime(Date.now());
       setRunEndTime(null);
       setRunBatchId(data.batchId ?? null);
       setRunModel(model);
       setRunTotalJobs(data.jobCount ?? 50);
       setRunCompletedJobs(0);
-      toast.success(
-        `Demo started: ${data.jobCount} jobs queued (User A). Results will appear below.`,
-      );
+      toast.success(t("toasts.demoStarted", { count: data.jobCount }));
       fetchResults();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Run failed");
+      toast.error(e instanceof Error ? e.message : t("toasts.runFailed"));
     } finally {
       setRunLoading(false);
     }
@@ -220,13 +223,11 @@ export function AdminDemoSync() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Add user failed");
-      toast.success(
-        `Added User B: ${data.jobCount} jobs queued. Total queue has more jobs.`,
-      );
+      if (!res.ok) throw new Error(data.error || t("toasts.addUserFailed"));
+      toast.success(t("toasts.addUserSuccess", { count: data.jobCount }));
       fetchResults();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Add user failed");
+      toast.error(e instanceof Error ? e.message : t("toasts.addUserFailed"));
     } finally {
       setAddUserLoading(false);
     }
@@ -236,13 +237,8 @@ export function AdminDemoSync() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Test mode: demo sync &amp; match</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Run a demo match of 50 tenders and compare models. Results are
-            stored in a separate table and truncated on each &quot;Run
-            demo&quot;. Use &quot;Add user to queue&quot; to simulate a second
-            user (100 matches total).
-          </p>
+          <CardTitle>{t("cardTitle")}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t("cardDescription")}</p>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Run timer: live elapsed while running, then last run duration for comparison */}
@@ -253,7 +249,7 @@ export function AdminDemoSync() {
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                   {runStartTime != null && runEndTime == null && (
                     <span>
-                      <strong>Run timer:</strong>{" "}
+                      <strong>{t("runTimerLabel")}</strong>{" "}
                       {formatDurationMs(Date.now() - runStartTime)}
                       {runModel && (
                         <span className="text-muted-foreground">
@@ -265,7 +261,7 @@ export function AdminDemoSync() {
                   )}
                   {lastRunDurationMs != null && (
                     <span>
-                      <strong>Last run:</strong>{" "}
+                      <strong>{t("lastRunLabel")}</strong>{" "}
                       {formatDurationMs(lastRunDurationMs)}
                       {lastRunModel && (
                         <span className="text-muted-foreground">
@@ -283,9 +279,7 @@ export function AdminDemoSync() {
                 runTotalJobs > 0 && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Queue progress
-                      </span>
+                      <span className="text-muted-foreground">{t("queueProgress")}</span>
                       <span className="font-medium tabular-nums">
                         {runCompletedJobs ?? 0} / {runTotalJobs}
                       </span>
@@ -305,7 +299,7 @@ export function AdminDemoSync() {
           )}
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Model:</span>
+              <span className="text-sm font-medium">{t("modelLabel")}</span>
               <Select
                 value={model}
                 onValueChange={(v) => setModel(v as DemoModel)}
@@ -320,7 +314,7 @@ export function AdminDemoSync() {
             </div>
             {model === "gpt-5-nano" && (
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Thinking:</span>
+                <span className="text-sm font-medium">{t("thinkingLabel")}</span>
                 <Select
                   value={reasoningEffort}
                   onValueChange={(v) =>
@@ -328,18 +322,16 @@ export function AdminDemoSync() {
                   }
                 >
                   <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Default" />
+                    <SelectValue placeholder={t("effort.default")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Default</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="minimal">Very low</SelectItem>
-                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="default">{t("effort.default")}</SelectItem>
+                    <SelectItem value="low">{t("effort.low")}</SelectItem>
+                    <SelectItem value="minimal">{t("effort.minimal")}</SelectItem>
+                    <SelectItem value="none">{t("effort.none")}</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-xs text-muted-foreground">
-                  Lower = faster
-                </span>
+                <span className="text-xs text-muted-foreground">{t("thinkingHint")}</span>
               </div>
             )}
             <Button
@@ -352,7 +344,7 @@ export function AdminDemoSync() {
               ) : (
                 <Play className="w-4 h-4" />
               )}
-              Run demo (50 tenders)
+              {t("runDemoButton")}
             </Button>
             <Button
               variant="secondary"
@@ -365,7 +357,7 @@ export function AdminDemoSync() {
               ) : (
                 <UserPlus className="w-4 h-4" />
               )}
-              Add user to queue (+50 matches)
+              {t("addUserButton")}
             </Button>
           </div>
         </CardContent>
@@ -373,33 +365,28 @@ export function AdminDemoSync() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Demo results</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Match result, model used, and AI summary. Rows appear as jobs
-            complete (polling every 5s).
-          </p>
+          <CardTitle>{t("resultsTitle")}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t("resultsDescription")}</p>
         </CardHeader>
         <CardContent>
           {loading && results.length === 0 ? (
             <div className="flex items-center justify-center py-8 gap-2">
               <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading results...</span>
+              <span>{t("loadingResults")}</span>
             </div>
           ) : results.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center">
-              No demo results yet. Run a demo to see matches here.
-            </p>
+            <p className="text-muted-foreground py-8 text-center">{t("emptyResults")}</p>
           ) : (
             <div className="rounded-md border overflow-auto max-h-[600px]">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Batch</TableHead>
-                    <TableHead>Tender</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead>Summary</TableHead>
+                    <TableHead>{t("table.batch")}</TableHead>
+                    <TableHead>{t("table.tender")}</TableHead>
+                    <TableHead>{t("table.company")}</TableHead>
+                    <TableHead className="text-right">{t("table.score")}</TableHead>
+                    <TableHead>{t("table.model")}</TableHead>
+                    <TableHead>{t("table.summary")}</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -477,8 +464,7 @@ export function AdminDemoSync() {
                     .map((row) => (
                       <div key={row.id} className="space-y-2 text-sm">
                         <p className="font-medium">
-                          Raw AI output (batch: {row.batchLabel}, model:{" "}
-                          {row.modelUsed})
+                          {t("rawAiOutput", { batch: row.batchLabel, model: row.modelUsed })}
                         </p>
                         <pre className="whitespace-pre-wrap wrap-break-word rounded bg-background p-3 text-xs max-h-[300px] overflow-auto">
                           {JSON.stringify(row.aiAnalysis, null, 2)}

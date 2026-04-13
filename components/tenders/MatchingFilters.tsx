@@ -20,6 +20,7 @@ import {
   TrendingDown,
   Search,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface MatchingFiltersProps {
   onFiltersChange: (filters: MatchingFiltersState) => void;
@@ -42,6 +43,8 @@ export function MatchingFilters({
   filters,
   onReset,
 }: MatchingFiltersProps) {
+  const t = useTranslations("MatchingFilters");
+
   const handleFilterChange = (
     key: keyof MatchingFiltersState,
     value: string | number | null,
@@ -64,7 +67,7 @@ export function MatchingFilters({
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Filter className="w-4 h-4" />
-          <span>Filter & Sort Matches</span>
+          <span>{t("title")}</span>
           <Button
             variant="ghost"
             size="sm"
@@ -72,7 +75,7 @@ export function MatchingFilters({
             className="ml-auto"
           >
             <RotateCcw className="w-4 h-4 mr-1" />
-            Reset
+            {t("reset")}
           </Button>
         </CardTitle>
       </CardHeader>
@@ -81,11 +84,11 @@ export function MatchingFilters({
         <div className="space-y-2">
           <Label htmlFor="keyword" className="flex items-center gap-2">
             <Search className="w-4 h-4" />
-            Keyword Search
+            {t("keywordLabel")}
           </Label>
           <Input
             id="keyword"
-            placeholder="Search by tender title, buyer, location, or description..."
+            placeholder={t("keywordPlaceholder")}
             value={filters.keyword || ""}
             onChange={(e) => handleFilterChange("keyword", e.target.value)}
             className="w-full"
@@ -95,7 +98,7 @@ export function MatchingFilters({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Sort By */}
           <div className="space-y-2">
-            <Label>Sort By</Label>
+            <Label>{t("sortBy")}</Label>
             <Select
               value={filters.sortBy || "overall_score"}
               onValueChange={(value) => handleFilterChange("sortBy", value)}
@@ -104,27 +107,21 @@ export function MatchingFilters({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="overall_score">Overall Score</SelectItem>
-                <SelectItem value="capability_score">
-                  Capability Match
-                </SelectItem>
-                <SelectItem value="experience_score">
-                  Experience Match
-                </SelectItem>
-                <SelectItem value="location_score">Location Match</SelectItem>
-                <SelectItem value="certification_score">
-                  Certification Match
-                </SelectItem>
-                <SelectItem value="created_at">Date Analyzed</SelectItem>
-                <SelectItem value="deadline">Tender Deadline</SelectItem>
-                <SelectItem value="budget">Budget</SelectItem>
+                <SelectItem value="overall_score">{t("sortOverallScore")}</SelectItem>
+                <SelectItem value="capability_score">{t("sortCapabilityMatch")}</SelectItem>
+                <SelectItem value="experience_score">{t("sortExperienceMatch")}</SelectItem>
+                <SelectItem value="location_score">{t("sortLocationMatch")}</SelectItem>
+                <SelectItem value="certification_score">{t("sortCertificationMatch")}</SelectItem>
+                <SelectItem value="created_at">{t("sortDateAnalyzed")}</SelectItem>
+                <SelectItem value="deadline">{t("sortTenderDeadline")}</SelectItem>
+                <SelectItem value="budget">{t("sortBudget")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Sort Direction */}
           <div className="space-y-2">
-            <Label>Sort Order</Label>
+            <Label>{t("sortOrder")}</Label>
             <Select
               value={filters.sortDirection || "desc"}
               onValueChange={(value) =>
@@ -138,13 +135,13 @@ export function MatchingFilters({
                 <SelectItem value="desc">
                   <div className="flex items-center">
                     <TrendingDown className="w-4 h-4 mr-2" />
-                    High to Low
+                    {t("sortHighToLow")}
                   </div>
                 </SelectItem>
                 <SelectItem value="asc">
                   <div className="flex items-center">
                     <TrendingUp className="w-4 h-4 mr-2" />
-                    Low to High
+                    {t("sortLowToHigh")}
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -153,7 +150,7 @@ export function MatchingFilters({
 
           {/* Status Filter */}
           <div className="space-y-2">
-            <Label>Show</Label>
+            <Label>{t("show")}</Label>
             <Select
               value={filters.showApplied || "all"}
               onValueChange={(value) =>
@@ -164,10 +161,10 @@ export function MatchingFilters({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Matches</SelectItem>
-                <SelectItem value="not_applied">Not Applied</SelectItem>
-                <SelectItem value="applied">Applied</SelectItem>
-                <SelectItem value="bookmarked">Bookmarked</SelectItem>
+                <SelectItem value="all">{t("showAll")}</SelectItem>
+                <SelectItem value="not_applied">{t("showNotApplied")}</SelectItem>
+                <SelectItem value="applied">{t("showApplied")}</SelectItem>
+                <SelectItem value="bookmarked">{t("showBookmarked")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -176,7 +173,7 @@ export function MatchingFilters({
         {/* Score Range Filter */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label>Overall Score Range</Label>
+            <Label>{t("overallScoreRange")}</Label>
             <Badge variant="secondary">
               {filters.minScore || 0} - {filters.maxScore || 100}%
             </Badge>
@@ -190,15 +187,15 @@ export function MatchingFilters({
             className="w-full"
           />
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>0%</span>
-            <span>50%</span>
-            <span>100%</span>
+            <span>{t("score0")}</span>
+            <span>{t("score50")}</span>
+            <span>{t("score100")}</span>
           </div>
         </div>
 
         {/* Quick Filters */}
         <div className="space-y-2">
-          <Label>Quick Filters</Label>
+          <Label>{t("quickFilters")}</Label>
           <div className="flex flex-wrap gap-2">
             <Button
               variant={
@@ -212,7 +209,7 @@ export function MatchingFilters({
                 )
               }
             >
-              High Score (80%+)
+              {t("quickFilterHighScore")}
             </Button>
             <Button
               variant={filters.quickFilter === "urgent" ? "default" : "outline"}
@@ -224,7 +221,7 @@ export function MatchingFilters({
                 )
               }
             >
-              Urgent (7 days)
+              {t("quickFilterUrgent")}
             </Button>
             <Button
               variant={
@@ -238,7 +235,7 @@ export function MatchingFilters({
                 )
               }
             >
-              High Value (£1M+)
+              {t("quickFilterHighValue")}
             </Button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ function formatDateTimeGMT(iso: string | null): string {
 }
 
 export function AdminTenderSyncSchedule() {
+  const t = useTranslations("AdminTenderSync");
   const queryClient = useQueryClient();
   const { setSyncInProgress, setStopSyncFn, stopSync } = useAdminTenderSync();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -52,14 +54,12 @@ export function AdminTenderSyncSchedule() {
       queryClient.invalidateQueries({ queryKey: queryKeys.tenderSyncStatus() });
       if (data.ran) {
         if (data.syncSucceeded) {
-          toast.success("Sync completed. Next run in 7 days.");
+          toast.success(t("toasts.completed"));
         } else {
-          toast.warning(
-            "Sync failed (see server logs). Next run scheduled in 7 days.",
-          );
+          toast.warning(t("toasts.failed"));
         }
       } else {
-        toast.success(data.message ?? "Sync not run");
+        toast.success(data.message ?? t("toasts.notRun"));
       }
     },
     onError: (err: Error) => {
@@ -67,9 +67,9 @@ export function AdminTenderSyncSchedule() {
         err.name === "AbortError" ||
         (err instanceof Error && err.message?.includes("abort"));
       if (isAborted) {
-        toast.info("Sync stopped.");
+        toast.info(t("toasts.stopped"));
       } else {
-        toast.error(err.message ?? "Failed to trigger sync");
+        toast.error(err.message ?? t("toasts.triggerError"));
       }
     },
     onSettled: () => {
@@ -89,7 +89,7 @@ export function AdminTenderSyncSchedule() {
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <RefreshCw className="w-4 h-4" aria-hidden />
-          Weekly Tender Sync
+          {t("cardTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -97,27 +97,23 @@ export function AdminTenderSyncSchedule() {
           className="text-sm grid gap-1"
           aria-live="polite"
           aria-busy={isBusy}
-          aria-label="Tender sync schedule status"
+          aria-label={t("ariaStatus")}
         >
           {isLoading ? (
-            <p className="text-muted-foreground">Loading…</p>
+            <p className="text-muted-foreground">{t("loading")}</p>
           ) : isError ? (
             <p className="text-destructive">
-              {error instanceof Error ? error.message : "Failed to load status"}
+              {error instanceof Error ? error.message : t("loadError")}
             </p>
           ) : (
             <>
               <p>
-                <span className="text-muted-foreground">
-                  Last sync finished:
-                </span>{" "}
-                {lastSync ? formatDateTimeGMT(lastSync) : "Never"}
+                <span className="text-muted-foreground">{t("lastSyncLabel")}</span>{" "}
+                {lastSync ? formatDateTimeGMT(lastSync) : t("never")}
               </p>
               <p>
-                <span className="text-muted-foreground">
-                  Next scheduled sync:
-                </span>{" "}
-                {nextSync ? formatDateTimeGMT(nextSync) : "Not scheduled"}
+                <span className="text-muted-foreground">{t("nextSyncLabel")}</span>{" "}
+                {nextSync ? formatDateTimeGMT(nextSync) : t("notScheduled")}
               </p>
             </>
           )}
@@ -128,21 +124,19 @@ export function AdminTenderSyncSchedule() {
             onClick={() => triggerSync.mutate()}
             disabled={isTriggering || isLoading}
             aria-busy={isTriggering}
-            aria-label={
-              isTriggering ? "Syncing tenders" : "Trigger tender sync now"
-            }
+            aria-label={isTriggering ? t("ariaTriggering") : t("ariaTrigger")}
           >
-            {isTriggering ? "Syncing…" : "Trigger sync now"}
+            {isTriggering ? t("syncingButton") : t("triggerButton")}
           </Button>
           {isTriggering && (
             <Button
               size="sm"
               variant="outline"
               onClick={() => stopSync()}
-              aria-label="Stop tender sync"
+              aria-label={t("ariaStop")}
             >
               <Square className="w-3.5 h-3.5 mr-1" aria-hidden />
-              Stop sync
+              {t("stopButton")}
             </Button>
           )}
         </div>

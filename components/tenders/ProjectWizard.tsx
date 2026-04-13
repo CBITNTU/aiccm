@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- step/result types */
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -38,6 +39,7 @@ export function ProjectWizard({
   leadCompanyId,
   initialTenderId = null,
 }: ProjectWizardProps) {
+  const t = useTranslations("ProjectWizard");
   const [currentStep, setCurrentStep] = useState(initialTenderId ? 2 : 1);
   const [selectedTenderId, setSelectedTenderId] = useState<string | null>(
     initialTenderId,
@@ -56,23 +58,23 @@ export function ProjectWizard({
   const steps = [
     {
       number: 1,
-      title: "Select Tender",
-      description: "Choose the tender for this project",
+      title: t("stepSelectTender"),
+      description: t("stepSelectTenderDesc"),
     },
     {
       number: 2,
-      title: "Select Capabilities",
-      description: "Choose the capabilities needed for this project",
+      title: t("stepSelectCapabilities"),
+      description: t("stepSelectCapabilitiesDesc"),
     },
     {
       number: 3,
-      title: "Select Companies",
-      description: "Choose companies with the selected capabilities",
+      title: t("stepSelectCompanies"),
+      description: t("stepSelectCompaniesDesc"),
     },
     {
       number: 4,
-      title: "Review & Create",
-      description: "Review your selections and create the project",
+      title: t("stepReviewCreate"),
+      description: t("stepReviewCreateDesc"),
     },
   ];
 
@@ -103,23 +105,17 @@ export function ProjectWizard({
           setSelectedCapabilities(result.suggestedCapabilityIds);
           setAiSuggestedCapabilities(result.suggestedCapabilityIds);
           toast.success(
-            `AI suggested ${result.suggestedCapabilityIds.length} capabilities. You can edit the selection.`,
+            t("aiSuggestedCount", { count: result.suggestedCapabilityIds.length }),
           );
         } else {
-          toast.info(
-            "No specific capabilities were suggested. Please select manually.",
-          );
+          toast.info(t("aiNoSuggestions"));
         }
       } catch (error: any) {
         console.error("Error fetching suggested capabilities:", error);
         if (error?.status === 401) {
-          toast.error(
-            "Please log in to use AI suggestions. You can still select capabilities manually.",
-          );
+          toast.error(t("aiSuggestAuthError"));
         } else {
-          toast.error(
-            "Failed to get AI suggestions. Please select capabilities manually.",
-          );
+          toast.error(t("aiSuggestError"));
         }
       } finally {
         setIsLoadingCapabilities(false);
@@ -180,11 +176,14 @@ export function ProjectWizard({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl">
-                Build Your Project Team
+                {t("title")}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Step {currentStep} of {steps.length}:{" "}
-                {steps[currentStep - 1].title}
+                {t("stepProgress", {
+                  current: currentStep,
+                  total: steps.length,
+                  title: steps[currentStep - 1].title,
+                })}
               </p>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -252,18 +251,14 @@ export function ProjectWizard({
               {isLoadingCapabilities && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>
-                    AI is analyzing the tender and suggesting relevant
-                    capabilities...
-                  </span>
+                  <span>{t("aiAnalyzing")}</span>
                 </div>
               )}
               {aiSuggestedCapabilities.length > 0 && !isLoadingCapabilities && (
                 <div className="flex items-center gap-2 text-sm bg-primary/10 text-primary p-3 rounded-lg">
                   <Sparkles className="w-4 h-4" />
                   <span>
-                    AI suggested {aiSuggestedCapabilities.length} capabilities.
-                    You can edit the selection below.
+                    {t("aiSuggestedCount", { count: aiSuggestedCapabilities.length })}
                   </span>
                 </div>
               )}
@@ -305,10 +300,10 @@ export function ProjectWizard({
               onClick={currentStep === 1 ? onClose : handleBack}
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
-              {currentStep === 1 ? "Cancel" : "Back"}
+              {currentStep === 1 ? t("cancel") : t("back")}
             </Button>
             <Button onClick={handleNext} disabled={!canProceed()}>
-              Next
+              {t("next")}
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>

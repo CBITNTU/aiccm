@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,7 @@ interface InvitationData {
 }
 
 function InvitePageContent() {
+  const t = useTranslations("Auth.invite");
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -63,7 +65,7 @@ function InvitePageContent() {
   useEffect(() => {
     async function validateToken() {
       if (!token) {
-        setError("No invitation token provided");
+        setError(t("errorNoToken"));
         setIsLoading(false);
         return;
       }
@@ -89,18 +91,18 @@ function InvitePageContent() {
         setInvitation(data);
 
         if (!data.valid) {
-          setError(data.error || "Invalid invitation");
+          setError(data.error || t("errorInvalid"));
         }
       } catch (err) {
         console.error("Error validating invitation:", err);
-        setError("Failed to validate invitation");
+        setError(t("errorValidateFallback"));
       } finally {
         setIsLoading(false);
       }
     }
 
     validateToken();
-  }, [token]);
+  }, [token, t]);
 
   const handleNewUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,17 +110,17 @@ function InvitePageContent() {
 
     // Validate form
     if (!formData.password) {
-      setError("Please enter a password");
+      setError(t("newUser.errorPasswordEmpty"));
       return;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("newUser.errorPasswordTooShort"));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("newUser.errorPasswordsMismatch"));
       return;
     }
 
@@ -138,7 +140,7 @@ function InvitePageContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create account");
+        throw new Error(data.error || t("newUser.errorCreateFallback"));
       }
 
       // Sign in the user automatically
@@ -149,20 +151,20 @@ function InvitePageContent() {
 
       if (signInResult.error) {
         // If sign-in fails, redirect to auth page with message
-        toast.success("Account created! Please sign in to continue.");
+        toast.success(t("newUser.toastPleaseSignIn"));
         router.push(
-          "/auth?message=Account created. Please sign in to continue onboarding.",
+          `/auth?message=${encodeURIComponent(t("newUser.redirectPleaseSignIn"))}`,
         );
         return;
       }
 
-      toast.success("Account created successfully!");
+      toast.success(t("newUser.toastCreated"));
 
       // Redirect to onboarding to complete profile
       router.push("/onboarding");
     } catch (err) {
       console.error("Signup error:", err);
-      setError(err instanceof Error ? err.message : "Failed to create account");
+      setError(err instanceof Error ? err.message : t("newUser.errorCreateFallback"));
     } finally {
       setIsSubmitting(false);
     }
@@ -182,17 +184,17 @@ function InvitePageContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to accept invitation");
+        throw new Error(data.error || t("loggedIn.errorAcceptFallback"));
       }
 
-      toast.success("Invitation accepted!");
+      toast.success(t("loggedIn.toastAccepted"));
 
       // Redirect to onboarding for confirmation step
       router.push("/onboarding");
     } catch (err) {
       console.error("Accept invitation error:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to accept invitation",
+        err instanceof Error ? err.message : t("loggedIn.errorAcceptFallback"),
       );
     } finally {
       setIsSubmitting(false);
@@ -208,7 +210,7 @@ function InvitePageContent() {
           <Card className="w-full max-w-md mx-4">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-muted-foreground">Validating invitation...</p>
+              <p className="text-muted-foreground">{t("validating")}</p>
             </CardContent>
           </Card>
         </div>
@@ -227,24 +229,23 @@ function InvitePageContent() {
               <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
                 <AlertCircle className="h-6 w-6 text-red-600" />
               </div>
-              <CardTitle>Invalid Invitation</CardTitle>
+              <CardTitle>{t("invalidTitle")}</CardTitle>
               <CardDescription>
                 {error ||
                   invitation?.error ||
-                  "This invitation link is not valid."}
+                  t("invalidFallback")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-center text-muted-foreground">
-                Please contact your company administrator to request a new
-                invitation.
+                {t("invalidHelper")}
               </p>
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => router.push("/auth")}
               >
-                Go to Sign In
+                {t("invalidGoToSignIn")}
               </Button>
             </CardContent>
           </Card>
@@ -264,12 +265,12 @@ function InvitePageContent() {
               <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
-              <CardTitle>Success!</CardTitle>
+              <CardTitle>{t("successTitle")}</CardTitle>
               <CardDescription>{successMessage}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-center text-muted-foreground">
-                Redirecting you...
+                {t("successRedirecting")}
               </p>
             </CardContent>
           </Card>
@@ -292,9 +293,11 @@ function InvitePageContent() {
               <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Building2 className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle>Join {invitation.companyName}</CardTitle>
+              <CardTitle>
+                {t("loggedIn.title", { companyName: invitation.companyName ?? "" })}
+              </CardTitle>
               <CardDescription>
-                {invitation.inviterName} has invited you to join their team
+                {t("loggedIn.description", { inviterName: invitation.inviterName ?? "" })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -302,9 +305,10 @@ function InvitePageContent() {
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    This invitation was sent to {invitation.email}. You are
-                    currently logged in as {currentUserEmail}. Please log out
-                    and log in with the correct account.
+                    {t("loggedIn.wrongAccountAlert", {
+                      inviteEmail: invitation.email ?? "",
+                      currentEmail: currentUserEmail ?? "",
+                    })}
                   </AlertDescription>
                 </Alert>
               )}
@@ -319,12 +323,12 @@ function InvitePageContent() {
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Company:</span>
+                  <span className="text-muted-foreground">{t("loggedIn.companyLabel")}</span>
                   <span className="font-medium">{invitation.companyName}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Invited by:</span>
+                  <span className="text-muted-foreground">{t("loggedIn.invitedByLabel")}</span>
                   <span className="font-medium">{invitation.inviterName}</span>
                 </div>
               </div>
@@ -337,19 +341,18 @@ function InvitePageContent() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Accepting...
+                    {t("loggedIn.accepting")}
                   </>
                 ) : (
                   <>
                     <UserPlus className="mr-2 h-4 w-4" />
-                    Accept Invitation
+                    {t("loggedIn.accept")}
                   </>
                 )}
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                After accepting, a platform administrator will review your
-                membership request.
+                {t("loggedIn.helper")}
               </p>
             </CardContent>
           </Card>
@@ -369,17 +372,18 @@ function InvitePageContent() {
               <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Building2 className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle>Join {invitation.companyName}</CardTitle>
+              <CardTitle>
+                {t("loggedOut.title", { companyName: invitation.companyName ?? "" })}
+              </CardTitle>
               <CardDescription>
-                {invitation.inviterName} has invited you to join their team
+                {t("loggedOut.description", { inviterName: invitation.inviterName ?? "" })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert>
                 <User className="h-4 w-4" />
                 <AlertDescription>
-                  You already have an account with {invitation.email}. Please
-                  sign in to accept this invitation.
+                  {t("loggedOut.alert", { inviteEmail: invitation.email ?? "" })}
                 </AlertDescription>
               </Alert>
 
@@ -389,7 +393,7 @@ function InvitePageContent() {
                   router.push(`/auth?redirect=/auth/invite?token=${token}`)
                 }
               >
-                Sign In to Accept
+                {t("loggedOut.signInToAccept")}
               </Button>
             </CardContent>
           </Card>
@@ -408,10 +412,11 @@ function InvitePageContent() {
             <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Building2 className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle>Join {invitation.companyName}</CardTitle>
+            <CardTitle>
+              {t("newUser.title", { companyName: invitation.companyName ?? "" })}
+            </CardTitle>
             <CardDescription>
-              {invitation.inviterName} has invited you to join their team.
-              Create your account to get started.
+              {t("newUser.description", { inviterName: invitation.inviterName ?? "" })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -425,7 +430,7 @@ function InvitePageContent() {
 
               <div className="bg-muted/50 rounded-lg p-3 mb-4">
                 <p className="text-sm text-muted-foreground">
-                  Email:{" "}
+                  {t("newUser.emailLabel")}{" "}
                   <span className="font-medium text-foreground">
                     {invitation.email}
                   </span>
@@ -433,13 +438,13 @@ function InvitePageContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password *</Label>
+                <Label htmlFor="password">{t("newUser.passwordLabel")}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Min. 6 characters"
+                    placeholder={t("newUser.passwordPlaceholder")}
                     className="pl-10"
                     value={formData.password}
                     onChange={(e) =>
@@ -452,13 +457,13 @@ function InvitePageContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                <Label htmlFor="confirmPassword">{t("newUser.confirmPasswordLabel")}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="confirmPassword"
                     type="password"
-                    placeholder="Confirm your password"
+                    placeholder={t("newUser.confirmPasswordPlaceholder")}
                     className="pl-10"
                     value={formData.confirmPassword}
                     onChange={(e) =>
@@ -477,18 +482,18 @@ function InvitePageContent() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Account...
+                    {t("newUser.submitLoading")}
                   </>
                 ) : (
                   <>
                     <UserPlus className="mr-2 h-4 w-4" />
-                    Create Account & Join
+                    {t("newUser.submit")}
                   </>
                 )}
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                You&apos;ll complete your profile in the next step.
+                {t("newUser.helper")}
               </p>
             </form>
           </CardContent>
@@ -499,6 +504,7 @@ function InvitePageContent() {
 }
 
 export default function InvitePage() {
+  const t = useTranslations("Auth.invite");
   return (
     <Suspense
       fallback={
@@ -508,7 +514,7 @@ export default function InvitePage() {
             <Card className="w-full max-w-md mx-4">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground">Loading...</p>
+                <p className="text-muted-foreground">{t("loading")}</p>
               </CardContent>
             </Card>
           </div>

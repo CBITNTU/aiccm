@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Fragment } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ interface OnboardingStats {
 }
 
 export default function AdminOnboarding() {
+  const t = useTranslations("AdminOnboarding");
   const [users, setUsers] = useState<OnboardingUser[]>([]);
   const [stats, setStats] = useState<OnboardingStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,11 +138,11 @@ export default function AdminOnboarding() {
   const getApprovalBadge = (status: string) => {
     switch (status) {
       case "approved":
-        return <Badge className="bg-green-500">Approved</Badge>;
+        return <Badge className="bg-green-500">{t("approval.approved")}</Badge>;
       case "pending":
-        return <Badge variant="secondary">Pending</Badge>;
+        return <Badge variant="secondary">{t("approval.pending")}</Badge>;
       case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
+        return <Badge variant="destructive">{t("approval.rejected")}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -161,7 +163,7 @@ export default function AdminOnboarding() {
   });
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t("dateNA");
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
@@ -176,7 +178,7 @@ export default function AdminOnboarding() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading onboarding data...</p>
+          <p className="text-muted-foreground">{t("loading")}</p>
         </div>
       </div>
     );
@@ -195,7 +197,7 @@ export default function AdminOnboarding() {
           >
             <CardContent className="p-4">
               <div className="text-2xl font-bold">{stats.total}</div>
-              <div className="text-sm text-muted-foreground">Total Users</div>
+              <div className="text-sm text-muted-foreground">{t("stats.totalUsers")}</div>
             </CardContent>
           </Card>
           <Card
@@ -213,7 +215,7 @@ export default function AdminOnboarding() {
                   {stats.byStep.emailVerification}
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground">Email Pending</div>
+              <div className="text-sm text-muted-foreground">{t("stats.emailPending")}</div>
             </CardContent>
           </Card>
           <Card
@@ -231,7 +233,7 @@ export default function AdminOnboarding() {
                   {stats.byStep.profileInfo}
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground">Profile Step</div>
+              <div className="text-sm text-muted-foreground">{t("stats.profileStep")}</div>
             </CardContent>
           </Card>
           <Card
@@ -251,7 +253,7 @@ export default function AdminOnboarding() {
                 </div>
               </div>
               <div className="text-sm text-muted-foreground">
-                Account/Company
+                {t("stats.accountCompany")}
               </div>
             </CardContent>
           </Card>
@@ -268,7 +270,7 @@ export default function AdminOnboarding() {
                 <CheckCircle className="w-4 h-4 text-green-500" />
                 <div className="text-2xl font-bold">{stats.completed}</div>
               </div>
-              <div className="text-sm text-muted-foreground">Completed</div>
+              <div className="text-sm text-muted-foreground">{t("stats.completed")}</div>
             </CardContent>
           </Card>
         </div>
@@ -278,10 +280,10 @@ export default function AdminOnboarding() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>User Onboarding Status</CardTitle>
+            <CardTitle>{t("cardTitle")}</CardTitle>
             <Button variant="outline" size="sm" onClick={fetchData}>
               <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
+              {t("refreshButton")}
             </Button>
           </div>
         </CardHeader>
@@ -290,7 +292,7 @@ export default function AdminOnboarding() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search by email or name..."
+                placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -304,11 +306,11 @@ export default function AdminOnboarding() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[30px]"></TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Current Step</TableHead>
-                  <TableHead>Account Type</TableHead>
-                  <TableHead>Approval</TableHead>
-                  <TableHead>Signed Up</TableHead>
+                  <TableHead>{t("table.user")}</TableHead>
+                  <TableHead>{t("table.currentStep")}</TableHead>
+                  <TableHead>{t("table.accountType")}</TableHead>
+                  <TableHead>{t("table.approval")}</TableHead>
+                  <TableHead>{t("table.signedUp")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -318,7 +320,7 @@ export default function AdminOnboarding() {
                       colSpan={6}
                       className="text-center py-8 text-muted-foreground"
                     >
-                      No users found matching your criteria
+                      {t("emptyState")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -344,7 +346,7 @@ export default function AdminOnboarding() {
                             <div className="font-medium">
                               {user.firstName && user.lastName
                                 ? `${user.firstName} ${user.lastName}`
-                                : "Not provided"}
+                                : t("nameNotProvided")}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {user.email}
@@ -383,7 +385,7 @@ export default function AdminOnboarding() {
                           <TableCell colSpan={6} className="bg-muted/30">
                             <div className="p-4 space-y-4">
                               <h4 className="font-semibold">
-                                Onboarding Progress
+                                {t("details.heading")}
                               </h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {/* Step 1: Email Verification */}
@@ -395,20 +397,19 @@ export default function AdminOnboarding() {
                                       <Clock className="w-4 h-4 text-amber-500" />
                                     )}
                                     <span className="font-medium">
-                                      1. Email Verification
+                                      {t("details.step1")}
                                     </span>
                                   </div>
                                   <div className="text-sm text-muted-foreground">
                                     {user.emailVerification.verified ? (
                                       <span className="text-green-600">
-                                        Verified{" "}
-                                        {formatDate(
-                                          user.emailVerification.verifiedAt,
-                                        )}
+                                        {t("details.verifiedAt", {
+                                          date: formatDate(user.emailVerification.verifiedAt),
+                                        })}
                                       </span>
                                     ) : (
                                       <span className="text-amber-600">
-                                        Pending verification
+                                        {t("details.pendingVerification")}
                                       </span>
                                     )}
                                   </div>
@@ -426,28 +427,28 @@ export default function AdminOnboarding() {
                                       <XCircle className="w-4 h-4 text-muted-foreground" />
                                     )}
                                     <span className="font-medium">
-                                      2. Profile Info
+                                      {t("details.step2")}
                                     </span>
                                   </div>
                                   {user.profileInfo.completed ? (
                                     <div className="text-sm space-y-1">
                                       <div>
                                         <span className="text-muted-foreground">
-                                          Name:
+                                          {t("details.nameLabel")}
                                         </span>{" "}
                                         {user.profileInfo.firstName}{" "}
                                         {user.profileInfo.lastName}
                                       </div>
                                       <div>
                                         <span className="text-muted-foreground">
-                                          Job:
+                                          {t("details.jobLabel")}
                                         </span>{" "}
                                         {user.profileInfo.jobTitle}
                                       </div>
                                     </div>
                                   ) : (
                                     <div className="text-sm text-muted-foreground">
-                                      Not completed
+                                      {t("details.notCompleted")}
                                     </div>
                                   )}
                                 </div>
@@ -464,7 +465,7 @@ export default function AdminOnboarding() {
                                       <XCircle className="w-4 h-4 text-muted-foreground" />
                                     )}
                                     <span className="font-medium">
-                                      3. Account Type
+                                      {t("details.step3")}
                                     </span>
                                   </div>
                                   {user.accountType.selected ? (
@@ -478,7 +479,7 @@ export default function AdminOnboarding() {
                                     </div>
                                   ) : (
                                     <div className="text-sm text-muted-foreground">
-                                      Not selected
+                                      {t("details.notSelected")}
                                     </div>
                                   )}
                                 </div>
@@ -500,12 +501,12 @@ export default function AdminOnboarding() {
                                       <XCircle className="w-4 h-4 text-muted-foreground" />
                                     )}
                                     <span className="font-medium">
-                                      4. Company Info
+                                      {t("details.step4")}
                                     </span>
                                   </div>
                                   {user.accountType.type === "individual" ? (
                                     <div className="text-sm text-muted-foreground">
-                                      Skipped (Individual)
+                                      {t("details.skippedIndividual")}
                                     </div>
                                   ) : user.companyInfo?.company ? (
                                     <div className="text-sm space-y-1">
@@ -526,7 +527,7 @@ export default function AdminOnboarding() {
                                     <div className="text-sm space-y-1">
                                       <div>
                                         <span className="text-muted-foreground">
-                                          Requesting to join:
+                                          {t("details.requestingToJoin")}
                                         </span>
                                       </div>
                                       <div className="font-medium">
@@ -544,7 +545,7 @@ export default function AdminOnboarding() {
                                     </div>
                                   ) : (
                                     <div className="text-sm text-muted-foreground">
-                                      Not completed
+                                      {t("details.notCompleted")}
                                     </div>
                                   )}
                                 </div>
@@ -555,7 +556,7 @@ export default function AdminOnboarding() {
                                 <div className="pt-2 border-t">
                                   <div className="text-sm">
                                     <span className="text-muted-foreground">
-                                      Onboarding completed:
+                                      {t("details.completedOn")}
                                     </span>{" "}
                                     <span className="font-medium">
                                       {formatDate(user.onboarding.completedAt)}

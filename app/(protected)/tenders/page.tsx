@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
@@ -32,6 +33,7 @@ interface TenderFiltersState {
 }
 
 export default function TendersPage() {
+  const t = useTranslations("TendersPage");
   const { isPendingApproval, isOnboarding } = useAuth();
   const { selectedOrg } = useOrg();
   const router = useRouter();
@@ -88,10 +90,10 @@ export default function TendersPage() {
         <div className="mb-6 flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Tender Opportunities
+              {t("title")}
             </h1>
             <p className="text-muted-foreground mt-1">
-              Discover tenders matching your business capabilities
+              {t("subtitle")}
             </p>
           </div>
           {selectedOrg && !isRestrictedUser && (
@@ -104,7 +106,7 @@ export default function TendersPage() {
               className="flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Start Project
+              {t("startProject")}
             </Button>
           )}
         </div>
@@ -117,21 +119,21 @@ export default function TendersPage() {
               className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <Target className="w-4 h-4 mr-2" />
-              Your Matches
+              {t("tabMatches")}
             </TabsTrigger>
             <TabsTrigger
               value="saved"
               className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <Bookmark className="w-4 h-4 mr-2" />
-              Saved
+              {t("tabSaved")}
             </TabsTrigger>
             <TabsTrigger
               value="tenders"
               className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <FileText className="w-4 h-4 mr-2" />
-              All Tenders
+              {t("tabAllTenders")}
             </TabsTrigger>
           </TabsList>
 
@@ -141,7 +143,7 @@ export default function TendersPage() {
             {selectedOrg && (
               <div className="flex items-center gap-3 pb-2">
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  Matching for:
+                  {t("matchingFor")}
                 </span>
                 <span className="text-sm font-medium">
                   {selectedOrg.companyName}
@@ -151,7 +153,7 @@ export default function TendersPage() {
             {!selectedOrg && (
               <div className="flex items-center gap-3 pb-2">
                 <span className="text-sm text-muted-foreground">
-                  No company selected. Select an organization from the sidebar.
+                  {t("noCompanySelected")}
                 </span>
               </div>
             )}
@@ -161,7 +163,7 @@ export default function TendersPage() {
               matchingFilters={matchingFilters}
               onMatchingFiltersChange={handleMatchingFiltersChange}
               onReset={resetMatchingFilters}
-              placeholder="Search matches by title, buyer, or location..."
+              placeholder={t("searchMatchesPlaceholder")}
             />
 
             <TenderMatching
@@ -199,7 +201,7 @@ export default function TendersPage() {
               databaseFilters={filters}
               onDatabaseFiltersChange={handleFiltersChange}
               onReset={resetFilters}
-              placeholder="Search by title, buyer, location, or description..."
+              placeholder={t("searchAllPlaceholder")}
             />
             <DatabaseTenderFeed
               filters={filters}

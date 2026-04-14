@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Mail, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslations } from "next-intl";
 
 export function EmailVerificationBanner() {
+  const t = useTranslations("EmailVerificationBanner");
   const { user } = useAuth();
   const [dismissed, setDismissed] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -51,19 +53,19 @@ export function EmailVerificationBanner() {
             <Mail className="h-5 w-5 text-blue-600 flex-shrink-0" />
             <div className="text-sm">
               <span className="font-medium text-blue-800">
-                Please verify your email address.
+                {t("pleaseVerify")}
               </span>{" "}
               <span className="text-blue-700">
-                Check your inbox for a verification link.
+                {t("checkInbox")}
               </span>
               {resendStatus === "success" && (
                 <span className="text-green-700 ml-2">
-                  Verification email sent!
+                  {t("emailSent")}
                 </span>
               )}
               {resendStatus === "error" && (
                 <span className="text-red-700 ml-2">
-                  Failed to send. Please try again.
+                  {t("failedToSend")}
                 </span>
               )}
             </div>
@@ -79,10 +81,10 @@ export function EmailVerificationBanner() {
               {isResending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  Sending...
+                  {t("sending")}
                 </>
               ) : (
-                "Resend email"
+                t("resendEmail")
               )}
             </Button>
             <Button
@@ -92,7 +94,7 @@ export function EmailVerificationBanner() {
               className="text-blue-700 hover:bg-blue-100 px-2"
             >
               <X className="h-4 w-4" />
-              <span className="sr-only">Dismiss</span>
+              <span className="sr-only">{t("dismiss")}</span>
             </Button>
           </div>
         </div>

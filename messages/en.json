@@ -1928,7 +1928,10 @@
       "competencies": "competencies",
       "noWebsite": "No website",
       "notSpecified": "Not specified",
-      "noLocation": "No location"
+      "noLocation": "No location",
+      "analysisLimitReached": "Analysis limit reached this month.",
+      "analysisResetsOn": "Resets {date}.",
+      "analysisUsageTooltip": "{used} of {limit} analysis runs used this month."
     },
     "overview": {
       "companyOverview": "Company Overview",
@@ -1979,6 +1982,8 @@
       "description": "Manage team members and review join requests",
       "memberCount": "{count} member",
       "memberCountPlural": "{count} members",
+      "unknownUser": "Unknown",
+      "defaultCompanyName": "Company",
       "pending": "pending",
       "manageTeam": "Manage Team",
       "invite": "Invite",
@@ -2035,6 +2040,51 @@
       "changesRequested": {
         "title": "Changes Requested",
         "description": "Our team reviewed your submitted changes and has requested some modifications. Please address the feedback below and resubmit."
+      },
+      "successToast": "Verification request submitted successfully!",
+      "errorFallback": "Failed to submit",
+      "reviewedOn": "Reviewed on {date}.",
+      "changesNotApproved": {
+        "title": "Changes Not Approved",
+        "description": "Your proposed changes were not approved by our team. You can modify and resubmit your changes, or discard them."
+      },
+      "draftChangesPending": {
+        "title": "Draft Changes Pending",
+        "description": "You have draft changes that need to be submitted for review. Use the bar at the bottom of the page to review and submit your changes."
+      },
+      "verifiedCompany": {
+        "title": "Verified Company",
+        "description": "This company has been verified by TNDRX."
+      },
+      "verifiedOn": "Verified on {date}.",
+      "pendingVerification": {
+        "title": "Verification Under Review",
+        "description": "Your verification request is being reviewed by our team."
+      },
+      "submittedOn": "Submitted on {date}.",
+      "getVerifiedTitle": "Get Your Company Verified",
+      "changesRequestedDescription": "Our team reviewed your verification request and has requested some changes. Please address the feedback below and resubmit.",
+      "getVerifiedBenefitsAccess": "Verified companies get access to:",
+      "getVerifiedBenefitActiveProjects": "More active projects",
+      "getVerifiedBenefitCompetencies": "Unlimited competencies",
+      "getVerifiedBenefitBadge": "A verified badge in the directory",
+      "previousFeedback": "Previous review feedback: ",
+      "resubmitButton": "Resubmit for Verification",
+      "submitButton": "Submit for Verification",
+      "dialog": {
+        "resubmitTitle": "Resubmit for Verification",
+        "submitTitle": "Submit for Verification",
+        "resubmitDescription": "Please ensure you've addressed the feedback before resubmitting. Our team will review the updated profile.",
+        "submitDescription": "Our team will review your company profile to verify your business details and capabilities.",
+        "profileCompleteness": "Profile Completeness",
+        "allFieldsComplete": "All required fields are complete",
+        "completeFieldsBefore": "Please complete these fields before submitting:",
+        "additionalNotes": "Additional Notes (optional)",
+        "describeChangesPlaceholder": "Describe what changes you've made...",
+        "additionalInfoPlaceholder": "Any additional information you'd like to provide...",
+        "cancel": "Cancel",
+        "submit": "Submit for Verification",
+        "resubmit": "Resubmit for Verification"
       }
     },
     "verifiedBadge": {
@@ -2050,6 +2100,14 @@
       "title": "Edit Company Info",
       "description": "Update your company's basic information and contact details.",
       "savesImmediately": "Saves immediately",
+      "saveChanges": "Save Changes",
+      "placeholders": {
+        "email": "contact@company.com",
+        "phone": "+44 ...",
+        "address": "Address or postcode",
+        "website": "https://...",
+        "companyName": "Company Name"
+      },
       "contactEmail": "Contact Email",
       "phoneNumber": "Phone Number",
       "address": "Address / Location",
@@ -2060,6 +2118,246 @@
       "success": "Company information updated successfully",
       "error": "Failed to save changes"
     },
+    "editOverview": {
+      "title": "Edit Overview",
+      "description": "Update your company description and key capabilities.",
+      "successDraft": "Overview changes saved as draft",
+      "success": "Overview updated successfully",
+      "error": "Failed to save changes",
+      "labels": {
+        "description": "Description",
+        "keyCapabilities": "Key Capabilities",
+        "certifications": "Certifications"
+      },
+      "placeholders": {
+        "description": "Describe your company...",
+        "keyCapabilities": "Key capabilities (comma-separated)...",
+        "certifications": "ISO 9001, ISO 14001, Constructionline Gold, CHAS..."
+      },
+      "hints": {
+        "commaSeparated": "Separate capabilities with commas",
+        "certifications": "List your certifications, accreditations, and standards"
+      }
+    },
+    "editExperience": {
+      "title": "Edit Past Projects",
+      "description": "Add your company's project history to improve tender matching accuracy.",
+      "legacyPlainTitle": "Past Projects",
+      "successDraft": "Experience changes saved as draft",
+      "success": "Experience updated successfully",
+      "error": "Failed to save changes",
+      "projectNumber": "Project {number}",
+      "addProject": "Add Project",
+      "labels": {
+        "projectName": "Project Name *",
+        "description": "Description",
+        "client": "Client",
+        "approximateValue": "Approximate Value",
+        "year": "Year",
+        "sector": "Sector"
+      },
+      "placeholders": {
+        "name": "e.g. Manchester Hospital Extension",
+        "description": "Brief description of the project scope and your role...",
+        "client": "e.g. NHS Trust",
+        "value": "e.g. 2.5M",
+        "year": "e.g. 2024",
+        "sector": "e.g. Healthcare, Construction"
+      }
+    },
+    "pastProjectsDisplay": {
+      "noProjectsListed": "No past projects listed",
+      "untitled": "Untitled",
+      "clientLine": "Client: {client}",
+      "valueLine": "Value: {value}",
+      "sectorLine": "Sector: {sector}"
+    },
+    "operationLocations": {
+      "defaultPlaceholder": "Add countries, regions, or cities…",
+      "country": "Country",
+      "regionState": "Region / State",
+      "city": "City",
+      "moreCities": "+{count} more (type below for search)",
+      "add": "Add",
+      "addCustom": "Add custom",
+      "removeAriaLabel": "Remove {location}"
+    },
+    "editOperationLocations": {
+      "title": "Edit Operation Locations",
+      "description": "Set the regions and areas where your company operates.",
+      "success": "Operation locations updated",
+      "error": "Failed to save changes",
+      "editorPlaceholder": "e.g. UK borough, postcode area, or custom location"
+    },
+    "standardsTree": {
+      "intro": "Select the standards and certifications your company holds.",
+      "searchPlaceholder": "Search standards...",
+      "noMatch": "No standards found matching your search.",
+      "noneAvailable": "No standards available.",
+      "selectedLabel": "Selected:"
+    },
+    "marketsTree": {
+      "intro": "Select the markets your company serves. You can select multiple.",
+      "searchPlaceholder": "Search markets...",
+      "noMatch": "No markets found matching your search.",
+      "noneAvailable": "No markets available.",
+      "selectedLabel": "Selected:"
+    },
+    "editCompetenciesSheet": {
+      "title": "Edit Competencies",
+      "descriptionVerified": "Select capabilities. Changes require admin review.",
+      "descriptionUnverifiedLimited": "Select up to {limit} capabilities. Get verified to unlock unlimited.",
+      "descriptionUnverified": "Select capabilities your company has.",
+      "bodyHint": "Select the capabilities your company has.",
+      "searchPlaceholder": "Search capabilities...",
+      "selectedCount": "Selected ({count})",
+      "noChanges": "No Changes",
+      "failedToLoad": "Failed to load capabilities",
+      "successDraft": "Competency changes saved as draft.",
+      "success": "Competencies updated",
+      "failedToSave": "Failed to save",
+      "limitToast": "Unverified companies can select up to {limit} competencies. Get verified to unlock unlimited."
+    },
+    "editMarketsSheet": {
+      "title": "Edit Markets",
+      "description": "Select the markets your company serves.",
+      "bodyHint": "Select the markets your company serves.",
+      "searchPlaceholder": "Search markets...",
+      "selectedCount": "Selected ({count})",
+      "noChanges": "No Changes",
+      "failedToLoad": "Failed to load markets",
+      "successDraft": "Market changes saved as draft.",
+      "success": "Markets updated",
+      "failedToSave": "Failed to save"
+    },
+    "editStandardsSheet": {
+      "title": "Edit Standards & Certifications",
+      "description": "Select standards and certifications your company holds.",
+      "bodyHint": "Select standards and certifications your company holds.",
+      "searchPlaceholder": "Search standards...",
+      "selectedCount": "Selected ({count})",
+      "noChanges": "No Changes",
+      "failedToLoad": "Failed to load standards",
+      "successDraft": "Standards changes saved as draft.",
+      "success": "Standards updated",
+      "failedToSave": "Failed to save"
+    },
+    "createJoin": {
+      "title": "Add a Company",
+      "subtitle": "Register a new company or join an existing one",
+      "tabs": {
+        "create": "Create New",
+        "join": "Join Existing"
+      },
+      "toastLookupSuccessTitle": "Company found!",
+      "toastLookupSuccessDescription": "Details have been auto-filled from Companies House.",
+      "lookupNotFound": "Company not found on Companies House.",
+      "lookupFailed": "Failed to look up company.",
+      "lookupConnectionFailed": "Failed to connect to Companies House. Please try again.",
+      "toastJoinRequestSubmittedTitle": "Request submitted!",
+      "toastJoinRequestSubmittedDescription": "Your request to join \"{companyName}\" has been sent.",
+      "toastCompanyCreatedTitle": "Company created!",
+      "toastCompanyCreatedDescription": "\"{companyName}\" has been registered and is pending approval.",
+      "errorJoinSubmit": "Failed to submit join request",
+      "errorCreateSubmit": "Failed to create company",
+      "errorCreateRequest": "Failed to submit request",
+      "errorCompanyNameRequired": "Company name is required",
+      "errorSelectCompany": "Please select a company to join",
+      "foundCompany": {
+        "bannerTitle": "Company Already Registered",
+        "onPlatform": "This company is already on our platform.",
+        "hasAdmin": "An administrator can approve your request to join.",
+        "noAdmin": "This company doesn't have an administrator yet.",
+        "messageLabel": "Message to company admin (optional)",
+        "messagePlaceholder": "Introduce yourself or explain why you'd like to join...",
+        "submitting": "Submitting...",
+        "requestJoin": "Request to Join",
+        "goBack": "Go Back"
+      },
+      "create": {
+        "chNumberLabel": "UK Companies House Number",
+        "chPlaceholder": "e.g., 12345678",
+        "lookUp": "Look Up",
+        "chHelper": "Optional. Enter your company number to auto-fill details from Companies House.",
+        "companyNumberLine": "Company #{number} · {status}",
+        "change": "Change",
+        "lookupManualHint": "You can still create your company by entering the details manually below.",
+        "tryAgain": "Try Again",
+        "dividerManual": "Or enter details manually",
+        "dividerEnter": "Enter details",
+        "companyNameLabel": "Company Name *",
+        "companyNamePlaceholder": "Enter company name",
+        "websiteLabel": "Website URL",
+        "websitePlaceholder": "https://yourcompany.com",
+        "addressLabel": "Address",
+        "addressPlaceholder": "Company address",
+        "emailLabel": "Contact Email",
+        "emailPlaceholderFallback": "contact@company.com",
+        "emailHint": "Defaults to your email if left empty",
+        "phoneLabel": "Contact Phone",
+        "phonePlaceholder": "+44 ...",
+        "afterApprovalNote": "After admin approval, you'll be able to add more company details including certifications, capabilities, and team members.",
+        "creating": "Creating...",
+        "submitCreate": "Create Company"
+      },
+      "join": {
+        "searchLabel": "Search Company *",
+        "searchPlaceholder": "Search for a company...",
+        "hasMembers": "Has members",
+        "noResults": "No companies found. Try a different search or create a new company.",
+        "selectedLabel": "Selected company",
+        "change": "Change",
+        "messageLabel": "Message to Company Admin (optional)",
+        "messagePlaceholder": "Introduce yourself or explain why you want to join...",
+        "approvalNote": "Your request will be sent to the company administrator for approval.",
+        "submitting": "Submitting...",
+        "requestJoin": "Request to Join"
+      }
+    },
+    "inviteTeamMember": {
+      "title": "Invite Team Member",
+      "description": "Send an invitation to join {companyName}. They will receive an email with a link to create their account.",
+      "invalidEmail": "Please enter a valid email address",
+      "failedToSend": "Failed to send invitation",
+      "successToast": "Invitation sent to {email}",
+      "successTitle": "Invitation Sent!",
+      "successBody": "An email has been sent to {email}",
+      "emailLabel": "Email Address",
+      "emailPlaceholder": "colleague@example.com",
+      "validForDays": "The invitation will be valid for 7 days",
+      "cancel": "Cancel",
+      "sending": "Sending...",
+      "sendInvitation": "Send Invitation"
+    },
+    "pendingChangesCard": {
+      "titleUnderReview": "Changes Under Review",
+      "titleDraft": "Pending Changes",
+      "submittedDescription": "Your changes have been submitted for admin review. Editing is locked until the review is complete.",
+      "draftDescription": "These changes are saved as a draft and are not yet visible to others. Submit for admin review when ready.",
+      "badgeDraft": "{count, plural, one {# change} other {# changes}} - Draft",
+      "lastSaved": "Last saved:",
+      "discardDraft": "Discard Draft",
+      "submitDialogDescription": "Your changes will be reviewed by a platform administrator before being published."
+    },
+    "fieldLabels": {
+      "companyName": "Company Name",
+      "description": "Description",
+      "keyCapabilities": "Key Capabilities",
+      "certifications": "Certifications",
+      "equipment": "Equipment",
+      "pastProjects": "Past Projects",
+      "companiesHouseNumber": "Companies House Number",
+      "contactEmail": "Contact Email",
+      "contactPhone": "Contact Phone",
+      "contactPerson": "Contact Person",
+      "address": "Address",
+      "postcode": "Postcode",
+      "websiteUrl": "Website URL",
+      "operationLocations": "Operation Locations",
+      "capabilities": "Competencies",
+      "markets": "Markets",
+      "standards": "Standards"
+    },
     "pendingChanges": {
       "current": "Current",
       "proposed": "Proposed",
@@ -2068,7 +2366,124 @@
       "added": "Added:",
       "removed": "Removed:",
       "changesRequested": "Changes Requested"
+    },
+    "pendingChangesBar": {
+      "changesUnderReview": "Changes under review",
+      "changesToAddress": "{count, plural, one {# change} other {# changes}} to address",
+      "rejectedChanges": "{count, plural, one {# rejected change} other {# rejected changes}}",
+      "pendingChanges": "{count, plural, one {# pending change} other {# pending changes}}",
+      "rejected": "Rejected",
+      "awaitingReview": "Awaiting Review",
+      "discard": "Discard",
+      "discardDialogTitle": "Discard all pending changes?",
+      "discardDialogDesc": "This will remove all draft changes. Your company profile will remain as it currently appears. This cannot be undone.",
+      "discardCancel": "Cancel",
+      "discardConfirm": "Discard Changes",
+      "resubmitForReview": "Resubmit for Review",
+      "reviewAndSubmit": "Review & Submit",
+      "submitDialogTitle": "Submit Changes for Review",
+      "submitDialogDesc": "Review your changes below. Once submitted, editing will be locked until the admin review is complete.",
+      "submitDialogWarning": "While your changes are under review, you won't be able to edit these fields until the review is complete.",
+      "notesLabel": "Notes for reviewer (optional)",
+      "notesPlaceholder": "Explain what changed and why...",
+      "cancelButton": "Cancel",
+      "submitButton": "Submit for Review",
+      "changesSubmittedSuccess": "Changes submitted for review",
+      "changesSubmittedError": "Failed to submit changes",
+      "changesDiscardedSuccess": "Draft changes discarded",
+      "changesDiscardedError": "Failed to discard changes"
+    },
+    "capabilitySelector": {
+      "title": "Competency",
+      "uncategorized": "Uncategorized",
+      "editingLocked": "Editing locked while changes are under review.",
+      "changesSavedDraft": "Competency changes saved as draft.",
+      "selectDescVerified": "Select capabilities. Changes will be saved as a draft requiring admin review.",
+      "selectDescUnverifiedWithLimit": "Select capabilities that your company has. Up to {limit} for unverified companies. Changes are saved automatically.",
+      "selectDescUnverified": "Select capabilities that your company has. Changes are saved automatically.",
+      "viewDesc": "Capabilities your company has.",
+      "saving": "Saving...",
+      "noCapabilitiesSelected": "No capabilities selected.",
+      "currentlySelected": "Currently Selected ({count})",
+      "saveAsDraft": "Save as Draft",
+      "done": "Done",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "limitError": "Unverified companies can select up to {limit} competencies. Get verified to unlock unlimited competencies.",
+      "failedToLoad": "Failed to load capabilities",
+      "failedToSave": "Failed to save capabilities"
+    },
+    "marketSelector": {
+      "title": "Market",
+      "editingLocked": "Editing locked while changes are under review.",
+      "changesSavedDraft": "Market changes saved as draft.",
+      "selectDesc": "Select the markets your company serves. Changes are saved automatically.",
+      "viewDesc": "Markets your company serves.",
+      "saving": "Saving...",
+      "noMarketsSelected": "No markets selected.",
+      "currentlySelected": "Currently Selected ({count})",
+      "edit": "Edit",
+      "done": "Done",
+      "failedToLoad": "Failed to load markets",
+      "failedToSave": "Failed to save markets"
+    },
+    "standardsSelector": {
+      "title": "Standards & Certifications",
+      "editingLocked": "Editing locked while changes are under review.",
+      "changesSavedDraft": "Standards changes saved as draft.",
+      "selectDesc": "Select standards and certifications your company holds. Only standards relevant to your selected markets are shown. Changes are saved automatically.",
+      "viewDesc": "Standards and certifications your company holds.",
+      "saving": "Saving...",
+      "noStandardsSelected": "No standards selected.",
+      "currentlySelected": "Currently Selected ({count})",
+      "edit": "Edit",
+      "done": "Done",
+      "failedToLoad": "Failed to load standards",
+      "failedToSave": "Failed to save standards"
     }
+  },
+  "EditSheetLayout": {
+    "editingLocked": "Editing is locked while your changes are under review.",
+    "requiresReview": "This change will be saved as a draft and requires admin review before going live.",
+    "saveAsDraft": "Save as Draft",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel"
+  },
+  "VerificationStatusIndicator": {
+    "verified": "Verified",
+    "pending": "Under Review",
+    "changes_requested": "Changes Requested",
+    "rejected": "Rejected",
+    "unverified": "Not verified",
+    "draftChanges": "Draft changes",
+    "draftChangesPending": "Draft changes pending"
+  },
+  "OrgSwitcher": {
+    "noOrganization": "No organization",
+    "active": "Active",
+    "searchPlaceholder": "Search organizations...",
+    "notFound": "No organization found.",
+    "organizations": "Organizations",
+    "pending": "Pending",
+    "createOrganization": "Create Organization"
+  },
+  "EmailVerificationBanner": {
+    "pleaseVerify": "Please verify your email address.",
+    "checkInbox": "Check your inbox for a verification link.",
+    "emailSent": "Verification email sent!",
+    "failedToSend": "Failed to send. Please try again.",
+    "sending": "Sending...",
+    "resendEmail": "Resend email",
+    "dismiss": "Dismiss"
+  },
+  "ReadOnlyBanner": {
+    "message": "Your account is pending approval. You can browse content but some actions are restricted.",
+    "checkStatus": "Check status"
+  },
+  "OnboardingBanner": {
+    "message": "Complete your onboarding to unlock all features and get approved by the platform admin.",
+    "continueOnboarding": "Continue Onboarding"
   },
   "TeamContactsCard": {
     "title": "Team Contact Information"
@@ -2097,6 +2512,32 @@
     "noCompaniesDesc": "You haven't created any companies yet. Create your first company to get started.",
     "createFirstCompany": "Create Your First Company",
     "selectPlaceholder": "Select a company"
+  },
+  "CompanyTaxonomySelector": {
+    "title": "Company Categories",
+    "description": "Select categories that best describe your company's capabilities and services",
+    "alertNoDataTitle": "No categories available",
+    "alertNoDataDescription": "The taxonomy data has not been loaded into the database. Please contact an administrator to run the EIC taxonomy seed migration.",
+    "emptyTitle": "No categories selected yet",
+    "emptyHint": "Add categories below to describe your company's capabilities",
+    "yourCategoriesLabel": "Your Categories",
+    "addCategoryLabel": "Add Category",
+    "addCategoryButton": "Add Category",
+    "selectPrimary": "Select primary category",
+    "searchCategoriesPlaceholder": "Search categories...",
+    "noCategoryFound": "No category found.",
+    "selectSubCategory": "Select sub-category (optional)",
+    "searchSubCategoriesPlaceholder": "Search sub-categories...",
+    "noSubCategoryFound": "No sub-category found.",
+    "selectSpecificArea": "Select specific area (optional)",
+    "searchAreasPlaceholder": "Search areas...",
+    "noAreaFound": "No area found.",
+    "toastLoadError": "Failed to load your categories",
+    "toastAlreadySelected": "This category is already selected",
+    "toastAdded": "Category added to your profile",
+    "toastAddError": "Failed to add category",
+    "toastRemoved": "Category removed",
+    "toastRemoveError": "Failed to remove category"
   },
   "ProjectInvitationCard": {
     "statusPending": "Pending",

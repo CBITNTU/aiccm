@@ -73,7 +73,7 @@ export function EditBasicInfoSheet({
       isEditLocked={isEditLocked}
       isSaving={updateMutation.isPending}
       onSave={handleSave}
-      saveLabel="Save Changes"
+      saveLabel={t("editInfo.saveChanges")}
     >
       {/* Non-reviewable fields - save immediately */}
       <div className="space-y-4">
@@ -90,7 +90,7 @@ export function EditBasicInfoSheet({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="contact@company.com"
+            placeholder={t("editInfo.placeholders.email")}
           />
         </div>
 
@@ -101,7 +101,7 @@ export function EditBasicInfoSheet({
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+44 ..."
+            placeholder={t("editInfo.placeholders.phone")}
           />
         </div>
 
@@ -111,7 +111,7 @@ export function EditBasicInfoSheet({
             id="address"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Address or postcode"
+            placeholder={t("editInfo.placeholders.address")}
           />
         </div>
 
@@ -122,7 +122,7 @@ export function EditBasicInfoSheet({
             type="url"
             value={website}
             onChange={(e) => setWebsite(e.target.value)}
-            placeholder="https://..."
+            placeholder={t("editInfo.placeholders.website")}
           />
         </div>
       </div>
@@ -143,7 +143,7 @@ export function EditBasicInfoSheet({
             id="companyName"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="Company Name"
+            placeholder={t("editInfo.placeholders.companyName")}
           />
         </div>
       </div>

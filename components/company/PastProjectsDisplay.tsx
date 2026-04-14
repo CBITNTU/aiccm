@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Building2, PoundSterling } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface PastProjectParsed {
   name?: string;
@@ -22,6 +23,11 @@ function parsePastProjects(raw: string): PastProjectParsed[] {
   return [];
 }
 
+type CompanyPageT = (
+  key: string,
+  values?: Record<string, string | number | Date>,
+) => string;
+
 /**
  * Renders a pastProjects string (JSON array or plain text) as formatted project cards.
  * Use this anywhere pastProjects is displayed to avoid showing raw JSON.
@@ -33,8 +39,14 @@ export function PastProjectsDisplay({
   value: string | null | undefined;
   className?: string;
 }) {
+  const t = useTranslations("CompanyPage");
+
   if (!value || value === "[]") {
-    return <p className="text-sm text-muted-foreground italic">No past projects listed</p>;
+    return (
+      <p className="text-sm text-muted-foreground italic">
+        {t("pastProjectsDisplay.noProjectsListed")}
+      </p>
+    );
   }
 
   const projects = parsePastProjects(value);
@@ -49,7 +61,9 @@ export function PastProjectsDisplay({
       {projects.map((p, idx) => (
         <div key={idx} className="p-3 bg-muted/30 rounded-lg space-y-1.5">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-sm font-medium">{p.name || "Untitled"}</span>
+            <span className="text-sm font-medium">
+              {p.name || t("pastProjectsDisplay.untitled")}
+            </span>
             {p.year && (
               <Badge variant="outline" className="text-xs shrink-0">
                 {p.year}
@@ -86,10 +100,13 @@ export function PastProjectsDisplay({
 
 /**
  * Formats a pastProjects string as React nodes for use in diff views.
- * Returns structured cards for JSON, plain text for legacy, "Empty" for null/empty.
+ * Returns structured cards for JSON, plain text for legacy, empty state for null/empty.
+ * @param t - `useTranslations("CompanyPage")` for pastProjectsDisplay / pendingChanges strings.
  */
-export function formatPastProjectsValue(raw: string | null): React.ReactNode {
-  if (!raw || raw === "[]") return <span className="text-muted-foreground italic">Empty</span>;
+export function formatPastProjectsValue(raw: string | null, t: CompanyPageT): React.ReactNode {
+  if (!raw || raw === "[]") {
+    return <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>;
+  }
 
   const projects = parsePastProjects(raw);
 
@@ -99,14 +116,22 @@ export function formatPastProjectsValue(raw: string | null): React.ReactNode {
         {projects.map((p, idx) => (
           <div key={idx} className="text-sm space-y-0.5">
             <div className="font-medium">
-              {p.name || "Untitled"}
-              {p.year && <span className="text-muted-foreground font-normal"> ({p.year})</span>}
+              {p.name || t("pastProjectsDisplay.untitled")}
+              {p.year && (
+                <span className="text-muted-foreground font-normal"> ({p.year})</span>
+              )}
             </div>
             {p.description && <div className="text-muted-foreground text-xs">{p.description}</div>}
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              {p.client && <span>Client: {p.client}</span>}
-              {p.value && <span>Value: {p.value}</span>}
-              {p.sector && <span>Sector: {p.sector}</span>}
+              {p.client && (
+                <span>{t("pastProjectsDisplay.clientLine", { client: p.client! })}</span>
+              )}
+              {p.value && (
+                <span>{t("pastProjectsDisplay.valueLine", { value: p.value! })}</span>
+              )}
+              {p.sector && (
+                <span>{t("pastProjectsDisplay.sectorLine", { sector: p.sector! })}</span>
+              )}
             </div>
           </div>
         ))}

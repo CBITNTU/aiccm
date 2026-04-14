@@ -21,6 +21,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface InviteTeamMemberDialogProps {
   open: boolean;
@@ -37,6 +38,7 @@ export function InviteTeamMemberDialog({
   companyName,
   onInviteSent,
 }: InviteTeamMemberDialogProps) {
+  const t = useTranslations("CompanyPage");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,10 +48,9 @@ export function InviteTeamMemberDialog({
     e.preventDefault();
     setError(null);
 
-    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
-      setError("Please enter a valid email address");
+      setError(t("inviteTeamMember.invalidEmail"));
       return;
     }
 
@@ -68,13 +69,12 @@ export function InviteTeamMemberDialog({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to send invitation");
+        throw new Error(data.error || t("inviteTeamMember.failedToSend"));
       }
 
       setSuccess(true);
-      toast.success(`Invitation sent to ${email}`);
+      toast.success(t("inviteTeamMember.successToast", { email }));
 
-      // Reset form after short delay
       setTimeout(() => {
         setEmail("");
         setSuccess(false);
@@ -84,7 +84,7 @@ export function InviteTeamMemberDialog({
     } catch (err) {
       console.error("Invite error:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to send invitation",
+        err instanceof Error ? err.message : t("inviteTeamMember.failedToSend"),
       );
     } finally {
       setIsLoading(false);
@@ -106,11 +106,10 @@ export function InviteTeamMemberDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Invite Team Member
+            {t("inviteTeamMember.title")}
           </DialogTitle>
           <DialogDescription>
-            Send an invitation to join {companyName}. They will receive an email
-            with a link to create their account.
+            {t("inviteTeamMember.description", { companyName })}
           </DialogDescription>
         </DialogHeader>
 
@@ -119,9 +118,9 @@ export function InviteTeamMemberDialog({
             <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
-            <p className="font-medium">Invitation Sent!</p>
+            <p className="font-medium">{t("inviteTeamMember.successTitle")}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              An email has been sent to {email}
+              {t("inviteTeamMember.successBody", { email })}
             </p>
           </div>
         ) : (
@@ -135,13 +134,13 @@ export function InviteTeamMemberDialog({
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("inviteTeamMember.emailLabel")}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="colleague@example.com"
+                    placeholder={t("inviteTeamMember.emailPlaceholder")}
                     className="pl-10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -150,7 +149,7 @@ export function InviteTeamMemberDialog({
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  The invitation will be valid for 7 days
+                  {t("inviteTeamMember.validForDays")}
                 </p>
               </div>
             </div>
@@ -162,18 +161,18 @@ export function InviteTeamMemberDialog({
                 onClick={handleClose}
                 disabled={isLoading}
               >
-                Cancel
+                {t("inviteTeamMember.cancel")}
               </Button>
               <Button type="submit" disabled={isLoading || !email}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
+                    {t("inviteTeamMember.sending")}
                   </>
                 ) : (
                   <>
                     <Mail className="mr-2 h-4 w-4" />
-                    Send Invitation
+                    {t("inviteTeamMember.sendInvitation")}
                   </>
                 )}
               </Button>

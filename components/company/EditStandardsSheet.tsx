@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { EditSheetSkeleton } from "@/components/company/EditSheetSkeleton";
 import { StandardsTreeSelector } from "@/components/company/StandardsTreeSelector";
@@ -30,6 +31,7 @@ export function EditStandardsSheet({
   pendingRelation,
   onSaved,
 }: EditStandardsSheetProps) {
+  const t = useTranslations("CompanyPage");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [initialIds, setInitialIds] = useState<string[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
@@ -59,25 +61,25 @@ export function EditStandardsSheet({
           setInitialIds(effectiveIds);
           setNameMap(Object.fromEntries(standards.map((s) => [s.id, s.name])));
         })
-        .catch(() => toast.error("Failed to load standards"))
+        .catch(() => toast.error(t("editStandardsSheet.failedToLoad")))
         .finally(() => setLoading(false));
     }
-  }, [open, companyId, pendingRelation]);
+  }, [open, companyId, pendingRelation, t]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
       const result = await api.syncStandards(companyId, selectedIds);
       if (result.draftSaved) {
-        toast.success(result.message || "Standards changes saved as draft.");
+        toast.success(result.message || t("editStandardsSheet.successDraft"));
       } else {
-        toast.success("Standards updated");
+        toast.success(t("editStandardsSheet.success"));
       }
       onSaved();
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving standards:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save");
+      toast.error(error instanceof Error ? error.message : t("editStandardsSheet.failedToSave"));
     } finally {
       setSaving(false);
     }
@@ -90,26 +92,24 @@ export function EditStandardsSheet({
     <EditSheetLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Standards & Certifications"
-      description="Select standards and certifications your company holds."
+      title={t("editStandardsSheet.title")}
+      description={t("editStandardsSheet.description")}
       isReviewable={true}
       isVerified={isVerified}
       isEditLocked={isEditLocked}
       isSaving={saving}
       onSave={handleSave}
-      saveLabel={hasChanges ? undefined : "No Changes"}
+      saveLabel={hasChanges ? undefined : t("editStandardsSheet.noChanges")}
     >
       {isLoading && <EditSheetSkeleton />}
       <div className={isLoading ? "hidden" : "flex flex-col lg:grid lg:grid-cols-[1fr_1.5fr] gap-6 h-full"}>
         {/* Left column: search + selected */}
         <div className="space-y-4 lg:overflow-y-auto">
-          <p className="text-sm text-muted-foreground">
-            Select standards and certifications your company holds.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("editStandardsSheet.bodyHint")}</p>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search standards..."
+              placeholder={t("editStandardsSheet.searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -118,7 +118,7 @@ export function EditStandardsSheet({
           {selectedIds.length > 0 && (
             <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
               <h3 className="font-medium text-sm">
-                Selected ({selectedIds.length})
+                {t("editStandardsSheet.selectedCount", { count: selectedIds.length })}
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {selectedIds.map((id) => (

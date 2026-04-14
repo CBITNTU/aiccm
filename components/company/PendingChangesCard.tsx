@@ -27,11 +27,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { FileEdit, Send, Trash2, Lock, Loader2, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { useSubmitChangesForReview, useDiscardPendingChanges } from "@/hooks/useCompanyMutations";
 import { api } from "@/lib/api/client";
 import {
-  FIELD_LABELS,
   REVIEWABLE_SCALAR_FIELDS,
+  getLocalizedCompanyFieldLabel,
   type PendingChanges,
 } from "@/lib/companyFieldCategories";
 import { formatPastProjectsValue } from "@/components/company/PastProjectsDisplay";
@@ -72,7 +73,8 @@ function ScalarFieldDiff({
   current: string | null;
   proposed: string | null;
 }) {
-  const label = FIELD_LABELS[field] ?? field;
+  const t = useTranslations("CompanyPage");
+  const label = getLocalizedCompanyFieldLabel(field, t);
   const isPastProjects = field === "pastProjects";
 
   return (
@@ -80,15 +82,15 @@ function ScalarFieldDiff({
       <div className="text-sm font-medium">{label}</div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="text-xs text-blue-700 mb-1">Current</div>
+          <div className="text-xs text-blue-700 mb-1">{t("pendingChanges.current")}</div>
           <div className="text-sm text-foreground bg-blue-50 border border-blue-200 rounded p-2 min-h-[2rem]">
-            {isPastProjects ? formatPastProjectsValue(current) : (current || <span className="text-muted-foreground italic">Empty</span>)}
+            {isPastProjects ? formatPastProjectsValue(current, t) : (current || <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-blue-700 mb-1">Proposed</div>
+          <div className="text-xs text-blue-700 mb-1">{t("pendingChanges.proposed")}</div>
           <div className="text-sm text-foreground bg-blue-100 border border-blue-300 rounded p-2 min-h-[2rem]">
-            {isPastProjects ? formatPastProjectsValue(proposed) : (proposed || <span className="text-muted-foreground italic">Empty</span>)}
+            {isPastProjects ? formatPastProjectsValue(proposed, t) : (proposed || <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>)}
           </div>
         </div>
       </div>
@@ -109,7 +111,8 @@ function RelationFieldDiff({
   nameMap?: Record<string, string>;
   namesLoading?: boolean;
 }) {
-  const label = FIELD_LABELS[field] ?? field;
+  const t = useTranslations("CompanyPage");
+  const label = getLocalizedCompanyFieldLabel(field, t);
   const getName = (id: string) => nameMap?.[id] ?? id;
 
   if (added.length === 0 && removed.length === 0) return null;
@@ -118,11 +121,11 @@ function RelationFieldDiff({
     <div className="border rounded-lg p-3 space-y-2">
       <div className="text-sm font-medium">{label}</div>
       {namesLoading && (
-        <p className="text-xs text-muted-foreground">Loading labels…</p>
+        <p className="text-xs text-muted-foreground">{t("pendingChanges.loading")}</p>
       )}
       {added.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          <span className="text-xs text-blue-800 mr-1">Added:</span>
+          <span className="text-xs text-blue-800 mr-1">{t("pendingChanges.added")}</span>
           {added.map((id) => (
             <Badge
               key={id}
@@ -136,7 +139,7 @@ function RelationFieldDiff({
       )}
       {removed.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          <span className="text-xs text-slate-600 mr-1">Removed:</span>
+          <span className="text-xs text-slate-600 mr-1">{t("pendingChanges.removed")}</span>
           {removed.map((id) => (
             <Badge
               key={id}
@@ -160,6 +163,7 @@ export function PendingChangesCard({
   marketNames,
   standardNames,
 }: PendingChangesCardProps) {
+  const t = useTranslations("CompanyPage");
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitNotes, setSubmitNotes] = useState("");
 
@@ -185,9 +189,10 @@ export function PendingChangesCard({
       });
       setShowSubmitDialog(false);
       setSubmitNotes("");
-      toast.success("Changes submitted for review");
+      toast.success(t("pendingChangesBar.changesSubmittedSuccess"));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to submit changes";
+      const message =
+        error instanceof Error ? error.message : t("pendingChangesBar.changesSubmittedError");
       toast.error(message);
     }
   };
@@ -195,9 +200,10 @@ export function PendingChangesCard({
   const handleDiscard = async () => {
     try {
       await discardMutation.mutateAsync(companyId);
-      toast.success("Draft changes discarded");
+      toast.success(t("pendingChangesBar.changesDiscardedSuccess"));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to discard changes";
+      const message =
+        error instanceof Error ? error.message : t("pendingChangesBar.changesDiscardedError");
       toast.error(message);
     }
   };
@@ -277,12 +283,12 @@ export function PendingChangesCard({
               {isSubmitted ? (
                 <>
                   <Lock className="h-4 w-4 text-blue-600" />
-                  Changes Under Review
+                  {t("pendingChangesCard.titleUnderReview")}
                 </>
               ) : (
                 <>
                   <FileEdit className="h-4 w-4 text-blue-600" />
-                  Pending Changes
+                  {t("pendingChangesCard.titleDraft")}
                 </>
               )}
             </CardTitle>
@@ -290,23 +296,23 @@ export function PendingChangesCard({
               {isSubmitted ? (
                 <Badge variant="outline" className="text-xs bg-blue-100 border-blue-200">
                   <Clock className="h-3 w-3 mr-1" />
-                  Awaiting Review
+                  {t("pendingChangesBar.awaitingReview")}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-xs">
-                  {totalChanges} {totalChanges === 1 ? "change" : "changes"} - Draft
+                  {t("pendingChangesCard.badgeDraft", { count: totalChanges })}
                 </Badge>
               )}
             </div>
           </div>
           {isSubmitted && (
             <p className="text-sm text-muted-foreground mt-1">
-              Your changes have been submitted for admin review. Editing is locked until the review is complete.
+              {t("pendingChangesCard.submittedDescription")}
             </p>
           )}
           {!isSubmitted && (
             <p className="text-sm text-muted-foreground mt-1">
-              These changes are saved as a draft and are not yet visible to others. Submit for admin review when ready.
+              {t("pendingChangesCard.draftDescription")}
             </p>
           )}
         </CardHeader>
@@ -370,7 +376,8 @@ export function PendingChangesCard({
 
           {pendingChanges.lastSavedAt && (
             <p className="text-xs text-muted-foreground">
-              Last saved: {new Date(pendingChanges.lastSavedAt).toLocaleString()}
+              {t("pendingChangesCard.lastSaved")}{" "}
+              {new Date(pendingChanges.lastSavedAt).toLocaleString()}
             </p>
           )}
         </CardContent>
@@ -387,7 +394,7 @@ export function PendingChangesCard({
               ) : (
                 <Send className="h-4 w-4 mr-1" />
               )}
-              Submit for Review
+              {t("pendingChangesBar.submitButton")}
             </Button>
 
             <AlertDialog>
@@ -402,20 +409,20 @@ export function PendingChangesCard({
                   ) : (
                     <Trash2 className="h-4 w-4 mr-1" />
                   )}
-                  Discard Draft
+                  {t("pendingChangesCard.discardDraft")}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Discard all pending changes?</AlertDialogTitle>
+                  <AlertDialogTitle>{t("pendingChangesBar.discardDialogTitle")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove all draft changes. Your company profile will remain as it currently appears to others. This action cannot be undone.
+                    {t("pendingChangesBar.discardDialogDesc")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t("pendingChangesBar.discardCancel")}</AlertDialogCancel>
                   <AlertDialogAction onClick={handleDiscard}>
-                    Discard Changes
+                    {t("pendingChangesBar.discardConfirm")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -428,9 +435,9 @@ export function PendingChangesCard({
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submit Changes for Review</DialogTitle>
+            <DialogTitle>{t("pendingChangesBar.submitDialogTitle")}</DialogTitle>
             <DialogDescription>
-              Your changes will be reviewed by a platform administrator before being published.
+              {t("pendingChangesCard.submitDialogDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -438,16 +445,18 @@ export function PendingChangesCard({
             <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <AlertTriangle className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
               <p className="text-sm text-blue-900">
-                While your changes are under review, you won&apos;t be able to edit these fields until the review is complete.
+                {t("pendingChangesBar.submitDialogWarning")}
               </p>
             </div>
 
             <div>
-              <label className="text-sm font-medium">Notes for reviewer (optional)</label>
+              <label className="text-sm font-medium">
+                {t("pendingChangesBar.notesLabel")}
+              </label>
               <Textarea
                 value={submitNotes}
                 onChange={(e) => setSubmitNotes(e.target.value)}
-                placeholder="Explain what changed and why..."
+                placeholder={t("pendingChangesBar.notesPlaceholder")}
                 className="mt-1"
                 maxLength={2000}
               />
@@ -456,11 +465,11 @@ export function PendingChangesCard({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
-              Cancel
+              {t("pendingChangesBar.cancelButton")}
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              Submit for Review
+              {t("pendingChangesBar.submitButton")}
             </Button>
           </DialogFooter>
         </DialogContent>

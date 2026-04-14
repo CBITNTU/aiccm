@@ -80,7 +80,7 @@ interface TeamMembersCardProps {
 
 export function TeamMembersCard({
   companyId,
-  companyName = "Company",
+  companyName: companyNameProp,
   variant = "full",
   showRequests = true,
   isSmeOwner = false,
@@ -88,6 +88,7 @@ export function TeamMembersCard({
   onInviteSent,
 }: TeamMembersCardProps) {
   const t = useTranslations("CompanyPage");
+  const companyName = companyNameProp ?? t("team.defaultCompanyName");
   const router = useRouter();
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -171,7 +172,7 @@ export function TeamMembersCard({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to approve request");
+        throw new Error(data.error || t("team.failedApprove"));
       }
 
       toast.success(t("team.approvedToast", { name: userName }));
@@ -203,7 +204,7 @@ export function TeamMembersCard({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to reject request");
+        throw new Error(data.error || t("team.failedReject"));
       }
 
       toast.success(t("team.rejectedToast", { name: rejectDialog.name }));
@@ -236,7 +237,7 @@ export function TeamMembersCard({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to remove member");
+        throw new Error(data.error || t("team.failedRemove"));
       }
 
       toast.success(t("team.removedToast", { name: removeDialog.name }));
@@ -312,8 +313,8 @@ export function TeamMembersCard({
             {members.slice(0, 3).map((member) => {
               const userName = member.user
                 ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() ||
-                  "Unknown"
-                : "Unknown";
+                  t("team.unknownUser")
+                : t("team.unknownUser");
               const isAdmin = member.role === "admin";
               const isPendingPlatformApproval =
                 member.status === "pending_platform_approval";
@@ -402,8 +403,8 @@ export function TeamMembersCard({
                 {requests.map((request) => {
                   const userName = request.user
                     ? `${request.user.firstName || ""} ${request.user.lastName || ""}`.trim() ||
-                      "Unknown"
-                    : "Unknown";
+                      t("team.unknownUser")
+                    : t("team.unknownUser");
 
                   return (
                     <div
@@ -494,8 +495,8 @@ export function TeamMembersCard({
                 {members.map((member) => {
                   const userName = member.user
                     ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() ||
-                      "Unknown"
-                    : "Unknown";
+                      t("team.unknownUser")
+                    : t("team.unknownUser");
                   const isAdmin = member.role === "admin";
                   const isSelf = currentUserId === member.userId;
                   const isPendingPlatformApproval =

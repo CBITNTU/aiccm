@@ -116,9 +116,9 @@ export function CompanyHeroHeader({
                     {analysisLimitReached && (
                       <TooltipContent>
                         <p className="text-xs">
-                          Analysis limit reached this month.
+                          {t("heroHeader.analysisLimitReached")}
                           {analysisUsage?.resetsAt && (
-                            <> Resets {new Date(analysisUsage.resetsAt).toLocaleDateString()}.</>
+                            <> {t("heroHeader.analysisResetsOn", { date: new Date(analysisUsage.resetsAt).toLocaleDateString() })}</>
                           )}
                         </p>
                       </TooltipContent>
@@ -136,9 +136,9 @@ export function CompanyHeroHeader({
                       </TooltipTrigger>
                       <TooltipContent>
                         <p className="text-xs">
-                          {analysisUsage.used} of {analysisUsage.limit} analysis runs used this month.
+                          {t("heroHeader.analysisUsageTooltip", { used: analysisUsage.used, limit: analysisUsage.limit })}
                           {analysisUsage.resetsAt && (
-                            <> Resets {new Date(analysisUsage.resetsAt).toLocaleDateString()}.</>
+                            <> {t("heroHeader.analysisResetsOn", { date: new Date(analysisUsage.resetsAt).toLocaleDateString() })}</>
                           )}
                         </p>
                       </TooltipContent>

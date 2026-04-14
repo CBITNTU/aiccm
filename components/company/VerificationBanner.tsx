@@ -86,12 +86,12 @@ export function VerificationBanner({
       { companyId, notes: notes || undefined },
       {
         onSuccess: () => {
-          toast.success("Verification request submitted successfully!");
+          toast.success(t("verification.successToast"));
           setShowDialog(false);
           setNotes("");
         },
         onError: (error) => {
-          toast.error(error instanceof Error ? error.message : "Failed to submit");
+          toast.error(error instanceof Error ? error.message : t("verification.errorFallback"));
         },
       },
     );
@@ -166,7 +166,7 @@ export function VerificationBanner({
 
               {latestResolvedRequest.reviewedAt && (
                 <p className="text-xs text-amber-600">
-                  Reviewed on {new Date(latestResolvedRequest.reviewedAt).toLocaleDateString()}
+                  {t("verification.reviewedOn", { date: new Date(latestResolvedRequest.reviewedAt).toLocaleDateString() })}
                 </p>
               )}
             </div>
@@ -181,11 +181,11 @@ export function VerificationBanner({
       return (
         <Alert className="border-red-200 bg-red-50">
           <ShieldAlert className="h-4 w-4 text-red-600" />
-          <AlertTitle className="text-red-800">Changes Not Approved</AlertTitle>
+          <AlertTitle className="text-red-800">{t("verification.changesNotApproved.title")}</AlertTitle>
           <AlertDescription className="text-red-700">
             <div className="space-y-3">
               <p>
-                Your proposed changes were not approved by our team. You can modify and resubmit your changes, or discard them.
+                {t("verification.changesNotApproved.description")}
               </p>
 
               {resolvedFeedback?.overallNotes && (
@@ -202,7 +202,7 @@ export function VerificationBanner({
 
               {latestResolvedRequest.reviewedAt && (
                 <p className="text-xs text-red-600">
-                  Reviewed on {new Date(latestResolvedRequest.reviewedAt).toLocaleDateString()}
+                  {t("verification.reviewedOn", { date: new Date(latestResolvedRequest.reviewedAt).toLocaleDateString() })}
                 </p>
               )}
             </div>
@@ -215,9 +215,9 @@ export function VerificationBanner({
       return (
         <Alert className="border-amber-200 bg-amber-50">
           <FileEdit className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800">Draft Changes Pending</AlertTitle>
+          <AlertTitle className="text-amber-800">{t("verification.draftChangesPending.title")}</AlertTitle>
           <AlertDescription className="text-amber-700">
-            You have draft changes that need to be submitted for review. Use the bar at the bottom of the page to review and submit your changes.
+            {t("verification.draftChangesPending.description")}
           </AlertDescription>
         </Alert>
       );
@@ -226,12 +226,12 @@ export function VerificationBanner({
     return (
       <Alert className="border-emerald-200 bg-emerald-50">
         <ShieldCheck className="h-4 w-4 text-emerald-600" />
-        <AlertTitle className="text-emerald-800">Verified Company</AlertTitle>
+        <AlertTitle className="text-emerald-800">{t("verification.verifiedCompany.title")}</AlertTitle>
         <AlertDescription className="text-emerald-700">
-          This company has been verified by TNDRX.
+          {t("verification.verifiedCompany.description")}
           {verifiedAt && (
             <span className="ml-1">
-              Verified on {new Date(verifiedAt).toLocaleDateString()}.
+              {t("verification.verifiedOn", { date: new Date(verifiedAt).toLocaleDateString() })}
             </span>
           )}
         </AlertDescription>
@@ -243,12 +243,12 @@ export function VerificationBanner({
     return (
       <Alert className="border-amber-200 bg-amber-50">
         <Clock className="h-4 w-4 text-amber-600" />
-        <AlertTitle className="text-amber-800">Verification Under Review</AlertTitle>
+        <AlertTitle className="text-amber-800">{t("verification.pendingVerification.title")}</AlertTitle>
         <AlertDescription className="text-amber-700">
-          Your verification request is being reviewed by our team.
+          {t("verification.pendingVerification.description")}
           {latestRequest?.createdAt && (
             <span className="ml-1">
-              Submitted on {new Date(latestRequest.createdAt).toLocaleDateString()}.
+              {t("verification.submittedOn", { date: new Date(latestRequest.createdAt).toLocaleDateString() })}
             </span>
           )}
         </AlertDescription>
@@ -284,8 +284,8 @@ export function VerificationBanner({
           className={hasChangesRequested ? "text-amber-800" : "text-blue-800"}
         >
           {hasChangesRequested
-            ? "Changes Requested"
-            : "Get Your Company Verified"}
+            ? t("verification.changesRequested.title")
+            : t("verification.getVerifiedTitle")}
         </AlertTitle>
         <AlertDescription
           className={hasChangesRequested ? "text-amber-700" : "text-blue-700"}
@@ -293,8 +293,7 @@ export function VerificationBanner({
           {hasChangesRequested ? (
             <div className="space-y-3">
               <p>
-                Our team reviewed your verification request and has requested some
-                changes. Please address the feedback below and resubmit.
+                {t("verification.changesRequestedDescription")}
               </p>
 
               {/* Structured feedback display */}
@@ -335,15 +334,15 @@ export function VerificationBanner({
             </div>
           ) : (
             <>
-              <p>Verified companies get access to:</p>
+              <p>{t("verification.getVerifiedBenefitsAccess")}</p>
               <ul className="list-disc list-inside mt-1 space-y-0.5 text-sm">
-                <li>More active projects</li>
-                <li>Unlimited competencies</li>
-                <li>A verified badge in the directory</li>
+                <li>{t("verification.getVerifiedBenefitActiveProjects")}</li>
+                <li>{t("verification.getVerifiedBenefitCompetencies")}</li>
+                <li>{t("verification.getVerifiedBenefitBadge")}</li>
               </ul>
               {wasRejected && (
                 <p className="mt-2 text-sm bg-red-50 border border-red-200 rounded p-2">
-                  Previous review feedback: {latestRequest.reviewNotes}
+                  {t("verification.previousFeedback")}{latestRequest.reviewNotes}
                 </p>
               )}
             </>
@@ -356,8 +355,8 @@ export function VerificationBanner({
           >
             <ShieldCheck className="h-4 w-4 mr-1" />
             {hasChangesRequested
-              ? "Resubmit for Verification"
-              : "Submit for Verification"}
+              ? t("verification.resubmitButton")
+              : t("verification.submitButton")}
           </Button>
         </AlertDescription>
       </Alert>
@@ -366,27 +365,27 @@ export function VerificationBanner({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {hasChangesRequested ? "Resubmit" : "Submit"} for Verification
+              {hasChangesRequested ? t("verification.dialog.resubmitTitle") : t("verification.dialog.submitTitle")}
             </DialogTitle>
             <DialogDescription>
               {hasChangesRequested
-                ? "Please ensure you've addressed the feedback before resubmitting. Our team will review the updated profile."
-                : "Our team will review your company profile to verify your business details and capabilities."}
+                ? t("verification.dialog.resubmitDescription")
+                : t("verification.dialog.submitDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium mb-2">Profile Completeness</h4>
+              <h4 className="text-sm font-medium mb-2">{t("verification.dialog.profileCompleteness")}</h4>
               {isComplete ? (
                 <div className="flex items-center gap-2 text-emerald-600 text-sm">
                   <CheckCircle className="h-4 w-4" />
-                  All required fields are complete
+                  {t("verification.dialog.allFieldsComplete")}
                 </div>
               ) : (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-amber-600 text-sm">
                     <Info className="h-4 w-4" />
-                    Please complete these fields before submitting:
+                    {t("verification.dialog.completeFieldsBefore")}
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {missingFields.map((field) => (
@@ -399,12 +398,12 @@ export function VerificationBanner({
               )}
             </div>
             <div>
-              <label className="text-sm font-medium">Additional Notes (optional)</label>
+              <label className="text-sm font-medium">{t("verification.dialog.additionalNotes")}</label>
               <Textarea
                 placeholder={
                   hasChangesRequested
-                    ? "Describe what changes you've made..."
-                    : "Any additional information you'd like to provide..."
+                    ? t("verification.dialog.describeChangesPlaceholder")
+                    : t("verification.dialog.additionalInfoPlaceholder")
                 }
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -415,7 +414,7 @@ export function VerificationBanner({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>
-              Cancel
+              {t("verification.dialog.cancel")}
             </Button>
             <Button
               disabled={!isComplete || submitMutation.isPending}
@@ -424,7 +423,7 @@ export function VerificationBanner({
               {submitMutation.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               )}
-              {hasChangesRequested ? "Resubmit" : "Submit"} for Verification
+              {hasChangesRequested ? t("verification.dialog.resubmit") : t("verification.dialog.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>

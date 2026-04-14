@@ -1928,7 +1928,10 @@
       "competencies": "项能力",
       "noWebsite": "无网站",
       "notSpecified": "未指定",
-      "noLocation": "无位置信息"
+      "noLocation": "无位置信息",
+      "analysisLimitReached": "本月分析次数已达上限。",
+      "analysisResetsOn": "重置于 {date}。",
+      "analysisUsageTooltip": "本月已使用 {used}/{limit} 次分析。"
     },
     "overview": {
       "companyOverview": "公司概览",
@@ -1979,6 +1982,8 @@
       "description": "管理团队成员并审核加入申请",
       "memberCount": "{count} 名成员",
       "memberCountPlural": "{count} 名成员",
+      "unknownUser": "未知",
+      "defaultCompanyName": "公司",
       "pending": "待处理",
       "manageTeam": "管理团队",
       "invite": "邀请",
@@ -2035,6 +2040,51 @@
       "changesRequested": {
         "title": "已请求修改",
         "description": "我们的团队审核了您提交的变更，并要求进行一些修改。请根据以下反馈进行修改后重新提交。"
+      },
+      "successToast": "认证申请已成功提交！",
+      "errorFallback": "提交失败",
+      "reviewedOn": "审核于 {date}。",
+      "changesNotApproved": {
+        "title": "变更未获批准",
+        "description": "您提议的变更未获我们团队批准。您可以修改后重新提交，或放弃本次变更。"
+      },
+      "draftChangesPending": {
+        "title": "草稿变更待提交",
+        "description": "您有草稿变更尚未提交审核。请使用页面底部的操作栏查看并提交变更。"
+      },
+      "verifiedCompany": {
+        "title": "已认证公司",
+        "description": "该公司已通过 TNDRX 认证。"
+      },
+      "verifiedOn": "认证于 {date}。",
+      "pendingVerification": {
+        "title": "认证审核中",
+        "description": "您的认证申请正在由我们的团队审核。"
+      },
+      "submittedOn": "提交于 {date}。",
+      "getVerifiedTitle": "立即认证您的公司",
+      "changesRequestedDescription": "我们的团队已审核您的认证申请，并要求进行一些修改。请根据以下反馈修改后重新提交。",
+      "getVerifiedBenefitsAccess": "认证公司可享有：",
+      "getVerifiedBenefitActiveProjects": "更多活跃项目",
+      "getVerifiedBenefitCompetencies": "无限制的能力标签",
+      "getVerifiedBenefitBadge": "目录中的认证徽章",
+      "previousFeedback": "上次审核反馈：",
+      "resubmitButton": "重新提交认证",
+      "submitButton": "提交认证",
+      "dialog": {
+        "resubmitTitle": "重新提交认证",
+        "submitTitle": "提交认证",
+        "resubmitDescription": "请确保您已根据反馈进行修改后再重新提交。我们的团队将审核更新后的资料。",
+        "submitDescription": "我们的团队将审核您的公司资料以核实您的业务详情和能力。",
+        "profileCompleteness": "资料完整度",
+        "allFieldsComplete": "所有必填字段已填写完整",
+        "completeFieldsBefore": "提交前请填写以下字段：",
+        "additionalNotes": "附加说明（可选）",
+        "describeChangesPlaceholder": "描述您所做的修改...",
+        "additionalInfoPlaceholder": "如有其他补充信息，请在此填写...",
+        "cancel": "取消",
+        "submit": "提交认证",
+        "resubmit": "重新提交认证"
       }
     },
     "verifiedBadge": {
@@ -2050,6 +2100,14 @@
       "title": "编辑公司信息",
       "description": "更新您公司的基本信息和联系方式。",
       "savesImmediately": "立即保存",
+      "saveChanges": "保存更改",
+      "placeholders": {
+        "email": "contact@company.com",
+        "phone": "+44 ...",
+        "address": "地址或邮编",
+        "website": "https://...",
+        "companyName": "公司名称"
+      },
       "contactEmail": "联系邮箱",
       "phoneNumber": "电话号码",
       "address": "地址/位置",
@@ -2060,6 +2118,246 @@
       "success": "公司信息更新成功",
       "error": "保存失败"
     },
+    "editOverview": {
+      "title": "编辑概览",
+      "description": "更新公司描述与核心能力。",
+      "successDraft": "概览变更已保存为草稿",
+      "success": "概览已更新",
+      "error": "保存失败",
+      "labels": {
+        "description": "描述",
+        "keyCapabilities": "核心能力",
+        "certifications": "认证与资质"
+      },
+      "placeholders": {
+        "description": "描述您的公司...",
+        "keyCapabilities": "核心能力（逗号分隔）...",
+        "certifications": "ISO 9001、ISO 14001、Constructionline Gold、CHAS..."
+      },
+      "hints": {
+        "commaSeparated": "请用逗号分隔各项能力",
+        "certifications": "列出您的认证、资质与标准"
+      }
+    },
+    "editExperience": {
+      "title": "编辑历史项目",
+      "description": "添加公司项目经历，以提升招标匹配准确度。",
+      "legacyPlainTitle": "历史项目",
+      "successDraft": "经验变更已保存为草稿",
+      "success": "经验信息已更新",
+      "error": "保存失败",
+      "projectNumber": "项目 {number}",
+      "addProject": "添加项目",
+      "labels": {
+        "projectName": "项目名称 *",
+        "description": "描述",
+        "client": "客户",
+        "approximateValue": "大致金额",
+        "year": "年份",
+        "sector": "行业"
+      },
+      "placeholders": {
+        "name": "例如：曼彻斯特医院扩建",
+        "description": "简要说明项目范围与您的角色…",
+        "client": "例如：NHS Trust",
+        "value": "例如：250 万英镑",
+        "year": "例如：2024",
+        "sector": "例如：医疗、建筑"
+      }
+    },
+    "pastProjectsDisplay": {
+      "noProjectsListed": "暂无历史项目",
+      "untitled": "未命名",
+      "clientLine": "客户：{client}",
+      "valueLine": "金额：{value}",
+      "sectorLine": "行业：{sector}"
+    },
+    "operationLocations": {
+      "defaultPlaceholder": "添加国家、地区或城市…",
+      "country": "国家",
+      "regionState": "地区/州",
+      "city": "城市",
+      "moreCities": "另有 {count} 个（请在下方输入并搜索）",
+      "add": "添加",
+      "addCustom": "添加自定义",
+      "removeAriaLabel": "移除 {location}"
+    },
+    "editOperationLocations": {
+      "title": "编辑运营地点",
+      "description": "设置公司开展业务的区域与范围。",
+      "success": "运营地点已更新",
+      "error": "保存失败",
+      "editorPlaceholder": "例如：英国某区、邮编区或自定义地点"
+    },
+    "standardsTree": {
+      "intro": "选择您公司持有的标准与认证。",
+      "searchPlaceholder": "搜索标准…",
+      "noMatch": "未找到匹配的标准。",
+      "noneAvailable": "暂无可用标准。",
+      "selectedLabel": "已选："
+    },
+    "marketsTree": {
+      "intro": "选择您公司服务的市场（可多选）。",
+      "searchPlaceholder": "搜索市场…",
+      "noMatch": "未找到匹配的市场。",
+      "noneAvailable": "暂无可用市场。",
+      "selectedLabel": "已选："
+    },
+    "editCompetenciesSheet": {
+      "title": "编辑能力",
+      "descriptionVerified": "选择能力。变更需管理员审核。",
+      "descriptionUnverifiedLimited": "最多可选 {limit} 项能力。完成认证后可解锁不限数量。",
+      "descriptionUnverified": "选择您公司具备的能力。",
+      "bodyHint": "选择您公司具备的能力。",
+      "searchPlaceholder": "搜索能力…",
+      "selectedCount": "已选（{count}）",
+      "noChanges": "无变更",
+      "failedToLoad": "加载能力失败",
+      "successDraft": "能力变更已保存为草稿。",
+      "success": "能力已更新",
+      "failedToSave": "保存失败",
+      "limitToast": "未认证公司最多可选 {limit} 项能力。完成认证后可解锁不限数量。"
+    },
+    "editMarketsSheet": {
+      "title": "编辑市场",
+      "description": "选择您公司服务的市场。",
+      "bodyHint": "选择您公司服务的市场。",
+      "searchPlaceholder": "搜索市场…",
+      "selectedCount": "已选（{count}）",
+      "noChanges": "无变更",
+      "failedToLoad": "加载市场失败",
+      "successDraft": "市场变更已保存为草稿。",
+      "success": "市场已更新",
+      "failedToSave": "保存失败"
+    },
+    "editStandardsSheet": {
+      "title": "编辑标准与认证",
+      "description": "选择您公司持有的标准与认证。",
+      "bodyHint": "选择您公司持有的标准与认证。",
+      "searchPlaceholder": "搜索标准…",
+      "selectedCount": "已选（{count}）",
+      "noChanges": "无变更",
+      "failedToLoad": "加载标准失败",
+      "successDraft": "标准变更已保存为草稿。",
+      "success": "标准已更新",
+      "failedToSave": "保存失败"
+    },
+    "createJoin": {
+      "title": "添加公司",
+      "subtitle": "注册新公司或加入已有公司",
+      "tabs": {
+        "create": "创建新公司",
+        "join": "加入已有公司"
+      },
+      "toastLookupSuccessTitle": "已找到公司！",
+      "toastLookupSuccessDescription": "已从 Companies House 自动填入信息。",
+      "lookupNotFound": "在 Companies House 未找到该公司。",
+      "lookupFailed": "查询公司失败。",
+      "lookupConnectionFailed": "无法连接 Companies House，请稍后重试。",
+      "toastJoinRequestSubmittedTitle": "申请已提交！",
+      "toastJoinRequestSubmittedDescription": "加入「{companyName}」的申请已发送。",
+      "toastCompanyCreatedTitle": "公司已创建！",
+      "toastCompanyCreatedDescription": "「{companyName}」已注册，正在等待审批。",
+      "errorJoinSubmit": "提交加入申请失败",
+      "errorCreateSubmit": "创建公司失败",
+      "errorCreateRequest": "提交申请失败",
+      "errorCompanyNameRequired": "公司名称为必填项",
+      "errorSelectCompany": "请选择要加入的公司",
+      "foundCompany": {
+        "bannerTitle": "公司已注册",
+        "onPlatform": "该公司已在平台上。",
+        "hasAdmin": "管理员可以批准您的加入申请。",
+        "noAdmin": "该公司尚无管理员。",
+        "messageLabel": "给管理员的留言（可选）",
+        "messagePlaceholder": "自我介绍或说明您希望加入的原因…",
+        "submitting": "提交中…",
+        "requestJoin": "申请加入",
+        "goBack": "返回"
+      },
+      "create": {
+        "chNumberLabel": "英国 Companies House 编号",
+        "chPlaceholder": "例如 12345678",
+        "lookUp": "查询",
+        "chHelper": "可选。输入公司编号以从 Companies House 自动填入信息。",
+        "companyNumberLine": "公司 #{number} · {status}",
+        "change": "更改",
+        "lookupManualHint": "您仍可在下方手动填写信息以创建公司。",
+        "tryAgain": "重试",
+        "dividerManual": "或手动填写信息",
+        "dividerEnter": "填写信息",
+        "companyNameLabel": "公司名称 *",
+        "companyNamePlaceholder": "输入公司名称",
+        "websiteLabel": "网站 URL",
+        "websitePlaceholder": "https://yourcompany.com",
+        "addressLabel": "地址",
+        "addressPlaceholder": "公司地址",
+        "emailLabel": "联系邮箱",
+        "emailPlaceholderFallback": "contact@company.com",
+        "emailHint": "留空则默认使用您的邮箱",
+        "phoneLabel": "联系电话",
+        "phonePlaceholder": "+44 ...",
+        "afterApprovalNote": "管理员批准后，您可继续完善认证、能力与团队成员等信息。",
+        "creating": "创建中…",
+        "submitCreate": "创建公司"
+      },
+      "join": {
+        "searchLabel": "搜索公司 *",
+        "searchPlaceholder": "搜索公司…",
+        "hasMembers": "已有成员",
+        "noResults": "未找到公司。请更换关键词或创建新公司。",
+        "selectedLabel": "已选公司",
+        "change": "更改",
+        "messageLabel": "给公司管理员的留言（可选）",
+        "messagePlaceholder": "自我介绍或说明您希望加入的原因…",
+        "approvalNote": "申请将发送给该公司管理员审批。",
+        "submitting": "提交中…",
+        "requestJoin": "申请加入"
+      }
+    },
+    "inviteTeamMember": {
+      "title": "邀请团队成员",
+      "description": "向 {companyName} 发送邀请。对方将收到邮件以创建账户。",
+      "invalidEmail": "请输入有效的邮箱地址",
+      "failedToSend": "邀请发送失败",
+      "successToast": "邀请已发送至 {email}",
+      "successTitle": "邀请已发送！",
+      "successBody": "邮件已发送至 {email}",
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "colleague@example.com",
+      "validForDays": "邀请链接 7 天内有效",
+      "cancel": "取消",
+      "sending": "发送中...",
+      "sendInvitation": "发送邀请"
+    },
+    "pendingChangesCard": {
+      "titleUnderReview": "变更审核中",
+      "titleDraft": "待审变更",
+      "submittedDescription": "您的变更已提交管理员审核。审核完成前无法编辑。",
+      "draftDescription": "这些变更以草稿保存，尚未对其他人可见。准备好后请提交管理员审核。",
+      "badgeDraft": "{count, plural, other {# 项变更}} - 草稿",
+      "lastSaved": "上次保存：",
+      "discardDraft": "放弃草稿",
+      "submitDialogDescription": "您的变更将由平台管理员审核后再发布。"
+    },
+    "fieldLabels": {
+      "companyName": "公司名称",
+      "description": "描述",
+      "keyCapabilities": "核心能力",
+      "certifications": "认证与资质",
+      "equipment": "设备",
+      "pastProjects": "历史项目",
+      "companiesHouseNumber": "Companies House 编号",
+      "contactEmail": "联系邮箱",
+      "contactPhone": "联系电话",
+      "contactPerson": "联系人",
+      "address": "地址",
+      "postcode": "邮编",
+      "websiteUrl": "网站 URL",
+      "operationLocations": "运营地点",
+      "capabilities": "能力",
+      "markets": "市场",
+      "standards": "标准"
+    },
     "pendingChanges": {
       "current": "当前",
       "proposed": "拟议",
@@ -2068,7 +2366,124 @@
       "added": "已添加：",
       "removed": "已删除：",
       "changesRequested": "已请求修改"
+    },
+    "pendingChangesBar": {
+      "changesUnderReview": "变更审核中",
+      "changesToAddress": "{count, plural, one {# 项变更} other {# 项变更}}待处理",
+      "rejectedChanges": "{count, plural, one {# 项变更} other {# 项变更}}未获批准",
+      "pendingChanges": "{count, plural, one {# 项} other {# 项}}待审变更",
+      "rejected": "已拒绝",
+      "awaitingReview": "等待审核",
+      "discard": "放弃",
+      "discardDialogTitle": "放弃所有待审变更？",
+      "discardDialogDesc": "这将删除所有草稿变更。您的公司资料将保持当前状态。此操作无法撤销。",
+      "discardCancel": "取消",
+      "discardConfirm": "放弃变更",
+      "resubmitForReview": "重新提交审核",
+      "reviewAndSubmit": "查看并提交",
+      "submitDialogTitle": "提交变更以供审核",
+      "submitDialogDesc": "请查看以下变更内容。提交后，在管理员完成审核之前，相关字段将被锁定。",
+      "submitDialogWarning": "变更审核期间，您将无法编辑这些字段，直至审核完成。",
+      "notesLabel": "审核备注（可选）",
+      "notesPlaceholder": "说明本次变更的内容和原因...",
+      "cancelButton": "取消",
+      "submitButton": "提交审核",
+      "changesSubmittedSuccess": "变更已提交审核",
+      "changesSubmittedError": "提交变更失败",
+      "changesDiscardedSuccess": "草稿变更已放弃",
+      "changesDiscardedError": "放弃变更失败"
+    },
+    "capabilitySelector": {
+      "title": "能力",
+      "uncategorized": "未分类",
+      "editingLocked": "变更审核期间编辑已锁定。",
+      "changesSavedDraft": "能力变更已保存为草稿。",
+      "selectDescVerified": "选择能力。变更将保存为草稿，需管理员审核后生效。",
+      "selectDescUnverifiedWithLimit": "选择您公司具备的能力。未认证公司最多可选 {limit} 项。变更将自动保存。",
+      "selectDescUnverified": "选择您公司具备的能力。变更将自动保存。",
+      "viewDesc": "您公司具备的能力。",
+      "saving": "保存中...",
+      "noCapabilitiesSelected": "暂未选择任何能力。",
+      "currentlySelected": "当前已选（{count}）",
+      "saveAsDraft": "保存为草稿",
+      "done": "完成",
+      "cancel": "取消",
+      "edit": "编辑",
+      "limitError": "未认证公司最多可选 {limit} 项能力。认证后可解锁无限制选择。",
+      "failedToLoad": "加载能力列表失败",
+      "failedToSave": "保存能力失败"
+    },
+    "marketSelector": {
+      "title": "市场",
+      "editingLocked": "变更审核期间编辑已锁定。",
+      "changesSavedDraft": "市场变更已保存为草稿。",
+      "selectDesc": "选择您公司服务的市场。变更将自动保存。",
+      "viewDesc": "您公司服务的市场。",
+      "saving": "保存中...",
+      "noMarketsSelected": "暂未选择任何市场。",
+      "currentlySelected": "当前已选（{count}）",
+      "edit": "编辑",
+      "done": "完成",
+      "failedToLoad": "加载市场列表失败",
+      "failedToSave": "保存市场失败"
+    },
+    "standardsSelector": {
+      "title": "标准与认证",
+      "editingLocked": "变更审核期间编辑已锁定。",
+      "changesSavedDraft": "标准变更已保存为草稿。",
+      "selectDesc": "选择您公司持有的标准和认证。仅显示与您所选市场相关的标准。变更将自动保存。",
+      "viewDesc": "您公司持有的标准和认证。",
+      "saving": "保存中...",
+      "noStandardsSelected": "暂未选择任何标准。",
+      "currentlySelected": "当前已选（{count}）",
+      "edit": "编辑",
+      "done": "完成",
+      "failedToLoad": "加载标准列表失败",
+      "failedToSave": "保存标准失败"
     }
+  },
+  "EditSheetLayout": {
+    "editingLocked": "您的变更审核期间，编辑功能已锁定。",
+    "requiresReview": "此变更将保存为草稿，需管理员审核后方可生效。",
+    "saveAsDraft": "保存为草稿",
+    "save": "保存",
+    "saving": "保存中...",
+    "cancel": "取消"
+  },
+  "VerificationStatusIndicator": {
+    "verified": "已认证",
+    "pending": "审核中",
+    "changes_requested": "已请求修改",
+    "rejected": "已拒绝",
+    "unverified": "未认证",
+    "draftChanges": "草稿变更",
+    "draftChangesPending": "草稿变更待提交"
+  },
+  "OrgSwitcher": {
+    "noOrganization": "未选择组织",
+    "active": "活跃",
+    "searchPlaceholder": "搜索组织...",
+    "notFound": "未找到组织。",
+    "organizations": "组织",
+    "pending": "待审",
+    "createOrganization": "创建组织"
+  },
+  "EmailVerificationBanner": {
+    "pleaseVerify": "请验证您的邮箱地址。",
+    "checkInbox": "请查看收件箱中的验证链接。",
+    "emailSent": "验证邮件已发送！",
+    "failedToSend": "发送失败，请重试。",
+    "sending": "发送中...",
+    "resendEmail": "重新发送邮件",
+    "dismiss": "关闭"
+  },
+  "ReadOnlyBanner": {
+    "message": "您的账号正在等待审批。您可以浏览内容，但部分功能受限。",
+    "checkStatus": "查看状态"
+  },
+  "OnboardingBanner": {
+    "message": "完成引导流程以解锁全部功能并获得平台管理员的批准。",
+    "continueOnboarding": "继续引导"
   },
   "TeamContactsCard": {
     "title": "团队联系信息"
@@ -2097,6 +2512,32 @@
     "noCompaniesDesc": "您尚未创建任何公司。创建您的第一家公司以开始使用。",
     "createFirstCompany": "创建您的第一家公司",
     "selectPlaceholder": "选择一家公司"
+  },
+  "CompanyTaxonomySelector": {
+    "title": "公司类别",
+    "description": "选择最能描述贵公司能力与服务的类别",
+    "alertNoDataTitle": "暂无可用类别",
+    "alertNoDataDescription": "分类体系数据尚未导入数据库。请联系管理员执行 EIC 分类体系种子迁移。",
+    "emptyTitle": "尚未选择任何类别",
+    "emptyHint": "请在下方添加类别以描述贵公司的能力",
+    "yourCategoriesLabel": "您的类别",
+    "addCategoryLabel": "添加类别",
+    "addCategoryButton": "添加类别",
+    "selectPrimary": "选择一级类别",
+    "searchCategoriesPlaceholder": "搜索类别…",
+    "noCategoryFound": "未找到类别。",
+    "selectSubCategory": "选择子类别（可选）",
+    "searchSubCategoriesPlaceholder": "搜索子类别…",
+    "noSubCategoryFound": "未找到子类别。",
+    "selectSpecificArea": "选择具体领域（可选）",
+    "searchAreasPlaceholder": "搜索领域…",
+    "noAreaFound": "未找到领域。",
+    "toastLoadError": "加载类别失败",
+    "toastAlreadySelected": "该类别已选中",
+    "toastAdded": "类别已添加到您的资料",
+    "toastAddError": "添加类别失败",
+    "toastRemoved": "已移除类别",
+    "toastRemoveError": "移除类别失败"
   },
   "ProjectInvitationCard": {
     "statusPending": "待处理",

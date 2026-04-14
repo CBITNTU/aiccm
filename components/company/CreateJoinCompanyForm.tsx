@@ -25,6 +25,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 
 interface CompanySearchResult {
@@ -49,6 +50,7 @@ export function CreateJoinCompanyForm({
   onSuccess,
   preselectedCompanyId,
 }: CreateJoinCompanyFormProps) {
+  const t = useTranslations("CompanyPage");
   const _router = useRouter();
   void _router;
   const queryClient = useQueryClient();
@@ -221,8 +223,8 @@ export function CreateJoinCompanyForm({
           companyName: data.data.companyName,
           address: data.data.registeredAddress,
         }));
-        toast.success("Company found!", {
-          description: "Details have been auto-filled from Companies House.",
+        toast.success(t("createJoin.toastLookupSuccessTitle"), {
+          description: t("createJoin.toastLookupSuccessDescription"),
         });
       } else if (data.errorCode === "DUPLICATE" && data.existingCompany) {
         // Company exists in database - offer to join
@@ -236,19 +238,19 @@ export function CreateJoinCompanyForm({
       } else if (data.errorCode === "NOT_FOUND") {
         setLookupState({
           status: "not-found",
-          error: data.error || "Company not found on Companies House.",
+          error: data.error || t("createJoin.lookupNotFound"),
         });
       } else {
         setLookupState({
           status: "error",
-          error: data.error || "Failed to look up company.",
+          error: data.error || t("createJoin.lookupFailed"),
         });
       }
     } catch (err) {
       console.error("Companies House lookup error:", err);
       setLookupState({
         status: "error",
-        error: "Failed to connect to Companies House. Please try again.",
+        error: t("createJoin.lookupConnectionFailed"),
       });
     }
   };
@@ -288,11 +290,13 @@ export function CreateJoinCompanyForm({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to submit join request");
+        throw new Error(data.error || t("createJoin.errorJoinSubmit"));
       }
 
-      toast.success("Request submitted!", {
-        description: `Your request to join "${foundExistingCompany.companyName}" has been sent.`,
+      toast.success(t("createJoin.toastJoinRequestSubmittedTitle"), {
+        description: t("createJoin.toastJoinRequestSubmittedDescription", {
+          companyName: foundExistingCompany.companyName,
+        }),
       });
 
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
@@ -305,7 +309,7 @@ export function CreateJoinCompanyForm({
     } catch (error) {
       console.error("Error joining company:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to submit request";
+        error instanceof Error ? error.message : t("createJoin.errorCreateRequest");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -342,11 +346,13 @@ export function CreateJoinCompanyForm({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create company");
+        throw new Error(data.error || t("createJoin.errorCreateSubmit"));
       }
 
-      toast.success("Company created!", {
-        description: `"${createForm.companyName}" has been registered and is pending approval.`,
+      toast.success(t("createJoin.toastCompanyCreatedTitle"), {
+        description: t("createJoin.toastCompanyCreatedDescription", {
+          companyName: createForm.companyName,
+        }),
       });
 
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
@@ -359,7 +365,7 @@ export function CreateJoinCompanyForm({
     } catch (error) {
       console.error("Error creating company:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to create company";
+        error instanceof Error ? error.message : t("createJoin.errorCreateSubmit");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -372,7 +378,7 @@ export function CreateJoinCompanyForm({
     setError(null);
 
     if (!joinForm.selectedCompany) {
-      setError("Please select a company to join");
+      setError(t("createJoin.errorSelectCompany"));
       setIsLoading(false);
       return;
     }
@@ -392,11 +398,13 @@ export function CreateJoinCompanyForm({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to submit join request");
+        throw new Error(data.error || t("createJoin.errorJoinSubmit"));
       }
 
-      toast.success("Request submitted!", {
-        description: `Your request to join "${joinForm.selectedCompany.companyName}" has been sent.`,
+      toast.success(t("createJoin.toastJoinRequestSubmittedTitle"), {
+        description: t("createJoin.toastJoinRequestSubmittedDescription", {
+          companyName: joinForm.selectedCompany.companyName,
+        }),
       });
 
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
@@ -409,7 +417,7 @@ export function CreateJoinCompanyForm({
     } catch (error) {
       console.error("Error joining company:", error);
       const message =
-        error instanceof Error ? error.message : "Failed to submit request";
+        error instanceof Error ? error.message : t("createJoin.errorCreateRequest");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -423,10 +431,8 @@ export function CreateJoinCompanyForm({
           <div className="w-16 h-16 bg-primary/10 dark:bg-primary/20 rounded-full mx-auto mb-4 flex items-center justify-center">
             <Building2 className="w-8 h-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Add a Company</CardTitle>
-          <p className="text-muted-foreground mt-2">
-            Register a new company or join an existing one
-          </p>
+          <CardTitle className="text-2xl">{t("createJoin.title")}</CardTitle>
+          <p className="text-muted-foreground mt-2">{t("createJoin.subtitle")}</p>
         </CardHeader>
         <CardContent>
           <Tabs
@@ -436,11 +442,11 @@ export function CreateJoinCompanyForm({
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="create" className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
-                Create New
+                {t("createJoin.tabs.create")}
               </TabsTrigger>
               <TabsTrigger value="join" className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                Join Existing
+                {t("createJoin.tabs.join")}
               </TabsTrigger>
             </TabsList>
 
@@ -452,7 +458,7 @@ export function CreateJoinCompanyForm({
                     <div className="flex items-center gap-2 text-amber-200 mb-3">
                       <AlertCircle className="w-5 h-5" />
                       <span className="font-medium">
-                        Company Already Registered
+                        {t("createJoin.foundCompany.bannerTitle")}
                       </span>
                     </div>
 
@@ -460,20 +466,20 @@ export function CreateJoinCompanyForm({
                       {foundExistingCompany.companyName}
                     </h3>
                     <p className="text-sm text-amber-200">
-                      This company is already on our platform.
+                      {t("createJoin.foundCompany.onPlatform")}{" "}
                       {foundExistingCompany.hasAdmin
-                        ? " An administrator can approve your request to join."
-                        : " This company doesn't have an administrator yet."}
+                        ? t("createJoin.foundCompany.hasAdmin")
+                        : t("createJoin.foundCompany.noAdmin")}
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="foundCompanyMessage">
-                      Message to company admin (optional)
+                      {t("createJoin.foundCompany.messageLabel")}
                     </Label>
                     <Textarea
                       id="foundCompanyMessage"
-                      placeholder="Introduce yourself or explain why you'd like to join..."
+                      placeholder={t("createJoin.foundCompany.messagePlaceholder")}
                       value={foundCompanyMessage}
                       onChange={(e) => setFoundCompanyMessage(e.target.value)}
                       rows={3}
@@ -496,10 +502,10 @@ export function CreateJoinCompanyForm({
                       {isLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Submitting...
+                          {t("createJoin.foundCompany.submitting")}
                         </>
                       ) : (
-                        "Request to Join"
+                        t("createJoin.foundCompany.requestJoin")
                       )}
                     </Button>
                     <Button
@@ -508,7 +514,7 @@ export function CreateJoinCompanyForm({
                       onClick={handleResetLookup}
                       disabled={isLoading}
                     >
-                      Go Back
+                      {t("createJoin.foundCompany.goBack")}
                     </Button>
                   </div>
                 </div>
@@ -517,7 +523,7 @@ export function CreateJoinCompanyForm({
                   {/* Companies House Lookup Section */}
                   <div className="space-y-2">
                     <Label htmlFor="companiesHouseNumber">
-                      UK Companies House Number
+                      {t("createJoin.create.chNumberLabel")}
                     </Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
@@ -556,13 +562,12 @@ export function CreateJoinCompanyForm({
                         {lookupState.status === "loading" ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          "Look Up"
+                          t("createJoin.create.lookUp")
                         )}
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Optional. Enter your company number to auto-fill details
-                      from Companies House.
+                      {t("createJoin.create.chHelper")}
                     </p>
                   </div>
 
@@ -576,8 +581,10 @@ export function CreateJoinCompanyForm({
                             {lookupState.data.companyName}
                           </p>
                           <p className="text-sm text-green-700 dark:text-green-300">
-                            Company #{lookupState.data.companyNumber} &middot;{" "}
-                            {lookupState.data.companyStatus}
+                            {t("createJoin.create.companyNumberLine", {
+                              number: lookupState.data.companyNumber,
+                              status: lookupState.data.companyStatus,
+                            })}
                           </p>
                           <p className="text-sm text-green-600 dark:text-green-400 mt-1 truncate">
                             {lookupState.data.registeredAddress}
@@ -590,7 +597,7 @@ export function CreateJoinCompanyForm({
                           onClick={handleResetLookup}
                           className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 flex-shrink-0"
                         >
-                          Change
+                          {t("createJoin.create.change")}
                         </Button>
                       </div>
                     </div>
@@ -607,8 +614,7 @@ export function CreateJoinCompanyForm({
                             {lookupState.error}
                           </p>
                           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                            You can still create your company by entering the
-                            details manually below.
+                            {t("createJoin.create.lookupManualHint")}
                           </p>
                         </div>
                         <Button
@@ -618,7 +624,7 @@ export function CreateJoinCompanyForm({
                           onClick={handleResetLookup}
                           className="text-amber-600 hover:text-amber-800 dark:text-amber-400 flex-shrink-0"
                         >
-                          Try Again
+                          {t("createJoin.create.tryAgain")}
                         </Button>
                       </div>
                     </div>
@@ -633,8 +639,8 @@ export function CreateJoinCompanyForm({
                       <div className="relative flex justify-center text-xs uppercase">
                         <span className="bg-background px-2 text-muted-foreground">
                           {lookupState.status === "idle"
-                            ? "Or enter details manually"
-                            : "Enter details"}
+                            ? t("createJoin.create.dividerManual")
+                            : t("createJoin.create.dividerEnter")}
                         </span>
                       </div>
                     </div>
@@ -643,13 +649,13 @@ export function CreateJoinCompanyForm({
                   {/* Company Name - only editable if no lookup success */}
                   {lookupState.status !== "success" && (
                     <div className="space-y-2">
-                      <Label htmlFor="companyName">Company Name *</Label>
+                      <Label htmlFor="companyName">{t("createJoin.create.companyNameLabel")}</Label>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                           id="companyName"
                           type="text"
-                          placeholder="Enter company name"
+                          placeholder={t("createJoin.create.companyNamePlaceholder")}
                           value={createForm.companyName}
                           onChange={(e) =>
                             setCreateForm({
@@ -666,13 +672,13 @@ export function CreateJoinCompanyForm({
 
                   {/* Website URL */}
                   <div className="space-y-2">
-                    <Label htmlFor="websiteUrl">Website URL</Label>
+                    <Label htmlFor="websiteUrl">{t("createJoin.create.websiteLabel")}</Label>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="websiteUrl"
                         type="url"
-                        placeholder="https://yourcompany.com"
+                        placeholder={t("createJoin.create.websitePlaceholder")}
                         value={createForm.websiteUrl}
                         onChange={(e) =>
                           setCreateForm({
@@ -688,13 +694,13 @@ export function CreateJoinCompanyForm({
                   {/* Address - only editable if no lookup success */}
                   {lookupState.status !== "success" && (
                     <div className="space-y-2">
-                      <Label htmlFor="address">Address</Label>
+                      <Label htmlFor="address">{t("createJoin.create.addressLabel")}</Label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                           id="address"
                           type="text"
-                          placeholder="Company address"
+                          placeholder={t("createJoin.create.addressPlaceholder")}
                           value={createForm.address}
                           onChange={(e) =>
                             setCreateForm({
@@ -710,13 +716,13 @@ export function CreateJoinCompanyForm({
 
                   {/* Contact Email */}
                   <div className="space-y-2">
-                    <Label htmlFor="contactEmail">Contact Email</Label>
+                    <Label htmlFor="contactEmail">{t("createJoin.create.emailLabel")}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="contactEmail"
                         type="email"
-                        placeholder={userEmail || "contact@company.com"}
+                        placeholder={userEmail || t("createJoin.create.emailPlaceholderFallback")}
                         value={createForm.contactEmail}
                         onChange={(e) =>
                           setCreateForm({
@@ -734,13 +740,13 @@ export function CreateJoinCompanyForm({
 
                   {/* Contact Phone */}
                   <div className="space-y-2">
-                    <Label htmlFor="contactPhone">Contact Phone</Label>
+                    <Label htmlFor="contactPhone">{t("createJoin.create.phoneLabel")}</Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="contactPhone"
                         type="tel"
-                        placeholder="+44 ..."
+                        placeholder={t("createJoin.create.phonePlaceholder")}
                         value={createForm.contactPhone}
                         onChange={(e) =>
                           setCreateForm({
@@ -754,11 +760,7 @@ export function CreateJoinCompanyForm({
                   </div>
 
                   <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                    <p>
-                      After admin approval, you&apos;ll be able to add more
-                      company details including certifications, capabilities,
-                      and team members.
-                    </p>
+                    <p>{t("createJoin.create.afterApprovalNote")}</p>
                   </div>
 
                   {error && activeTab === "create" && (
@@ -775,10 +777,10 @@ export function CreateJoinCompanyForm({
                     {isLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Creating...
+                        {t("createJoin.create.creating")}
                       </>
                     ) : (
-                      "Create Company"
+                      t("createJoin.create.submitCreate")
                     )}
                   </Button>
                 </form>
@@ -788,13 +790,13 @@ export function CreateJoinCompanyForm({
             <TabsContent value="join">
               <form onSubmit={handleJoinCompany} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="searchCompany">Search Company *</Label>
+                  <Label htmlFor="searchCompany">{t("createJoin.join.searchLabel")}</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="searchCompany"
                       type="text"
-                      placeholder="Search for a company..."
+                      placeholder={t("createJoin.join.searchPlaceholder")}
                       value={joinForm.searchQuery}
                       onChange={(e) => {
                         setJoinForm({
@@ -851,8 +853,7 @@ export function CreateJoinCompanyForm({
                     !isSearching && (
                       <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
                         <p className="text-sm text-muted-foreground">
-                          No companies found. Try a different search or create a
-                          new company.
+                          {t("createJoin.join.noResults")}
                         </p>
                       </div>
                     )}
@@ -867,7 +868,7 @@ export function CreateJoinCompanyForm({
                         {joinForm.selectedCompany.companyName}
                       </p>
                       <p className="text-xs text-green-600 dark:text-green-400">
-                        Selected company
+                        {t("createJoin.join.selectedLabel")}
                       </p>
                     </div>
                     <Button
@@ -877,18 +878,18 @@ export function CreateJoinCompanyForm({
                       onClick={handleClearSelection}
                       className="text-green-600 hover:text-green-800"
                     >
-                      Change
+                      {t("createJoin.join.change")}
                     </Button>
                   </div>
                 )}
 
                 <div className="space-y-2">
                   <Label htmlFor="joinMessage">
-                    Message to Company Admin (optional)
+                    {t("createJoin.join.messageLabel")}
                   </Label>
                   <Textarea
                     id="joinMessage"
-                    placeholder="Introduce yourself or explain why you want to join..."
+                    placeholder={t("createJoin.join.messagePlaceholder")}
                     value={joinForm.message}
                     onChange={(e) =>
                       setJoinForm({ ...joinForm, message: e.target.value })
@@ -918,10 +919,10 @@ export function CreateJoinCompanyForm({
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Submitting...
+                      {t("createJoin.join.submitting")}
                     </>
                   ) : (
-                    "Request to Join"
+                    t("createJoin.join.requestJoin")
                   )}
                 </Button>
               </form>

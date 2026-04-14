@@ -1,9 +1,9 @@
 "use client";
 
-
 import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -14,6 +14,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tag, Loader2, Pencil, Clock, ShieldCheck } from "lucide-react";
+
+const UNCATEGORIZED_CATEGORY = "Uncategorized";
 import { CapabilityTreeSelector } from "@/components/tenders/CapabilityTreeSelector";
 
 interface Capability {
@@ -35,6 +37,7 @@ export function CompanyCapabilitySelector({
   isEditLocked = false,
   hasPendingDraft = false,
 }: CompanyCapabilitySelectorProps) {
+  const t = useTranslations("CompanyPage");
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>(
     [],
   );
@@ -62,7 +65,7 @@ export function CompanyCapabilitySelector({
       setHasPendingRequest(!!data.pendingCompetencyRequest);
     } catch (error) {
       console.error("Error fetching company capabilities:", error);
-      toast.error("Failed to load capabilities");
+      toast.error(t("capabilitySelector.failedToLoad"));
     } finally {
       setLoading(false);
     }
@@ -76,7 +79,7 @@ export function CompanyCapabilitySelector({
       const result = await api.syncCapabilities(companyId, capabilityIds);
 
       if (result.pendingReview) {
-        toast.success(result.message || "Competency changes saved as draft. Submit for review when ready.");
+        toast.success(result.message || t("capabilitySelector.changesSavedDraft"));
         setHasPendingRequest(true);
         setEditMode(false);
         onUpdate?.();
@@ -90,7 +93,7 @@ export function CompanyCapabilitySelector({
       }
     } catch (error) {
       console.error("Error saving capabilities:", error);
-      const message = error instanceof Error ? error.message : "Failed to save capabilities";
+      const message = error instanceof Error ? error.message : t("capabilitySelector.failedToSave");
       toast.error(message);
       await fetchCompanyCapabilities();
     } finally {
@@ -103,7 +106,7 @@ export function CompanyCapabilitySelector({
   const handleSelectionChange = (capabilityIds: string[]) => {
     // For unverified companies, check limit before allowing selection
     if (!isVerified && competencyLimit !== null && capabilityIds.length > competencyLimit) {
-      toast.error(`Unverified companies can select up to ${competencyLimit} competencies. Get verified to unlock unlimited competencies.`);
+      toast.error(t("capabilitySelector.limitError", { limit: competencyLimit }));
       return;
     }
 
@@ -141,15 +144,15 @@ export function CompanyCapabilitySelector({
   const groupedSelected = useMemo(() => {
     const groups = new Map<string | null, Capability[]>();
     allCapabilities.forEach((cap) => {
-      const category = cap.category || "Uncategorized";
+      const category = cap.category || UNCATEGORIZED_CATEGORY;
       if (!groups.has(category)) {
         groups.set(category, []);
       }
       groups.get(category)!.push(cap);
     });
     return Array.from(groups.entries()).toSorted((a, b) => {
-      if (a[0] === "Uncategorized") return 1;
-      if (b[0] === "Uncategorized") return -1;
+      if (a[0] === UNCATEGORIZED_CATEGORY) return 1;
+      if (b[0] === UNCATEGORIZED_CATEGORY) return -1;
       return (a[0] || "").localeCompare(b[0] || "");
     });
   }, [allCapabilities]);
@@ -171,7 +174,7 @@ export function CompanyCapabilitySelector({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Tag className="h-5 w-5" />
-          Competency
+          {t("capabilitySelector.title")}
           {competencyLimit !== null && !isVerified && (
             <Badge variant="outline" className="text-xs font-normal ml-auto">
               {selectedCapabilityIds.length}/{competencyLimit}
@@ -182,21 +185,23 @@ export function CompanyCapabilitySelector({
           {isEditLocked ? (
             <span className="flex items-center gap-1 text-amber-600">
               <Clock className="h-3.5 w-3.5" />
-              Editing locked while changes are under review.
+              {t("capabilitySelector.editingLocked")}
             </span>
           ) : hasPendingRequest || hasPendingDraft ? (
             <span className="flex items-center gap-1 text-amber-600">
               <Clock className="h-3.5 w-3.5" />
-              Competency changes saved as draft.
+              {t("capabilitySelector.changesSavedDraft")}
             </span>
           ) : editMode ? (
             isVerified
-              ? "Select capabilities. Changes will be saved as a draft requiring admin review."
-              : `Select capabilities that your company has.${competencyLimit !== null ? ` Up to ${competencyLimit} for unverified companies.` : ""} Changes are saved automatically.`
+              ? t("capabilitySelector.selectDescVerified")
+              : competencyLimit !== null
+                ? t("capabilitySelector.selectDescUnverifiedWithLimit", { limit: competencyLimit })
+                : t("capabilitySelector.selectDescUnverified")
           ) : (
-            "Capabilities your company has."
+            t("capabilitySelector.viewDesc")
           )}
-          {saving && <span className="ml-2 text-primary">Saving...</span>}
+          {saving && <span className="ml-2 text-primary">{t("capabilitySelector.saving")}</span>}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -205,7 +210,7 @@ export function CompanyCapabilitySelector({
             <div className="flex flex-wrap gap-2">
               {selectedCapabilityIds.length === 0 ? (
                 <span className="text-sm text-muted-foreground">
-                  No capabilities selected.
+                  {t("capabilitySelector.noCapabilitiesSelected")}
                 </span>
               ) : (
                 allCapabilities.map((cap) => (
@@ -224,7 +229,7 @@ export function CompanyCapabilitySelector({
                 className="gap-1"
               >
                 <Pencil className="h-3 w-3" />
-                Edit
+                {t("capabilitySelector.edit")}
               </Button>
             )}
           </>
@@ -233,14 +238,16 @@ export function CompanyCapabilitySelector({
             {selectedCapabilityIds.length > 0 && (
               <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
                 <h3 className="font-semibold text-sm">
-                  Currently Selected ({selectedCapabilityIds.length})
+                  {t("capabilitySelector.currentlySelected", { count: selectedCapabilityIds.length })}
                 </h3>
                 <div className="space-y-3">
                   {groupedSelected.map(([category, caps]) => (
                     <div key={category || "uncategorized"}>
-                      {category && category !== "Uncategorized" && (
+                      {category && (
                         <h4 className="font-semibold text-xs text-muted-foreground mb-2 uppercase">
-                          {category}
+                          {category === UNCATEGORIZED_CATEGORY
+                            ? t("capabilitySelector.uncategorized")
+                            : category}
                         </h4>
                       )}
                       <div className="flex flex-wrap gap-2">
@@ -272,10 +279,10 @@ export function CompanyCapabilitySelector({
                 {isVerified ? (
                   <>
                     <ShieldCheck className="h-3 w-3" />
-                    Save as Draft
+                    {t("capabilitySelector.saveAsDraft")}
                   </>
                 ) : (
-                  "Done"
+                  t("capabilitySelector.done")
                 )}
               </Button>
               {isVerified && (
@@ -288,7 +295,7 @@ export function CompanyCapabilitySelector({
                     fetchCompanyCapabilities();
                   }}
                 >
-                  Cancel
+                  {t("capabilitySelector.cancel")}
                 </Button>
               )}
             </div>

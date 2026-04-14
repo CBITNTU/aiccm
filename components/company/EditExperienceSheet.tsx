@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, startTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
@@ -33,7 +34,10 @@ const emptyProject: PastProjectForm = {
   sector: "",
 };
 
-function parsePastProjects(raw: string | null | undefined): PastProjectForm[] {
+function parsePastProjects(
+  raw: string | null | undefined,
+  legacyPlainTitle: string,
+): PastProjectForm[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -50,7 +54,7 @@ function parsePastProjects(raw: string | null | undefined): PastProjectForm[] {
   } catch {
     // Legacy plain text
     if (raw.trim().length > 0) {
-      return [{ ...emptyProject, name: "Past Projects", description: raw }];
+      return [{ ...emptyProject, name: legacyPlainTitle, description: raw }];
     }
   }
   return [];
@@ -79,13 +83,23 @@ export function EditExperienceSheet({
   onSaved,
   onDataRefresh,
 }: EditExperienceSheetProps) {
-  const [projects, setProjects] = useState<PastProjectForm[]>(() => {
-    // Prefer pending/draft changes, fall back to current saved data
+  const t = useTranslations("CompanyPage");
+  const [projects, setProjects] = useState<PastProjectForm[]>([{ ...emptyProject }]);
+
+  useEffect(() => {
+    if (!open) return;
     const pendingRaw = pendingChanges?.scalarFields?.pastProjects?.proposed;
     const raw = pendingRaw ?? companyData.pastProjects;
-    const parsed = parsePastProjects(raw);
-    return parsed.length > 0 ? parsed : [{ ...emptyProject }];
-  });
+    const parsed = parsePastProjects(raw, t("editExperience.legacyPlainTitle"));
+    startTransition(() => {
+      setProjects(parsed.length > 0 ? parsed : [{ ...emptyProject }]);
+    });
+  }, [
+    open,
+    companyData.pastProjects,
+    pendingChanges?.scalarFields?.pastProjects?.proposed,
+    t,
+  ]);
 
   const updateMutation = useUpdateCompany();
   const queryClient = useQueryClient();
@@ -105,14 +119,12 @@ export function EditExperienceSheet({
   };
 
   const handleSave = async () => {
-    // Filter out empty projects (no name)
     const validProjects = projects.filter((p) => p.name.trim().length > 0);
 
     try {
       const result = await updateMutation.mutateAsync({
         companyId: companyData.id,
         updates: {
-          // Save null instead of "[]" so clearing all projects doesn't create a no-op diff
           pastProjects: validProjects.length > 0 ? JSON.stringify(validProjects) : null,
         },
       });
@@ -120,14 +132,12 @@ export function EditExperienceSheet({
       onSaved(result.company);
       onDataRefresh();
       toast.success(
-        isVerified
-          ? "Experience changes saved as draft"
-          : "Experience updated successfully",
+        isVerified ? t("editExperience.successDraft") : t("editExperience.success"),
       );
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error("Failed to save changes");
+      toast.error(t("editExperience.error"));
     }
   };
 
@@ -135,8 +145,8 @@ export function EditExperienceSheet({
     <EditSheetLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Past Projects"
-      description="Add your company's project history to improve tender matching accuracy."
+      title={t("editExperience.title")}
+      description={t("editExperience.description")}
       isReviewable={true}
       isVerified={isVerified}
       isEditLocked={isEditLocked}
@@ -148,7 +158,9 @@ export function EditExperienceSheet({
           <div key={idx} className="space-y-3">
             {idx > 0 && <Separator />}
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">Project {idx + 1}</h4>
+              <h4 className="text-sm font-medium">
+                {t("editExperience.projectNumber", { number: idx + 1 })}
+              </h4>
               <Button
                 type="button"
                 variant="ghost"
@@ -161,64 +173,64 @@ export function EditExperienceSheet({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`name-${idx}`}>Project Name *</Label>
+              <Label htmlFor={`name-${idx}`}>{t("editExperience.labels.projectName")}</Label>
               <Input
                 id={`name-${idx}`}
                 value={project.name}
                 onChange={(e) => updateProject(idx, "name", e.target.value)}
-                placeholder="e.g. Manchester Hospital Extension"
+                placeholder={t("editExperience.placeholders.name")}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`description-${idx}`}>Description</Label>
+              <Label htmlFor={`description-${idx}`}>{t("editExperience.labels.description")}</Label>
               <Textarea
                 id={`description-${idx}`}
                 value={project.description}
                 onChange={(e) => updateProject(idx, "description", e.target.value)}
-                placeholder="Brief description of the project scope and your role..."
+                placeholder={t("editExperience.placeholders.description")}
                 rows={3}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor={`client-${idx}`}>Client</Label>
+                <Label htmlFor={`client-${idx}`}>{t("editExperience.labels.client")}</Label>
                 <Input
                   id={`client-${idx}`}
                   value={project.client}
                   onChange={(e) => updateProject(idx, "client", e.target.value)}
-                  placeholder="e.g. NHS Trust"
+                  placeholder={t("editExperience.placeholders.client")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor={`value-${idx}`}>Approximate Value</Label>
+                <Label htmlFor={`value-${idx}`}>{t("editExperience.labels.approximateValue")}</Label>
                 <Input
                   id={`value-${idx}`}
                   value={project.value}
                   onChange={(e) => updateProject(idx, "value", e.target.value)}
-                  placeholder="e.g. 2.5M"
+                  placeholder={t("editExperience.placeholders.value")}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor={`year-${idx}`}>Year</Label>
+                <Label htmlFor={`year-${idx}`}>{t("editExperience.labels.year")}</Label>
                 <Input
                   id={`year-${idx}`}
                   value={project.year}
                   onChange={(e) => updateProject(idx, "year", e.target.value)}
-                  placeholder="e.g. 2024"
+                  placeholder={t("editExperience.placeholders.year")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor={`sector-${idx}`}>Sector</Label>
+                <Label htmlFor={`sector-${idx}`}>{t("editExperience.labels.sector")}</Label>
                 <Input
                   id={`sector-${idx}`}
                   value={project.sector}
                   onChange={(e) => updateProject(idx, "sector", e.target.value)}
-                  placeholder="e.g. Healthcare, Construction"
+                  placeholder={t("editExperience.placeholders.sector")}
                 />
               </div>
             </div>
@@ -232,7 +244,7 @@ export function EditExperienceSheet({
           className="w-full"
         >
           <Plus className="h-4 w-4 mr-1" />
-          Add Project
+          {t("editExperience.addProject")}
         </Button>
       </div>
     </EditSheetLayout>

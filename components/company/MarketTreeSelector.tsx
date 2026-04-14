@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -167,6 +168,7 @@ export function MarketTreeSelector({
   className,
   onReady,
 }: MarketTreeSelectorProps) {
+  const t = useTranslations("CompanyPage");
   const isControlled = externalSearchTerm !== undefined;
   const [markets, setMarkets] = useState<MarketNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,13 +241,11 @@ export function MarketTreeSelector({
     <div className={isControlled ? className : "space-y-4"}>
       {!isControlled && (
         <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Select the markets your company serves. You can select multiple.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("marketsTree.intro")}</p>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search markets..."
+              placeholder={t("marketsTree.searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -257,7 +257,7 @@ export function MarketTreeSelector({
         <CardContent className={isControlled ? "p-4 overflow-y-auto flex-1" : "p-4 max-h-[500px] overflow-y-auto"}>
           {filteredTree.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? "No markets found matching your search." : "No markets available."}
+              {searchTerm ? t("marketsTree.noMatch") : t("marketsTree.noneAvailable")}
             </div>
           ) : (
             <div className="space-y-1">
@@ -279,7 +279,7 @@ export function MarketTreeSelector({
       </Card>
       {!isControlled && selectedMarketIds.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          <span className="text-sm font-medium">Selected:</span>
+          <span className="text-sm font-medium">{t("marketsTree.selectedLabel")}</span>
           {selectedMarketIds.map((id) => {
             const m = markets.find((x) => x.id === id);
             return m ? (

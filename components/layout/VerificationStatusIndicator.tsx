@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useOrg } from "@/hooks/useOrg";
 import { useVerificationStatus } from "@/hooks/useVerificationStatus";
 import {
@@ -25,6 +26,7 @@ export function VerificationStatusIndicator({
   isCollapsed,
   isMobile = false,
 }: VerificationStatusIndicatorProps) {
+  const t = useTranslations("VerificationStatusIndicator");
   const { selectedOrg } = useOrg();
   const { data, isLoading } = useVerificationStatus(selectedOrg?.id ?? null);
   const router = useRouter();
@@ -49,8 +51,8 @@ export function VerificationStatusIndicator({
   };
 
   // Build tooltip text
-  const tooltipParts: string[] = [config.label];
-  if (hasPendingChanges) tooltipParts.push("Draft changes");
+  const tooltipParts: string[] = [t(displayState)];
+  if (hasPendingChanges) tooltipParts.push(t("draftChanges"));
   const tooltipText = tooltipParts.join(" · ");
 
   // Collapsed mode: single dot with combined tooltip
@@ -122,7 +124,7 @@ export function VerificationStatusIndicator({
               </span>
 
               {/* Label */}
-              <span className="truncate">{config.label}</span>
+              <span className="truncate">{t(displayState)}</span>
 
               {/* Spacer */}
               <span className="flex-1" />
@@ -135,9 +137,9 @@ export function VerificationStatusIndicator({
           </TooltipTrigger>
           <TooltipContent side="right" sideOffset={8}>
             <div className="text-xs">
-              <p>{config.label}</p>
+              <p>{t(displayState)}</p>
               {hasPendingChanges && (
-                <p className="text-amber-400">Draft changes pending</p>
+                <p className="text-amber-400">{t("draftChangesPending")}</p>
               )}
             </div>
           </TooltipContent>

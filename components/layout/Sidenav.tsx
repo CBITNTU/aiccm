@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Tooltip,
   TooltipContent,
@@ -496,16 +496,23 @@ function SidebarContent({
 
 export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { user, signOut, isPendingApproval, isOnboarding, profile, profileLoading } =
-    useAuth();
+  const {
+    user,
+    signOut,
+    isPendingApproval,
+    isOnboarding,
+    profile,
+    hasResolvedInitialProfile,
+  } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { data: adminStatsData } = useAdminStats(isAdmin);
 
   const pathname = usePathname();
 
   // Users are restricted if they're pending approval OR still onboarding
-  const isRestrictedUser = !profileLoading && (isPendingApproval || isOnboarding);
-  const navLoading = profileLoading || roleLoading;
+  const isRestrictedUser = isPendingApproval || isOnboarding;
+  const showInitialNavSkeleton =
+    !!user && (!hasResolvedInitialProfile || roleLoading);
 
   // Load collapsed state from localStorage
   useEffect(() => {
@@ -591,7 +598,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
           isCollapsed ? "w-16" : "w-64",
         )}
       >
-        {navLoading ? (
+        {showInitialNavSkeleton ? (
           <SidebarContentSkeleton isCollapsed={isCollapsed} />
         ) : (
           <SidebarContent {...sidebarProps} />
@@ -601,7 +608,8 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
       {/* Mobile Sidenav (Sheet) */}
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
         <SheetContent side="left" className="w-72 p-0">
-          {navLoading ? (
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          {showInitialNavSkeleton ? (
             <SidebarContentSkeleton isCollapsed={isCollapsed} isMobile />
           ) : (
             <SidebarContent {...sidebarProps} isMobile />

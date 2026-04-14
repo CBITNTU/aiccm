@@ -80,7 +80,7 @@ export function PerformanceBenchmarkCard({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Award className="h-5 w-5" />
@@ -90,7 +90,7 @@ export function PerformanceBenchmarkCard({
               {t("performance.description", { companyName })}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {companyAnalysis?.performanceBenchmark?.overallScore && (
               <Badge variant="default" className="text-lg px-3 py-1">
                 {companyAnalysis.performanceBenchmark.overallScore}/100

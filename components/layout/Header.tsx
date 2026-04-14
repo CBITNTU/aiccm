@@ -17,7 +17,11 @@ export function Header({
   onMobileMenuToggle,
 }: HeaderProps) {
   const t = useTranslations("Header");
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, hasReadyUiInSession, isUiReadyHydrated } =
+    useAuth();
+  const canUseReadyBranch = isUiReadyHydrated && hasReadyUiInSession;
+  const showInitialAuthSkeleton =
+    variant === "landing" && loading && !canUseReadyBranch;
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,10 +51,18 @@ export function Header({
           <div className="flex items-center space-x-3">
             {variant === "landing" ? (
               <div className="flex space-x-4">
-                {loading ? (
+                {showInitialAuthSkeleton ? (
                   <div className="flex items-center space-x-4" aria-hidden="true">
                     <Skeleton className="h-9 w-28 rounded-md" />
                     <Skeleton className="h-9 w-32 rounded-md" />
+                  </div>
+                ) : loading && canUseReadyBranch ? (
+                  <div
+                    className="flex items-center space-x-4 opacity-0 pointer-events-none"
+                    aria-hidden="true"
+                  >
+                    <Button variant="outline">Placeholder</Button>
+                    <Button>Placeholder</Button>
                   </div>
                 ) : user ? (
                   <div className="flex items-center space-x-4">

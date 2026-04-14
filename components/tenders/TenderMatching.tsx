@@ -620,7 +620,7 @@ export function TenderMatching({
     <div className="space-y-4">
       {/* Results summary */}
       {!loading && totalCount > 0 && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <ResultsHeader
             total={totalCount}
             start={startIndex + 1}
@@ -630,7 +630,7 @@ export function TenderMatching({
             loading={loading}
             onRefresh={() => refetchMatchingResults()}
           />
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 sm:shrink-0">
             {matchingUsage && !analyzing && (
               <TooltipProvider>
                 <Tooltip>

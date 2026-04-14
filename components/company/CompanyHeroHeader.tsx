@@ -62,11 +62,11 @@ export function CompanyHeroHeader({
       <CardHeader className="pb-3">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           {/* Company identity */}
-          <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="flex items-center gap-4 flex-1 min-w-0 w-full">
             <div className="w-14 h-14 gradient-hero rounded-xl flex items-center justify-center shrink-0">
               <Building2 className="w-7 h-7 text-white" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 overflow-hidden">
               <CardTitle className="text-xl font-bold text-foreground truncate">
                 {companyData.companyName}
               </CardTitle>
@@ -92,7 +92,7 @@ export function CompanyHeroHeader({
 
           {/* Action buttons */}
           {isOwner && (
-            <div className="flex gap-2 shrink-0">
+            <div className="flex flex-wrap gap-2 shrink-0">
               <Button variant="outline" size="sm" onClick={onEditInfo}>
                 <Edit2 className="w-3.5 h-3.5 mr-1.5" />
                 {t("heroHeader.editInfo")}

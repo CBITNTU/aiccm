@@ -1192,6 +1192,7 @@
     "noteSuffix": " are automatically extracted. Postcode is extracted from Full Address if provided.",
     "fileLabel": "CSV File",
     "updateExistingLabel": "Update existing companies' capabilities (re-map capabilities from CSV)",
+    "queueAiJobsLabel": "Queue AI summary/taxonomy jobs after import (optional)",
     "previewLabel": "Preview (first 5 rows)",
     "previewHeader": {
       "companyName": "Company Name",
@@ -1200,20 +1201,26 @@
     },
     "importButton": "Import Companies",
     "progressLabel": "{progress}% complete",
-    "progressCounts": "{imported} imported, {skipped} skipped, {errors} errors",
+    "progressCounts": "{imported} imported, {updated} updated, {skipped} skipped, {errors} errors, {queued} queued",
     "errorsTitle": "Import Errors ({count}):",
     "moreErrors": "...and {count} more errors",
+    "errors": {
+      "unknownImportError": "Unknown import error"
+    },
     "summaryTitle": "Import Summary:",
     "summaryImported": "{count} companies imported successfully",
+    "summaryUpdated": "{count} companies updated",
     "summarySkipped": "{count} companies skipped (already exist)",
     "summaryFailed": "{count} companies failed to import",
+    "summaryQueued": "{count} AI jobs queued",
+    "downloadFailureReport": "Download failure report",
     "toasts": {
       "invalidFile": "Please select a CSV file",
       "noData": "No valid data found in CSV file",
       "loaded": "CSV file loaded. Found {count} companies.",
       "parseError": "Failed to parse CSV file",
       "capabilityMatchingDisabled": "Capability matching disabled - failed to load reference list",
-      "importSuccess": "Import completed! {imported} imported, {skipped} skipped, {errors} errors. {note}",
+      "importSuccess": "Import completed! {imported} imported, {updated} updated, {skipped} skipped, {errors} errors, {queued} jobs queued. {note}",
       "importSuccessNote": "Capability taxonomies are being generated in the background.",
       "importFailed": "Import failed: {message}"
     }

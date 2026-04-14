@@ -142,16 +142,17 @@ export async function POST(request: NextRequest) {
       console.log("[CompanyAI:analyze-ai] Taxonomy matching — matched IDs:", taxonomyIds, "count:", taxonomyIds.length);
 
       if (taxonomyIds.length > 0) {
-        await db
-          .delete(companyTaxonomies)
-          .where(eq(companyTaxonomies.companyId, companyId));
-
         const taxonomyInserts = taxonomyIds.map((taxId) => ({
-          companyId: companyId,
+          companyId,
           taxonomyId: taxId,
         }));
 
-        await db.insert(companyTaxonomies).values(taxonomyInserts);
+        await db.transaction(async (tx) => {
+          await tx
+            .delete(companyTaxonomies)
+            .where(eq(companyTaxonomies.companyId, companyId));
+          await tx.insert(companyTaxonomies).values(taxonomyInserts);
+        });
         console.log("[CompanyAI:analyze-ai] Taxonomy insert — linked", taxonomyInserts.length, "taxonomies");
       }
     }

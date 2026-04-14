@@ -1192,6 +1192,7 @@
     "noteSuffix": " 的数组值会自动解析。若提供完整地址，将从其中提取邮编。",
     "fileLabel": "CSV 文件",
     "updateExistingLabel": "更新已有公司的能力（按 CSV 重新映射能力）",
+    "queueAiJobsLabel": "导入后排队 AI 摘要/分类任务（可选）",
     "previewLabel": "预览（前 5 行）",
     "previewHeader": {
       "companyName": "公司名称",
@@ -1200,20 +1201,26 @@
     },
     "importButton": "导入公司",
     "progressLabel": "已完成 {progress}%",
-    "progressCounts": "已导入 {imported}，跳过 {skipped}，错误 {errors}",
+    "progressCounts": "已导入 {imported}，已更新 {updated}，跳过 {skipped}，错误 {errors}，已入队 {queued}",
     "errorsTitle": "导入错误（{count}）：",
     "moreErrors": "…另有 {count} 条错误",
+    "errors": {
+      "unknownImportError": "未知导入错误"
+    },
     "summaryTitle": "导入摘要：",
     "summaryImported": "成功导入 {count} 家公司",
+    "summaryUpdated": "已更新 {count} 家公司",
     "summarySkipped": "跳过 {count} 家（已存在）",
     "summaryFailed": "{count} 家导入失败",
+    "summaryQueued": "已排队 {count} 个 AI 任务",
+    "downloadFailureReport": "下载失败报告",
     "toasts": {
       "invalidFile": "请选择 CSV 文件",
       "noData": "CSV 中无有效数据",
       "loaded": "已加载 CSV，共 {count} 家公司。",
       "parseError": "解析 CSV 失败",
       "capabilityMatchingDisabled": "能力匹配已禁用 — 加载参考列表失败",
-      "importSuccess": "导入完成！已导入 {imported}，跳过 {skipped}，错误 {errors}。{note}",
+      "importSuccess": "导入完成！已导入 {imported}，已更新 {updated}，跳过 {skipped}，错误 {errors}，已入队 {queued} 个任务。{note}",
       "importSuccessNote": "能力分类正在后台生成。",
       "importFailed": "导入失败：{message}"
     }

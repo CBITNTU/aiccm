@@ -40,6 +40,12 @@ interface CSVRow {
   [key: string]: string | undefined;
 }
 
+interface ImportFailureRow {
+  rowNumber: number;
+  companyName: string;
+  message: string;
+}
+
 // Helper function to extract value from array-like strings like "['value']" or "['val1', 'val2']"
 const extractFromArrayString = (value: string): string => {
   if (!value) return "";
@@ -66,63 +72,21 @@ const extractPostcode = (address: string): string => {
   return postcodeMatch ? postcodeMatch[1].trim().toUpperCase() : "";
 };
 
-// Helper function to parse comma-separated capabilities
-const parseCapabilities = (capabilitiesStr: string): string[] => {
-  if (!capabilitiesStr) return [];
-
-  // Split by comma and clean up
-  return capabilitiesStr
-    .split(",")
-    .map((c) => c.trim().toLowerCase())
-    .filter((c) => c.length > 0);
-};
-
-// Helper function to match CSV capability to reference table (case-insensitive, fuzzy)
-const matchCapability = (
-  csvCapability: string,
-  refCapabilities: Array<{ id: string; name: string }>,
-): string | null => {
-  if (!csvCapability || !refCapabilities.length) return null;
-
-  const csvLower = csvCapability.toLowerCase().trim();
-
-  // First try exact match (case-insensitive)
-  const exactMatch = refCapabilities.find(
-    (ref) => ref.name.toLowerCase() === csvLower,
-  );
-  if (exactMatch) return exactMatch.id;
-
-  // Try partial match (CSV capability is contained in reference name)
-  const partialMatch = refCapabilities.find(
-    (ref) =>
-      ref.name.toLowerCase().includes(csvLower) ||
-      csvLower.includes(ref.name.toLowerCase()),
-  );
-  if (partialMatch) return partialMatch.id;
-
-  // Try word-by-word matching (e.g., "CNC Machining" matches "CNC Machining", "machining" matches "CNC Machining")
-  const csvWords = csvLower.split(/\s+/);
-  const wordMatch = refCapabilities.find((ref) => {
-    const refLower = ref.name.toLowerCase();
-    // Check if all words in CSV capability appear in reference name
-    return csvWords.every((word) => refLower.includes(word));
-  });
-  if (wordMatch) return wordMatch.id;
-
-  return null;
-};
-
 export function AdminCSVImport() {
   const t = useTranslations("AdminCSVImport");
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
+  const [updatedCount, setUpdatedCount] = useState(0);
   const [skippedCount, setSkippedCount] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
+  const [queuedJobsCount, setQueuedJobsCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
+  const [failureRows, setFailureRows] = useState<ImportFailureRow[]>([]);
   const [preview, setPreview] = useState<CSVRow[]>([]);
   const [updateExisting, setUpdateExisting] = useState(false);
+  const [queueAiJobs, setQueueAiJobs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Improved CSV parser that handles quoted fields and commas within fields
@@ -286,290 +250,148 @@ export function AdminCSVImport() {
     }
   };
 
+  const downloadErrorReport = () => {
+    if (failureRows.length === 0) return;
+
+    const csvHeader = "rowNumber,companyName,errorMessage";
+    const csvLines = failureRows.map((failure) => {
+      const escapedName = `"${failure.companyName.replace(/"/g, '""')}"`;
+      const escapedMessage = `"${failure.message.replace(/"/g, '""')}"`;
+      return `${failure.rowNumber},${escapedName},${escapedMessage}`;
+    });
+
+    const blob = new Blob([[csvHeader, ...csvLines].join("\n")], {
+      type: "text/csv;charset=utf-8",
+    });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `csv-import-failures-${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(downloadUrl);
+  };
+
   const handleImport = async () => {
     if (!file) return;
 
     setIsImporting(true);
     setProgress(0);
     setImportedCount(0);
+    setUpdatedCount(0);
     setSkippedCount(0);
     setErrorCount(0);
+    setQueuedJobsCount(0);
     setErrors([]);
+    setFailureRows([]);
 
     try {
       const text = await file.text();
       const companies = parseCSV(text);
       const total = companies.length;
-      let successCount = 0;
-      let skippedCount = 0;
-      const errorList: string[] = [];
-
-      // Fetch all reference capabilities once for matching
-      let capabilitiesRef: Array<{ id: string; name: string }> = [];
-      try {
-        const { capabilities } = await api.adminListCapabilities();
-        capabilitiesRef = capabilities.map((c) => ({
-          id: c.id as string,
-          name: c.name as string,
-        }));
-      } catch (refError) {
-        console.warn("Failed to fetch reference capabilities:", refError);
-        toast.warning(t("toasts.capabilityMatchingDisabled"));
+      if (total === 0) {
+        toast.error(t("toasts.noData"));
+        return;
       }
 
-      for (let i = 0; i < total; i++) {
-        const company = companies[i];
+      const clientChunkSize = 250;
+      let processedRows = 0;
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+      let failed = 0;
+      let queuedJobs = 0;
+      const failureList: ImportFailureRow[] = [];
+      const errorList: string[] = [];
 
-        // Update progress immediately
-        setProgress(((i + 1) / total) * 100);
-        setImportedCount(successCount);
-        setSkippedCount(skippedCount);
-        setErrors(errorList);
+      for (let start = 0; start < companies.length; start += clientChunkSize) {
+        const chunk = companies.slice(start, start + clientChunkSize);
 
-        try {
-          // Extract postcode from full address if not already set
-          let postcode = company.postcode;
-          if (!postcode && company.fullAddress) {
-            postcode = extractPostcode(company.fullAddress);
-          }
+        const payloadRows = chunk.map((company) => {
+          const postcode =
+            company.postcode ||
+            (company.fullAddress ? extractPostcode(company.fullAddress) : null);
 
-          // Build description with SIC codes if available
-          let description = company.description || "";
-          if (company.sicCodes) {
-            if (description) {
-              description += `\n\nSIC Codes: ${company.sicCodes}`;
-            } else {
-              description = `SIC Codes: ${company.sicCodes}`;
-            }
-          }
-
-          // Build company data for import
-          const companyData: Record<string, unknown> = {
+          return {
             companyName: company.companyName,
             companiesHouseNumber: company.companiesHouseNumber || null,
             contactEmail: company.contactEmail || null,
             contactPhone: company.contactPhone || null,
             postcode: postcode || null,
-            address: company.fullAddress || null,
-            description: description || null,
+            fullAddress: company.fullAddress || null,
+            description: company.description || null,
             websiteUrl: company.websiteUrl || null,
             keyCapabilities: company.keyCapabilities || null,
             certifications: company.certifications || null,
-            userId: null,
-            isSystemCompany: true,
-            status: "active",
+            sicCodes: company.sicCodes || null,
           };
+        });
 
-          // Try to import the company (the API handles dedup by name)
-          const { company: importedCompany, alreadyExists } =
-            await api.adminImportCompany(companyData);
+        const chunkResult = await api.adminBulkImportCompanies({
+          rows: payloadRows,
+          options: {
+            duplicateMode: updateExisting ? "update" : "skip",
+            enqueueJobs: queueAiJobs,
+            fullRegeneration: true,
+            chunkSize: 150,
+          },
+        });
 
-          const companyId = importedCompany.id as string;
+        imported += chunkResult.imported;
+        updated += chunkResult.updated;
+        skipped += chunkResult.skipped;
+        failed += chunkResult.failed;
+        queuedJobs += chunkResult.queuedJobs;
+        processedRows += chunk.length;
 
-          if (alreadyExists) {
-            if (updateExisting) {
-              // Update existing company fields
-              const updateData: Record<string, unknown> = {};
-              if (company.contactEmail)
-                updateData.contactEmail = company.contactEmail;
-              if (company.contactPhone)
-                updateData.contactPhone = company.contactPhone;
-              if (postcode) updateData.postcode = postcode;
-              if (company.fullAddress)
-                updateData.address = company.fullAddress;
-              if (description) updateData.description = description;
-              if (company.websiteUrl)
-                updateData.websiteUrl = company.websiteUrl;
-              if (company.keyCapabilities)
-                updateData.keyCapabilities = company.keyCapabilities;
+        const chunkFailures = chunkResult.results
+          .filter((result) => result.status === "error")
+          .map((result) => ({
+            rowNumber: result.rowIndex + 2,
+            companyName: result.companyName,
+            message: result.message || t("errors.unknownImportError"),
+          }));
 
-              if (Object.keys(updateData).length > 0) {
-                try {
-                  await api.adminUpdateCompany(companyId, updateData);
-                } catch (updateError) {
-                  console.warn(
-                    `Failed to update company ${company.companyName}:`,
-                    updateError,
-                  );
-                }
-              }
-
-              // Smart mapping: Parse and sync capabilities
-              if (company.keyCapabilities && capabilitiesRef.length > 0) {
-                const csvCapabilities = parseCapabilities(
-                  company.keyCapabilities,
-                );
-                const matchedCapabilityIds: string[] = [];
-
-                for (const csvCap of csvCapabilities) {
-                  const matchedId = matchCapability(csvCap, capabilitiesRef);
-                  if (matchedId && !matchedCapabilityIds.includes(matchedId)) {
-                    matchedCapabilityIds.push(matchedId);
-                  }
-                }
-
-                // Sync capabilities (replaces delete + insert)
-                if (matchedCapabilityIds.length > 0) {
-                  try {
-                    await api.syncCapabilities(companyId, matchedCapabilityIds);
-                  } catch (linkError) {
-                    console.warn(
-                      `Failed to sync capabilities for ${company.companyName}:`,
-                      linkError,
-                    );
-                  }
-                }
-              }
-
-              // Always queue AI regeneration for CSV imports (full regeneration mode)
-              // This ensures capabilities are regenerated from the base list
-              try {
-                const response = await fetch("/api/queue/company-ai", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    companyId,
-                    jobTypes: ["company_summary", "company_taxonomy"],
-                    fullRegeneration: true, // Flag for full regeneration mode
-                  }),
-                });
-                if (!response.ok) {
-                  console.warn(
-                    `Failed to queue AI jobs for ${company.companyName}`,
-                  );
-                }
-              } catch (queueError) {
-                console.warn(
-                  `Failed to queue AI jobs for ${company.companyName}:`,
-                  queueError,
-                );
-              }
-
-              successCount++;
-            } else {
-              // Even if skipping, still queue taxonomy generation for full regeneration
-              try {
-                const response = await fetch("/api/queue/company-ai", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    companyId,
-                    jobTypes: ["company_taxonomy"],
-                    fullRegeneration: true, // Flag for full regeneration mode
-                  }),
-                });
-                if (!response.ok) {
-                  console.warn(
-                    `Failed to queue taxonomy job for ${company.companyName}`,
-                  );
-                }
-              } catch (queueError) {
-                console.warn(
-                  `Failed to queue taxonomy job for ${company.companyName}:`,
-                  queueError,
-                );
-              }
-
-              skippedCount++;
-            }
-            continue;
-          }
-
-          // New company was inserted successfully
-          // Smart mapping: Parse and sync capabilities
-          if (company.keyCapabilities && capabilitiesRef.length > 0) {
-            const csvCapabilities = parseCapabilities(company.keyCapabilities);
-            const matchedCapabilityIds: string[] = [];
-
-            for (const csvCap of csvCapabilities) {
-              const matchedId = matchCapability(csvCap, capabilitiesRef);
-              if (matchedId && !matchedCapabilityIds.includes(matchedId)) {
-                matchedCapabilityIds.push(matchedId);
-              }
-            }
-
-            // Sync capabilities
-            if (matchedCapabilityIds.length > 0) {
-              try {
-                await api.syncCapabilities(companyId, matchedCapabilityIds);
-              } catch (linkError) {
-                console.warn(
-                  `Failed to link capabilities for ${company.companyName}:`,
-                  linkError,
-                );
-                // Don't fail the import, just log the warning
-              }
-            }
-          }
-
-          // Queue AI processing jobs for new company
-          if (companyId) {
-            try {
-              const response = await fetch("/api/queue/company-ai", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  companyId,
-                  jobTypes: ["company_summary", "company_taxonomy"],
-                }),
-              });
-              if (!response.ok) {
-                console.warn(
-                  `Failed to queue AI jobs for ${company.companyName}`,
-                );
-              }
-            } catch (queueError) {
-              console.warn(
-                `Failed to queue AI jobs for ${company.companyName}:`,
-                queueError,
-              );
-              // Don't fail the import if queueing fails
-            }
-          }
-
-          successCount++;
-        } catch (err) {
+        if (chunkFailures.length > 0) {
+          failureList.push(...chunkFailures);
           errorList.push(
-            `${company.companyName}: ${err instanceof Error ? err.message : String(err)}`,
+            ...chunkFailures.map(
+              (failure) => `${failure.companyName}: ${failure.message}`,
+            ),
           );
-          setErrorCount(errorList.length);
         }
 
-        // Final update for this iteration
-        setImportedCount(successCount);
-        setSkippedCount(skippedCount);
-        setErrors(errorList);
-
-        // Allow React to update the UI by yielding to the event loop
-        // This ensures the progress bar updates in real-time
-        if (i % 5 === 0 || i === total - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 0));
-        }
+        setProgress((processedRows / total) * 100);
+        setImportedCount(imported);
+        setUpdatedCount(updated);
+        setSkippedCount(skipped);
+        setErrorCount(failed);
+        setQueuedJobsCount(queuedJobs);
+        setFailureRows([...failureList]);
+        setErrors([...errorList]);
       }
 
-      // Trigger worker to start processing company taxonomy jobs (fire and forget)
-      // This will dynamically generate capabilities based on imported company data
-      if (successCount > 0) {
+      if (queuedJobs > 0) {
         fetch("/api/queue/worker", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ batchSize: 10, continuous: true }),
-        })
-          .then(() => {
-            console.log("✅ Queue worker triggered after CSV import");
-          })
-          .catch((err) => {
-            console.warn("⚠️ Failed to trigger queue worker:", err);
-            // Don't fail the import if worker trigger fails
-          });
+          body: JSON.stringify({
+            batchSize: 20,
+            selfTrigger: true,
+            concurrency: 10,
+          }),
+        }).catch(() => {
+          // Jobs stay queued even if worker trigger fails.
+        });
       }
 
       toast.success(
         t("toasts.importSuccess", {
-          imported: successCount,
-          skipped: skippedCount,
-          errors: errorList.length,
-          note: successCount > 0 ? t("toasts.importSuccessNote") : "",
+          imported,
+          updated,
+          skipped,
+          errors: failed,
+          queued: queuedJobs,
+          note: queuedJobs > 0 ? t("toasts.importSuccessNote") : "",
         }),
       );
     } catch (error) {
@@ -666,6 +488,21 @@ export function AdminCSVImport() {
           </Label>
         </div>
 
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="queue-ai-jobs"
+            checked={queueAiJobs}
+            onCheckedChange={(checked) => setQueueAiJobs(checked === true)}
+            disabled={isImporting}
+          />
+          <Label
+            htmlFor="queue-ai-jobs"
+            className="text-sm font-normal cursor-pointer"
+          >
+            {t("queueAiJobsLabel")}
+          </Label>
+        </div>
+
         {/* Preview */}
         {preview.length > 0 && (
           <div className="space-y-2">
@@ -710,8 +547,10 @@ export function AdminCSVImport() {
               <span>
                 {t("progressCounts", {
                   imported: importedCount,
+                  updated: updatedCount,
                   skipped: skippedCount,
                   errors: errorCount,
+                  queued: queuedJobsCount,
                 })}
               </span>
             </div>
@@ -743,20 +582,41 @@ export function AdminCSVImport() {
         )}
 
         {/* Success Summary */}
-        {!isImporting && importedCount > 0 && (
+        {!isImporting &&
+          (importedCount > 0 ||
+            updatedCount > 0 ||
+            skippedCount > 0 ||
+            errorCount > 0) && (
           <Alert>
             <CheckCircle2 className="h-4 w-4" />
             <AlertDescription>
               <p className="font-medium">{t("summaryTitle")}</p>
               <ul className="list-disc list-inside text-sm mt-1 space-y-1">
                 <li>{t("summaryImported", { count: importedCount })}</li>
+                {updatedCount > 0 && (
+                  <li>{t("summaryUpdated", { count: updatedCount })}</li>
+                )}
                 {skippedCount > 0 && (
                   <li>{t("summarySkipped", { count: skippedCount })}</li>
                 )}
                 {errorCount > 0 && (
                   <li>{t("summaryFailed", { count: errorCount })}</li>
                 )}
+                {queuedJobsCount > 0 && (
+                  <li>{t("summaryQueued", { count: queuedJobsCount })}</li>
+                )}
               </ul>
+              {failureRows.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={downloadErrorReport}
+                >
+                  {t("downloadFailureReport")}
+                </Button>
+              )}
             </AlertDescription>
           </Alert>
         )}

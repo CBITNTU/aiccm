@@ -875,6 +875,47 @@ export const api = {
       alreadyExists?: boolean;
     }>("admin/companies", { body: companyData }),
 
+  adminBulkImportCompanies: (payload: {
+    rows: Array<{
+      companyName: string;
+      companiesHouseNumber?: string | null;
+      contactEmail?: string | null;
+      contactPhone?: string | null;
+      postcode?: string | null;
+      fullAddress?: string | null;
+      description?: string | null;
+      websiteUrl?: string | null;
+      keyCapabilities?: string | null;
+      certifications?: string | null;
+      sicCodes?: string | null;
+    }>;
+    options?: {
+      duplicateMode?: "skip" | "update";
+      enqueueJobs?: boolean;
+      fullRegeneration?: boolean;
+      chunkSize?: number;
+    };
+  }) =>
+    apiCall<{
+      totalRows: number;
+      imported: number;
+      updated: number;
+      skipped: number;
+      failed: number;
+      queuedJobs: number;
+      batchId: string | null;
+      results: Array<{
+        rowIndex: number;
+        companyName: string;
+        companyId?: string;
+        status: "imported" | "updated" | "skipped" | "error";
+        message?: string;
+      }>;
+    }>("admin/companies/import", {
+      method: "POST",
+      body: payload as unknown as Record<string, unknown>,
+    }),
+
   // Admin - Users
   adminListUsers: () =>
     apiCall<{

@@ -50,7 +50,7 @@ export function TenderSelectionStep({
     };
 
     fetchTenders();
-  }, []);
+  }, [t]);
 
   const filteredTenders = tenders.filter((tender) => {
     const searchLower = searchTerm.toLowerCase();

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { useProjectDetails } from "@/hooks/useProjectDetails";
 import { useCompanyById } from "@/hooks/useProjectDetails";
 import {
@@ -63,6 +64,8 @@ interface ProjectWorkspaceProps {
 }
 
 export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
+  const t = useTranslations("ProjectWorkspace");
+  const tList = useTranslations("ProjectList");
   const [openPanels, setOpenPanels] = useState<string[]>(["setup"]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -86,10 +89,8 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
       <Card>
         <CardContent className="py-16 text-center">
           <FolderOpen className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-          <h3 className="text-lg font-medium mb-2">No Project Selected</h3>
-          <p className="text-muted-foreground">
-            Select a project from the list or create a new one to get started
-          </p>
+          <h3 className="text-lg font-medium mb-2">{t("noProjectTitle")}</h3>
+          <p className="text-muted-foreground">{t("noProjectDesc")}</p>
         </CardContent>
       </Card>
     );
@@ -103,9 +104,9 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     return (
       <Card>
         <CardContent className="py-8 text-center">
-          <p className="text-destructive">Failed to load project details</p>
+          <p className="text-destructive">{t("loadError")}</p>
           <p className="text-sm text-muted-foreground mt-1">
-            {error?.message || "Unknown error"}
+            {error?.message || t("unknownError")}
           </p>
         </CardContent>
       </Card>
@@ -126,36 +127,36 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const handleStatusChange = async (status: string) => {
     try {
       await updateStatus.mutateAsync({ projectId: project.id, status });
-      toast.success(`Project marked as ${status}`);
+      toast.success(t("statusUpdated", { status }));
     } catch {
-      toast.error("Failed to update project status");
+      toast.error(t("statusUpdateFailed"));
     }
   };
 
   const handleDelete = async () => {
     try {
       await deleteProject.mutateAsync({ projectId: project.id });
-      toast.success("Project deleted");
+      toast.success(t("deleted"));
       setDeleteDialogOpen(false);
     } catch {
-      toast.error("Failed to delete project");
+      toast.error(t("deleteFailed"));
     }
   };
 
   const getStatusBadge = () => {
     switch (project.status) {
       case "draft":
-        return <Badge variant="outline">Draft</Badge>;
+        return <Badge variant="outline">{tList("statusDraft")}</Badge>;
       case "active":
-        return <Badge variant="default">Active</Badge>;
+        return <Badge variant="default">{tList("statusActive")}</Badge>;
       case "completed":
         return (
           <Badge variant="secondary" className="bg-green-500/10 text-green-600">
-            Completed
+            {tList("statusCompleted")}
           </Badge>
         );
       case "archived":
-        return <Badge variant="outline">Archived</Badge>;
+        return <Badge variant="outline">{tList("statusArchived")}</Badge>;
       default:
         return <Badge variant="outline">{project.status}</Badge>;
     }
@@ -208,7 +209,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                     onClick={() => handleStatusChange("completed")}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Complete Project
+                    {t("actionComplete")}
                   </Button>
                 )}
                 <DropdownMenu>
@@ -223,7 +224,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                         onClick={() => handleStatusChange("archived")}
                       >
                         <Archive className="h-4 w-4 mr-2" />
-                        Archive Project
+                        {t("actionArchive")}
                       </DropdownMenuItem>
                     )}
                     {(project.status === "completed" ||
@@ -232,7 +233,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                         onClick={() => handleStatusChange("active")}
                       >
                         <Target className="h-4 w-4 mr-2" />
-                        Reactivate
+                        {t("actionReactivate")}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
@@ -241,7 +242,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Project
+                      {t("actionDelete")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -251,7 +252,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 variant="outline"
                 className="bg-blue-500/10 text-blue-600 border-blue-200"
               >
-                Member
+                {t("badgeMember")}
               </Badge>
             )}
           </div>
@@ -269,7 +270,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <Settings className="h-4 w-4 text-muted-foreground" />
-                  <span>Setup</span>
+                  <span>{t("tabSetup")}</span>
                 </div>
                 {tender && (
                   <Badge variant="outline" className="ml-auto mr-2">
@@ -300,7 +301,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  <span>Gap Analysis</span>
+                  <span>{t("tabGapAnalysis")}</span>
                 </div>
                 {gapScore !== undefined && gapScore !== null ? (
                   <Badge
@@ -309,11 +310,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                     }
                     className="ml-auto mr-2"
                   >
-                    {Math.round(gapScore)}% coverage
+                    {tList("badgeCoverage", { pct: Math.round(gapScore) })}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="ml-auto mr-2">
-                    Not analyzed
+                    {t("badgeNotAnalyzed")}
                   </Badge>
                 )}
               </AccordionTrigger>
@@ -348,7 +349,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-3">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span>Team Builder</span>
+                    <span>{t("tabTeamBuilder")}</span>
                   </div>
                   <div className="flex items-center gap-2 ml-auto mr-2">
                     {tender && (
@@ -363,7 +364,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                       </Badge>
                     )}
                     <Badge variant="outline">
-                      {teamCount} {teamCount === 1 ? "member" : "members"}
+                      {teamCount} {teamCount === 1 ? t("badgeMember") : `${teamCount} ${t("badgeMember")}s`}
                     </Badge>
                   </div>
                 </AccordionTrigger>
@@ -393,7 +394,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <Target className="h-4 w-4 text-muted-foreground" />
-                  <span>Team Analysis</span>
+                  <span>{t("tabTeamAnalysis")}</span>
                 </div>
                 {teamScore !== undefined ? (
                   <Badge
@@ -402,11 +403,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                     }
                     className="ml-auto mr-2"
                   >
-                    {Math.round(teamScore)}% ready
+                    {t("badgeReady", { pct: Math.round(teamScore) })}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="ml-auto mr-2">
-                    Not analyzed
+                    {t("badgeNotAnalyzed")}
                   </Badge>
                 )}
               </AccordionTrigger>
@@ -438,15 +439,15 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-3">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>Invitations</span>
+                    <span>{t("tabInvitations")}</span>
                   </div>
                   {invitableCount > 0 ? (
                     <Badge variant="outline" className="ml-auto mr-2">
-                      {invitableCount} to invite
+                      {t("badgeToInvite", { count: invitableCount })}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="ml-auto mr-2">
-                      No partners yet
+                      {t("badgeNoPartners")}
                     </Badge>
                   )}
                 </AccordionTrigger>
@@ -483,20 +484,18 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteDialogTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{project.name}&quot;? This
-              action cannot be undone and will remove all team members and
-              analysis data.
+              {t("deleteDialogDesc", { projectName: project.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
   useAddTeamMember,
   useRemoveTeamMember,
@@ -52,6 +53,7 @@ export function TeamBuilderPanel({
   teamMembers,
   recommendedPartners,
 }: TeamBuilderPanelProps) {
+  const t = useTranslations("TeamBuilderPanel");
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [addingPartnerId, setAddingPartnerId] = useState<string | null>(null);
 
@@ -62,9 +64,9 @@ export function TeamBuilderPanel({
     try {
       setAddingPartnerId(companyId);
       await addMember.mutateAsync({ projectId, companyId });
-      toast.success("Partner added to team");
+      toast.success(t("partnerAdded"));
     } catch {
-      toast.error("Failed to add partner");
+      toast.error(t("partnerAddFailed"));
     } finally {
       setAddingPartnerId(null);
     }
@@ -73,9 +75,9 @@ export function TeamBuilderPanel({
   const handleRemoveMember = async (memberId: string, companyName: string) => {
     try {
       await removeMember.mutateAsync({ memberId, projectId });
-      toast.success(`${companyName} removed from team`);
+      toast.success(t("partnerRemoved", { companyName }));
     } catch {
-      toast.error("Failed to remove partner");
+      toast.error(t("partnerRemoveFailed"));
     }
   };
 
@@ -83,14 +85,14 @@ export function TeamBuilderPanel({
     if (role === "lead") {
       return (
         <Badge className="flex items-center gap-1">
-          <Crown className="h-3 w-3" /> Lead
+          <Crown className="h-3 w-3" /> {t("badgeLead")}
         </Badge>
       );
     }
     if (role === "invited") {
-      return <Badge variant="secondary">Invited</Badge>;
+      return <Badge variant="secondary">{t("badgeInvited")}</Badge>;
     }
-    return <Badge variant="outline">Member</Badge>;
+    return <Badge variant="outline">{t("badgeMember")}</Badge>;
   };
 
   // Filter out partners that are already team members
@@ -106,7 +108,7 @@ export function TeamBuilderPanel({
         <div className="flex items-center justify-between mb-4">
           <h4 className="font-medium flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Team Members ({teamMembers.length})
+            {t("teamMembersTitle", { count: teamMembers.length })}
           </h4>
           <Button
             variant="outline"
@@ -114,29 +116,28 @@ export function TeamBuilderPanel({
             onClick={() => setSearchDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Company
+            {t("addCompany")}
           </Button>
         </div>
 
         {teamMembers.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No team members yet. Add partners from recommendations or search for
-            companies.
+            {t("noMembers")}
           </div>
         ) : (
           <div className="border rounded-lg overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>{t("colCompany")}</TableHead>
+                  <TableHead>{t("colRole")}</TableHead>
                   <TableHead className="hidden md:table-cell">
-                    Capabilities
+                    {t("colCapabilities")}
                   </TableHead>
                   <TableHead className="hidden sm:table-cell">
-                    Location
+                    {t("colLocation")}
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{t("colActions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -177,16 +178,14 @@ export function TeamBuilderPanel({
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                  Remove Partner
+                                  {t("removeDialogTitle")}
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to remove{" "}
-                                  {member.companies?.companyName} from the
-                                  team?
+                                  {t("removeDialogDesc", { companyName: member.companies?.companyName ?? "" })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() =>
                                     handleRemoveMember(
@@ -196,7 +195,7 @@ export function TeamBuilderPanel({
                                     )
                                   }
                                 >
-                                  Remove
+                                  {t("remove")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -219,7 +218,7 @@ export function TeamBuilderPanel({
           animate={{ opacity: 1, y: 0 }}
         >
           <h4 className="font-medium mb-4">
-            Recommended Partners ({availablePartners.length})
+            {t("recommendedTitle", { count: availablePartners.length })}
           </h4>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {availablePartners.map((partner, index) => (
@@ -240,7 +239,7 @@ export function TeamBuilderPanel({
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">
-                      {partner.relevanceScore}% Match
+                      {t("matchBadge", { score: partner.relevanceScore })}
                     </Badge>
                     <Button
                       size="sm"
@@ -252,7 +251,7 @@ export function TeamBuilderPanel({
                       ) : (
                         <>
                           <Plus className="h-4 w-4 mr-1" />
-                          Add
+                          {t("add")}
                         </>
                       )}
                     </Button>
@@ -263,7 +262,7 @@ export function TeamBuilderPanel({
                   partner.matchingCompetencies.length > 0 && (
                     <div className="mb-2">
                       <div className="text-sm font-medium mb-1">
-                        Matching Competencies:
+                        {t("matchingCompetencies")}
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {partner.matchingCompetencies
@@ -279,7 +278,7 @@ export function TeamBuilderPanel({
                           ))}
                         {partner.matchingCompetencies.length > 5 && (
                           <Badge variant="outline" className="text-xs">
-                            +{partner.matchingCompetencies.length - 5} more
+                            {t("moreItems", { n: partner.matchingCompetencies.length - 5 })}
                           </Badge>
                         )}
                       </div>

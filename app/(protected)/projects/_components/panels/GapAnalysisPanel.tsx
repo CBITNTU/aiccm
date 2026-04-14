@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
   useRunGapAnalysis,
   useUpdateGapAnalysis,
@@ -60,6 +61,7 @@ export function GapAnalysisPanel({
   teamAnalysis,
   tenderMatchResult,
 }: GapAnalysisPanelProps) {
+  const t = useTranslations("GapAnalysisPanel");
   const isSolo = teamMembers.length <= 1;
   const runAnalysis = useRunGapAnalysis();
   const updateGapAnalysis = useUpdateGapAnalysis();
@@ -104,8 +106,8 @@ export function GapAnalysisPanel({
     if (localStorage.getItem(HINT_KEY) !== "true") {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: show hint once on first mount
       setShowHint(true);
-      const t = setTimeout(dismissHint, 5000);
-      return () => clearTimeout(t);
+      const timer = setTimeout(dismissHint, 5000);
+      return () => clearTimeout(timer);
     }
   }, [gapAnalysis]);
 
@@ -141,12 +143,12 @@ export function GapAnalysisPanel({
         missingCompetencies,
       });
       setHasEdits(false);
-      toast.success("Gap analysis updated");
+      toast.success(t("analysisUpdated"));
       if (movedToYours.length > 0) {
         setShowAddToProfileCard(true);
       }
     } catch {
-      toast.error("Failed to save changes");
+      toast.error(t("saveFailed"));
     }
   };
 
@@ -161,7 +163,7 @@ export function GapAnalysisPanel({
       (c) => !existingLines.some((l) => l.toLowerCase() === c.toLowerCase()),
     );
     if (toAdd.length === 0) {
-      toast.info("All competencies already in profile");
+      toast.info(t("allInProfile"));
       setMovedToYours([]);
       setShowAddToProfileCard(false);
       return;
@@ -174,11 +176,11 @@ export function GapAnalysisPanel({
         companyId: company.id,
         updates: { keyCapabilities: updated },
       });
-      toast.success("Company profile updated");
+      toast.success(t("profileUpdated"));
       setMovedToYours([]);
       setShowAddToProfileCard(false);
     } catch {
-      toast.error("Failed to update company profile");
+      toast.error(t("profileUpdateFailed"));
     }
   };
 
@@ -194,12 +196,12 @@ export function GapAnalysisPanel({
 
   const handleRunAnalysis = async () => {
     if (!company || !tender) {
-      toast.error("Company and tender required for gap analysis");
+      toast.error(t("companyTenderRequired"));
       return;
     }
 
     try {
-      toast.info("Starting gap analysis...");
+      toast.info(t("startingAnalysis"));
       const result = await runAnalysis.mutateAsync({
         projectId,
         company,
@@ -210,11 +212,15 @@ export function GapAnalysisPanel({
       const partnerCount = result.recommendedPartners.length;
 
       toast.success(
-        `Gap analysis complete! Coverage: ${Math.round(result.gapAnalysis.coveragePercentage)}%, ${gaps} gaps, ${partnerCount} partners recommended`,
+        t("analysisComplete", {
+          percentage: Math.round(result.gapAnalysis.coveragePercentage),
+          gaps,
+          partners: partnerCount,
+        }),
       );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to run gap analysis",
+        err instanceof Error ? err.message : t("analysisFailed"),
       );
     }
   };
@@ -225,7 +231,7 @@ export function GapAnalysisPanel({
       <div className="py-6 text-center">
         <AlertCircle className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
         <p className="text-muted-foreground">
-          Link a tender to run gap analysis
+          {t("noTenderHint")}
         </p>
       </div>
     );
@@ -237,15 +243,12 @@ export function GapAnalysisPanel({
       <div className="py-6">
         {isSolo && tenderMatchResult?.overallScore != null && (
           <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-            Your tender match for this company and tender:{" "}
-            <strong>{Math.round(tenderMatchResult.overallScore)}%</strong>. Run
-            gap analysis below to see competency-level breakdown.
+            {t("matchScore", { score: Math.round(tenderMatchResult.overallScore) })}
           </div>
         )}
         <div className="text-center mb-4">
           <p className="text-muted-foreground mb-4">
-            Run AI-powered gap analysis to identify missing competencies and
-            find recommended partners
+            {t("runPrompt")}
           </p>
           <Button
             onClick={handleRunAnalysis}
@@ -254,12 +257,12 @@ export function GapAnalysisPanel({
             {runAnalysis.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Analyzing...
+                {t("analyzing")}
               </>
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Run Gap Analysis
+                {t("runButton")}
               </>
             )}
           </Button>
@@ -277,7 +280,7 @@ export function GapAnalysisPanel({
           {hasEdits && (
             <span className="text-xs text-muted-foreground flex items-center gap-1 mr-auto">
               <AlertCircle className="h-3 w-3" />
-              Unsaved changes
+              {t("unsavedChanges")}
             </span>
           )}
           {hasEdits && (
@@ -291,7 +294,7 @@ export function GapAnalysisPanel({
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Save changes
+                  {t("saveChanges")}
                 </>
               )}
             </Button>
@@ -305,12 +308,12 @@ export function GapAnalysisPanel({
             {runAnalysis.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Re-analyzing...
+                {t("rerunning")}
               </>
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Re-run Analysis
+                {t("rerun")}
               </>
             )}
           </Button>
@@ -323,14 +326,13 @@ export function GapAnalysisPanel({
           transition={{ delay: 0.1 }}
         >
           <div className="flex justify-between text-sm mb-2">
-            <span>Overall Coverage</span>
+            <span>{t("overallCoverage")}</span>
             <span className="font-medium">{editedCoverage}%</span>
           </div>
           <Progress value={editedCoverage} className="h-2" />
           <div className="flex justify-between mt-2 text-sm text-muted-foreground">
             <span>
-              Analyzed:{" "}
-              {new Date(gapAnalysis.analyzedAt).toLocaleDateString("en-GB")}
+              {t("analyzed", { date: new Date(gapAnalysis.analyzedAt).toLocaleDateString("en-GB") })}
             </span>
           </div>
         </motion.div>
@@ -359,13 +361,12 @@ export function GapAnalysisPanel({
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
               </span>
               <p className="flex-1 leading-snug">
-                <span className="font-medium">Tip:</span> Hover any competency
-                and click the arrow to move it between columns.
+                <span className="font-medium">{t("tipLabel")}</span> {t("tipText")}
               </p>
               <button
                 onClick={dismissHint}
                 className="ml-1 shrink-0 rounded p-0.5 text-blue-400 hover:text-blue-600 focus:outline-none"
-                aria-label="Dismiss tip"
+                aria-label={t("dismissTip")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -384,7 +385,7 @@ export function GapAnalysisPanel({
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              Your Competencies ({companyCompetencies.length})
+              {t("yourCompetencies", { count: companyCompetencies.length })}
             </h4>
             <div className="space-y-0.5 max-h-48 overflow-y-auto">
               <AnimatePresence initial={false}>
@@ -416,13 +417,13 @@ export function GapAnalysisPanel({
                             size="icon"
                             className="h-6 w-6 opacity-25 group-hover:opacity-100 transition-opacity duration-150 shrink-0"
                             onClick={() => moveToMissing(idx)}
-                            aria-label="Move to Missing"
+                            aria-label={t("moveToMissing")}
                           >
                             <ChevronRight className="h-3.5 w-3.5" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
-                          <p>Move to Missing</p>
+                          <p>{t("moveToMissing")}</p>
                         </TooltipContent>
                       </Tooltip>
                     </motion.div>
@@ -436,7 +437,7 @@ export function GapAnalysisPanel({
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <XCircle className="h-4 w-4 text-red-600" />
-              Missing ({missingCompetencies.length})
+              {t("missing", { count: missingCompetencies.length })}
             </h4>
             <div className="space-y-0.5 max-h-48 overflow-y-auto">
               <AnimatePresence initial={false}>
@@ -457,13 +458,13 @@ export function GapAnalysisPanel({
                           size="icon"
                           className="h-6 w-6 opacity-25 group-hover:opacity-100 transition-opacity duration-150 shrink-0"
                           onClick={() => moveToCompetencies(idx)}
-                          aria-label="Move to Your Competencies"
+                          aria-label={t("moveToYours")}
                         >
                           <ChevronLeft className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="left">
-                        <p>Move to Your Competencies</p>
+                        <p>{t("moveToYours")}</p>
                       </TooltipContent>
                     </Tooltip>
                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
@@ -483,7 +484,7 @@ export function GapAnalysisPanel({
             className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm"
           >
             <p className="font-medium mb-2">
-              Add to {company.companyName}&apos;s profile?
+              {t("addToProfilePrompt", { company: company.companyName })}
             </p>
             <ul className="mb-3 space-y-1 text-muted-foreground">
               {movedToYours.map((c, i) => (
@@ -499,7 +500,7 @@ export function GapAnalysisPanel({
                 {updateCompany.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  "Add to Profile"
+                  t("addToProfile")
                 )}
               </Button>
               <Button
@@ -507,7 +508,7 @@ export function GapAnalysisPanel({
                 variant="ghost"
                 onClick={() => setShowAddToProfileCard(false)}
               >
-                Skip
+                {t("skip")}
               </Button>
             </div>
           </motion.div>
@@ -522,7 +523,7 @@ export function GapAnalysisPanel({
           >
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              Identified Risks
+              {t("identifiedRisks")}
             </h4>
             <ul className="space-y-2">
               {gapAnalysis.risks.map((risk, idx) => (
@@ -547,7 +548,7 @@ export function GapAnalysisPanel({
             >
               <h4 className="font-medium mb-3 flex items-center gap-2">
                 <Lightbulb className="h-4 w-4 text-blue-600" />
-                Recommendations
+                {t("recommendations")}
               </h4>
               <ul className="space-y-2">
                 {gapAnalysis.recommendations.map((rec, idx) => (
@@ -571,10 +572,9 @@ export function GapAnalysisPanel({
             className="p-3 bg-muted/50 rounded-lg"
           >
             <p className="text-sm">
-              <span className="font-medium">{recommendedPartners.length}</span>{" "}
-              partner companies recommended based on missing competencies.
+              {t("partnersRecommended", { n: recommendedPartners.length })}
               <span className="text-muted-foreground ml-1">
-                View them in the Team Builder panel.
+                {t("viewTeamBuilder")}
               </span>
             </p>
           </motion.div>

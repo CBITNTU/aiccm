@@ -140,7 +140,7 @@ export function CompanySearchDialog({
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCapabilityIds, excludeCompanyIds, coords, radius]);
+  }, [searchQuery, selectedCapabilityIds, excludeCompanyIds, coords, radius, t]);
 
   useEffect(() => {
     if (open) {

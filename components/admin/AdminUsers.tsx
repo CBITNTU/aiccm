@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- profile/user row types */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api/client";
@@ -59,30 +59,7 @@ export default function AdminUsers() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when user changes
   }, [user]);
 
-  useEffect(() => {
-    if (isAdmin) {
-      fetchUsers();
-    }
-     
-  }, [isAdmin]);
-
-  const checkAdminStatus = async () => {
-    if (!user) return;
-
-    try {
-      const data = await api.getUserRole();
-      const admin = data.isAdmin ?? false;
-      setIsAdmin(admin);
-      if (!admin) {
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      setLoading(false);
-    }
-  };
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const { profiles, roles } = await api.adminListUsers();
 
@@ -109,6 +86,28 @@ export default function AdminUsers() {
       console.error("Error fetching users:", error);
       toast.error(t("toasts.fetchUsersError", { message: error.message }));
     } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [isAdmin, fetchUsers]);
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+
+    try {
+      const data = await api.getUserRole();
+      const admin = data.isAdmin ?? false;
+      setIsAdmin(admin);
+      if (!admin) {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("Error checking admin status:", error);
       setLoading(false);
     }
   };

@@ -284,7 +284,7 @@ export function TenderMatching({
         refetchMatchingResults();
       }, 2000);
     },
-    [companyId, refetchMatchingResults],
+    [companyId, refetchMatchingResults, t],
   );
 
   const checkMatchingProgress = useCallback(
@@ -391,7 +391,7 @@ export function TenderMatching({
         console.error("Error checking matching progress:", error);
       }
     },
-    [companyId, invalidateMatchingResults],
+    [companyId, invalidateMatchingResults, t],
   );
 
   useEffect(() => {
@@ -529,7 +529,7 @@ export function TenderMatching({
     } finally {
       setInternalAnalyzing(false);
     }
-  }, [companyId, checkMatchingProgress, fetchMatchingUsage]);
+  }, [companyId, checkMatchingProgress, fetchMatchingUsage, t]);
 
   const runAnalysis = useCallback(() => {
     if (!companyId) {
@@ -568,7 +568,7 @@ export function TenderMatching({
     }
 
     startAnalysis();
-  }, [companyId, companyData, analyzing, matchingProgress, startAnalysis, companyTaxonomyData?.taxonomies?.length, companyStandardsData?.standards?.length, companyCapabilitiesData?.capabilities?.length]);
+  }, [companyId, companyData, analyzing, matchingProgress, startAnalysis, companyTaxonomyData?.taxonomies?.length, companyStandardsData?.standards?.length, companyCapabilitiesData?.capabilities?.length, t]);
 
   const deleteResult = async (resultId: string) => {
     setDeleting(resultId);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { api } from "@/lib/api/client";
@@ -71,11 +71,7 @@ export function AdminCompanyManager() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
-  useEffect(() => {
-    fetchCompanies();
-  }, []);
-
-  const fetchCompanies = async (): Promise<Company[]> => {
+  const fetchCompanies = useCallback(async (): Promise<Company[]> => {
     try {
       const data = await api.adminListCompanies();
       const list = data.companies || [];
@@ -88,7 +84,11 @@ export function AdminCompanyManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
 
   const handleDeleteCompany = async (companyId: string, companyName: string) => {
     setDeleting(companyId);

@@ -26,7 +26,6 @@ const FEEDBACK_SECTION_KEYS = [
   "compliance",
 ] as const;
 
-type SectionKey = (typeof FEEDBACK_SECTION_KEYS)[number];
 
 interface AdminReviewFeedbackFormProps {
   open: boolean;

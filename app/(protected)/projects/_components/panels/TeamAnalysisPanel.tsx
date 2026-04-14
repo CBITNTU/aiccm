@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
   useRunTeamAnalysis,
   useUpdateTeamAnalysis,
@@ -43,6 +44,7 @@ export function TeamAnalysisPanel({
   teamMembers,
   teamAnalysis,
 }: TeamAnalysisPanelProps) {
+  const t = useTranslations("TeamAnalysisPanel");
   const runAnalysis = useRunTeamAnalysis();
   const updateTeamAnalysis = useUpdateTeamAnalysis();
   const [companyCompetencies, setCompanyCompetencies] = useState<string[]>([]);
@@ -86,25 +88,25 @@ export function TeamAnalysisPanel({
         missingCompetencies,
       });
       setHasEdits(false);
-      toast.success("Team analysis updated");
+      toast.success(t("analysisUpdated"));
     } catch {
-      toast.error("Failed to save changes");
+      toast.error(t("saveFailed"));
     }
   };
 
   const handleRunAnalysis = async () => {
     if (!company || !tender) {
-      toast.error("Company and tender required for team analysis");
+      toast.error(t("companyTenderRequired"));
       return;
     }
 
     if (teamMembers.length === 0) {
-      toast.error("Add team members before running team analysis");
+      toast.error(t("noMembersError"));
       return;
     }
 
     try {
-      toast.info("Starting team analysis...");
+      toast.info(t("startingAnalysis"));
       const result = await runAnalysis.mutateAsync({
         projectId,
         company,
@@ -119,14 +121,17 @@ export function TeamAnalysisPanel({
       });
 
       const gaps = result.teamAnalysis.missingCompetencies?.length || 0;
+      const gapSuffix = gaps > 0 ? t("analysisGapSuffix", { gaps }) : t("analysisNoGapSuffix");
 
       toast.success(
-        `Team analysis complete! Coverage: ${Math.round(result.teamAnalysis.coveragePercentage)}%` +
-          (gaps > 0 ? `, ${gaps} remaining gaps` : ", no gaps!"),
+        t("analysisComplete", {
+          percentage: Math.round(result.teamAnalysis.coveragePercentage),
+          gaps: gapSuffix,
+        }),
       );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to run team analysis",
+        err instanceof Error ? err.message : t("analysisFailed"),
       );
     }
   };
@@ -137,7 +142,7 @@ export function TeamAnalysisPanel({
       <div className="py-6 text-center">
         <AlertCircle className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
         <p className="text-muted-foreground">
-          Link a tender to run team analysis
+          {t("noTenderHint")}
         </p>
       </div>
     );
@@ -149,7 +154,7 @@ export function TeamAnalysisPanel({
       <div className="py-6 text-center">
         <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
         <p className="text-muted-foreground">
-          Add team members before running team analysis
+          {t("noMembersHint")}
         </p>
       </div>
     );
@@ -161,8 +166,7 @@ export function TeamAnalysisPanel({
       <div className="py-6">
         <div className="text-center mb-4">
           <p className="text-muted-foreground mb-4">
-            Run AI-powered team analysis to evaluate your consortium&apos;s
-            combined capabilities against the tender requirements
+            {t("runPrompt")}
           </p>
           <Button
             onClick={handleRunAnalysis}
@@ -171,12 +175,12 @@ export function TeamAnalysisPanel({
             {runAnalysis.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Analyzing...
+                {t("analyzing")}
               </>
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Run Team Analysis
+                {t("runButton")}
               </>
             )}
           </Button>
@@ -201,7 +205,7 @@ export function TeamAnalysisPanel({
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Save changes
+                {t("saveChanges")}
               </>
             )}
           </Button>
@@ -215,12 +219,12 @@ export function TeamAnalysisPanel({
           {runAnalysis.isPending ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Re-analyzing...
+              {t("rerunning")}
             </>
           ) : (
             <>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Re-run Analysis
+              {t("rerun")}
             </>
           )}
         </Button>
@@ -235,7 +239,7 @@ export function TeamAnalysisPanel({
         <Card>
           <CardContent className="pt-6">
             <Label className="text-sm text-muted-foreground">
-              Team Coverage
+              {t("teamCoverage")}
             </Label>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-3xl font-bold text-green-600">
@@ -243,10 +247,10 @@ export function TeamAnalysisPanel({
               </span>
               <Badge variant={editedCoverage >= 90 ? "default" : "secondary"}>
                 {editedCoverage >= 90
-                  ? "Excellent"
+                  ? t("ratingExcellent")
                   : editedCoverage >= 70
-                    ? "Good"
-                    : "Needs Work"}
+                    ? t("ratingGood")
+                    : t("ratingNeedsWork")}
               </Badge>
             </div>
           </CardContent>
@@ -254,7 +258,7 @@ export function TeamAnalysisPanel({
         <Card>
           <CardContent className="pt-6">
             <Label className="text-sm text-muted-foreground">
-              Team Readiness
+              {t("teamReadiness")}
             </Label>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-3xl font-bold text-green-600">
@@ -270,10 +274,10 @@ export function TeamAnalysisPanel({
                 }
               >
                 {Math.round(teamAnalysis.readinessScore) >= 85
-                  ? "Ready to Bid"
+                  ? t("readyToBid")
                   : Math.round(teamAnalysis.readinessScore) >= 50
-                    ? "Almost Ready"
-                    : "Needs Work"}
+                    ? t("almostReady")
+                    : t("ratingNeedsWork")}
               </Badge>
             </div>
           </CardContent>
@@ -290,7 +294,7 @@ export function TeamAnalysisPanel({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Team Member Contributions
+                {t("contributions")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -324,14 +328,14 @@ export function TeamAnalysisPanel({
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Lightbulb className="h-4 w-4 text-yellow-500" />
-              Combined Team Competencies
+              {t("combinedCompetencies")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="font-semibold">Covered Competencies</Label>
+              <Label className="font-semibold">{t("coveredCompetencies")}</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Use minus to move to Remaining Gaps
+                {t("moveToRemainingHint")}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {companyCompetencies.map((comp, idx) => (
@@ -346,7 +350,7 @@ export function TeamAnalysisPanel({
                       size="icon"
                       className="h-5 w-5 p-0 hover:bg-green-500/20"
                       onClick={() => moveToMissing(idx)}
-                      title="Move to Remaining Gaps"
+                      title={t("moveToRemaining")}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -357,10 +361,10 @@ export function TeamAnalysisPanel({
 
             <div>
               <Label className="font-semibold text-orange-500">
-                Remaining Gaps
+                {t("remainingGaps")}
               </Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Use plus to move to Covered
+                {t("moveToCoveredHint")}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {missingCompetencies.map((comp, idx) => (
@@ -374,7 +378,7 @@ export function TeamAnalysisPanel({
                       size="icon"
                       className="h-5 w-5 p-0 hover:bg-orange-500/20"
                       onClick={() => moveToCompetencies(idx)}
-                      title="Move to Covered"
+                      title={t("moveToCovered")}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -398,7 +402,7 @@ export function TeamAnalysisPanel({
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
-                  Strategic Recommendations
+                  {t("strategicRecs")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -429,7 +433,7 @@ export function TeamAnalysisPanel({
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2 text-red-500">
                 <AlertTriangle className="h-4 w-4" />
-                Team Risks
+                {t("teamRisks")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -451,8 +455,7 @@ export function TeamAnalysisPanel({
 
       {/* Analysis timestamp */}
       <p className="text-xs text-muted-foreground text-right">
-        Last analyzed:{" "}
-        {new Date(teamAnalysis.analyzedAt).toLocaleString("en-GB")}
+        {t("lastAnalyzed", { date: new Date(teamAnalysis.analyzedAt).toLocaleString("en-GB") })}
       </p>
     </div>
   );

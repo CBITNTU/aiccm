@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectInvitations } from "@/hooks/useProjectInvitations";
 import { api } from "@/lib/api/client";
@@ -35,6 +36,7 @@ export default function InvitationsPage() {
 
 function AllInvitationsView({ userId }: { userId: string | null }) {
   const router = useRouter();
+  const t = useTranslations("ProjectsInvitationsPage");
   const { data, isLoading } = useProjectInvitations(userId);
 
   const handleResponded = (action: "accept" | "reject", projectId: string) => {
@@ -52,10 +54,8 @@ function AllInvitationsView({ userId }: { userId: string | null }) {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Project Invitations</h1>
-          <p className="text-sm text-muted-foreground">
-            Review and respond to collaboration invitations
-          </p>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>
 
@@ -67,10 +67,8 @@ function AllInvitationsView({ userId }: { userId: string | null }) {
         <Card>
           <CardContent className="py-12 text-center">
             <Mail className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Pending Invitations</h3>
-            <p className="text-muted-foreground">
-              You don&apos;t have any pending project invitations at the moment.
-            </p>
+            <h3 className="text-lg font-medium mb-2">{t("noPendingTitle")}</h3>
+            <p className="text-muted-foreground">{t("noPendingDesc")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -90,6 +88,7 @@ function AllInvitationsView({ userId }: { userId: string | null }) {
 
 function TokenInvitationView({ token }: { token: string }) {
   const router = useRouter();
+  const t = useTranslations("ProjectsInvitationsPage");
   const [invitation, setInvitation] = useState<{
     id: string;
     voId: string;
@@ -137,12 +136,12 @@ function TokenInvitationView({ token }: { token: string }) {
         <Card>
           <CardContent className="py-12 text-center">
             <XCircle className="h-12 w-12 mx-auto text-destructive/50 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Invalid Invitation</h3>
+            <h3 className="text-lg font-medium mb-2">{t("invalidTitle")}</h3>
             <p className="text-muted-foreground">
-              {error || "This invitation link is invalid or has expired."}
+              {error || t("invalidDesc")}
             </p>
             <Link href="/projects" className="mt-4 inline-block">
-              <Button variant="outline">Go to Projects</Button>
+              <Button variant="outline">{t("goToProjects")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -163,27 +162,25 @@ function TokenInvitationView({ token }: { token: string }) {
               <>
                 <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
                 <h3 className="text-lg font-medium mb-2">
-                  Invitation Already Accepted
+                  {t("alreadyAcceptedTitle")}
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  You&apos;ve already accepted the invitation to{" "}
-                  <strong>{invitation.projectName}</strong>.
+                  {t("alreadyAcceptedDesc", { projectName: invitation.projectName })}
                 </p>
                 <Link
                   href={`/projects?projectId=${invitation.voId}`}
                 >
-                  <Button>View Project</Button>
+                  <Button>{t("viewProject")}</Button>
                 </Link>
               </>
             ) : (
               <>
                 <XCircle className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                 <h3 className="text-lg font-medium mb-2">
-                  Invitation Declined
+                  {t("declinedTitle")}
                 </h3>
                 <p className="text-muted-foreground">
-                  You&apos;ve declined the invitation to{" "}
-                  <strong>{invitation.projectName}</strong>.
+                  {t("declinedDesc", { projectName: invitation.projectName })}
                 </p>
               </>
             )}
@@ -199,11 +196,11 @@ function TokenInvitationView({ token }: { token: string }) {
         invitationId: invitation.id,
         action: "accept",
       });
-      toast.success("Invitation accepted!");
+      toast.success(t("acceptSuccess"));
       router.push(`/projects?projectId=${result.projectId}`);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to accept invitation",
+        err instanceof Error ? err.message : t("acceptError"),
       );
     }
   };
@@ -215,11 +212,11 @@ function TokenInvitationView({ token }: { token: string }) {
         action: "reject",
         message: rejectMessage || undefined,
       });
-      toast.success("Invitation declined.");
+      toast.success(t("declineSuccess"));
       setInvitation({ ...invitation, invitationStatus: "rejected" });
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to decline invitation",
+        err instanceof Error ? err.message : t("declineError"),
       );
     }
   };
@@ -228,7 +225,7 @@ function TokenInvitationView({ token }: { token: string }) {
     <div className="max-w-2xl mx-auto px-4 py-12 space-y-6">
       <div className="text-center mb-8">
         <Mail className="h-12 w-12 mx-auto text-primary mb-4" />
-        <h1 className="text-2xl font-bold">Project Collaboration Invitation</h1>
+        <h1 className="text-2xl font-bold">{t("collaborationTitle")}</h1>
       </div>
 
       <Card>
@@ -245,7 +242,7 @@ function TokenInvitationView({ token }: { token: string }) {
           <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
             <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
             <div>
-              <p className="text-sm text-muted-foreground">Invited by</p>
+              <p className="text-sm text-muted-foreground">{t("invitedBy")}</p>
               <p className="font-medium">{invitation.leadCompanyName}</p>
               {invitation.leadCompanyContact && (
                 <p className="text-sm text-muted-foreground">
@@ -259,7 +256,7 @@ function TokenInvitationView({ token }: { token: string }) {
             <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
               <Target className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm text-muted-foreground">Target Tender</p>
+                <p className="text-sm text-muted-foreground">{t("targetTender")}</p>
                 <p className="font-medium">{invitation.tenderTitle}</p>
               </div>
             </div>
@@ -268,7 +265,7 @@ function TokenInvitationView({ token }: { token: string }) {
           {showRejectInput && (
             <textarea
               className="w-full p-3 border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Optional message (reason for declining)..."
+              placeholder={t("declinePlaceholder")}
               value={rejectMessage}
               onChange={(e) => setRejectMessage(e.target.value)}
               rows={3}
@@ -287,7 +284,7 @@ function TokenInvitationView({ token }: { token: string }) {
               ) : (
                 <CheckCircle className="h-4 w-4 mr-2" />
               )}
-              Accept Invitation
+              {t("acceptButton")}
             </Button>
             {!showRejectInput ? (
               <Button
@@ -298,7 +295,7 @@ function TokenInvitationView({ token }: { token: string }) {
                 size="lg"
               >
                 <XCircle className="h-4 w-4 mr-2" />
-                Decline
+                {t("declineButton")}
               </Button>
             ) : (
               <Button
@@ -314,7 +311,7 @@ function TokenInvitationView({ token }: { token: string }) {
                 ) : (
                   <XCircle className="h-4 w-4 mr-2" />
                 )}
-                Confirm Decline
+                {t("confirmDeclineButton")}
               </Button>
             )}
           </div>

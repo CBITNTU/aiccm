@@ -18,6 +18,7 @@ import {
   SkipForward,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface Tender {
   id: string;
@@ -43,6 +44,7 @@ export function TenderStep({
   onTenderSelect,
   onSkip,
 }: TenderStepProps) {
+  const t = useTranslations("TenderSelectionStep");
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,14 +57,14 @@ export function TenderStep({
         setTenders((result.tenders as unknown as Tender[]) || []);
       } catch (error) {
         console.error("Error fetching tenders:", error);
-        toast.error("Failed to load tenders");
+        toast.error(t("loadError"));
       } finally {
         setLoading(false);
       }
     };
 
     fetchTenders();
-  }, []);
+  }, [t]);
 
   const filteredTenders = tenders.filter((tender) => {
     const searchLower = searchTerm.toLowerCase();
@@ -76,7 +78,7 @@ export function TenderStep({
   });
 
   const formatDate = (dateString: string | null): string => {
-    if (!dateString) return "Not specified";
+    if (!dateString) return t("notSpecified");
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -85,7 +87,7 @@ export function TenderStep({
   };
 
   const formatBudget = (min?: number | null, max?: number | null): string => {
-    if (!min && !max) return "Not specified";
+    if (!min && !max) return t("notSpecified");
     if (min && max && min !== max) {
       return `£${(min / 1000).toFixed(0)}k - £${(max / 1000).toFixed(0)}k`;
     }
@@ -108,7 +110,7 @@ export function TenderStep({
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Loading tenders...</span>
+        <span className="ml-3 text-muted-foreground">{t("loading")}</span>
       </div>
     );
   }
@@ -118,13 +120,12 @@ export function TenderStep({
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 space-y-2">
           <p className="text-sm text-muted-foreground">
-            Select the tender you want to create a project for. This will be the
-            target tender for your project team.
+            {t("description")}
           </p>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search tenders by title, buyer, location..."
+              placeholder={t("searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -134,7 +135,7 @@ export function TenderStep({
         {onSkip && (
           <Button variant="ghost" onClick={onSkip} className="shrink-0">
             <SkipForward className="w-4 h-4 mr-2" />
-            Skip this step
+            {t("skipStep")}
           </Button>
         )}
       </div>
@@ -143,8 +144,8 @@ export function TenderStep({
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             {tenders.length === 0
-              ? "No open tenders available."
-              : "No tenders match your search."}
+              ? t("noOpenTenders")
+              : t("noMatchingTenders")}
           </CardContent>
         </Card>
       ) : (
@@ -185,7 +186,7 @@ export function TenderStep({
                               </h3>
                               {tender.referenceNumber && (
                                 <p className="text-xs text-muted-foreground mb-2">
-                                  Ref: {tender.referenceNumber}
+                                  {t("ref", { ref: tender.referenceNumber })}
                                 </p>
                               )}
                               {tender.description && (
@@ -202,8 +203,8 @@ export function TenderStep({
                               }
                             >
                               {tender.status === "closing_soon"
-                                ? "Closing Soon"
-                                : "Open"}
+                                ? t("badgeClosingSoon")
+                                : t("badgeOpen")}
                             </Badge>
                           </div>
 
@@ -211,7 +212,7 @@ export function TenderStep({
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-muted-foreground" />
                               <span className="text-muted-foreground">
-                                Buyer:{" "}
+                                {t("buyer")}{" "}
                               </span>
                               <span className="font-medium">
                                 {tender.buyer}
@@ -221,7 +222,7 @@ export function TenderStep({
                               <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">
-                                  Location:{" "}
+                                  {t("location")}{" "}
                                 </span>
                                 <span className="font-medium">
                                   {tender.location}
@@ -238,7 +239,7 @@ export function TenderStep({
                                   }`}
                                 />
                                 <span className="text-muted-foreground">
-                                  Deadline:{" "}
+                                  {t("deadline")}{" "}
                                 </span>
                                 <span
                                   className={`font-medium ${
@@ -253,7 +254,7 @@ export function TenderStep({
                               <div className="flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">
-                                  Budget:{" "}
+                                  {t("budget")}{" "}
                                 </span>
                                 <span className="font-medium">
                                   {formatBudget(
@@ -280,9 +281,9 @@ export function TenderStep({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Tender selected</p>
+                <p className="font-medium">{t("selectedTitle")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Continue to select capabilities needed for this tender
+                  {t("selectedDescription")}
                 </p>
               </div>
             </div>

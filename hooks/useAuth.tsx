@@ -27,6 +27,7 @@ interface AuthContextType {
   user: AuthUser | null;
   session: unknown;
   loading: boolean;
+  profileLoading: boolean;
   profile: ProfileData | null;
   isOnboarding: boolean;
   isPendingApproval: boolean;
@@ -38,6 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  profileLoading: false,
   profile: null,
   isOnboarding: false,
   isPendingApproval: false,
@@ -56,6 +58,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { data: sessionData, isPending } = authClient.useSession();
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const user = useMemo<AuthUser | null>(() => {
     const currentUser = sessionData?.user;
@@ -91,10 +94,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshProfile = useCallback(async () => {
     if (!user) {
       setProfile(null);
+      setProfileLoading(false);
       return;
     }
 
     try {
+      setProfileLoading(true);
       const res = await fetch("/api/profile/me");
       if (res.ok) {
         const data = await res.json();
@@ -105,12 +110,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (err) {
       console.error("Error refreshing profile:", err);
       setProfile(null);
+    } finally {
+      setProfileLoading(false);
     }
   }, [user]);
 
   // Fetch profile data when user changes
   useEffect(() => {
     if (!user) {
+      setProfile(null);
+      setProfileLoading(false);
       return;
     }
 
@@ -118,6 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const fetchProfile = async () => {
       try {
+        setProfileLoading(true);
         const res = await fetch("/api/profile/me", {
           signal: abortController.signal,
         });
@@ -134,6 +144,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (abortController.signal.aborted) return;
         console.error("Error fetching profile:", err);
         setProfile(null);
+      } finally {
+        if (!abortController.signal.aborted) {
+          setProfileLoading(false);
+        }
       }
     };
 
@@ -145,16 +159,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   const isOnboarding = useMemo(() => {
+    if (!user || profileLoading) return false;
     return !!user && !profile?.onboardingCompletedAt;
-  }, [user, profile]);
+  }, [user, profile, profileLoading]);
 
   const isPendingApproval = useMemo(() => {
+    if (!user || profileLoading) return false;
     return (
       !!user &&
       !!profile?.onboardingCompletedAt &&
       profile?.approvalStatus === "pending"
     );
-  }, [user, profile]);
+  }, [user, profile, profileLoading]);
 
   return (
     <AuthContext.Provider
@@ -162,6 +178,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         session,
         loading,
+        profileLoading,
         profile: activeProfile,
         isOnboarding,
         isPendingApproval,

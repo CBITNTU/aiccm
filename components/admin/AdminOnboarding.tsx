@@ -191,7 +191,9 @@ export default function AdminOnboarding() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card
             className={`cursor-pointer transition-colors ${
-              filterStep === "all" ? "ring-2 ring-primary" : ""
+              filterStep === "all"
+                ? "border-2 border-primary"
+                : "border-2 border-border"
             }`}
             onClick={() => setFilterStep("all")}
           >
@@ -203,8 +205,8 @@ export default function AdminOnboarding() {
           <Card
             className={`cursor-pointer transition-colors ${
               filterStep === ONBOARDING_STEPS.EMAIL_VERIFICATION
-                ? "ring-2 ring-primary"
-                : ""
+                ? "border-2 border-primary"
+                : "border-2 border-border"
             }`}
             onClick={() => setFilterStep(ONBOARDING_STEPS.EMAIL_VERIFICATION)}
           >
@@ -221,8 +223,8 @@ export default function AdminOnboarding() {
           <Card
             className={`cursor-pointer transition-colors ${
               filterStep === ONBOARDING_STEPS.PROFILE_INFO
-                ? "ring-2 ring-primary"
-                : ""
+                ? "border-2 border-primary"
+                : "border-2 border-border"
             }`}
             onClick={() => setFilterStep(ONBOARDING_STEPS.PROFILE_INFO)}
           >
@@ -240,8 +242,8 @@ export default function AdminOnboarding() {
             className={`cursor-pointer transition-colors ${
               filterStep === ONBOARDING_STEPS.ACCOUNT_TYPE ||
               filterStep === ONBOARDING_STEPS.COMPANY_INFO
-                ? "ring-2 ring-primary"
-                : ""
+                ? "border-2 border-primary"
+                : "border-2 border-border"
             }`}
             onClick={() => setFilterStep(ONBOARDING_STEPS.ACCOUNT_TYPE)}
           >
@@ -260,8 +262,8 @@ export default function AdminOnboarding() {
           <Card
             className={`cursor-pointer transition-colors ${
               filterStep === ONBOARDING_STEPS.COMPLETE
-                ? "ring-2 ring-primary"
-                : ""
+                ? "border-2 border-primary"
+                : "border-2 border-border"
             }`}
             onClick={() => setFilterStep(ONBOARDING_STEPS.COMPLETE)}
           >

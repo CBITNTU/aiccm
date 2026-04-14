@@ -141,7 +141,9 @@ export function TenderSelectionStep({
                 <Card
                   key={tender.id}
                   className={`cursor-pointer transition-all hover:shadow-md ${
-                    isSelected ? "ring-2 ring-primary" : ""
+                    isSelected
+                      ? "border-2 border-primary"
+                      : "border-2 border-border"
                   }`}
                   onClick={() => onTenderSelect(tender.id)}
                 >

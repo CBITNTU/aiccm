@@ -308,7 +308,9 @@ export function CompaniesStep({
               <Card
                 key={company.id}
                 className={`transition-all ${
-                  isSelected ? "ring-2 ring-primary" : ""
+                  isSelected
+                    ? "border-2 border-primary"
+                    : "border-2 border-border"
                 }`}
               >
                 <CardContent className="p-4">

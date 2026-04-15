@@ -28,6 +28,7 @@ import {
 import { formatCpvCode } from "@/lib/cpvCodes";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import type { TenderMatchRecord, TenderRecord } from "@/lib/api/types";
+import { resolveExternalNoticeLink } from "@/lib/tenders/externalNoticeLink";
 
 type TenderData = TenderRecord;
 type MatchData = TenderMatchRecord;
@@ -157,30 +158,29 @@ export default function TenderDetailPage() {
     return "destructive";
   };
 
-  const sourceLabel =
-    (() => {
-      const url =
-        ((tender.documents as { specification_url?: string } | null)?.specification_url ||
-          (tender.documents as { application_url?: string } | null)?.application_url) ||
-        "";
-      if (url.includes("ted.europa.eu")) return t("sourceTed");
-      if (url.includes("find-tender.service.gov.uk")) return t("sourceFindATender");
-      if (url.includes("contracts-finder.service.gov.uk"))
-        return t("sourceContractsFinder");
-      return null;
-    })();
+  const externalNoticeLink = resolveExternalNoticeLink({
+    documents: tender.documents,
+    referenceNumber: tender.referenceNumber,
+  });
+
+  const sourceLabel = (() => {
+    if (externalNoticeLink.source === "ted") return t("sourceTed");
+    if (externalNoticeLink.source === "find-a-tender") return t("sourceFindATender");
+    if (externalNoticeLink.source === "contracts-finder")
+      return t("sourceContractsFinder");
+    return null;
+  })();
+
+  const viewExternalLabel = (() => {
+    if (externalNoticeLink.source === "ted") return t("viewOnTed");
+    if (externalNoticeLink.source === "find-a-tender")
+      return t("viewOnFindATender");
+    return t("viewOriginalNotice");
+  })();
 
   const handleViewExternal = () => {
-    const applicationUrl = (tender.documents as { application_url?: string } | null)
-      ?.application_url;
-    const externalUrl =
-      applicationUrl ||
-      (tender.referenceNumber
-        ? `https://www.find-tender.service.gov.uk/Notice/${tender.referenceNumber}?origin=SearchResults`
-        : null);
-
-    if (externalUrl) {
-      window.open(externalUrl, "_blank");
+    if (externalNoticeLink.url) {
+      window.open(externalNoticeLink.url, "_blank");
     }
   };
 
@@ -316,10 +316,10 @@ export default function TenderDetailPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3">
-            {tender.referenceNumber && (
+            {externalNoticeLink.url && (
               <Button variant="outline" onClick={handleViewExternal}>
                 <ExternalLink className="w-4 h-4 mr-2" />
-                {t("viewOnFindATender")}
+                {viewExternalLabel}
               </Button>
             )}
             {!isRestricted && (

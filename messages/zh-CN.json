@@ -2974,5 +2974,50 @@
     "sentCount": "{n} 份邀请已成功发送",
     "sendFailed": "发送邀请失败",
     "tenderInfoSuffix": "，目标招标「{tenderTitle}」"
+  },
+  "PendingApprovalPage": {
+    "toast": {
+      "approved": "您的账户已获批准！",
+      "rejected": "您的账户申请未获批准。",
+      "stillPending": "您的账户仍在审核中。",
+      "checkFailed": "检查状态失败"
+    },
+    "fallbackCompanyName": {
+      "lowercase": "该公司",
+      "capitalized": "该公司"
+    },
+    "status": {
+      "joinCompany": {
+        "pending": {
+          "title": "等待公司审批",
+          "description": "您加入 {companyName} 的申请正在由公司管理员审核。"
+        },
+        "approvedByAdmin": {
+          "title": "等待最终审批",
+          "description": "{companyName} 已批准您的申请。现正等待平台管理员审批。"
+        }
+      },
+      "default": {
+        "title": "账户待审批",
+        "description": "您的账户正在由我们的团队审核，通常需要 1-2 个工作日。"
+      }
+    },
+    "steps": {
+      "accountCreated": "账户已创建",
+      "companyAdminApproval": "公司管理员审批",
+      "platformAdminApproval": "平台管理员审批",
+      "platformAdminReview": "平台管理员审核",
+      "accessGranted": "已授予访问权限"
+    },
+    "alert": {
+      "emailNotice": "您的账户审核完成后，我们会发送邮件通知您。您也可以随时使用下方按钮查看状态。"
+    },
+    "actions": {
+      "checkStatus": "检查状态",
+      "signOut": "退出登录"
+    },
+    "footer": {
+      "contactPrefix": "有问题吗？请联系"
+    }
   }
 }

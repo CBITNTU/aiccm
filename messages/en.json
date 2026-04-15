@@ -1392,6 +1392,8 @@
     "budgetRange": "£{min} - £{max}",
     "matchPercent": "{score}% Match",
     "viewOnFindATender": "View on Find a Tender",
+    "viewOnTed": "View on TED",
+    "viewOriginalNotice": "View original notice",
     "createProject": "Create Project",
     "buildConsultingTeam": "Build Consulting Team",
     "aiSummary": "AI Summary",
@@ -1639,7 +1641,9 @@
     "noDescription": "No description available",
     "cpvCodes": "CPV Codes",
     "createProject": "Create Project",
-    "viewOnFindATender": "View on Find a Tender"
+    "viewOnFindATender": "View on Find a Tender",
+    "viewOnTed": "View on TED",
+    "viewOriginalNotice": "View original notice"
   },
   "MatchingReadinessDialog": {
     "title": "Company Profile Readiness",
@@ -2974,5 +2978,50 @@
     "sentCount": "{n} {n, plural, one {invitation} other {invitations}} sent successfully",
     "sendFailed": "Failed to send invitations",
     "tenderInfoSuffix": " targeting the tender \"{tenderTitle}\""
+  },
+  "PendingApprovalPage": {
+    "toast": {
+      "approved": "Your account has been approved!",
+      "rejected": "Your account application was not approved.",
+      "stillPending": "Your account is still pending approval.",
+      "checkFailed": "Failed to check status"
+    },
+    "fallbackCompanyName": {
+      "lowercase": "the company",
+      "capitalized": "The company"
+    },
+    "status": {
+      "joinCompany": {
+        "pending": {
+          "title": "Waiting for Company Approval",
+          "description": "Your request to join {companyName} is being reviewed by the company administrator."
+        },
+        "approvedByAdmin": {
+          "title": "Awaiting Final Approval",
+          "description": "{companyName} has approved your request. Now waiting for platform administrator approval."
+        }
+      },
+      "default": {
+        "title": "Account Pending Approval",
+        "description": "Your account is being reviewed by our team. This usually takes 1-2 business days."
+      }
+    },
+    "steps": {
+      "accountCreated": "Account Created",
+      "companyAdminApproval": "Company Admin Approval",
+      "platformAdminApproval": "Platform Admin Approval",
+      "platformAdminReview": "Platform Admin Review",
+      "accessGranted": "Access Granted"
+    },
+    "alert": {
+      "emailNotice": "We'll send you an email once your account has been reviewed. You can also check your status anytime using the button below."
+    },
+    "actions": {
+      "checkStatus": "Check Status",
+      "signOut": "Sign Out"
+    },
+    "footer": {
+      "contactPrefix": "Have questions? Contact us at"
+    }
   }
 }

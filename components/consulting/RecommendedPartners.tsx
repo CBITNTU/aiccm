@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, MapPin, Award } from "lucide-react";
 import { VerifiedBadge } from "@/components/company/VerifiedBadge";
+import { useTranslations } from "next-intl";
 
 interface Partner {
   id: string;
@@ -26,16 +27,16 @@ export function RecommendedPartners({
   partners,
   onAddPartner,
 }: RecommendedPartnersProps) {
+  const t = useTranslations("RecommendedPartners");
   if (!partners || partners.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recommended Partners</CardTitle>
+          <CardTitle>{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-center py-8">
-            No partner recommendations available. Run the analysis to get
-            recommendations.
+            {t("noRecommendations")}
           </p>
         </CardContent>
       </Card>
@@ -45,7 +46,7 @@ export function RecommendedPartners({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recommended Partners ({partners.length})</CardTitle>
+        <CardTitle>{t("titleWithCount", { count: partners.length })}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -69,11 +70,11 @@ export function RecommendedPartners({
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">
-                    {partner.relevanceScore}% Match
+                    {t("matchBadge", { score: partner.relevanceScore })}
                   </Badge>
                   <Button size="sm" onClick={() => onAddPartner(partner.id)}>
                     <Plus className="h-4 w-4 mr-1" />
-                    Add
+                    {t("addButton")}
                   </Button>
                 </div>
               </div>
@@ -82,7 +83,7 @@ export function RecommendedPartners({
                 partner.matchingCompetencies.length > 0 && (
                   <div className="mb-2">
                     <div className="text-sm font-medium mb-1">
-                      Matching Competencies:
+                      {t("matchingCompetencies")}
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {partner.matchingCompetencies.map((comp, idx) => (

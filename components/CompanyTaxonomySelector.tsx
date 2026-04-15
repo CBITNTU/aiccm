@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
@@ -38,6 +39,7 @@ interface CompanyTaxonomySelectorProps {
 export function CompanyTaxonomySelector({
   companyId,
 }: CompanyTaxonomySelectorProps) {
+  const t = useTranslations("CompanyTaxonomySelector");
   const {
     taxonomies: allTaxonomies,
     getLevel1,
@@ -73,7 +75,7 @@ export function CompanyTaxonomySelector({
       setSelectedTaxonomies(ids);
     } catch (error) {
       console.error("Error fetching company taxonomies:", error);
-      toast.error("Failed to load your categories");
+      toast.error(t("toastLoadError"));
     } finally {
       setLoading(false);
     }
@@ -84,7 +86,7 @@ export function CompanyTaxonomySelector({
     if (!taxonomyToAdd) return;
 
     if (selectedTaxonomies.includes(taxonomyToAdd)) {
-      toast.info("This category is already selected");
+      toast.info(t("toastAlreadySelected"));
       return;
     }
 
@@ -98,10 +100,10 @@ export function CompanyTaxonomySelector({
       setLevel2(null);
       setLevel3(null);
 
-      toast.success("Category added to your profile");
+      toast.success(t("toastAdded"));
     } catch (error) {
       console.error("Error adding taxonomy:", error);
-      toast.error("Failed to add category");
+      toast.error(t("toastAddError"));
     } finally {
       setSaving(false);
     }
@@ -115,10 +117,10 @@ export function CompanyTaxonomySelector({
 
       setSelectedTaxonomies(newTaxonomies);
 
-      toast.success("Category removed");
+      toast.success(t("toastRemoved"));
     } catch (error) {
       console.error("Error removing taxonomy:", error);
-      toast.error("Failed to remove category");
+      toast.error(t("toastRemoveError"));
     } finally {
       setSaving(false);
     }
@@ -146,23 +148,17 @@ export function CompanyTaxonomySelector({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Tag className="h-5 w-5" />
-          Company Categories
+          {t("title")}
         </CardTitle>
-        <CardDescription>
-          Select categories that best describe your company&apos;s capabilities
-          and services
-        </CardDescription>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Warning when no taxonomy data is available */}
         {!taxonomiesLoading && allTaxonomies.length === 0 && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>No categories available</AlertTitle>
-            <AlertDescription>
-              The taxonomy data has not been loaded into the database. Please
-              contact an administrator to run the EIC taxonomy seed migration.
-            </AlertDescription>
+            <AlertTitle>{t("alertNoDataTitle")}</AlertTitle>
+            <AlertDescription>{t("alertNoDataDescription")}</AlertDescription>
           </Alert>
         )}
 
@@ -170,17 +166,15 @@ export function CompanyTaxonomySelector({
         {allTaxonomies.length > 0 && selectedTaxonomies.length === 0 && (
           <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
             <FolderOpen className="h-10 w-10 mb-3" />
-            <p className="text-sm font-medium">No categories selected yet</p>
-            <p className="text-xs mt-1">
-              Add categories below to describe your company&apos;s capabilities
-            </p>
+            <p className="text-sm font-medium">{t("emptyTitle")}</p>
+            <p className="text-xs mt-1">{t("emptyHint")}</p>
           </div>
         )}
 
         {/* Selected taxonomies */}
         {selectedTaxonomies.length > 0 && (
           <div className="space-y-2">
-            <Label>Your Categories</Label>
+            <Label>{t("yourCategoriesLabel")}</Label>
             <div className="flex flex-wrap gap-2">
               {selectedTaxonomies.map((taxId) => {
                 const taxonomy = getTaxonomyById(taxId);
@@ -203,7 +197,7 @@ export function CompanyTaxonomySelector({
 
         {/* Add new taxonomy */}
         <div className="space-y-4">
-          <Label>Add Category</Label>
+          <Label>{t("addCategoryLabel")}</Label>
 
           <div className="space-y-3">
             <Popover open={open1} onOpenChange={setOpen1}>
@@ -216,15 +210,15 @@ export function CompanyTaxonomySelector({
                 >
                   {level1
                     ? getTaxonomyById(level1)?.name
-                    : "Select primary category"}
+                    : t("selectPrimary")}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                 <Command>
-                  <CommandInput placeholder="Search categories..." />
+                  <CommandInput placeholder={t("searchCategoriesPlaceholder")} />
                   <CommandList>
-                    <CommandEmpty>No category found.</CommandEmpty>
+                    <CommandEmpty>{t("noCategoryFound")}</CommandEmpty>
                     <CommandGroup>
                       {level1Options.map((tax) => (
                         <CommandItem
@@ -263,7 +257,7 @@ export function CompanyTaxonomySelector({
                   >
                     {level2
                       ? getTaxonomyById(level2)?.name
-                      : "Select sub-category (optional)"}
+                      : t("selectSubCategory")}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -310,15 +304,15 @@ export function CompanyTaxonomySelector({
                   >
                     {level3
                       ? getTaxonomyById(level3)?.name
-                      : "Select specific area (optional)"}
+                      : t("selectSpecificArea")}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                   <Command>
-                    <CommandInput placeholder="Search areas..." />
+                    <CommandInput placeholder={t("searchAreasPlaceholder")} />
                     <CommandList>
-                      <CommandEmpty>No area found.</CommandEmpty>
+                      <CommandEmpty>{t("noAreaFound")}</CommandEmpty>
                       <CommandGroup>
                         {level3Options.map((tax) => (
                           <CommandItem
@@ -351,7 +345,7 @@ export function CompanyTaxonomySelector({
               className="w-full"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Category
+              {t("addCategoryButton")}
             </Button>
           </div>
         </div>

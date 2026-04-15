@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { DollarSign, TrendingUp, RefreshCw } from "lucide-react";
 import type { AnalysisUsage } from "@/hooks/useCompanyPageData";
+import { useTranslations } from "next-intl";
 
 interface IntelligenceTabProps {
   financialData: Record<string, { value: number; confidence: number }> | null;
@@ -24,6 +25,7 @@ export function IntelligenceTab({
   analysisUsage,
   analysisLimitReached,
 }: IntelligenceTabProps) {
+  const t = useTranslations("CompanyPage");
   return (
     <div className="space-y-6">
       {/* Financial */}
@@ -31,7 +33,7 @@ export function IntelligenceTab({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <DollarSign className="h-4 w-4 text-muted-foreground" />
-            Financial Information
+            {t("intelligence.financialInformation")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -48,14 +50,14 @@ export function IntelligenceTab({
                       : "N/A"}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Confidence: {field.confidence}%
+                    {t("intelligence.confidence")}{field.confidence}%
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground italic">
-              No financial data available
+              {t("intelligence.noFinancialData")}
             </p>
           )}
         </CardContent>
@@ -66,7 +68,7 @@ export function IntelligenceTab({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            AI-Generated Analysis
+            {t("intelligence.aiAnalysis")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -99,7 +101,7 @@ export function IntelligenceTab({
           ) : (
             <div className="text-center py-6">
               <p className="text-sm text-muted-foreground mb-3">
-                No analysis available. Click &quot;Analyze&quot; to generate AI insights.
+                {t("intelligence.noAnalysis")}
               </p>
               <div className="flex items-center justify-center gap-2">
                 <Button
@@ -110,14 +112,14 @@ export function IntelligenceTab({
                   <RefreshCw
                     className={`w-3.5 h-3.5 mr-1.5 ${isAnalyzing ? "animate-spin" : ""}`}
                   />
-                  {isAnalyzing ? "Analyzing..." : analysisLimitReached ? "Limit Reached" : "Analyze Company"}
+                  {isAnalyzing ? t("intelligence.analyzing") : analysisLimitReached ? t("intelligence.limitReached") : t("intelligence.analyzeCompany")}
                 </Button>
                 {analysisUsage && (
                   <Badge
                     variant={analysisLimitReached ? "destructive" : "secondary"}
                     className="text-xs"
                   >
-                    {analysisUsage.used}/{analysisUsage.limit} this month
+                    {analysisUsage.used}/{analysisUsage.limit} {t("intelligence.thisMonth")}
                   </Badge>
                 )}
               </div>

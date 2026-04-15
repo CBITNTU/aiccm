@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { useSendInvitations } from "@/hooks/useProjectMutations";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,68 +28,56 @@ interface InvitationsPanelProps {
 
 type InvitationStatus = "pending" | "sent" | "accepted" | "rejected";
 
-function getInvitationStatusBadge(member: TeamMember) {
-  const status = member.invitationStatus as
-    | InvitationStatus
-    | null
-    | undefined;
-
-  switch (status) {
-    case "sent":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-yellow-500/10 text-yellow-600 border-yellow-200"
-        >
-          Sent
-        </Badge>
-      );
-    case "accepted":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-green-500/10 text-green-600 border-green-200"
-        >
-          Accepted
-        </Badge>
-      );
-    case "rejected": {
-      const message = member.invitationMessage;
-      return (
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="bg-red-500/10 text-red-600 border-red-200"
-          >
-            Declined
-          </Badge>
-          {message && (
-            <span className="text-xs text-muted-foreground italic truncate max-w-[200px]">
-              &ldquo;{message}&rdquo;
-            </span>
-          )}
-        </div>
-      );
-    }
-    case "pending":
-    default:
-      return (
-        <Badge variant="outline" className="text-muted-foreground">
-          Not sent
-        </Badge>
-      );
-  }
-}
-
 export function InvitationsPanel({
   projectId,
   projectName,
   teamMembers,
   tenderTitle,
 }: InvitationsPanelProps) {
+  const t = useTranslations("InvitationsPanel");
   const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
   const [unregisteredWarning, setUnregisteredWarning] = useState<string[]>([]);
   const sendInvitations = useSendInvitations();
+
+  const getInvitationStatusBadge = (member: TeamMember) => {
+    const status = member.invitationStatus as InvitationStatus | null | undefined;
+    switch (status) {
+      case "sent":
+        return (
+          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-200">
+            {t("statusSent")}
+          </Badge>
+        );
+      case "accepted":
+        return (
+          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-200">
+            {t("statusAccepted")}
+          </Badge>
+        );
+      case "rejected": {
+        const message = member.invitationMessage;
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-200">
+              {t("statusDeclined")}
+            </Badge>
+            {message && (
+              <span className="text-xs text-muted-foreground italic truncate max-w-[200px]">
+                &ldquo;{message}&rdquo;
+              </span>
+            )}
+          </div>
+        );
+      }
+      case "pending":
+      default:
+        return (
+          <Badge variant="outline" className="text-muted-foreground">
+            {t("statusNotSent")}
+          </Badge>
+        );
+    }
+  };
 
   // Filter to only show invitable members (not lead)
   const invitableMembers = teamMembers.filter(
@@ -111,7 +100,7 @@ export function InvitationsPanel({
 
   const handleSendInvitations = async () => {
     if (selectedPartners.length === 0) {
-      toast.error("Select partners to send invitations");
+      toast.error(t("selectFirst"));
       return;
     }
 
@@ -123,9 +112,7 @@ export function InvitationsPanel({
       });
 
       if (result.invitationsSent > 0) {
-        toast.success(
-          `${result.invitationsSent} invitation${result.invitationsSent !== 1 ? "s" : ""} sent successfully`,
-        );
+        toast.success(t("sentCount", { n: result.invitationsSent }));
       }
 
       if (
@@ -138,7 +125,7 @@ export function InvitationsPanel({
       setSelectedPartners([]);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to send invitations",
+        err instanceof Error ? err.message : t("sendFailed"),
       );
     }
   };
@@ -157,7 +144,7 @@ export function InvitationsPanel({
       <div className="py-6 text-center">
         <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
         <p className="text-muted-foreground">
-          No partners to invite yet. Add partners to your team first.
+          {t("noPartnersHint")}
         </p>
       </div>
     );
@@ -169,10 +156,10 @@ export function InvitationsPanel({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={selectAll}>
-            Select All
+            {t("selectAll")}
           </Button>
           <Button variant="ghost" size="sm" onClick={deselectAll}>
-            Clear
+            {t("clear")}
           </Button>
         </div>
         <Button
@@ -182,13 +169,14 @@ export function InvitationsPanel({
           {sendInvitations.isPending ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Sending...
+              {t("sending")}
             </>
           ) : (
             <>
               <Send className="h-4 w-4 mr-2" />
-              Send{" "}
-              {selectedPartners.length > 0 && `(${selectedPartners.length})`}
+              {selectedPartners.length > 0
+                ? t("sendWithCount", { n: selectedPartners.length })
+                : t("send")}
             </>
           )}
         </Button>
@@ -234,7 +222,7 @@ export function InvitationsPanel({
                     {member.companies?.companyName || "Unknown Company"}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {member.companies?.contactEmail || "No email available"}
+                    {member.companies?.contactEmail || t("noEmail")}
                   </div>
                 </div>
               </div>
@@ -259,7 +247,7 @@ export function InvitationsPanel({
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <div className="text-sm">
             <p className="font-medium">
-              Could not send emails to the following companies:
+              {t("unregisteredWarningTitle")}
             </p>
             <ul className="mt-1 list-disc list-inside">
               {unregisteredWarning.map((name) => (
@@ -267,8 +255,7 @@ export function InvitationsPanel({
               ))}
             </ul>
             <p className="mt-1 text-xs">
-              These companies are not yet registered on the platform. They will
-              need to sign up before they can receive invitations.
+              {t("unregisteredWarningDesc")}
             </p>
           </div>
         </motion.div>
@@ -282,18 +269,19 @@ export function InvitationsPanel({
       >
         <div className="flex items-center gap-2 mb-3">
           <Mail className="h-4 w-4 text-muted-foreground" />
-          <h4 className="font-medium">Invitation Preview</h4>
+          <h4 className="font-medium">{t("previewTitle")}</h4>
         </div>
         <div className="text-sm text-muted-foreground space-y-2">
           <p>
-            <strong>Subject:</strong> Invitation to collaborate on{" "}
-            {tenderTitle || projectName}
+            <strong>{t("subjectLabel")}</strong>{" "}
+            {t("emailSubject", { name: tenderTitle || projectName })}
           </p>
           <p>
-            <strong>Message:</strong> You&apos;ve been invited to join a
-            consulting team for the project &quot;{projectName}&quot;
-            {tenderTitle && ` targeting the tender "${tenderTitle}"`}. Please
-            review the project details and accept the invitation to collaborate.
+            <strong>{t("messageLabel")}</strong>{" "}
+            {t("emailMessage", {
+              projectName,
+              tenderInfo: tenderTitle ? t("tenderInfoSuffix", { tenderTitle }) : "",
+            })}
           </p>
         </div>
       </motion.div>
@@ -306,7 +294,7 @@ export function InvitationsPanel({
           className="flex items-center gap-2 p-3 bg-green-500/10 text-green-600 rounded-lg"
         >
           <CheckCircle className="h-4 w-4" />
-          <span className="text-sm">Invitations sent successfully!</span>
+          <span className="text-sm">{t("sentSuccess")}</span>
         </motion.div>
       )}
     </div>

@@ -214,27 +214,29 @@ export async function PUT(
         );
       }
 
-      // Apply removals
-      if (toRemove.length > 0) {
-        await db
-          .delete(companyCapabilities)
-          .where(
-            and(
-              eq(companyCapabilities.companyId, companyId),
-              inArray(companyCapabilities.capabilityId, toRemove),
-            ),
-          );
-      }
+      await db.transaction(async (tx) => {
+        // Apply removals
+        if (toRemove.length > 0) {
+          await tx
+            .delete(companyCapabilities)
+            .where(
+              and(
+                eq(companyCapabilities.companyId, companyId),
+                inArray(companyCapabilities.capabilityId, toRemove),
+              ),
+            );
+        }
 
-      // Apply additions
-      if (toAdd.length > 0) {
-        await db.insert(companyCapabilities).values(
-          toAdd.map((capabilityId) => ({
-            companyId,
-            capabilityId,
-          })),
-        );
-      }
+        // Apply additions
+        if (toAdd.length > 0) {
+          await tx.insert(companyCapabilities).values(
+            toAdd.map((capabilityId) => ({
+              companyId,
+              capabilityId,
+            })),
+          );
+        }
+      });
 
       // Fetch updated capabilities via join
       const updatedCaps = await db

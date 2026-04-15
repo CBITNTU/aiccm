@@ -13,6 +13,7 @@ import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { SectionPendingStatus } from "@/hooks/useCompanyPageData";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
+import { useTranslations } from "next-intl";
 
 interface OverviewTabProps {
   companyData: CompanyRecord;
@@ -39,6 +40,7 @@ export function OverviewTab({
   operationLocations,
   onSaved,
 }: OverviewTabProps) {
+  const t = useTranslations("CompanyPage");
   const [editOpen, setEditOpen] = useState(false);
   const [editLocations, setEditLocations] = useState(false);
 
@@ -47,7 +49,7 @@ export function OverviewTab({
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Company Overview */}
         <SectionCard
-          title="Company Overview"
+          title={t("overview.companyOverview")}
           hasPendingChange={sectionPendingStatus.overview}
           isEditLocked={isEditLocked}
           onEdit={isOwner ? () => setEditOpen(true) : undefined}
@@ -55,17 +57,17 @@ export function OverviewTab({
         >
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
+              <h4 className="text-sm font-medium text-muted-foreground mb-1">{t("overview.descriptionLabel")}</h4>
               <p className="text-sm">
                 {companyData.description || (
-                  <span className="text-muted-foreground italic">No description available</span>
+                  <span className="text-muted-foreground italic">{t("overview.noDescription")}</span>
                 )}
               </p>
               {pendingChanges?.scalarFields?.description && (
-                <DraftBlock label="Proposed description">
+                <DraftBlock label={t("overview.proposedDescription")}>
                   <p className="text-sm text-amber-900">
                     {pendingChanges.scalarFields.description.proposed || (
-                      <span className="italic">Empty</span>
+                      <span className="italic">{t("overview.empty")}</span>
                     )}
                   </p>
                 </DraftBlock>
@@ -73,7 +75,7 @@ export function OverviewTab({
             </div>
             <Separator />
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-2">Key Capabilities</h4>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">{t("overview.keyCapabilities")}</h4>
               <div className="flex flex-wrap gap-1.5">
                 {companyData.keyCapabilities
                   ?.split(",")
@@ -83,12 +85,12 @@ export function OverviewTab({
                     </Badge>
                   )) || (
                   <p className="text-sm text-muted-foreground italic">
-                    No capabilities listed
+                    {t("overview.noCapabilities")}
                   </p>
                 )}
               </div>
               {pendingChanges?.scalarFields?.keyCapabilities && (
-                <DraftBlock label="Proposed key capabilities">
+                <DraftBlock label={t("overview.proposedKeyCapabilities")}>
                   <div className="flex flex-wrap gap-1.5">
                     {pendingChanges.scalarFields.keyCapabilities.proposed
                       ?.split(",")
@@ -97,7 +99,7 @@ export function OverviewTab({
                           {cap.trim()}
                         </Badge>
                       )) || (
-                      <span className="text-sm text-amber-700 italic">Empty</span>
+                      <span className="text-sm text-amber-700 italic">{t("overview.empty")}</span>
                     )}
                   </div>
                 </DraftBlock>
@@ -111,7 +113,7 @@ export function OverviewTab({
 
         {/* Operation Locations */}
         <SectionCard
-          title="Operation Locations"
+          title={t("overview.operationLocations")}
           icon={MapPin}
           onEdit={isOwner ? () => setEditLocations(true) : undefined}
           hideEdit={!isOwner}
@@ -124,7 +126,7 @@ export function OverviewTab({
             />
           ) : (
             <p className="text-sm text-muted-foreground italic">
-              No operation locations recorded
+              {t("overview.noOperationLocations")}
             </p>
           )}
         </SectionCard>
@@ -132,8 +134,8 @@ export function OverviewTab({
         {/* Core Competencies (AI) */}
         {aiCompetencies && aiCompetencies.length > 0 && (
           <SectionCard
-            title="Core Competencies"
-            description="AI-identified strengths"
+            title={t("overview.coreCompetencies")}
+            description={t("overview.aiIdentifiedStrengths")}
             icon={Award}
             hideEdit
           >
@@ -150,12 +152,12 @@ export function OverviewTab({
         {/* Business Insights */}
         {companyData.digitalMaturity && (
           <SectionCard
-            title="Business Insights"
+            title={t("overview.businessInsights")}
             icon={TrendingUp}
             hideEdit
           >
             <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-              <span className="text-sm font-medium">Digital Maturity</span>
+              <span className="text-sm font-medium">{t("overview.digitalMaturity")}</span>
               <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
                 {companyData.digitalMaturity}
               </Badge>

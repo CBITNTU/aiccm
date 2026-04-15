@@ -10,6 +10,7 @@ import {
   Building2,
 } from "lucide-react";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
+import { useTranslations } from "next-intl";
 
 interface ProjectSummaryProps {
   tender: {
@@ -35,6 +36,7 @@ export function ProjectSummary({
   ownerCompany,
   onCardClick,
 }: ProjectSummaryProps) {
+  const t = useTranslations("ProjectSummary");
   // Generate external URL using the same pattern as TenderViewDialog
   const externalUrl = tender.externalId
     ? `https://www.find-tender.service.gov.uk/Notice/${tender.externalId}?origin=SearchResults&p=1`
@@ -71,7 +73,7 @@ export function ProjectSummary({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {tender.deadline && (
             <div>
-              <div className="text-sm text-muted-foreground mb-1">Deadline</div>
+              <div className="text-sm text-muted-foreground mb-1">{t("deadlineLabel")}</div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 <span className="font-medium">
@@ -83,7 +85,7 @@ export function ProjectSummary({
           {tender.budgetMin && tender.budgetMax && (
             <div>
               <div className="text-sm text-muted-foreground mb-1">
-                Budget Range
+                {t("budgetLabel")}
               </div>
               <div className="flex items-center gap-2">
                 <PoundSterling className="h-4 w-4" />
@@ -96,7 +98,7 @@ export function ProjectSummary({
           )}
           <div>
             <div className="text-sm text-muted-foreground mb-1">
-              Lead Company
+              {t("leadCompanyLabel")}
             </div>
             <div className="font-medium">{ownerCompany?.companyName}</div>
           </div>
@@ -109,7 +111,7 @@ export function ProjectSummary({
         >
           <a href={externalUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-4 w-4 mr-2" />
-            View Tender Details
+            {t("viewTenderButton")}
           </a>
         </Button>
       </CardContent>

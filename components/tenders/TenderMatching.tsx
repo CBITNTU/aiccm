@@ -284,7 +284,7 @@ export function TenderMatching({
         refetchMatchingResults();
       }, 2000);
     },
-    [companyId, refetchMatchingResults],
+    [companyId, refetchMatchingResults, t],
   );
 
   const checkMatchingProgress = useCallback(
@@ -391,7 +391,7 @@ export function TenderMatching({
         console.error("Error checking matching progress:", error);
       }
     },
-    [companyId, invalidateMatchingResults],
+    [companyId, invalidateMatchingResults, t],
   );
 
   useEffect(() => {
@@ -529,7 +529,7 @@ export function TenderMatching({
     } finally {
       setInternalAnalyzing(false);
     }
-  }, [companyId, checkMatchingProgress, fetchMatchingUsage]);
+  }, [companyId, checkMatchingProgress, fetchMatchingUsage, t]);
 
   const runAnalysis = useCallback(() => {
     if (!companyId) {
@@ -568,7 +568,7 @@ export function TenderMatching({
     }
 
     startAnalysis();
-  }, [companyId, companyData, analyzing, matchingProgress, startAnalysis, companyTaxonomyData?.taxonomies?.length, companyStandardsData?.standards?.length, companyCapabilitiesData?.capabilities?.length]);
+  }, [companyId, companyData, analyzing, matchingProgress, startAnalysis, companyTaxonomyData?.taxonomies?.length, companyStandardsData?.standards?.length, companyCapabilitiesData?.capabilities?.length, t]);
 
   const deleteResult = async (resultId: string) => {
     setDeleting(resultId);
@@ -620,7 +620,7 @@ export function TenderMatching({
     <div className="space-y-4">
       {/* Results summary */}
       {!loading && totalCount > 0 && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <ResultsHeader
             total={totalCount}
             start={startIndex + 1}
@@ -630,7 +630,7 @@ export function TenderMatching({
             loading={loading}
             onRefresh={() => refetchMatchingResults()}
           />
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 sm:shrink-0">
             {matchingUsage && !analyzing && (
               <TooltipProvider>
                 <Tooltip>

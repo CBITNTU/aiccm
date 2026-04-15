@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import { CompanySearchDialog } from "./CompanySearchDialog";
+import { useTranslations } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,20 +84,21 @@ export function TeamBuilder({
   analyzing,
   teamAnalysis,
 }: TeamBuilderProps) {
+  const t = useTranslations("TeamBuilder");
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
 
   const getRoleBadge = (role: string) => {
     if (role === "lead") {
       return (
         <Badge className="flex items-center gap-1">
-          <Crown className="h-3 w-3" /> Lead
+          <Crown className="h-3 w-3" /> {t("roleLead")}
         </Badge>
       );
     }
     if (role === "invited") {
-      return <Badge variant="secondary">Invited</Badge>;
+      return <Badge variant="secondary">{t("roleInvited")}</Badge>;
     }
-    return <Badge variant="outline">Member</Badge>;
+    return <Badge variant="outline">{t("roleMember")}</Badge>;
   };
 
   return (
@@ -105,7 +107,7 @@ export function TeamBuilder({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Team Builder ({members.length})
+            {t("title", { count: members.length })}
           </CardTitle>
           <div className="flex gap-2">
             <Button
@@ -114,7 +116,7 @@ export function TeamBuilder({
               size="sm"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Company
+              {t("addCompanyButton")}
             </Button>
             <Button
               onClick={onRunGroupAnalysis}
@@ -124,12 +126,12 @@ export function TeamBuilder({
               {analyzing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Analyzing...
+                  {t("analyzingButton")}
                 </>
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  AI Group Analysis
+                  {t("groupAnalysisButton")}
                 </>
               )}
             </Button>
@@ -139,18 +141,17 @@ export function TeamBuilder({
       <CardContent>
         {members.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            No team members yet. Add partners from recommendations to build your
-            team.
+            {t("noMembers")}
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Company</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Capabilities</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("colCompany")}</TableHead>
+                <TableHead>{t("colRole")}</TableHead>
+                <TableHead>{t("colCapabilities")}</TableHead>
+                <TableHead>{t("colLocation")}</TableHead>
+                <TableHead className="text-right">{t("colActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -166,12 +167,12 @@ export function TeamBuilder({
                   </TableCell>
                   <TableCell>{getRoleBadge(member.role)}</TableCell>
                   <TableCell className="max-w-xs truncate">
-                    {member.companies?.keyCapabilities || "N/A"}
+                    {member.companies?.keyCapabilities || t("notAvailable")}
                   </TableCell>
                   <TableCell>
                     {member.companies?.postcode ||
                       member.companies?.location ||
-                      "N/A"}
+                      t("notAvailable")}
                   </TableCell>
                   <TableCell className="text-right">
                     {member.role !== "lead" && (
@@ -183,19 +184,17 @@ export function TeamBuilder({
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Remove Partner</AlertDialogTitle>
+                            <AlertDialogTitle>{t("removeDialogTitle")}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to remove{" "}
-                              {member.companies?.companyName} from the team?
-                              This action cannot be undone.
+                              {t("removeDialogDesc", { companyName: member.companies?.companyName || "Unknown Company" })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => onRemoveMember(member.id)}
                             >
-                              Remove
+                              {t("removeButton")}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -213,7 +212,7 @@ export function TeamBuilder({
           <div className="mt-6 pt-6 border-t space-y-6">
             <div className="flex items-center gap-2 mb-4">
               <Target className="h-5 w-5 text-green-500" />
-              <h3 className="text-lg font-semibold">Team Analysis Results</h3>
+              <h3 className="text-lg font-semibold">{t("analysisResultsTitle")}</h3>
             </div>
 
             {/* Team Coverage Score */}
@@ -221,7 +220,7 @@ export function TeamBuilder({
               <Card>
                 <CardContent className="pt-6">
                   <Label className="text-sm text-muted-foreground">
-                    Team Coverage
+                    {t("teamCoverageLabel")}
                   </Label>
                   <div className="flex items-baseline gap-2 mt-2">
                     <span className="text-3xl font-bold text-green-600">
@@ -235,10 +234,10 @@ export function TeamBuilder({
                       }
                     >
                       {teamAnalysis.coveragePercentage >= 90
-                        ? "Excellent"
+                        ? t("ratingExcellent")
                         : teamAnalysis.coveragePercentage >= 70
-                          ? "Good"
-                          : "Needs Work"}
+                          ? t("ratingGood")
+                          : t("ratingNeedsWork")}
                     </Badge>
                   </div>
                 </CardContent>
@@ -246,7 +245,7 @@ export function TeamBuilder({
               <Card>
                 <CardContent className="pt-6">
                   <Label className="text-sm text-muted-foreground">
-                    Team Readiness
+                    {t("teamReadinessLabel")}
                   </Label>
                   <div className="flex items-baseline gap-2 mt-2">
                     <span className="text-3xl font-bold text-green-600">
@@ -262,10 +261,10 @@ export function TeamBuilder({
                       }
                     >
                       {teamAnalysis.readinessScore >= 85
-                        ? "Ready to Bid"
+                        ? t("ratingReadyToBid")
                         : teamAnalysis.readinessScore >= 50
-                          ? "Almost Ready"
-                          : "Needs Work"}
+                          ? t("ratingAlmostReady")
+                          : t("ratingNeedsWork")}
                     </Badge>
                   </div>
                 </CardContent>
@@ -278,7 +277,7 @@ export function TeamBuilder({
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">
-                      Team Member Contributions
+                      {t("contributionsTitle")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -312,12 +311,12 @@ export function TeamBuilder({
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-yellow-500" />
-                  Combined Team Competencies
+                  {t("combinedCompetenciesTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="font-semibold">Covered Competencies</Label>
+                  <Label className="font-semibold">{t("coveredCompetencies")}</Label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {teamAnalysis.companyCompetencies.map((comp, idx) => (
                       <Badge
@@ -335,7 +334,7 @@ export function TeamBuilder({
                   teamAnalysis.missingCompetencies.length > 0 && (
                     <div>
                       <Label className="font-semibold text-orange-500">
-                        Remaining Gaps
+                        {t("remainingGaps")}
                       </Label>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {teamAnalysis.missingCompetencies.map((comp, idx) => (
@@ -359,7 +358,7 @@ export function TeamBuilder({
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">
-                      Strategic Recommendations
+                      {t("strategicRecs")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -383,7 +382,7 @@ export function TeamBuilder({
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base text-red-500">
-                    Team Risks
+                    {t("teamRisks")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

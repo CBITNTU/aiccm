@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import type { TenderRecord } from "@/lib/api/types";
+import { useTranslations } from "next-intl";
 
 type Tender = TenderRecord;
 
@@ -47,6 +48,7 @@ export function TenderSearchDialog({
   onSelectTender,
   excludeTenderId,
 }: TenderSearchDialogProps) {
+  const t = useTranslations("TenderSearchDialog");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -78,7 +80,7 @@ export function TenderSearchDialog({
     tenders?.filter((t) => t.id !== excludeTenderId) || [];
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "No deadline";
+    if (!dateStr) return t("noDeadline");
     return new Date(dateStr).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -106,10 +108,10 @@ export function TenderSearchDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Search Tenders
+            {t("title")}
           </DialogTitle>
           <DialogDescription>
-            Search for a tender to link to your project
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -117,7 +119,7 @@ export function TenderSearchDialog({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by title, buyer, or description..."
+            placeholder={t("searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -134,8 +136,8 @@ export function TenderSearchDialog({
           ) : filteredTenders.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               {debouncedQuery
-                ? "No tenders found matching your search"
-                : "No open tenders available"}
+                ? t("noResults")
+                : t("noTenders")}
             </div>
           ) : (
             <div className="space-y-2 py-1">
@@ -195,7 +197,7 @@ export function TenderSearchDialog({
         {/* Footer */}
         <div className="flex justify-end pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("cancelButton")}
           </Button>
         </div>
       </DialogContent>

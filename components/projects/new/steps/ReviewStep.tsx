@@ -19,6 +19,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Company {
@@ -55,6 +56,7 @@ export function ReviewStep({
   onProjectCreated,
   onBack,
 }: ReviewStepProps) {
+  const t = useTranslations("ProjectSummaryStep");
   const { user } = useAuth();
   const createProject = useCreateProject();
   const [capabilityNames, setCapabilityNames] = useState<Map<string, string>>(
@@ -114,12 +116,12 @@ export function ReviewStep({
 
   const handleCreateProject = async () => {
     if (!projectName.trim()) {
-      toast.error("Please enter a project name");
+      toast.error(t("validationProjectName"));
       return;
     }
 
     if (!user) {
-      toast.error("User session not available");
+      toast.error(t("errorNoSession"));
       return;
     }
 
@@ -143,11 +145,9 @@ export function ReviewStep({
       }
 
       if (failedMembers.length > 0) {
-        toast.warning(
-          `Project created, but failed to add: ${failedMembers.join(", ")}. You can add them later from the project page.`,
-        );
+        toast.warning(t("successPartial", { names: failedMembers.join(", ") }));
       } else {
-        toast.success("Project created successfully!");
+        toast.success(t("successCreated"));
       }
       onProjectCreated(project.id as string);
     } catch (error) {
@@ -155,7 +155,7 @@ export function ReviewStep({
       const message =
         error instanceof Error
           ? error.message
-          : "Failed to create project. Please try again.";
+          : t("errorFallback");
       toast.error(message);
     }
   };
@@ -168,14 +168,14 @@ export function ReviewStep({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="w-4 h-4" />
-              Target Tender
+              {t("targetTender")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div>
               <p className="font-medium">{tenderInfo.title}</p>
               <p className="text-sm text-muted-foreground">
-                Buyer: {tenderInfo.buyer}
+                {t("buyer", { buyer: tenderInfo.buyer })}
               </p>
             </div>
           </CardContent>
@@ -185,10 +185,10 @@ export function ReviewStep({
       {/* Project Details Form */}
       <div className="space-y-4">
         <div>
-          <Label htmlFor="project-name">Project Name *</Label>
+          <Label htmlFor="project-name">{t("projectNameLabel")}</Label>
           <Input
             id="project-name"
-            placeholder="e.g., Metal Fabrication Project"
+            placeholder={t("projectNamePlaceholder")}
             value={projectName}
             onChange={(e) => onProjectNameChange(e.target.value)}
             className="mt-1"
@@ -196,10 +196,10 @@ export function ReviewStep({
         </div>
 
         <div>
-          <Label htmlFor="project-description">Project Description</Label>
+          <Label htmlFor="project-description">{t("projectDescriptionLabel")}</Label>
           <Textarea
             id="project-description"
-            placeholder="Describe the project goals and requirements..."
+            placeholder={t("projectDescriptionPlaceholder")}
             value={projectDescription}
             onChange={(e) => onProjectDescriptionChange(e.target.value)}
             rows={3}
@@ -213,13 +213,13 @@ export function ReviewStep({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Zap className="w-4 h-4" />
-            Selected Capabilities ({selectedCapabilities.length})
+            {t("selectedCapabilities")} ({selectedCapabilities.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {selectedCapabilities.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No capabilities selected
+              {t("noCapabilities")}
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -241,7 +241,7 @@ export function ReviewStep({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="w-4 h-4" />
-            Project Team ({selectedCompanies.length + 1} companies)
+            {t("teamTitle", { count: selectedCompanies.length + 1 })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -252,7 +252,7 @@ export function ReviewStep({
               <div className="flex-1">
                 <p className="font-medium">{leadCompanyName}</p>
               </div>
-              <Badge variant="default" className="text-xs">Lead</Badge>
+              <Badge variant="default" className="text-xs">{t("badgeLead")}</Badge>
             </div>
             {/* Partner companies */}
             {selectedCompanies.map((company) => (
@@ -280,7 +280,7 @@ export function ReviewStep({
       <div className="flex justify-between gap-2 pt-4 border-t">
         <Button variant="outline" onClick={onBack} disabled={createProject.isPending}>
           <ChevronLeft className="w-4 h-4 mr-2" />
-          Back
+          {t("back")}
         </Button>
         <Button
           onClick={handleCreateProject}
@@ -290,12 +290,12 @@ export function ReviewStep({
           {createProject.isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating...
+              {t("creating")}
             </>
           ) : (
             <>
               <CheckCircle2 className="w-4 h-4 mr-2" />
-              Create Project
+              {t("createProject")}
             </>
           )}
         </Button>

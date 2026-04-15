@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ export function CompanyStandardsSelector({
   isEditLocked = false,
   hasPendingDraft = false,
 }: CompanyStandardsSelectorProps) {
+  const t = useTranslations("CompanyPage");
   const [selectedStandardIds, setSelectedStandardIds] = useState<string[]>([]);
   const [standardNames, setStandardNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,7 @@ export function CompanyStandardsSelector({
       setStandardNames(Object.fromEntries(standards.map((s) => [s.id, s.name])));
     } catch (error) {
       console.error("Error fetching company standards:", error);
-      toast.error("Failed to load standards");
+      toast.error(t("standardsSelector.failedToLoad"));
     } finally {
       setLoading(false);
     }
@@ -58,7 +60,7 @@ export function CompanyStandardsSelector({
       setSaving(true);
       const result = await api.syncStandards(companyId, standardIds);
       if (result.draftSaved) {
-        toast.success(result.message || "Standards changes saved as draft.");
+        toast.success(result.message || t("standardsSelector.changesSavedDraft"));
         setEditMode(false);
         onUpdate?.();
       } else {
@@ -71,7 +73,7 @@ export function CompanyStandardsSelector({
       }
     } catch (error) {
       console.error("Error saving standards:", error);
-      const message = error instanceof Error ? error.message : "Failed to save standards";
+      const message = error instanceof Error ? error.message : t("standardsSelector.failedToSave");
       toast.error(message);
       await fetchCompanyStandards();
     } finally {
@@ -113,25 +115,25 @@ export function CompanyStandardsSelector({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Award className="h-5 w-5" />
-          Standards & Certifications
+          {t("standardsSelector.title")}
         </CardTitle>
         <CardDescription>
           {isEditLocked ? (
             <span className="flex items-center gap-1 text-amber-600">
               <Clock className="h-3.5 w-3.5" />
-              Editing locked while changes are under review.
+              {t("standardsSelector.editingLocked")}
             </span>
           ) : hasPendingDraft ? (
             <span className="flex items-center gap-1 text-amber-600">
               <Clock className="h-3.5 w-3.5" />
-              Standards changes saved as draft.
+              {t("standardsSelector.changesSavedDraft")}
             </span>
           ) : editMode ? (
-            "Select standards and certifications your company holds. Only standards relevant to your selected markets are shown. Changes are saved automatically."
+            t("standardsSelector.selectDesc")
           ) : (
-            "Standards and certifications your company holds."
+            t("standardsSelector.viewDesc")
           )}
-          {saving && <span className="ml-2 text-primary">Saving...</span>}
+          {saving && <span className="ml-2 text-primary">{t("standardsSelector.saving")}</span>}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -140,7 +142,7 @@ export function CompanyStandardsSelector({
             <div className="flex flex-wrap gap-2">
               {selectedStandardIds.length === 0 ? (
                 <span className="text-sm text-muted-foreground">
-                  No standards selected.
+                  {t("standardsSelector.noStandardsSelected")}
                 </span>
               ) : (
                 selectedStandardIds.map((id) => (
@@ -159,7 +161,7 @@ export function CompanyStandardsSelector({
                 className="gap-1"
               >
                 <Pencil className="h-3 w-3" />
-                Edit
+                {t("standardsSelector.edit")}
               </Button>
             )}
           </>
@@ -168,7 +170,7 @@ export function CompanyStandardsSelector({
             {selectedStandardIds.length > 0 && (
               <div className="space-y-2 p-4 bg-muted/30 rounded-lg border">
                 <h3 className="font-semibold text-sm">
-                  Currently Selected ({selectedStandardIds.length})
+                  {t("standardsSelector.currentlySelected", { count: selectedStandardIds.length })}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {selectedStandardIds.map((id) => (
@@ -190,7 +192,7 @@ export function CompanyStandardsSelector({
               size="sm"
               onClick={() => setEditMode(false)}
             >
-              Done
+              {t("standardsSelector.done")}
             </Button>
           </>
         )}

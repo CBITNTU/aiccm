@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
   useProjects,
   type ProjectStatus,
@@ -36,6 +37,7 @@ export function ProjectList({
   filter,
   onFilterChange,
 }: ProjectListProps) {
+  const t = useTranslations("ProjectList");
   const {
     data: projects,
     isLoading,
@@ -89,21 +91,21 @@ export function ProjectList({
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="active" className="flex items-center gap-1.5">
                 <Briefcase className="h-3.5 w-3.5" />
-                Active
+                {t("tabActive")}
               </TabsTrigger>
               <TabsTrigger
                 value="completed"
                 className="flex items-center gap-1.5"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Done
+                {t("tabDone")}
               </TabsTrigger>
               <TabsTrigger
                 value="archived"
                 className="flex items-center gap-1.5"
               >
                 <Archive className="h-3.5 w-3.5" />
-                Archived
+                {t("tabArchived")}
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -134,10 +136,10 @@ export function ProjectList({
               >
                 <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground">
-                  No {filter} projects found
+                  {t("emptyTitle", { filter })}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Create a new project to get started
+                  {t("emptyDesc")}
                 </p>
               </motion.div>
             )}
@@ -156,16 +158,18 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
+  const t = useTranslations("ProjectList");
+
   const statusBadge = () => {
     switch (project.status) {
       case "draft":
-        return <Badge variant="outline">Draft</Badge>;
+        return <Badge variant="outline">{t("statusDraft")}</Badge>;
       case "active":
-        return <Badge variant="default">Active</Badge>;
+        return <Badge variant="default">{t("statusActive")}</Badge>;
       case "completed":
-        return <Badge variant="secondary">Completed</Badge>;
+        return <Badge variant="secondary">{t("statusCompleted")}</Badge>;
       case "archived":
-        return <Badge variant="outline">Archived</Badge>;
+        return <Badge variant="outline">{t("statusArchived")}</Badge>;
       default:
         return <Badge variant="outline">{project.status}</Badge>;
     }
@@ -199,7 +203,7 @@ function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
         <div className="flex items-center gap-1.5">
           {project.userRole === "member" && (
             <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-200">
-              Member
+              {t("badgeMember")}
             </Badge>
           )}
           {statusBadge()}
@@ -216,13 +220,13 @@ function ProjectCard({ project, isSelected, onClick }: ProjectCardProps) {
       <div className="flex items-center gap-2 flex-wrap">
         {gapCoverage !== undefined && (
           <Badge variant="outline" className="text-xs">
-            {Math.round(gapCoverage)}% coverage
+            {t("badgeCoverage", { pct: Math.round(gapCoverage) })}
           </Badge>
         )}
         {teamCoverage !== undefined && teamCoverage !== gapCoverage && (
           <Badge variant="outline" className="text-xs bg-green-500/10">
             <Users className="h-3 w-3 mr-1" />
-            {Math.round(teamCoverage)}% team
+            {t("badgeTeam", { pct: Math.round(teamCoverage) })}
           </Badge>
         )}
       </div>

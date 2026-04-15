@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { CompanyDetailView } from "@/components/directory/CompanyDetailView";
 import type { CompanyRecord as Company } from "@/lib/api/types";
+import { useTranslations } from "next-intl";
 type PublicCompany = Pick<
   Company,
   | "id"
@@ -43,6 +44,8 @@ export function CompanyDetailModal({
   onOpenChange,
   readOnly = false,
 }: CompanyDetailModalProps) {
+  const t = useTranslations("Directory");
+
   if (!company) return null;
 
   return (
@@ -51,7 +54,7 @@ export function CompanyDetailModal({
         <DialogHeader className="sr-only">
           <DialogTitle>{company.companyName}</DialogTitle>
           <DialogDescription>
-            {company.description ?? "Company details"}
+            {company.description ?? t("companyDetailModal.dialogDescription")}
           </DialogDescription>
         </DialogHeader>
         <CompanyDetailView company={company} readOnly={readOnly} />

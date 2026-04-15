@@ -31,6 +31,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Loader2,
   Users,
@@ -140,6 +141,7 @@ interface TeamMember {
 }
 
 export default function ConsultingPage() {
+  const t = useTranslations("VOPage");
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -230,7 +232,7 @@ export default function ConsultingPage() {
       }
     } catch (error) {
       console.error("Error loading projects:", error);
-      toast.error("Failed to load projects");
+      toast.error(t("errorLoadProjects"));
       setProjects([]);
     } finally {
       setLoading(false);
@@ -248,7 +250,7 @@ export default function ConsultingPage() {
       await loadProjectData(projectId);
     } catch (error) {
       console.error("Error loading new project:", error);
-      toast.error("Project created but failed to load");
+      toast.error(t("errorLoadNewProject"));
     } finally {
       setLoading(false);
     }
@@ -267,9 +269,7 @@ export default function ConsultingPage() {
         ownerCompany &&
         project.leadCompanyId !== ownerCompany.id
       ) {
-        toast.error(
-          "Project does not belong to the selected company. Please select the correct company.",
-        );
+        toast.error(t("errorWrongCompany"));
         return;
       }
 
@@ -309,7 +309,7 @@ export default function ConsultingPage() {
   ) => {
     try {
       setAnalyzing(true);
-      toast.info("Starting gap analysis...");
+      toast.info(t("gapAnalysisStarting"));
 
       const aiData = await api.analyzeProjectSimple({
         projectId: voId,
@@ -401,14 +401,15 @@ export default function ConsultingPage() {
       const partnerCount = recommendations.length;
       const gaps = analysis.missingCompetencies?.length || 0;
 
-      toast.success(
-        `Gap analysis complete! Coverage: ${analysis.coveragePercentage}%, ` +
-          `${gaps} gaps identified, ${partnerCount} partners recommended`,
-      );
+      toast.success(t("gapAnalysisComplete", {
+        coverage: analysis.coveragePercentage,
+        gaps,
+        partnerCount,
+      }));
     } catch (error) {
       console.error("Error running gap analysis:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to run gap analysis",
+        error instanceof Error ? error.message : t("gapAnalysisError"),
       );
     } finally {
       setAnalyzing(false);
@@ -423,7 +424,7 @@ export default function ConsultingPage() {
   ) => {
     try {
       setAnalyzing(true);
-      toast.info("Starting team analysis...");
+      toast.info(t("teamAnalysisStarting"));
 
       const result = await api.analyzeTeam({
         projectId: voId,
@@ -463,14 +464,14 @@ export default function ConsultingPage() {
 
       const gaps = teamAnalysisData.missingCompetencies?.length || 0;
 
-      toast.success(
-        `Team analysis complete! Coverage: ${teamAnalysisData.coveragePercentage}%, ` +
-          `${gaps} gaps remaining with current team`,
-      );
+      toast.success(t("teamAnalysisComplete", {
+        coverage: teamAnalysisData.coveragePercentage,
+        gaps,
+      }));
     } catch (error) {
       console.error("Error running team analysis:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to run team analysis",
+        error instanceof Error ? error.message : t("teamAnalysisError"),
       );
     } finally {
       setAnalyzing(false);
@@ -485,15 +486,15 @@ export default function ConsultingPage() {
         projectId: selectedProject.id,
         companyId: partnerId,
       });
-      toast.success("Partner added to team");
+      toast.success(t("partnerAdded"));
       await loadProjectData(selectedProject.id);
     } catch (error) {
       console.error("Error adding partner:", error);
       const message = error instanceof Error ? error.message : "Failed to add partner";
       if (message.includes("duplicate") || message.includes("already")) {
-        toast.error("Company is already a team member");
+        toast.error(t("partnerAlreadyMember"));
       } else {
-        toast.error("Failed to add partner");
+        toast.error(t("partnerAddError"));
       }
     }
   };
@@ -507,23 +508,21 @@ export default function ConsultingPage() {
         projectId: selectedProject.id,
       });
       await loadProjectData(selectedProject.id);
-      toast.success("Partner removed from team");
+      toast.success(t("partnerRemoved"));
     } catch (error) {
       console.error("Error removing partner:", error);
-      toast.error("Failed to remove partner");
+      toast.error(t("partnerRemoveError"));
     }
   };
 
   const handleRunGapAnalysis = async () => {
     if (!selectedProject || !ownerCompany || !tender) {
-      toast.error("Missing project, company, or tender information");
+      toast.error(t("missingInfo"));
       return;
     }
 
     if (selectedProject.leadCompanyId !== ownerCompany.id) {
-      toast.error(
-        "Company mismatch: This project belongs to a different company.",
-      );
+      toast.error(t("companyMismatch"));
       return;
     }
 
@@ -531,29 +530,27 @@ export default function ConsultingPage() {
       const data = await api.getCompany(selectedProject.leadCompanyId);
       const leadCompany = data.company;
       if (!leadCompany) {
-        toast.error("Failed to load company information");
+        toast.error(t("errorLoadCompany"));
         return;
       }
       await runGapAnalysis(selectedProject.id, leadCompany, tender);
     } catch {
-      toast.error("Failed to load company information");
+      toast.error(t("errorLoadCompany"));
     }
   };
 
   const handleRunTeamAnalysis = async () => {
     if (!selectedProject || !ownerCompany || !tender) {
-      toast.error("Missing project, company, or tender information");
+      toast.error(t("missingInfo"));
       return;
     }
     if (teamMembers.length === 0) {
-      toast.error("Add at least one partner before running team analysis");
+      toast.error(t("needPartnerFirst"));
       return;
     }
 
     if (selectedProject.leadCompanyId !== ownerCompany.id) {
-      toast.error(
-        "Company mismatch: This project belongs to a different company.",
-      );
+      toast.error(t("companyMismatch"));
       return;
     }
 
@@ -561,12 +558,12 @@ export default function ConsultingPage() {
       const data = await api.getCompany(selectedProject.leadCompanyId);
       const leadCompany = data.company;
       if (!leadCompany) {
-        toast.error("Failed to load company information");
+        toast.error(t("errorLoadCompany"));
         return;
       }
       await runTeamAnalysis(selectedProject.id, leadCompany, tender, teamMembers);
     } catch {
-      toast.error("Failed to load company information");
+      toast.error(t("errorLoadCompany"));
     }
   };
 
@@ -574,7 +571,7 @@ export default function ConsultingPage() {
     if (!selectedProject?.id) return;
 
     try {
-      toast.info("Sending invitations...");
+      toast.info(t("sendingInvitations"));
 
       await api.sendProjectInvitations(
         selectedProject.id,
@@ -582,10 +579,10 @@ export default function ConsultingPage() {
         selectedPartnerIds,
       );
 
-      toast.success(`Sent ${selectedPartnerIds.length} invitation(s)`);
+      toast.success(t("invitationsSent", { count: selectedPartnerIds.length }));
     } catch (error) {
       console.error("Error sending invitations:", error);
-      toast.error("Failed to send invitations");
+      toast.error(t("invitationsError"));
     }
   };
 
@@ -593,7 +590,7 @@ export default function ConsultingPage() {
     newStatus: "delete" | "archived" | "completed",
   ) => {
     if (!selectedProject) {
-      toast.error("No project selected");
+      toast.error(t("noProjectSelected"));
       return;
     }
 
@@ -604,28 +601,28 @@ export default function ConsultingPage() {
     };
 
     const confirmMove = window.confirm(
-      `Are you sure you want to ${statusLabels[newStatus]} "${
-        selectedProject.name
-      }"? ${newStatus === "delete" ? "This action cannot be undone." : ""}`,
+      t("confirmActionPrompt", {
+        action: statusLabels[newStatus],
+        projectName: selectedProject.name,
+        conditionalText: newStatus === "delete" ? t("actionCannotBeUndone") : "",
+      }),
     );
 
     if (!confirmMove) return;
 
     try {
       if (newStatus === "delete") {
-        toast.info("Deleting project...");
+        toast.info(t("deletingProject"));
         await deleteProjectMutation.mutateAsync({ projectId: selectedProject.id });
-        toast.success("Project deleted successfully");
+        toast.success(t("projectDeleted"));
       } else {
-        toast.info(`Moving project to ${newStatus}...`);
+        toast.info(t("movingProject", { status: newStatus }));
         await updateProjectStatusMutation.mutateAsync({
           projectId: selectedProject.id,
           status: newStatus,
         });
         toast.success(
-          `Project ${
-            newStatus === "completed" ? "marked as completed" : "archived"
-          } successfully`,
+          newStatus === "completed" ? t("projectMarkedCompleted") : t("projectArchived"),
         );
       }
 
@@ -648,7 +645,7 @@ export default function ConsultingPage() {
     } catch (error) {
       console.error("Error moving project:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to move project",
+        error instanceof Error ? error.message : t("moveProjectError"),
       );
     }
   };
@@ -673,9 +670,9 @@ export default function ConsultingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold">Build Your Consulting Team</h1>
+              <h1 className="text-3xl font-bold">{t("pageTitle")}</h1>
               <p className="text-muted-foreground mt-2">
-                Create projects, analyze tenders, and form winning consortiums
+                {t("pageSubtitle")}
               </p>
             </div>
 
@@ -684,10 +681,10 @@ export default function ConsultingPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Building2 className="h-5 w-5" />
-                    No Organization Selected
+                    {t("noOrgTitle")}
                   </CardTitle>
                   <CardDescription>
-                    Select an organization from the sidebar to manage your consulting projects
+                    {t("noOrgDescription")}
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -696,11 +693,11 @@ export default function ConsultingPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Briefcase className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Projects Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">{t("noProjectsTitle")}</h3>
                 <p className="text-muted-foreground text-center mb-6 max-w-md">
                   {ownerCompany
-                    ? "Start by creating a consulting project. You can link it to a tender and build your team."
-                    : "Please select a company from the sidebar to start creating projects."}
+                    ? t("noProjectsDescWithOrg")
+                    : t("noProjectsDescNoOrg")}
                 </p>
                 <div className="flex gap-3">
                   <Button
@@ -715,14 +712,14 @@ export default function ConsultingPage() {
                     disabled={!ownerCompany}
                   >
                     <Plus className="h-5 w-5 mr-2" />
-                    Create Your First Project
+                    {t("createFirstProject")}
                   </Button>
                   <Button
                     onClick={() => router.push("/tenders")}
                     variant="outline"
                     size="lg"
                   >
-                    Browse Tenders
+                    {t("browseTenders")}
                   </Button>
                 </div>
               </CardContent>
@@ -740,10 +737,9 @@ export default function ConsultingPage() {
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Consulting Team Builder</h1>
+              <h1 className="text-3xl font-bold">{t("builderTitle")}</h1>
               <p className="text-muted-foreground mt-2">
-                Analyze requirements, find partners, and build winning
-                consortiums
+                {t("builderSubtitle")}
               </p>
             </div>
             {!tenderId && ownerCompany && (
@@ -753,7 +749,7 @@ export default function ConsultingPage() {
                 }
               >
                 <Plus className="h-5 w-5 mr-2" />
-                New Project
+                {t("newProject")}
               </Button>
             )}
           </div>
@@ -770,15 +766,15 @@ export default function ConsultingPage() {
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="active">
                   <Briefcase className="h-4 w-4 mr-2" />
-                  Active
+                  {t("tabActive")}
                 </TabsTrigger>
                 <TabsTrigger value="completed">
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Completed
+                  {t("tabCompleted")}
                 </TabsTrigger>
                 <TabsTrigger value="archived">
                   <Archive className="h-4 w-4 mr-2" />
-                  Archived
+                  {t("tabArchived")}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -795,13 +791,10 @@ export default function ConsultingPage() {
                   <Archive className="h-16 w-16 text-muted-foreground mb-4" />
                 )}
                 <h3 className="text-xl font-semibold mb-2">
-                  No{" "}
-                  {projectFilter.charAt(0).toUpperCase() +
-                    projectFilter.slice(1)}{" "}
-                  Projects
+                  {projectFilter === "completed" ? t("noCompletedProjects") : t("noArchivedProjects")}
                 </h3>
                 <p className="text-muted-foreground text-center max-w-md">
-                  You don&apos;t have any {projectFilter} projects yet.
+                  {t("emptyFilteredDesc", { projectFilter })}
                 </p>
               </CardContent>
             </Card>
@@ -814,7 +807,7 @@ export default function ConsultingPage() {
                 <div className="flex items-center gap-4">
                   <FolderOpen className="h-5 w-5 text-muted-foreground" />
                   <div className="flex-1">
-                    <Label htmlFor="project-select">Select Project:</Label>
+                    <Label htmlFor="project-select">{t("selectProjectLabel")}</Label>
                     <div className="flex gap-2 mt-2">
                       <Select
                         value={selectedProject?.id || ""}
@@ -824,7 +817,7 @@ export default function ConsultingPage() {
                         }}
                       >
                         <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select a project">
+                          <SelectValue placeholder={t("selectProjectPlaceholder")}>
                             {selectedProject ? (
                               <span>
                                 {selectedProject.name}
@@ -835,7 +828,7 @@ export default function ConsultingPage() {
                                 )}
                               </span>
                             ) : (
-                              "Select a project"
+                              t("selectProjectPlaceholder")
                             )}
                           </SelectValue>
                         </SelectTrigger>
@@ -850,7 +843,7 @@ export default function ConsultingPage() {
                                 </span>
                                 {ownerCompany && (
                                   <span className="text-xs text-muted-foreground">
-                                    Lead: {ownerCompany.companyName}
+                                    {t("leadCompany", { companyName: ownerCompany.companyName })}
                                   </span>
                                 )}
                               </div>
@@ -864,7 +857,7 @@ export default function ConsultingPage() {
                             <Button
                               variant="destructive"
                               size="icon"
-                              title="Project actions"
+                              title={t("projectActions")}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -874,19 +867,19 @@ export default function ConsultingPage() {
                               onClick={() => handleMoveProject("delete")}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Project
+                              {t("deleteProject")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleMoveProject("archived")}
                             >
                               <Archive className="h-4 w-4 mr-2" />
-                              Archive Project
+                              {t("archiveProject")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleMoveProject("completed")}
                             >
                               <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Mark as Completed
+                              {t("markCompleted")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -918,11 +911,10 @@ export default function ConsultingPage() {
                   <div>
                     <h2 className="text-2xl font-semibold flex items-center gap-2">
                       <Target className="h-6 w-6" />
-                      Step 1: Gap Analysis
+                      {t("step1Title")}
                     </h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Analyze your company&apos;s capabilities vs tender
-                      requirements
+                      {t("step1Subtitle")}
                     </p>
                   </div>
                   <Button
@@ -933,14 +925,14 @@ export default function ConsultingPage() {
                     {analyzing ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Analyzing...
+                        {t("analyzing")}
                       </>
                     ) : (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2" />
                         {gapAnalysis
-                          ? "Re-run Gap Analysis"
-                          : "Run Gap Analysis"}
+                          ? t("rerunGapAnalysis")
+                          : t("runGapAnalysis")}
                       </>
                     )}
                   </Button>
@@ -951,17 +943,16 @@ export default function ConsultingPage() {
                     <CardContent className="py-8 text-center">
                       <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-semibold mb-2">
-                        No Tender Selected
+                        {t("noTenderTitle")}
                       </h3>
                       <p className="text-muted-foreground mb-4">
-                        This project is not linked to a tender. Link a tender to
-                        run deep analysis.
+                        {t("noTenderDesc")}
                       </p>
                       <Button
                         onClick={() => router.push("/tenders")}
                         variant="outline"
                       >
-                        Browse Tenders
+                        {t("browseTenders")}
                       </Button>
                     </CardContent>
                   </Card>
@@ -972,12 +963,10 @@ export default function ConsultingPage() {
                     <CardContent className="py-8 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
                       <h3 className="font-semibold mb-2">
-                        AI Analysis in Progress
+                        {t("aiProgressTitle")}
                       </h3>
                       <p className="text-muted-foreground max-w-md mx-auto">
-                        Analyzing tender requirements, comparing with your
-                        team&apos;s competencies, identifying gaps, and
-                        searching for recommended partners from the database...
+                        {t("aiProgressDesc")}
                       </p>
                     </CardContent>
                   </Card>
@@ -1027,10 +1016,10 @@ export default function ConsultingPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Team Members
+                    {t("teamMembersTitle")}
                   </CardTitle>
                   <CardDescription>
-                    Companies that were part of this project
+                    {t("teamMembersDesc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1065,7 +1054,7 @@ export default function ConsultingPage() {
                     </div>
                   ) : (
                     <p className="text-muted-foreground text-center py-4">
-                      No team members were added to this project
+                      {t("noTeamMembers")}
                     </p>
                   )}
                 </CardContent>

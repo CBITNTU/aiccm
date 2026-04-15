@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { InviteTeamMemberDialog } from "./InviteTeamMemberDialog";
+import { useTranslations } from "next-intl";
 
 interface JoinRequest {
   id: string;
@@ -79,13 +80,15 @@ interface TeamMembersCardProps {
 
 export function TeamMembersCard({
   companyId,
-  companyName = "Company",
+  companyName: companyNameProp,
   variant = "full",
   showRequests = true,
   isSmeOwner = false,
   currentUserId,
   onInviteSent,
 }: TeamMembersCardProps) {
+  const t = useTranslations("CompanyPage");
+  const companyName = companyNameProp ?? t("team.defaultCompanyName");
   const router = useRouter();
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -146,7 +149,7 @@ export function TeamMembersCard({
     } catch (error) {
       console.error("Error fetching member data:", error);
       if (variant === "full") {
-        toast.error("Failed to fetch member data");
+        toast.error(t("team.failedToFetch"));
       }
     } finally {
       setLoading(false);
@@ -169,15 +172,15 @@ export function TeamMembersCard({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to approve request");
+        throw new Error(data.error || t("team.failedApprove"));
       }
 
-      toast.success(`${userName}'s request has been approved`);
+      toast.success(t("team.approvedToast", { name: userName }));
       fetchData();
     } catch (error) {
       console.error("Error approving request:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to approve request",
+        error instanceof Error ? error.message : t("team.failedApprove"),
       );
     } finally {
       setActionLoading(null);
@@ -201,17 +204,17 @@ export function TeamMembersCard({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to reject request");
+        throw new Error(data.error || t("team.failedReject"));
       }
 
-      toast.success(`${rejectDialog.name}'s request has been rejected`);
+      toast.success(t("team.rejectedToast", { name: rejectDialog.name }));
       setRejectDialog(null);
       setRejectionReason("");
       fetchData();
     } catch (error) {
       console.error("Error rejecting request:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reject request",
+        error instanceof Error ? error.message : t("team.failedReject"),
       );
     } finally {
       setActionLoading(null);
@@ -234,16 +237,16 @@ export function TeamMembersCard({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to remove member");
+        throw new Error(data.error || t("team.failedRemove"));
       }
 
-      toast.success(`${removeDialog.name} has been removed from the team`);
+      toast.success(t("team.removedToast", { name: removeDialog.name }));
       setRemoveDialog(null);
       fetchData();
     } catch (error) {
       console.error("Error removing member:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to remove member",
+        error instanceof Error ? error.message : t("team.failedRemove"),
       );
     } finally {
       setActionLoading(null);
@@ -283,13 +286,13 @@ export function TeamMembersCard({
             <div>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Users className="w-5 h-5" />
-                Team Members
+                {t("team.title")}
               </CardTitle>
               <CardDescription>
-                {members.length} member{members.length !== 1 ? "s" : ""}
+                {members.length !== 1 ? t("team.memberCountPlural", { count: members.length }) : t("team.memberCount", { count: members.length })}
                 {pendingCount > 0 && (
                   <Badge variant="destructive" className="ml-2">
-                    {pendingCount} pending
+                    {pendingCount} {t("team.pending")}
                   </Badge>
                 )}
               </CardDescription>
@@ -300,7 +303,7 @@ export function TeamMembersCard({
                 size="sm"
                 onClick={() => router.push("/my-company?tab=team")}
               >
-                Manage Team
+                {t("team.manageTeam")}
               </Button>
             )}
           </div>
@@ -310,8 +313,8 @@ export function TeamMembersCard({
             {members.slice(0, 3).map((member) => {
               const userName = member.user
                 ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() ||
-                  "Unknown"
-                : "Unknown";
+                  t("team.unknownUser")
+                : t("team.unknownUser");
               const isAdmin = member.role === "admin";
               const isPendingPlatformApproval =
                 member.status === "pending_platform_approval";
@@ -338,12 +341,12 @@ export function TeamMembersCard({
                       variant="outline"
                       className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200"
                     >
-                      Pending
+                      {t("team.pendingBadge")}
                     </Badge>
                   ) : (
                     isAdmin && (
                       <Badge variant="secondary" className="text-xs">
-                        Admin
+                        {t("team.adminBadge")}
                       </Badge>
                     )
                   )}
@@ -352,11 +355,11 @@ export function TeamMembersCard({
             })}
             {members.length > 3 && (
               <p className="text-xs text-muted-foreground">
-                +{members.length - 3} more
+                {t("team.moreMembers", { count: members.length - 3 })}
               </p>
             )}
             {members.length === 0 && (
-              <p className="text-sm text-muted-foreground">No members yet</p>
+              <p className="text-sm text-muted-foreground">{t("team.noMembersYet")}</p>
             )}
           </div>
         </CardContent>
@@ -373,16 +376,16 @@ export function TeamMembersCard({
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                Team Members
+                {t("team.title")}
               </CardTitle>
               <CardDescription>
-                Manage team members and review join requests
+                {t("team.description")}
               </CardDescription>
             </div>
             {isSmeOwner && companyId && (
               <Button onClick={() => setInviteDialogOpen(true)}>
                 <UserPlus className="w-4 h-4 mr-2" />
-                Invite
+                {t("team.invite")}
               </Button>
             )}
           </div>
@@ -393,15 +396,15 @@ export function TeamMembersCard({
             <div>
               <h4 className="font-semibold flex items-center gap-2 mb-3">
                 <UserPlus className="w-4 h-4" />
-                Pending Requests
+                {t("team.pendingRequests")}
                 <Badge variant="destructive">{pendingCount}</Badge>
               </h4>
               <div className="space-y-3">
                 {requests.map((request) => {
                   const userName = request.user
                     ? `${request.user.firstName || ""} ${request.user.lastName || ""}`.trim() ||
-                      "Unknown"
-                    : "Unknown";
+                      t("team.unknownUser")
+                    : t("team.unknownUser");
 
                   return (
                     <div
@@ -412,7 +415,7 @@ export function TeamMembersCard({
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium">{userName}</span>
-                            <Badge variant="outline">Pending</Badge>
+                            <Badge variant="outline">{t("team.pendingBadge")}</Badge>
                           </div>
                           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                             {request.user?.email && (
@@ -452,7 +455,7 @@ export function TeamMembersCard({
                             disabled={actionLoading === request.id}
                           >
                             <XCircle className="w-4 h-4 mr-1" />
-                            Reject
+                            {t("team.reject")}
                           </Button>
                           <Button
                             size="sm"
@@ -464,7 +467,7 @@ export function TeamMembersCard({
                             ) : (
                               <CheckCircle className="w-4 h-4 mr-1" />
                             )}
-                            Approve
+                            {t("team.approve")}
                           </Button>
                         </div>
                       </div>
@@ -479,21 +482,21 @@ export function TeamMembersCard({
           <div>
             <h4 className="font-semibold flex items-center gap-2 mb-3">
               <Users className="w-4 h-4" />
-              Current Members
+              {t("team.currentMembers")}
               <Badge variant="secondary">{members.length}</Badge>
             </h4>
             {members.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                <p>No team members yet</p>
+                <p>{t("team.noTeamMembersYet")}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {members.map((member) => {
                   const userName = member.user
                     ? `${member.user.firstName || ""} ${member.user.lastName || ""}`.trim() ||
-                      "Unknown"
-                    : "Unknown";
+                      t("team.unknownUser")
+                    : t("team.unknownUser");
                   const isAdmin = member.role === "admin";
                   const isSelf = currentUserId === member.userId;
                   const isPendingPlatformApproval =
@@ -532,17 +535,17 @@ export function TeamMembersCard({
                                 variant="outline"
                                 className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200"
                               >
-                                Pending Platform Approval
+                                {t("team.pendingPlatformApproval")}
                               </Badge>
                             )}
                             {isAdmin && !isPendingPlatformApproval && (
                               <Badge className="bg-primary/10 text-primary text-xs">
-                                Admin
+                                {t("team.adminBadge")}
                               </Badge>
                             )}
                             {isSelf && (
                               <Badge variant="outline" className="text-xs">
-                                You
+                                {t("team.youBadge")}
                               </Badge>
                             )}
                           </div>
@@ -555,7 +558,7 @@ export function TeamMembersCard({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">
-                          {isPendingPlatformApproval ? "Requested" : "Joined"}{" "}
+                          {isPendingPlatformApproval ? t("team.requested") : t("team.joined")}{" "}
                           {formatDate(member.createdAt)}
                         </span>
                         {canRemove && (
@@ -603,18 +606,18 @@ export function TeamMembersCard({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Reject {rejectDialog?.name}&apos;s Request
+              {t("team.rejectDialogTitle", { name: rejectDialog?.name ?? "" })}
             </DialogTitle>
             <DialogDescription>
-              This will reject their request to join your company.
+              {t("team.rejectDialogDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="rejection-reason">Reason (optional)</Label>
+              <Label htmlFor="rejection-reason">{t("team.rejectReasonLabel")}</Label>
               <Textarea
                 id="rejection-reason"
-                placeholder="Enter reason for rejection..."
+                placeholder={t("team.rejectReasonPlaceholder")}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={3}
@@ -629,7 +632,7 @@ export function TeamMembersCard({
                 setRejectionReason("");
               }}
             >
-              Cancel
+              {t("team.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -641,7 +644,7 @@ export function TeamMembersCard({
               ) : (
                 <XCircle className="w-4 h-4 mr-1" />
               )}
-              Reject Request
+              {t("team.rejectRequest")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -658,15 +661,14 @@ export function TeamMembersCard({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove {removeDialog?.name}</DialogTitle>
+            <DialogTitle>{t("team.removeDialogTitle", { name: removeDialog?.name ?? "" })}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove {removeDialog?.name} from the
-              team? They will lose access to the company.
+              {t("team.removeDialogDescription", { name: removeDialog?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRemoveDialog(null)}>
-              Cancel
+              {t("team.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -678,7 +680,7 @@ export function TeamMembersCard({
               ) : (
                 <Trash2 className="w-4 h-4 mr-1" />
               )}
-              Remove Member
+              {t("team.removeMember")}
             </Button>
           </DialogFooter>
         </DialogContent>

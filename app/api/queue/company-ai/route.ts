@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, checkSuperadminRole } from "@/lib/api";
+import { isCompanyMember } from "@/lib/api/validation";
 import { enqueueJob } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
@@ -14,9 +15,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is superadmin (for system companies) or owns the company
-    await checkSuperadminRole(user.id);
-
     const { companyId, jobTypes, fullRegeneration } = await request.json();
 
     if (!companyId) {
@@ -24,6 +22,17 @@ export async function POST(request: NextRequest) {
         { success: false, error: "Company ID required" },
         { status: 400 },
       );
+    }
+
+    const isSuperadmin = await checkSuperadminRole(user.id);
+    if (!isSuperadmin) {
+      const hasCompanyAccess = await isCompanyMember(user.id, companyId);
+      if (!hasCompanyAccess) {
+        return NextResponse.json(
+          { success: false, error: "No access to this company" },
+          { status: 403 },
+        );
+      }
     }
 
     const jobsToQueue = jobTypes || ["company_summary", "company_taxonomy"];

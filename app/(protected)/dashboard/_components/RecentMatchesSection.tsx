@@ -31,7 +31,7 @@ export function RecentMatchesSection({
   return (
     <Card className="mb-8">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
@@ -43,7 +43,7 @@ export function RecentMatchesSection({
                 : t("recentMatches.descriptionFallback")}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               variant="outline"
               onClick={() => router.push("/tenders?tab=matches")}
@@ -66,7 +66,7 @@ export function RecentMatchesSection({
           {matches.map((match) => (
             <div
               key={match.id}
-              className="flex items-center justify-between p-4 border hover:bg-muted/50 transition-colors rounded-2xl"
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border hover:bg-muted/50 transition-colors rounded-2xl"
             >
               <div className="flex-1">
                 <h4 className="font-semibold">{match.tenders?.title}</h4>
@@ -93,6 +93,7 @@ export function RecentMatchesSection({
                 variant="ghost"
                 size="sm"
                 onClick={() => onViewDetails(match)}
+                className="self-start sm:self-center flex-shrink-0"
               >
                 {t("recentMatches.viewDetails")}
               </Button>

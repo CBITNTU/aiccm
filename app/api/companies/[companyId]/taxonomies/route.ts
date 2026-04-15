@@ -71,24 +71,27 @@ export async function PUT(
 
     // Add new ones
     const toAdd = taxonomyIds.filter((id) => !currentIds.has(id));
-    if (toAdd.length > 0) {
-      await db.insert(companyTaxonomies).values(
-        toAdd.map((taxonomyId) => ({ companyId, taxonomyId })),
-      );
-    }
 
     // Remove old ones
     const toRemove = Array.from(currentIds).filter((id) => !newIds.has(id));
-    if (toRemove.length > 0) {
-      await db
-        .delete(companyTaxonomies)
-        .where(
-          and(
-            eq(companyTaxonomies.companyId, companyId),
-            inArray(companyTaxonomies.taxonomyId, toRemove),
-          ),
+    await db.transaction(async (tx) => {
+      if (toAdd.length > 0) {
+        await tx.insert(companyTaxonomies).values(
+          toAdd.map((taxonomyId) => ({ companyId, taxonomyId })),
         );
-    }
+      }
+
+      if (toRemove.length > 0) {
+        await tx
+          .delete(companyTaxonomies)
+          .where(
+            and(
+              eq(companyTaxonomies.companyId, companyId),
+              inArray(companyTaxonomies.taxonomyId, toRemove),
+            ),
+          );
+      }
+    });
 
     return apiResponse({ success: true, taxonomyIds });
   } catch (error) {

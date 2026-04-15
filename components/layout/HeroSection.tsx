@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 
 export function HeroSection() {
   const t = useTranslations("HeroSection");
@@ -303,17 +304,20 @@ export function HeroSection() {
 
         {/* Footer with Logo */}
         <div className="mt-16 border-t border-border/20 pt-8">
-          <div className="flex flex-col items-end pr-4">
-            <Image
-              src="/cbit-logo.png"
-              alt={t("footer.logoAlt")}
-              width={150}
-              height={48}
-              className="h-12 w-auto"
-            />
-            <p className="text-sm text-muted-foreground mt-2">
-              {t("footer.poweredBy")}
-            </p>
+          <div className="flex items-center justify-between pr-4">
+            <LocaleSwitcher />
+            <div className="flex flex-col items-end">
+              <Image
+                src="/cbit-logo.png"
+                alt={t("footer.logoAlt")}
+                width={150}
+                height={48}
+                className="h-12 w-auto"
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                {t("footer.poweredBy")}
+              </p>
+            </div>
           </div>
         </div>
       </div>

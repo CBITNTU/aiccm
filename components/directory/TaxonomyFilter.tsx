@@ -17,6 +17,7 @@ import { useTaxonomies } from "@/hooks/useTaxonomies";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Filter, X, ChevronDown, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface TaxonomyFilterProps {
   selectedTaxonomies: string[];
@@ -37,6 +38,7 @@ export function TaxonomyFilter({
     {},
   );
 
+  const t = useTranslations("Directory");
   const { getLevel1, getLevel2, getLevel3, loading } = useTaxonomies();
 
   const handleTaxonomyToggle = (taxonomyId: string, checked: boolean) => {
@@ -78,7 +80,7 @@ export function TaxonomyFilter({
 
   if (loading) {
     return (
-      <div className="text-sm text-muted-foreground">Loading categories...</div>
+      <div className="text-sm text-muted-foreground">{t("searchBar.loadingCategories")}</div>
     );
   }
 
@@ -90,21 +92,20 @@ export function TaxonomyFilter({
         <Button variant="outline" className="w-full justify-between">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4" />
-            <span>Filter by Category</span>
+            <span>{t("taxonomyFilter.filterByCategory")}</span>
           </div>
           {selectedTaxonomies.length > 0 && (
             <Badge variant="secondary" className="ml-2">
-              {selectedTaxonomies.length} selected
+              {selectedTaxonomies.length} {t("taxonomyFilter.selected")}
             </Badge>
           )}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[85vh] p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <DialogTitle className="text-xl">Select Categories</DialogTitle>
+          <DialogTitle className="text-xl">{t("taxonomyFilter.selectCategories")}</DialogTitle>
           <DialogDescription>
-            Choose one or more categories to filter results. You can select
-            categories at any level.
+            {t("taxonomyFilter.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -112,7 +113,8 @@ export function TaxonomyFilter({
           <div className="flex items-center justify-between mb-4">
             <div className="text-sm text-muted-foreground">
               {tempSelected.length}{" "}
-              {tempSelected.length === 1 ? "category" : "categories"} selected
+              {tempSelected.length === 1 ? t("taxonomyFilter.category") : t("taxonomyFilter.categories")}{" "}
+              {t("taxonomyFilter.selected")}
             </div>
             {tempSelected.length > 0 && (
               <Button
@@ -122,7 +124,7 @@ export function TaxonomyFilter({
                 className="h-8"
               >
                 <X className="h-4 w-4 mr-2" />
-                Clear All
+                {t("taxonomyFilter.clearAll")}
               </Button>
             )}
           </div>
@@ -255,10 +257,10 @@ export function TaxonomyFilter({
 
         <DialogFooter className="px-6 py-4 border-t bg-muted/20">
           <Button variant="outline" onClick={handleCancel}>
-            Cancel
+            {t("taxonomyFilter.cancel")}
           </Button>
           <Button onClick={handleApply}>
-            Apply Filters ({tempSelected.length})
+            {t("taxonomyFilter.applyFiltersPrefix")}{tempSelected.length})
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -476,6 +476,7 @@ function SectionCard({
 
 function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, unknown> }) {
   const t = useTranslations("AdminVerificationReview");
+  const tCompanyPage = useTranslations("CompanyPage");
   const scalarFields = resolvedChanges.scalarFields as Record<string, { current: string | null; proposed: string | null }> | undefined;
   const capabilities = resolvedChanges.capabilities as {
     added: string[]; removed: string[];
@@ -526,13 +527,13 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
                   <div>
                     <div className="text-xs text-muted-foreground mb-1 font-medium">{t("changeReview.current")}</div>
                     <div className="text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
-                      {isPastProjects ? formatPastProjectsValue(change.current) : (change.current || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>)}
+                      {isPastProjects ? formatPastProjectsValue(change.current, tCompanyPage) : (change.current || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>)}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground mb-1 font-medium">{t("changeReview.proposed")}</div>
                     <div className="text-sm bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
-                      {isPastProjects ? formatPastProjectsValue(change.proposed) : (change.proposed || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>)}
+                      {isPastProjects ? formatPastProjectsValue(change.proposed, tCompanyPage) : (change.proposed || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>)}
                     </div>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   Select,
   SelectContent,
@@ -24,24 +25,25 @@ export function CompanySelector({
   selectedCompany,
   onCompanyChange,
 }: CompanySelectorProps) {
+  const t = useTranslations("ProjectCompanySelector");
+
   if (companies.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            No Companies Found
+            {t("noCompaniesTitle")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            You haven&apos;t created any companies yet. Create your first
-            company to get started with projects.
+            {t("noCompaniesDesc")}
           </p>
           <Button asChild className="w-full">
             <Link href="/my-company/new">
               <Plus className="w-4 h-4 mr-2" />
-              Create Your First Company
+              {t("createFirstCompany")}
             </Link>
           </Button>
         </CardContent>
@@ -58,14 +60,14 @@ export function CompanySelector({
       }}
     >
       <SelectTrigger className="w-[280px]">
-        <SelectValue placeholder="Select a company">
+        <SelectValue placeholder={t("placeholder")}>
           {selectedCompany ? (
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               {selectedCompany.companyName}
             </div>
           ) : (
-            "Select a company"
+            t("placeholder")
           )}
         </SelectValue>
       </SelectTrigger>

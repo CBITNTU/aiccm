@@ -16,7 +16,7 @@ export function StatsCards({ stats }: { stats: DashboardStats }) {
   const router = useRouter();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
       <Card
         className="hover:shadow-lg transition-shadow cursor-pointer"
         onClick={() => router.push("/tenders")}

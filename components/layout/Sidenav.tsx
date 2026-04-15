@@ -7,9 +7,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAdminStats } from "@/hooks/useAdminStats";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Tooltip,
   TooltipContent,
@@ -145,6 +146,11 @@ interface SidebarContentProps {
   userInitials: string;
 }
 
+interface SidebarSkeletonProps {
+  isMobile?: boolean;
+  isCollapsed: boolean;
+}
+
 function NavItem({
   item,
   isActive,
@@ -212,6 +218,62 @@ function NavItem({
   }
 
   return <div>{NavButton}</div>;
+}
+
+function SidebarContentSkeleton({
+  isMobile = false,
+  isCollapsed,
+}: SidebarSkeletonProps) {
+  return (
+    <div className="flex flex-col h-full">
+      <div
+        className={cn(
+          "flex items-center h-16 px-4 border-b border-border",
+          isCollapsed && !isMobile ? "justify-center" : "justify-between",
+        )}
+      >
+        <div className="flex items-center space-x-3">
+          <Skeleton className="w-8 h-8 rounded-lg" />
+          {(!isCollapsed || isMobile) && <Skeleton className="h-5 w-20" />}
+        </div>
+        {!isMobile && !isCollapsed && <Skeleton className="h-8 w-8 rounded-md" />}
+      </div>
+
+      <div className="flex-1 py-4 px-2 space-y-2">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "flex items-center h-9",
+              isCollapsed && !isMobile ? "justify-center px-2" : "px-3 gap-3",
+            )}
+          >
+            <Skeleton className="h-4 w-4 rounded" />
+            {(!isCollapsed || isMobile) && <Skeleton className="h-4 flex-1 max-w-[140px]" />}
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-border p-4 space-y-3">
+        <div
+          className={cn(
+            "flex items-center",
+            isCollapsed && !isMobile ? "justify-center" : "space-x-3",
+          )}
+        >
+          <Skeleton className="h-8 w-8 rounded-full" />
+          {(!isCollapsed || isMobile) && (
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          )}
+        </div>
+        <Separator />
+        {(!isCollapsed || isMobile) && <Skeleton className="h-7 w-full rounded-md" />}
+      </div>
+    </div>
+  );
 }
 
 function SidebarContent({
@@ -375,54 +437,56 @@ function SidebarContent({
         <Separator className="my-3" />
 
         <TooltipProvider delayDuration={0}>
-          {/* Language switcher */}
-          {(!isCollapsed || isMobile) ? (
-            <div className="mb-2">
-              <LocaleSwitcher />
-            </div>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center px-2 mb-1"
-                  onClick={toggleCollapsed}
-                  aria-label={t("language")}
-                >
-                  <Globe className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={10}>
-                {t("language")}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          {/* Sign out */}
           {isCollapsed && !isMobile ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center px-2"
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={10}>
-                {t("signOut")}
-              </TooltipContent>
-            </Tooltip>
+            /* Collapsed desktop: stacked icon buttons with tooltips */
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center px-2 mb-1"
+                    onClick={toggleCollapsed}
+                    aria-label={t("language")}
+                  >
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>
+                  {t("language")}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center px-2"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>
+                  {t("signOut")}
+                </TooltipContent>
+              </Tooltip>
+            </>
           ) : (
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-4 w-4 mr-3" />
-              {t("signOut")}
-            </Button>
+            /* Expanded desktop or mobile: single inline row */
+            <div className="flex items-center gap-1">
+              <div className="flex-1 min-w-0">
+                <LocaleSwitcher size="sm" />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 shrink-0"
+                onClick={handleSignOut}
+                aria-label={t("signOut")}
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="ml-1.5 text-xs">{t("signOut")}</span>
+              </Button>
+            </div>
           )}
         </TooltipProvider>
       </div>
@@ -432,14 +496,23 @@ function SidebarContent({
 
 export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { user, signOut, isPendingApproval, isOnboarding, profile } = useAuth();
-  const { isAdmin } = useUserRole();
+  const {
+    user,
+    signOut,
+    isPendingApproval,
+    isOnboarding,
+    profile,
+    hasResolvedInitialProfile,
+  } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { data: adminStatsData } = useAdminStats(isAdmin);
 
   const pathname = usePathname();
 
   // Users are restricted if they're pending approval OR still onboarding
   const isRestrictedUser = isPendingApproval || isOnboarding;
+  const showInitialNavSkeleton =
+    !!user && (!hasResolvedInitialProfile || roleLoading);
 
   // Load collapsed state from localStorage
   useEffect(() => {
@@ -525,13 +598,22 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
           isCollapsed ? "w-16" : "w-64",
         )}
       >
-        <SidebarContent {...sidebarProps} />
+        {showInitialNavSkeleton ? (
+          <SidebarContentSkeleton isCollapsed={isCollapsed} />
+        ) : (
+          <SidebarContent {...sidebarProps} />
+        )}
       </aside>
 
       {/* Mobile Sidenav (Sheet) */}
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
         <SheetContent side="left" className="w-72 p-0">
-          <SidebarContent {...sidebarProps} isMobile />
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          {showInitialNavSkeleton ? (
+            <SidebarContentSkeleton isCollapsed={isCollapsed} isMobile />
+          ) : (
+            <SidebarContent {...sidebarProps} isMobile />
+          )}
         </SheetContent>
       </Sheet>
 

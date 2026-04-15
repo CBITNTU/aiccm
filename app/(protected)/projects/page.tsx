@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import { type ProjectStatus } from "@/hooks/useProjects";
@@ -21,6 +22,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { selectedOrg, setSelectedOrg, isLoading: orgLoading } = useOrg();
+  const t = useTranslations("ProjectsPage");
 
   // Read from URL params
   const routeCompanyId = searchParams.get("companyId");
@@ -95,17 +97,17 @@ export default function ProjectsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              No Organization Selected
+              {t("noOrgTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              Select an organization from the sidebar to manage your projects, or create your first company to get started.
+              {t("noOrgDesc")}
             </p>
             <Button asChild className="w-full">
               <Link href="/my-company/new">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Your First Company
+                {t("createFirstCompany")}
               </Link>
             </Button>
           </CardContent>

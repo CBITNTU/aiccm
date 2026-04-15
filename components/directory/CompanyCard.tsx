@@ -12,6 +12,7 @@ import { MapPin, Mail, Award, Tag } from "lucide-react";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
+import { useTranslations } from "next-intl";
 type PublicCompany = Pick<
   Company,
   | "id"
@@ -38,6 +39,7 @@ interface CompanyCardProps {
 }
 
 export function CompanyCard({ company, onClick }: CompanyCardProps) {
+  const t = useTranslations("Directory");
   const [taxonomies, setTaxonomies] = useState<
     Array<{ id: string; name: string }>
   >([]);
@@ -68,7 +70,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
         <div className="flex justify-between items-start mb-2">
           <CardTitle className="text-lg">{company.companyName}</CardTitle>
           {company.isSystemCompany && (
-            <Badge variant="secondary">Verified</Badge>
+            <Badge variant="secondary">{t("companyCard.verified")}</Badge>
           )}
         </div>
         {company.description && (
@@ -83,7 +85,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
           {/* Contact Information Section */}
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-muted-foreground mb-2">
-              Contact Details
+              {t("companyCard.contactDetails")}
             </h4>
             {company.postcode && (
               <div className="flex items-center gap-2 text-sm">
@@ -108,7 +110,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
             ) : (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4" />
-                <span>Contact details available</span>
+                <span>{t("companyCard.contactAvailable")}</span>
               </div>
             )}
           </div>
@@ -148,7 +150,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
                   <div>
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
                       <Award className="h-4 w-4" />
-                      Key Capabilities
+                      {t("companyCard.keyCapabilities")}
                     </h4>
                     <div className="flex flex-wrap gap-1">
                       {capabilities.slice(0, 6).map((capability, index) => (
@@ -167,7 +169,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
                           variant="outline"
                           className="text-xs rounded-sm px-2 py-1"
                         >
-                          +{capabilities.length - 6} more
+                          +{capabilities.length - 6} {t("companyCard.more")}
                         </Badge>
                       )}
                     </div>
@@ -184,7 +186,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
           <div className="mt-3 pt-3 border-t">
             <h4 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
               <Tag className="h-4 w-4" />
-              Categories
+              {t("companyCard.categories")}
             </h4>
             <div className="flex flex-wrap gap-1">
               {taxonomies.slice(0, 3).map((taxonomy) => (
@@ -198,7 +200,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
               ))}
               {taxonomies.length > 3 && (
                 <Badge variant="secondary" className="text-xs">
-                  +{taxonomies.length - 3} more
+                  +{taxonomies.length - 3} {t("companyCard.more")}
                 </Badge>
               )}
             </div>
@@ -207,7 +209,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
 
         <div className="mt-3 pt-3 border-t">
           <p className="text-xs text-muted-foreground text-center">
-            Click to view full details
+            {t("companyCard.viewFullDetails")}
           </p>
         </div>
       </CardContent>

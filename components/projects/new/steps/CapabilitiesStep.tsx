@@ -16,6 +16,7 @@ import {
   Loader2,
   CheckSquare,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CapabilitiesStepProps {
   selectedCapabilities: string[];
@@ -37,6 +38,7 @@ export function CapabilitiesStep({
   selectedCapabilities,
   onSelectionChange,
 }: CapabilitiesStepProps) {
+  const t = useTranslations("CapabilitiesStep");
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -72,7 +74,7 @@ export function CapabilitiesStep({
     const groups = new Map<string | null, Capability[]>();
 
     capabilities.forEach((cap) => {
-      const category = cap.category || "Uncategorized";
+      const category = cap.category || t("uncategorized");
       if (!groups.has(category)) {
         groups.set(category, []);
       }
@@ -91,7 +93,7 @@ export function CapabilitiesStep({
       });
 
     return result;
-  }, [capabilities]);
+  }, [capabilities, t]);
 
   // Filter capabilities based on search
   const filteredGroups = useMemo(() => {
@@ -112,7 +114,7 @@ export function CapabilitiesStep({
   }, [groupedCapabilities, searchTerm]);
 
   const toggleCategory = (category: string | null) => {
-    const categoryKey = category || "Uncategorized";
+    const categoryKey = category || t("uncategorized");
     const newExpanded = new Set(expandedCategories);
     if (newExpanded.has(categoryKey)) {
       newExpanded.delete(categoryKey);
@@ -158,7 +160,7 @@ export function CapabilitiesStep({
   };
 
   const isCategoryExpanded = (category: string | null): boolean => {
-    const categoryKey = category || "Uncategorized";
+    const categoryKey = category || t("uncategorized");
     return expandedCategories.has(categoryKey);
   };
 
@@ -185,13 +187,12 @@ export function CapabilitiesStep({
     <div className="space-y-4">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Select the capabilities needed for this project. You can select
-          multiple capabilities from different categories.
+          {t("desc")}
         </p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search capabilities..."
+            placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -202,7 +203,7 @@ export function CapabilitiesStep({
       {/* Selected capabilities */}
       {selectedCapabilities.length > 0 && (
         <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-sm font-medium">Selected:</span>
+          <span className="text-sm font-medium">{t("selectedLabel")}</span>
           {selectedCapabilities.map((capId) => {
             const cap = capabilities.find((c) => c.id === capId);
             return cap ? (
@@ -224,9 +225,7 @@ export function CapabilitiesStep({
         <CardContent className="p-4 overflow-y-auto">
           {filteredGroups.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchTerm
-                ? "No capabilities found matching your search."
-                : "No capabilities available."}
+              {searchTerm ? t("noMatch") : t("noCapabilities")}
             </div>
           ) : (
             <div className="space-y-1">
@@ -266,7 +265,7 @@ export function CapabilitiesStep({
                           <div className="w-4 h-4" />
                         )}
                         <span className="font-medium">
-                          {group.category || "Uncategorized"}
+                          {group.category || t("uncategorized")}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           ({group.capabilities.length})
@@ -293,7 +292,7 @@ export function CapabilitiesStep({
                                   : "text-muted-foreground"
                             }`}
                           />
-                          {isFullySelected ? "Deselect All" : "Select All"}
+                          {isFullySelected ? t("deselectAll") : t("selectAll")}
                         </Button>
                       )}
                     </div>

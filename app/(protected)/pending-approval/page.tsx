@@ -23,6 +23,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface PendingInfo {
   signupType: "individual" | "new-company" | "join-company" | "invited" | null;
@@ -32,6 +33,7 @@ interface PendingInfo {
 
 export default function PendingApprovalPage() {
   const router = useRouter();
+  const t = useTranslations("PendingApprovalPage");
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [pendingInfo, setPendingInfo] = useState<PendingInfo>({
@@ -74,19 +76,19 @@ export default function PendingApprovalPage() {
       const result = await api.getApprovalStatus();
 
       if (result.approvalStatus === "approved") {
-        toast.success("Your account has been approved!");
+        toast.success(t("toast.approved"));
         router.push("/dashboard");
       } else if (result.approvalStatus === "rejected") {
-        toast.error("Your account application was not approved.");
+        toast.error(t("toast.rejected"));
         await authClient.signOut();
         router.push("/auth?rejected=true");
       } else {
-        toast.info("Your account is still pending approval.");
+        toast.info(t("toast.stillPending"));
         await fetchPendingInfo();
       }
     } catch (error) {
       console.error("Error checking status:", error);
-      toast.error("Failed to check status");
+      toast.error(t("toast.checkFailed"));
     } finally {
       setChecking(false);
     }
@@ -113,33 +115,35 @@ export default function PendingApprovalPage() {
     if (pendingInfo.signupType === "join-company") {
       if (pendingInfo.joinRequestStatus === "pending") {
         return {
-          title: "Waiting for Company Approval",
-          description: `Your request to join ${
-            pendingInfo.companyName || "the company"
-          } is being reviewed by the company administrator.`,
+          title: t("status.joinCompany.pending.title"),
+          description: t("status.joinCompany.pending.description", {
+            companyName:
+              pendingInfo.companyName || t("fallbackCompanyName.lowercase"),
+          }),
           icon: Building2,
           steps: [
-            { label: "Account Created", completed: true },
+            { label: t("steps.accountCreated"), completed: true },
             {
-              label: "Company Admin Approval",
+              label: t("steps.companyAdminApproval"),
               completed: false,
               current: true,
             },
-            { label: "Platform Admin Approval", completed: false },
+            { label: t("steps.platformAdminApproval"), completed: false },
           ],
         };
       } else if (pendingInfo.joinRequestStatus === "approved_by_admin") {
         return {
-          title: "Awaiting Final Approval",
-          description: `${
-            pendingInfo.companyName || "The company"
-          } has approved your request. Now waiting for platform administrator approval.`,
+          title: t("status.joinCompany.approvedByAdmin.title"),
+          description: t("status.joinCompany.approvedByAdmin.description", {
+            companyName:
+              pendingInfo.companyName || t("fallbackCompanyName.capitalized"),
+          }),
           icon: CheckCircle2,
           steps: [
-            { label: "Account Created", completed: true },
-            { label: "Company Admin Approval", completed: true },
+            { label: t("steps.accountCreated"), completed: true },
+            { label: t("steps.companyAdminApproval"), completed: true },
             {
-              label: "Platform Admin Approval",
+              label: t("steps.platformAdminApproval"),
               completed: false,
               current: true,
             },
@@ -149,14 +153,17 @@ export default function PendingApprovalPage() {
     }
 
     return {
-      title: "Account Pending Approval",
-      description:
-        "Your account is being reviewed by our team. This usually takes 1-2 business days.",
+      title: t("status.default.title"),
+      description: t("status.default.description"),
       icon: Clock,
       steps: [
-        { label: "Account Created", completed: true },
-        { label: "Platform Admin Review", completed: false, current: true },
-        { label: "Access Granted", completed: false },
+        { label: t("steps.accountCreated"), completed: true },
+        {
+          label: t("steps.platformAdminReview"),
+          completed: false,
+          current: true,
+        },
+        { label: t("steps.accessGranted"), completed: false },
       ],
     };
   };
@@ -228,9 +235,7 @@ export default function PendingApprovalPage() {
             <Alert>
               <Mail className="h-4 w-4" />
               <AlertDescription>
-                We&apos;ll send you an email once your account has been
-                reviewed. You can also check your status anytime using the
-                button below.
+                {t("alert.emailNotice")}
               </AlertDescription>
             </Alert>
 
@@ -246,7 +251,7 @@ export default function PendingApprovalPage() {
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
-                Check Status
+                {t("actions.checkStatus")}
               </Button>
               <Button
                 variant="outline"
@@ -254,14 +259,14 @@ export default function PendingApprovalPage() {
                 className="flex-1"
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
+                {t("actions.signOut")}
               </Button>
             </div>
 
             {/* Additional Info */}
             <div className="text-center text-sm text-muted-foreground pt-4 border-t">
               <p>
-                Have questions? Contact us at{" "}
+                {t("footer.contactPrefix")}{" "}
                 <a
                   href="mailto:support@tndrx.com"
                   className="text-primary hover:underline"

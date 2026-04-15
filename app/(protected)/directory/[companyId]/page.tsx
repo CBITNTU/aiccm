@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { CompanyDetailView } from "@/components/directory/CompanyDetailView";
 import { useDirectoryCompany } from "@/hooks/useDirectoryCompany";
+import { useTranslations } from "next-intl";
 
 export default function DirectoryCompanyPage({
   params,
 }: {
   params: Promise<{ companyId: string }>;
 }) {
+  const t = useTranslations("CompanyPage");
   const { companyId } = use(params);
   const router = useRouter();
   const { data, isLoading, error } = useDirectoryCompany(companyId);
@@ -26,7 +28,7 @@ export default function DirectoryCompanyPage({
           className="mb-6 -ml-2"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Directory
+          {t("backToDirectory")}
         </Button>
 
         {isLoading && <DirectoryCompanyPageSkeleton />}
@@ -34,10 +36,10 @@ export default function DirectoryCompanyPage({
         {error && (
           <div className="text-center py-16">
             <p className="text-muted-foreground mb-4">
-              Failed to load company details.
+              {t("failedToLoad")}
             </p>
             <Button variant="outline" onClick={() => router.push("/directory")}>
-              Back to Directory
+              {t("backToDirectory")}
             </Button>
           </div>
         )}

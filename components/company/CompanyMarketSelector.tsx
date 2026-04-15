@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ export function CompanyMarketSelector({
   isEditLocked = false,
   hasPendingDraft = false,
 }: CompanyMarketSelectorProps) {
+  const t = useTranslations("CompanyPage");
   const [selectedMarketIds, setSelectedMarketIds] = useState<string[]>([]);
   const [marketNames, setMarketNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,7 @@ export function CompanyMarketSelector({
       setMarketNames(Object.fromEntries(markets.map((m) => [m.id, m.name])));
     } catch (error) {
       console.error("Error fetching company markets:", error);
-      toast.error("Failed to load markets");
+      toast.error(t("marketSelector.failedToLoad"));
     } finally {
       setLoading(false);
     }
@@ -58,7 +60,7 @@ export function CompanyMarketSelector({
       setSaving(true);
       const result = await api.syncMarkets(companyId, marketIds);
       if (result.draftSaved) {
-        toast.success(result.message || "Market changes saved as draft.");
+        toast.success(result.message || t("marketSelector.changesSavedDraft"));
         setEditMode(false);
         onUpdate?.();
       } else {
@@ -71,7 +73,7 @@ export function CompanyMarketSelector({
       }
     } catch (error) {
       console.error("Error saving markets:", error);
-      const message = error instanceof Error ? error.message : "Failed to save markets";
+      const message = error instanceof Error ? error.message : t("marketSelector.failedToSave");
       toast.error(message);
       await fetchCompanyMarkets();
     } finally {
@@ -113,25 +115,25 @@ export function CompanyMarketSelector({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Globe className="h-5 w-5" />
-          Market
+          {t("marketSelector.title")}
         </CardTitle>
         <CardDescription>
           {isEditLocked ? (
             <span className="flex items-center gap-1 text-amber-600">
               <Clock className="h-3.5 w-3.5" />
-              Editing locked while changes are under review.
+              {t("marketSelector.editingLocked")}
             </span>
           ) : hasPendingDraft ? (
             <span className="flex items-center gap-1 text-amber-600">
               <Clock className="h-3.5 w-3.5" />
-              Market changes saved as draft.
+              {t("marketSelector.changesSavedDraft")}
             </span>
           ) : editMode ? (
-            "Select the markets your company serves. Changes are saved automatically."
+            t("marketSelector.selectDesc")
           ) : (
-            "Markets your company serves."
+            t("marketSelector.viewDesc")
           )}
-          {saving && <span className="ml-2 text-primary">Saving...</span>}
+          {saving && <span className="ml-2 text-primary">{t("marketSelector.saving")}</span>}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -140,7 +142,7 @@ export function CompanyMarketSelector({
             <div className="flex flex-wrap gap-2">
               {selectedMarketIds.length === 0 ? (
                 <span className="text-sm text-muted-foreground">
-                  No markets selected.
+                  {t("marketSelector.noMarketsSelected")}
                 </span>
               ) : (
                 selectedMarketIds.map((id) => (
@@ -159,7 +161,7 @@ export function CompanyMarketSelector({
                 className="gap-1"
               >
                 <Pencil className="h-3 w-3" />
-                Edit
+                {t("marketSelector.edit")}
               </Button>
             )}
           </>
@@ -168,7 +170,7 @@ export function CompanyMarketSelector({
             {selectedMarketIds.length > 0 && (
               <div className="space-y-2 p-4 bg-muted/30 rounded-lg border">
                 <h3 className="font-semibold text-sm">
-                  Currently Selected ({selectedMarketIds.length})
+                  {t("marketSelector.currentlySelected", { count: selectedMarketIds.length })}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {selectedMarketIds.map((id) => (
@@ -189,7 +191,7 @@ export function CompanyMarketSelector({
               size="sm"
               onClick={() => setEditMode(false)}
             >
-              Done
+              {t("marketSelector.done")}
             </Button>
           </>
         )}

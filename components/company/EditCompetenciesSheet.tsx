@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { EditSheetSkeleton } from "@/components/company/EditSheetSkeleton";
 import { CapabilityTreeSelector } from "@/components/tenders/CapabilityTreeSelector";
@@ -32,6 +33,7 @@ export function EditCompetenciesSheet({
   pendingRelation,
   onSaved,
 }: EditCompetenciesSheetProps) {
+  const t = useTranslations("CompanyPage");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [initialIds, setInitialIds] = useState<string[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
@@ -60,16 +62,14 @@ export function EditCompetenciesSheet({
           setInitialIds(effectiveIds);
           setNameMap(Object.fromEntries(data.capabilities.map((c) => [c.id, c.name])));
         })
-        .catch(() => toast.error("Failed to load capabilities"))
+        .catch(() => toast.error(t("editCompetenciesSheet.failedToLoad")))
         .finally(() => setLoading(false));
     }
-  }, [open, companyId, pendingRelation]);
+  }, [open, companyId, pendingRelation, t]);
 
   const handleSelectionChange = (ids: string[]) => {
     if (!isVerified && competencyLimit !== null && ids.length > competencyLimit) {
-      toast.error(
-        `Unverified companies can select up to ${competencyLimit} competencies. Get verified to unlock unlimited.`,
-      );
+      toast.error(t("editCompetenciesSheet.limitToast", { limit: competencyLimit }));
       return;
     }
     setSelectedIds(ids);
@@ -80,18 +80,18 @@ export function EditCompetenciesSheet({
       setSaving(true);
       const result = await api.syncCapabilities(companyId, selectedIds);
       if (result.pendingReview) {
-        toast.success(result.message || "Competency changes saved as draft.");
+        toast.success(result.message || t("editCompetenciesSheet.successDraft"));
       } else if (result.error) {
         toast.error(result.error);
         return;
       } else {
-        toast.success("Competencies updated");
+        toast.success(t("editCompetenciesSheet.success"));
       }
       onSaved();
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving capabilities:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save");
+      toast.error(error instanceof Error ? error.message : t("editCompetenciesSheet.failedToSave"));
     } finally {
       setSaving(false);
     }
@@ -104,32 +104,32 @@ export function EditCompetenciesSheet({
     <EditSheetLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Competencies"
+      title={t("editCompetenciesSheet.title")}
       description={
         isVerified
-          ? "Select capabilities. Changes require admin review."
+          ? t("editCompetenciesSheet.descriptionVerified")
           : competencyLimit !== null
-            ? `Select up to ${competencyLimit} capabilities. Get verified to unlock unlimited.`
-            : "Select capabilities your company has."
+            ? t("editCompetenciesSheet.descriptionUnverifiedLimited", {
+                limit: competencyLimit,
+              })
+            : t("editCompetenciesSheet.descriptionUnverified")
       }
       isReviewable={true}
       isVerified={isVerified}
       isEditLocked={isEditLocked}
       isSaving={saving}
       onSave={handleSave}
-      saveLabel={hasChanges ? undefined : "No Changes"}
+      saveLabel={hasChanges ? undefined : t("editCompetenciesSheet.noChanges")}
     >
       {isLoading && <EditSheetSkeleton />}
       <div className={isLoading ? "hidden" : "flex flex-col lg:grid lg:grid-cols-[1fr_1.5fr] gap-6 h-full"}>
         {/* Left column: search + selected */}
         <div className="space-y-4 lg:overflow-y-auto">
-          <p className="text-sm text-muted-foreground">
-            Select the capabilities your company has.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("editCompetenciesSheet.bodyHint")}</p>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search capabilities..."
+              placeholder={t("editCompetenciesSheet.searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -138,7 +138,7 @@ export function EditCompetenciesSheet({
           {selectedIds.length > 0 && (
             <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
               <h3 className="font-medium text-sm">
-                Selected ({selectedIds.length})
+                {t("editCompetenciesSheet.selectedCount", { count: selectedIds.length })}
                 {competencyLimit !== null && !isVerified && (
                   <span className="text-muted-foreground ml-1">/ {competencyLimit}</span>
                 )}

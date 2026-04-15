@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +31,11 @@ export function OperationLocationsEditor({
   value,
   onChange,
   disabled = false,
-  placeholder = "Add countries, regions, or cities…",
+  placeholder: placeholderProp,
 }: OperationLocationsEditorProps) {
+  const t = useTranslations("CompanyPage");
+  const placeholder =
+    placeholderProp ?? t("operationLocations.defaultPlaceholder");
   const [countryCode, setCountryCode] = useState<string>("");
   const [stateCode, setStateCode] = useState<string>("");
   const [cityName, setCityName] = useState<string>("");
@@ -101,7 +105,9 @@ export function OperationLocationsEditor({
                   type="button"
                   onClick={() => remove(loc)}
                   className="rounded-full hover:bg-muted p-0.5"
-                  aria-label={`Remove ${loc}`}
+                  aria-label={t("operationLocations.removeAriaLabel", {
+                    location: loc,
+                  })}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -124,7 +130,7 @@ export function OperationLocationsEditor({
               }}
             >
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Country" />
+                <SelectValue placeholder={t("operationLocations.country")} />
               </SelectTrigger>
               <SelectContent>
                 {countries.map((c) => (
@@ -143,7 +149,7 @@ export function OperationLocationsEditor({
               disabled={!countryCode}
             >
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Region / State" />
+                <SelectValue placeholder={t("operationLocations.regionState")} />
               </SelectTrigger>
               <SelectContent>
                 {states.map((s) => (
@@ -168,8 +174,10 @@ export function OperationLocationsEditor({
                   </SelectItem>
                 ))}
                 {cities.length > 500 && (
-                  <SelectItem value="" disabled>
-                    +{cities.length - 500} more (type below for search)
+                  <SelectItem value="__overflow__" disabled>
+                    {t("operationLocations.moreCities", {
+                      count: cities.length - 500,
+                    })}
                   </SelectItem>
                 )}
               </SelectContent>
@@ -203,7 +211,7 @@ export function OperationLocationsEditor({
               onClick={addCustom}
               disabled={!canAddCustom}
             >
-              Add custom
+              {t("operationLocations.addCustom")}
             </Button>
           </div>
         </>

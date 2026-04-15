@@ -15,6 +15,7 @@ import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
+import { useTranslations } from "next-intl";
 
 interface CompanySelectorProps {
   selectedCompanyId?: string | null;
@@ -29,6 +30,7 @@ export function CompanySelector({
   showAddButton = true,
   className = "",
 }: CompanySelectorProps) {
+  const t = useTranslations("CompanySelector");
   const { user } = useAuth();
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -99,17 +101,16 @@ export function CompanySelector({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            No Companies Found
+            {t("noCompaniesTitle")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            You haven&apos;t created any companies yet. Create your first
-            company to get started.
+            {t("noCompaniesDesc")}
           </p>
           <Button onClick={handleAddCompany} className="w-full">
             <Plus className="w-4 h-4 mr-2" />
-            Create Your First Company
+            {t("createFirstCompany")}
           </Button>
         </CardContent>
       </Card>
@@ -123,14 +124,14 @@ export function CompanySelector({
         onValueChange={handleCompanyChange}
       >
         <SelectTrigger className="min-w-[200px]">
-          <SelectValue placeholder="Select a company">
+          <SelectValue placeholder={t("selectPlaceholder")}>
             {selectedCompany ? (
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
                 {selectedCompany.companyName}
               </div>
             ) : (
-              "Select a company"
+              t("selectPlaceholder")
             )}
           </SelectValue>
         </SelectTrigger>

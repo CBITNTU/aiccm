@@ -22,6 +22,7 @@ import { CapabilitiesTab } from "@/components/company/CapabilitiesTab";
 import { TeamTab } from "@/components/company/TeamTab";
 import { IntelligenceTab } from "@/components/company/IntelligenceTab";
 import { ExperienceTab } from "@/components/company/ExperienceTab";
+import { useTranslations } from "next-intl";
 
 interface CompanyDetailPageProps {
   companyId: string;
@@ -29,6 +30,7 @@ interface CompanyDetailPageProps {
 }
 
 export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProps) {
+  const t = useTranslations("CompanyPage");
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,7 +49,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-muted-foreground">Loading company details...</p>
+        <p className="text-muted-foreground">{t("loading")}</p>
       </div>
     );
   }
@@ -55,7 +57,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
   if (!data.companyData) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-        <p className="text-muted-foreground">Company not found. Redirecting...</p>
+        <p className="text-muted-foreground">{t("notFound")}</p>
       </div>
     );
   }
@@ -99,23 +101,23 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
           <TabsList className="inline-flex w-auto">
             <TabsTrigger value="overview" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" />
-              Overview
+              {t("tabs.overview")}
             </TabsTrigger>
             <TabsTrigger value="capabilities" className="gap-1.5">
               <Tag className="h-3.5 w-3.5" />
-              Capabilities
+              {t("tabs.capabilities")}
             </TabsTrigger>
             <TabsTrigger value="experience" className="gap-1.5">
               <Briefcase className="h-3.5 w-3.5" />
-              Experience
+              {t("tabs.experience")}
             </TabsTrigger>
             <TabsTrigger value="team" className="gap-1.5">
               <Users className="h-3.5 w-3.5" />
-              Team
+              {t("tabs.team")}
             </TabsTrigger>
             <TabsTrigger value="intelligence" className="gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" />
-              Intelligence
+              {t("tabs.intelligence")}
             </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />

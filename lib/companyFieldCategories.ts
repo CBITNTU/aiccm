@@ -63,6 +63,15 @@ export const FIELD_LABELS: Record<string, string> = {
   standards: "Standards",
 };
 
+/** Localized label via next-intl `CompanyPage.fieldLabels.*` (falls back to raw field id). */
+export function getLocalizedCompanyFieldLabel(
+  field: string,
+  t: (key: string) => string,
+): string {
+  if (!(field in FIELD_LABELS)) return field;
+  return t(`fieldLabels.${field}`);
+}
+
 /**
  * PendingChanges JSONB structure stored on companies.pendingChanges
  */

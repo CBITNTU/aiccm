@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   Card,
@@ -214,7 +214,7 @@ export default function AdminApprovals() {
     user: PendingUser;
   } | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [usersRes, requestsRes] = await Promise.all([
@@ -254,11 +254,11 @@ export default function AdminApprovals() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   // Show confirmation dialog for new-company users, approve directly for others
   const handleApproveClick = (user: PendingUser) => {

@@ -23,6 +23,7 @@ import {
 import { formatCpvCode } from "@/lib/cpvCodes";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import type { TenderRecord } from "@/lib/api/types";
+import { resolveExternalNoticeLink } from "@/lib/tenders/externalNoticeLink";
 
 interface TenderViewDialogProps {
   tender: TenderRecord | null;
@@ -68,6 +69,18 @@ export function TenderViewDialog({
     );
     return daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
   };
+
+  const externalNoticeLink = resolveExternalNoticeLink({
+    documents: tender.documents,
+    referenceNumber: tender.referenceNumber,
+  });
+
+  const viewExternalLabel = (() => {
+    if (externalNoticeLink.source === "ted") return t("viewOnTed");
+    if (externalNoticeLink.source === "find-a-tender")
+      return t("viewOnFindATender");
+    return t("viewOriginalNotice");
+  })();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -210,15 +223,15 @@ export function TenderViewDialog({
               </Button>
             )}
             <div className="flex gap-2 ml-auto">
-              {tender.referenceNumber && (
+              {externalNoticeLink.url && (
                 <Button asChild variant="outline">
                   <a
-                    href={`https://www.find-tender.service.gov.uk/Notice/${tender.referenceNumber}?origin=SearchResults`}
+                    href={externalNoticeLink.url}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    {t("viewOnFindATender")}
+                    {viewExternalLabel}
                   </a>
                 </Button>
               )}

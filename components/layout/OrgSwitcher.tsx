@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useOrg } from "@/hooks/useOrg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ export function OrgSwitcher({
     isLoading,
     hasNoOrgs,
   } = useOrg();
+  const t = useTranslations("OrgSwitcher");
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
@@ -78,11 +80,11 @@ export function OrgSwitcher({
         </div>
         <div className="min-w-0 text-left">
           <p className="text-sm font-medium truncate leading-tight">
-            {selectedOrg?.companyName || "No organization"}
+            {selectedOrg?.companyName || t("noOrganization")}
           </p>
           {selectedOrg?.status && (
             <p className="text-[10px] text-muted-foreground leading-tight">
-              {selectedOrg.status === "active" ? "Active" : selectedOrg.status}
+              {selectedOrg.status === "active" ? t("active") : selectedOrg.status}
             </p>
           )}
         </div>
@@ -105,7 +107,7 @@ export function OrgSwitcher({
           </Button>
         </TooltipTrigger>
         <TooltipContent side="right" sideOffset={10}>
-          {selectedOrg?.companyName || "No organization"}
+          {selectedOrg?.companyName || t("noOrganization")}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -127,12 +129,12 @@ export function OrgSwitcher({
           sideOffset={8}
         >
           <Command>
-            <CommandInput placeholder="Search organizations..." />
+            <CommandInput placeholder={t("searchPlaceholder")} />
             <CommandList>
-              <CommandEmpty>No organization found.</CommandEmpty>
+              <CommandEmpty>{t("notFound")}</CommandEmpty>
 
               {companies.length > 0 && (
-                <CommandGroup heading="Organizations">
+                <CommandGroup heading={t("organizations")}>
                   {companies.map((company) => (
                     <CommandItem
                       key={company.id}
@@ -166,7 +168,7 @@ export function OrgSwitcher({
               )}
 
               {pendingCompanies.length > 0 && (
-                <CommandGroup heading="Pending">
+                <CommandGroup heading={t("pending")}>
                   {pendingCompanies.map((company) => (
                     <CommandItem
                       key={company.id}
@@ -189,7 +191,7 @@ export function OrgSwitcher({
                         className="ml-auto text-[10px] h-5 px-1.5"
                       >
                         <Clock className="w-3 h-3 mr-0.5" />
-                        Pending
+                        {t("pending")}
                       </Badge>
                     </CommandItem>
                   ))}
@@ -206,7 +208,7 @@ export function OrgSwitcher({
                   }}
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Organization
+                  {t("createOrganization")}
                 </CommandItem>
               </CommandGroup>
             </CommandList>
@@ -222,7 +224,7 @@ export function OrgSwitcher({
           onClick={() => router.push("/my-company/new")}
         >
           <Plus className="w-4 h-4 mr-1" />
-          Create Organization
+          {t("createOrganization")}
         </Button>
       )}
     </div>

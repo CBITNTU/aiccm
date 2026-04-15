@@ -23,6 +23,7 @@ import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import { toast } from "sonner";
 import { useGeocode } from "@/hooks/useGeocode";
 import { useOrg } from "@/hooks/useOrg";
+import { useTranslations } from "next-intl";
 
 interface Company {
   id: string;
@@ -41,14 +42,6 @@ interface CompanySearchDialogProps {
   selectedCapabilityIds?: string[];
 }
 
-const RADIUS_OPTIONS = [
-  { value: "any", label: "Any distance" },
-  { value: "25", label: "25 mi" },
-  { value: "50", label: "50 mi" },
-  { value: "100", label: "100 mi" },
-  { value: "200", label: "200 mi" },
-];
-
 export function CompanySearchDialog({
   open,
   onOpenChange,
@@ -56,6 +49,14 @@ export function CompanySearchDialog({
   excludeCompanyIds,
   selectedCapabilityIds = [],
 }: CompanySearchDialogProps) {
+  const t = useTranslations("CompanySearchDialog");
+  const RADIUS_OPTIONS = [
+    { value: "any", label: t("distanceAny") },
+    { value: "25", label: t("distance25") },
+    { value: "50", label: t("distance50") },
+    { value: "100", label: t("distance100") },
+    { value: "200", label: t("distance200") },
+  ];
   const [searchQuery, setSearchQuery] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [distanceMap, setDistanceMap] = useState<Record<string, number>>({});
@@ -135,11 +136,11 @@ export function CompanySearchDialog({
       }
     } catch (error: unknown) {
       console.error("Error searching companies:", error);
-      toast.error("Failed to search companies");
+      toast.error(t("searchError"));
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCapabilityIds, excludeCompanyIds, coords, radius]);
+  }, [searchQuery, selectedCapabilityIds, excludeCompanyIds, coords, radius, t]);
 
   useEffect(() => {
     if (open) {
@@ -170,9 +171,9 @@ export function CompanySearchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Add Company to Team</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
-            Search and add companies from the platform to your consulting team
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -180,7 +181,7 @@ export function CompanySearchDialog({
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by company name, capabilities, or location..."
+              placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -193,7 +194,7 @@ export function CompanySearchDialog({
               <div className="relative flex-1">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Location (city, postcode...)"
+                  placeholder={t("locationPlaceholder")}
                   value={locationInput}
                   onChange={(e) => setLocationInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -224,7 +225,7 @@ export function CompanySearchDialog({
                 {isGeocoding ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  "Apply"
+                  t("applyButton")
                 )}
               </Button>
             </div>
@@ -237,7 +238,7 @@ export function CompanySearchDialog({
               </div>
             ) : companies.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No companies found
+                {t("noCompanies")}
               </div>
             ) : (
               <div className="space-y-3 pr-2">
@@ -257,13 +258,13 @@ export function CompanySearchDialog({
                         <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                           <MapPin className="h-3 w-3 flex-shrink-0" />
                           <span className="truncate">
-                            {company.postcode || "N/A"}
+                            {company.postcode || t("notAvailable")}
                           </span>
                           {distanceMap[company.id] != null && (
                             <span className="text-primary font-medium shrink-0">
                               {distanceMap[company.id] < 1
-                                ? "< 1 mi"
-                                : `${distanceMap[company.id].toFixed(1)} mi`}
+                                ? t("distanceLessThan1")
+                                : t("distanceMi", { distance: distanceMap[company.id].toFixed(1) })}
                             </span>
                           )}
                         </div>
@@ -279,7 +280,7 @@ export function CompanySearchDialog({
                         ) : (
                           <>
                             <Plus className="h-4 w-4 mr-1" />
-                            Add
+                            {t("addButton")}
                           </>
                         )}
                       </Button>

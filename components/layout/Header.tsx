@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Menu, LogOut } from "lucide-react";
-import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 
 interface HeaderProps {
   variant?: "landing" | "app";
@@ -17,7 +17,11 @@ export function Header({
   onMobileMenuToggle,
 }: HeaderProps) {
   const t = useTranslations("Header");
-  const { user, signOut } = useAuth();
+  const { user, loading, signOut, hasReadyUiInSession, isUiReadyHydrated } =
+    useAuth();
+  const canUseReadyBranch = isUiReadyHydrated && hasReadyUiInSession;
+  const showInitialAuthSkeleton =
+    variant === "landing" && loading && !canUseReadyBranch;
 
   const handleSignOut = async () => {
     await signOut();
@@ -45,10 +49,22 @@ export function Header({
 
           {/* Actions */}
           <div className="flex items-center space-x-3">
-            <LocaleSwitcher />
             {variant === "landing" ? (
               <div className="flex space-x-4">
-                {user ? (
+                {showInitialAuthSkeleton ? (
+                  <div className="flex items-center space-x-4" aria-hidden="true">
+                    <Skeleton className="h-9 w-28 rounded-md" />
+                    <Skeleton className="h-9 w-32 rounded-md" />
+                  </div>
+                ) : loading && canUseReadyBranch ? (
+                  <div
+                    className="flex items-center space-x-4 opacity-0 pointer-events-none"
+                    aria-hidden="true"
+                  >
+                    <Button variant="outline">Placeholder</Button>
+                    <Button>Placeholder</Button>
+                  </div>
+                ) : user ? (
                   <div className="flex items-center space-x-4">
                     <Button variant="outline" asChild>
                       <Link href="/dashboard">{t("dashboard")}</Link>

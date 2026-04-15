@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- capabilities/taxonomy row types; copy uses quotes */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
@@ -213,31 +213,7 @@ const AdminTaxonomyEditor = () => {
     isLoading: _batchLoading,
   } = useBatchProgress(regenerationBatchId, !!regenerationBatchId);
 
-  useEffect(() => {
-    fetchCapabilities();
-     
-  }, []);
-
-  // Refresh capabilities when regeneration completes
-  const batchStatus = batch?.status ?? undefined;
-  useEffect(() => {
-    if (batchStatus !== "completed" || !regenerationBatchId) return;
-
-    console.log("🔄 Batch completed, refreshing capabilities list...");
-    // Small delay to ensure database is updated
-    const timeoutId = setTimeout(() => {
-      console.log("📥 Fetching updated capabilities...");
-      fetchCapabilities();
-      toast.success(t("toasts.refreshed"));
-      // Clear batch ID after refresh to prevent re-triggering
-      setRegenerationBatchId(null);
-    }, 3000); // Increased delay to ensure DB writes are complete
-
-    return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when batch completes
-  }, [batchStatus]); // Only batchStatus - don't include batchId to keep array size constant
-
-  const fetchCapabilities = async () => {
+  const fetchCapabilities = useCallback(async () => {
     setLoading(true);
     try {
       const { capabilities: allCapabilities } =
@@ -257,7 +233,30 @@ const AdminTaxonomyEditor = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchCapabilities();
+  }, [fetchCapabilities]);
+
+  // Refresh capabilities when regeneration completes
+  const batchStatus = batch?.status ?? undefined;
+  useEffect(() => {
+    if (batchStatus !== "completed" || !regenerationBatchId) return;
+
+    console.log("🔄 Batch completed, refreshing capabilities list...");
+    // Small delay to ensure database is updated
+    const timeoutId = setTimeout(() => {
+      console.log("📥 Fetching updated capabilities...");
+      fetchCapabilities();
+      toast.success(t("toasts.refreshed"));
+      // Clear batch ID after refresh to prevent re-triggering
+      setRegenerationBatchId(null);
+    }, 3000); // Increased delay to ensure DB writes are complete
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when batch completes
+  }, [batchStatus]); // Only batchStatus - don't include batchId to keep array size constant
 
   const hasParentId = capabilities.some(
     (c) => c.parentId != null && c.parentId !== "",

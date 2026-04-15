@@ -18,6 +18,7 @@ import {
 import { useRespondToInvitation } from "@/hooks/useProjectInvitations";
 import type { ProjectInvitation } from "@/hooks/useProjectInvitations";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface ProjectInvitationCardProps {
   invitation: ProjectInvitation;
@@ -28,6 +29,7 @@ export function ProjectInvitationCard({
   invitation,
   onResponded,
 }: ProjectInvitationCardProps) {
+  const t = useTranslations("ProjectInvitationCard");
   const [showRejectMessage, setShowRejectMessage] = useState(false);
   const [message, setMessage] = useState("");
   const respond = useRespondToInvitation();
@@ -38,11 +40,11 @@ export function ProjectInvitationCard({
         invitationId: invitation.id,
         action: "accept",
       });
-      toast.success("Invitation accepted! You can now view the project.");
+      toast.success(t("acceptSuccess"));
       onResponded?.("accept", result.projectId);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to accept invitation",
+        err instanceof Error ? err.message : t("acceptError"),
       );
     }
   };
@@ -54,11 +56,11 @@ export function ProjectInvitationCard({
         action: "reject",
         message: message || undefined,
       });
-      toast.success("Invitation declined.");
+      toast.success(t("declineSuccess"));
       onResponded?.("reject", invitation.voId);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to decline invitation",
+        err instanceof Error ? err.message : t("declineError"),
       );
     }
   };
@@ -68,7 +70,7 @@ export function ProjectInvitationCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg">{invitation.project.name}</CardTitle>
-          <Badge variant="secondary">Pending</Badge>
+          <Badge variant="secondary">{t("statusPending")}</Badge>
         </div>
         {invitation.project.description && (
           <p className="text-sm text-muted-foreground mt-1">
@@ -107,22 +109,21 @@ export function ProjectInvitationCard({
               <p className="font-medium">{invitation.tender.title}</p>
               {invitation.tender.buyer && (
                 <p className="text-sm text-muted-foreground">
-                  Buyer: {invitation.tender.buyer}
+                  {t("buyer", { buyerName: invitation.tender.buyer })}
                 </p>
               )}
               {invitation.tender.deadline && (
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
-                  Deadline:{" "}
-                  {new Date(invitation.tender.deadline).toLocaleDateString(
+                  {t("deadline", { date: new Date(invitation.tender.deadline).toLocaleDateString(
                     "en-GB",
                     { day: "numeric", month: "long", year: "numeric" },
-                  )}
+                  ) })}
                 </p>
               )}
               {invitation.tender.budgetMax && (
                 <p className="text-sm text-muted-foreground">
-                  Est. Value: £{invitation.tender.budgetMax.toLocaleString()}
+                  {t("estValue", { amount: invitation.tender.budgetMax.toLocaleString() })}
                 </p>
               )}
             </div>
@@ -133,7 +134,7 @@ export function ProjectInvitationCard({
         {showRejectMessage && (
           <div className="space-y-2">
             <Textarea
-              placeholder="Optional message (reason for declining)..."
+              placeholder={t("declinePlaceholder")}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
@@ -153,7 +154,7 @@ export function ProjectInvitationCard({
             ) : (
               <CheckCircle className="h-4 w-4 mr-2" />
             )}
-            Accept
+            {t("acceptButton")}
           </Button>
           {!showRejectMessage ? (
             <Button
@@ -163,7 +164,7 @@ export function ProjectInvitationCard({
               className="flex-1"
             >
               <XCircle className="h-4 w-4 mr-2" />
-              Decline
+              {t("declineButton")}
             </Button>
           ) : (
             <Button
@@ -177,7 +178,7 @@ export function ProjectInvitationCard({
               ) : (
                 <XCircle className="h-4 w-4 mr-2" />
               )}
-              Confirm Decline
+              {t("confirmDeclineButton")}
             </Button>
           )}
         </div>

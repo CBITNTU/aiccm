@@ -33,9 +33,9 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-            <span className="text-sm font-medium">{t("companyOverview.companyName")}</span>
-            <span className="text-sm">
+          <div className="flex justify-between items-center gap-2 p-3 bg-muted/30 rounded-lg">
+            <span className="text-sm font-medium flex-shrink-0">{t("companyOverview.companyName")}</span>
+            <span className="text-sm text-right min-w-0 break-words">
               {company.companyName}
             </span>
           </div>
@@ -61,12 +61,12 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
                     .map(([key, field]) => (
                       <div
                         key={key}
-                        className="flex justify-between items-center p-3 bg-muted/30 rounded-lg"
+                        className="flex justify-between items-center gap-2 p-3 bg-muted/30 rounded-lg"
                       >
-                        <span className="text-sm font-medium capitalize">
+                        <span className="text-sm font-medium capitalize flex-shrink-0">
                           {key.replace(/([A-Z])/g, " $1").trim()}
                         </span>
-                        <span className="text-sm font-semibold">
+                        <span className="text-sm font-semibold text-right min-w-0 break-words">
                           {typeof field.value === "number"
                             ? `£${field.value.toLocaleString()}`
                             : field.value || t("companyOverview.notAvailable")}
@@ -77,8 +77,8 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
               </>
             )}
 
-          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-            <span className="text-sm font-medium">{t("companyOverview.status")}</span>
+          <div className="flex justify-between items-center gap-2 p-3 bg-muted/30 rounded-lg">
+            <span className="text-sm font-medium flex-shrink-0">{t("companyOverview.status")}</span>
             <Badge
               className={
                 company.status === "active"
@@ -93,8 +93,8 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
             </Badge>
           </div>
 
-          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-            <span className="text-sm font-medium">{t("companyOverview.verification")}</span>
+          <div className="flex justify-between items-center gap-2 p-3 bg-muted/30 rounded-lg">
+            <span className="text-sm font-medium flex-shrink-0">{t("companyOverview.verification")}</span>
             {company.verificationStatus === "verified" ? (
               <VerifiedBadge />
             ) : company.verificationStatus === "pending_verification" ? (

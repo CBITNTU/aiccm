@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import type { CompanyRecord } from "@/lib/api/types";
 import { useUpdateCompany } from "@/hooks/useCompanyMutations";
@@ -25,6 +26,7 @@ export function EditOverviewSheet({
   isEditLocked,
   onSaved,
 }: EditOverviewSheetProps) {
+  const t = useTranslations("CompanyPage");
   const [description, setDescription] = useState(companyData.description || "");
   const [keyCapabilities, setKeyCapabilities] = useState(companyData.keyCapabilities || "");
   const [certifications, setCertifications] = useState(companyData.certifications || "");
@@ -43,14 +45,12 @@ export function EditOverviewSheet({
       });
       onSaved(result.company);
       toast.success(
-        isVerified
-          ? "Overview changes saved as draft"
-          : "Overview updated successfully",
+        isVerified ? t("editOverview.successDraft") : t("editOverview.success"),
       );
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error("Failed to save changes");
+      toast.error(t("editOverview.error"));
     }
   };
 
@@ -58,8 +58,8 @@ export function EditOverviewSheet({
     <EditSheetLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Overview"
-      description="Update your company description and key capabilities."
+      title={t("editOverview.title")}
+      description={t("editOverview.description")}
       isReviewable={true}
       isVerified={isVerified}
       isEditLocked={isEditLocked}
@@ -67,42 +67,38 @@ export function EditOverviewSheet({
       onSave={handleSave}
     >
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">{t("editOverview.labels.description")}</Label>
         <Textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe your company..."
+          placeholder={t("editOverview.placeholders.description")}
           rows={6}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="keyCapabilities">Key Capabilities</Label>
+        <Label htmlFor="keyCapabilities">{t("editOverview.labels.keyCapabilities")}</Label>
         <Textarea
           id="keyCapabilities"
           value={keyCapabilities}
           onChange={(e) => setKeyCapabilities(e.target.value)}
-          placeholder="Key capabilities (comma-separated)..."
+          placeholder={t("editOverview.placeholders.keyCapabilities")}
           rows={4}
         />
-        <p className="text-xs text-muted-foreground">
-          Separate capabilities with commas
-        </p>
+        <p className="text-xs text-muted-foreground">{t("editOverview.hints.commaSeparated")}</p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="certifications">Certifications</Label>
+        <Label htmlFor="certifications">{t("editOverview.labels.certifications")}</Label>
         <Textarea
           id="certifications"
           value={certifications}
           onChange={(e) => setCertifications(e.target.value)}
-          placeholder="ISO 9001, ISO 14001, Constructionline Gold, CHAS..."
+          placeholder={t("editOverview.placeholders.certifications")}
           rows={3}
         />
-        <p className="text-xs text-muted-foreground">
-          List your certifications, accreditations, and standards
-        </p>
+        <p className="text-xs text-muted-foreground">{t("editOverview.hints.certifications")}</p>
       </div>
     </EditSheetLayout>
   );

@@ -30,6 +30,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { useGeocode } from "@/hooks/useGeocode";
 import { useOrg } from "@/hooks/useOrg";
 
@@ -78,6 +79,7 @@ export function CompaniesStep({
   onSelectionChange,
   leadCompanyId,
 }: CompaniesStepProps) {
+  const t = useTranslations("CompanySelectionStep");
   const [companies, setCompanies] = useState<CompanyWithCapabilities[]>([]);
   const [distanceMap, setDistanceMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -129,13 +131,11 @@ export function CompaniesStep({
       );
     } catch (error) {
       console.error("Error fetching companies:", error);
-      toast.error(
-        "Failed to load companies. Make sure companies have been processed and have capabilities assigned.",
-      );
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, [selectedCapabilityIds, coords, radius, leadCompanyId]);
+  }, [selectedCapabilityIds, coords, radius, leadCompanyId, t]);
 
   useEffect(() => {
     if (selectedCapabilityIds.length > 0) {
@@ -189,7 +189,7 @@ export function CompaniesStep({
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Loading companies...</span>
+        <span className="ml-3 text-muted-foreground">{t("loading")}</span>
       </div>
     );
   }
@@ -197,7 +197,7 @@ export function CompaniesStep({
   if (selectedCapabilityIds.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        Please select capabilities in the previous step.
+        {t("selectCapabilitiesFirst")}
       </div>
     );
   }
@@ -206,8 +206,7 @@ export function CompaniesStep({
     <div className="space-y-4">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Select companies that have the capabilities you need. You can view
-          full company profiles and select multiple companies for your project.
+          {t("description")}
         </p>
 
         {/* Location filter — only shown when geocoding is configured */}
@@ -216,7 +215,7 @@ export function CompaniesStep({
             <div className="relative flex-1">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder="Location (city, postcode...)"
+                placeholder={t("locationFilterPlaceholder")}
                 value={locationInput}
                 onChange={(e) => setLocationInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -247,7 +246,7 @@ export function CompaniesStep({
               {isGeocoding ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                "Apply"
+                t("applyButton")
               )}
             </Button>
           </div>
@@ -256,7 +255,7 @@ export function CompaniesStep({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search companies..."
+            placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -268,8 +267,7 @@ export function CompaniesStep({
       {selectedCompanies.length > 0 && (
         <div className="sticky top-0 z-10 bg-background py-2">
           <Badge variant="secondary" className="text-sm">
-            {selectedCompanies.length} compan
-            {selectedCompanies.length === 1 ? "y" : "ies"} selected
+            {t("companiesSelected", { count: selectedCompanies.length })}
           </Badge>
         </div>
       )}
@@ -279,31 +277,23 @@ export function CompaniesStep({
           <CardContent className="py-12 text-center space-y-4">
             <p className="text-muted-foreground">
               {companies.length === 0
-                ? "No companies found with the selected capabilities."
-                : "No companies match your search."}
+                ? t("noCompaniesFound")
+                : t("noMatchingCompanies")}
             </p>
             {companies.length === 0 && (
               <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-left max-w-2xl mx-auto">
                 <p className="text-sm text-yellow-900 dark:text-yellow-100 font-medium mb-2">
-                  Why no companies are showing:
+                  {t("whyNoCompaniesTitle")}
                 </p>
                 <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
-                  The selected capabilities are not assigned to any companies
-                  yet. This can happen when:
+                  {t("whyNoCompaniesExplanation")}
                 </p>
                 <ul className="text-sm text-yellow-800 dark:text-yellow-200 list-disc list-inside mb-2 space-y-1">
-                  <li>
-                    The AI created new capabilities that companies don&apos;t
-                    have yet
-                  </li>
-                  <li>
-                    Companies haven&apos;t been processed to have these specific
-                    capabilities assigned
-                  </li>
+                  <li>{t("reasonNewCapabilities")}</li>
+                  <li>{t("reasonNotProcessed")}</li>
                 </ul>
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>Solution:</strong> Go back to Step 2 and select
-                  capabilities that companies actually have.
+                  {t("solution")}
                 </p>
               </div>
             )}
@@ -318,7 +308,9 @@ export function CompaniesStep({
               <Card
                 key={company.id}
                 className={`transition-all ${
-                  isSelected ? "ring-2 ring-primary" : ""
+                  isSelected
+                    ? "border-2 border-primary"
+                    : "border-2 border-border"
                 }`}
               >
                 <CardContent className="p-4">
@@ -364,13 +356,13 @@ export function CompaniesStep({
                               ))
                             ) : (
                               <span className="text-xs text-muted-foreground">
-                                No matching capabilities shown
+                                {t("noCapabilitiesShown")}
                               </span>
                             )}
                             {company.capabilities &&
                               company.capabilities.length > 3 && (
                                 <Badge variant="outline" className="text-xs">
-                                  +{company.capabilities.length - 3} more
+                                  {t("moreCapabilities", { n: company.capabilities.length - 3 })}
                                 </Badge>
                               )}
                           </div>
@@ -382,8 +374,8 @@ export function CompaniesStep({
                             {distance != null && (
                               <span className="text-primary font-medium">
                                 {distance < 1
-                                  ? "< 1 mi"
-                                  : `${distance.toFixed(1)} mi`}
+                                  ? t("distanceLessThan1")
+                                  : t("distanceMi", { distance: distance.toFixed(1) })}
                               </span>
                             )}
                             {company.contactEmail && (
@@ -422,11 +414,10 @@ export function CompaniesStep({
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">
-                  {selectedCompanies.length} compan
-                  {selectedCompanies.length === 1 ? "y" : "ies"} selected
+                  {t("companiesSelected", { count: selectedCompanies.length })}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Continue to review and create your project
+                  {t("continueReview")}
                 </p>
               </div>
             </div>
@@ -436,8 +427,7 @@ export function CompaniesStep({
         <Card className="bg-muted/30">
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">
-              You can proceed with just your company, or add partners above.
-              Click Next to continue.
+              {t("proceedWithOwn")}
             </p>
           </CardContent>
         </Card>
@@ -457,7 +447,7 @@ export function CompaniesStep({
             <div className="space-y-6 mt-4">
               {selectedCompanyDetail.description && (
                 <div>
-                  <h4 className="font-semibold mb-2">Description</h4>
+                  <h4 className="font-semibold mb-2">{t("descriptionLabel")}</h4>
                   <p className="text-sm text-muted-foreground">
                     {selectedCompanyDetail.description}
                   </p>
@@ -467,7 +457,7 @@ export function CompaniesStep({
               <div className="grid grid-cols-2 gap-4">
                 {selectedCompanyDetail.postcode && (
                   <div>
-                    <h4 className="font-semibold mb-1">Location</h4>
+                    <h4 className="font-semibold mb-1">{t("locationLabel")}</h4>
                     <p className="text-sm text-muted-foreground">
                       {selectedCompanyDetail.postcode}
                     </p>
@@ -475,7 +465,7 @@ export function CompaniesStep({
                 )}
                 {selectedCompanyDetail.contactEmail && (
                   <div>
-                    <h4 className="font-semibold mb-1">Email</h4>
+                    <h4 className="font-semibold mb-1">{t("emailLabel")}</h4>
                     <p className="text-sm text-muted-foreground">
                       {selectedCompanyDetail.contactEmail}
                     </p>
@@ -483,7 +473,7 @@ export function CompaniesStep({
                 )}
                 {selectedCompanyDetail.contactPhone && (
                   <div>
-                    <h4 className="font-semibold mb-1">Phone</h4>
+                    <h4 className="font-semibold mb-1">{t("phoneLabel")}</h4>
                     <p className="text-sm text-muted-foreground">
                       {selectedCompanyDetail.contactPhone}
                     </p>
@@ -491,7 +481,7 @@ export function CompaniesStep({
                 )}
                 {selectedCompanyDetail.websiteUrl && (
                   <div>
-                    <h4 className="font-semibold mb-1">Website</h4>
+                    <h4 className="font-semibold mb-1">{t("websiteLabel")}</h4>
                     <a
                       href={selectedCompanyDetail.websiteUrl}
                       target="_blank"
@@ -507,7 +497,7 @@ export function CompaniesStep({
 
               {selectedCompanyDetail.certifications && (
                 <div>
-                  <h4 className="font-semibold mb-2">Certifications</h4>
+                  <h4 className="font-semibold mb-2">{t("certificationsLabel")}</h4>
                   <p className="text-sm text-muted-foreground">
                     {selectedCompanyDetail.certifications}
                   </p>
@@ -516,7 +506,7 @@ export function CompaniesStep({
 
               {selectedCompanyDetail.keyCapabilities && (
                 <div>
-                  <h4 className="font-semibold mb-2">Key Capabilities</h4>
+                  <h4 className="font-semibold mb-2">{t("keyCapabilitiesLabel")}</h4>
                   <p className="text-sm text-muted-foreground">
                     {selectedCompanyDetail.keyCapabilities}
                   </p>
@@ -527,7 +517,7 @@ export function CompaniesStep({
                 selectedCompanyDetail.capabilities.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-2">
-                      Matching Capabilities
+                      {t("matchingCapabilitiesLabel")}
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedCompanyDetail.capabilities.map((cap) => (
@@ -550,8 +540,8 @@ export function CompaniesStep({
                   }}
                 >
                   {isCompanySelected(selectedCompanyDetail.id)
-                    ? "Remove from Selection"
-                    : "Add to Selection"}
+                    ? t("removeFromSelection")
+                    : t("addToSelection")}
                 </Button>
               </div>
             </div>

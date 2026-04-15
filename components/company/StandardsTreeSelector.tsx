@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -179,6 +180,7 @@ export function StandardsTreeSelector({
   className,
   onReady,
 }: StandardsTreeSelectorProps) {
+  const t = useTranslations("CompanyPage");
   const isControlled = externalSearchTerm !== undefined;
   const [standards, setStandards] = useState<StandardNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -269,7 +271,7 @@ export function StandardsTreeSelector({
         <CardContent className={isControlled ? "p-4 overflow-y-auto flex-1" : "p-4 max-h-[500px] overflow-y-auto"}>
           {filteredTree.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? "No standards found matching your search." : "No standards available."}
+              {searchTerm ? t("standardsTree.noMatch") : t("standardsTree.noneAvailable")}
             </div>
           ) : (
             <div className="space-y-1">
@@ -290,7 +292,7 @@ export function StandardsTreeSelector({
       </Card>
       {!isControlled && selectedStandardIds.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          <span className="text-sm font-medium">Selected:</span>
+          <span className="text-sm font-medium">{t("standardsTree.selectedLabel")}</span>
           {selectedStandardIds.map((id) => {
             const s = standards.find((x) => x.id === id);
             return s ? (

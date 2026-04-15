@@ -10,6 +10,7 @@ import { ReadOnlyBanner } from "@/components/ReadOnlyBanner";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { CompanyCardNew } from "@/components/directory/CompanyCardNew";
 import {
   DirectorySearchBar,
@@ -44,6 +45,7 @@ const defaultFilters: DirectoryFiltersState = {
 };
 
 export default function DirectoryPage() {
+  const t = useTranslations("Directory");
   const router = useRouter();
   const { selectedOrg } = useOrg();
 
@@ -110,10 +112,10 @@ export default function DirectoryPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Companies Directory
+            {t("title")}
           </h1>
           <p className="text-muted-foreground">
-            Discover construction companies and their capabilities
+            {t("subtitle")}
           </p>
         </div>
 
@@ -139,22 +141,22 @@ export default function DirectoryPage() {
         {loading && (
           <div className="flex items-center justify-center py-16">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2" />
-            <span className="text-muted-foreground">Loading companies...</span>
+            <span className="text-muted-foreground">{t("loading")}</span>
           </div>
         )}
 
         {!loading && companies.length === 0 && (
           <div className="text-center py-16">
             <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No companies found</h3>
+            <h3 className="text-lg font-semibold mb-2">{t("noResults.heading")}</h3>
             <p className="text-muted-foreground mb-4">
-              Try adjusting your search or filter criteria
+              {t("noResults.description")}
             </p>
             {(filters.searchTerm ||
               filters.selectedTaxonomies.length > 0 ||
               filters.lat != null) && (
               <Button variant="outline" onClick={handleResetFilters}>
-                Clear all filters
+                {t("noResults.clearFilters")}
               </Button>
             )}
           </div>
@@ -183,7 +185,7 @@ export default function DirectoryPage() {
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
+                  {t("pagination.previous")}
                 </Button>
 
                 <div className="flex items-center gap-1">
@@ -231,7 +233,7 @@ export default function DirectoryPage() {
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  {t("pagination.next")}
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>

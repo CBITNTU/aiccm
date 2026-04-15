@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { OperationLocationsEditor } from "@/components/company/OperationLocationsEditor";
 import type { CompanyRecord } from "@/lib/api/types";
@@ -24,6 +25,7 @@ export function EditOperationLocationsSheet({
   isEditLocked,
   onSaved,
 }: EditOperationLocationsSheetProps) {
+  const t = useTranslations("CompanyPage");
   const [edited, setEdited] = useState<string[]>([...operationLocations]);
   const updateMutation = useUpdateCompany();
 
@@ -36,11 +38,11 @@ export function EditOperationLocationsSheet({
         },
       });
       onSaved(result.company);
-      toast.success("Operation locations updated");
+      toast.success(t("editOperationLocations.success"));
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error("Failed to save changes");
+      toast.error(t("editOperationLocations.error"));
     }
   };
 
@@ -48,8 +50,8 @@ export function EditOperationLocationsSheet({
     <EditSheetLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Operation Locations"
-      description="Set the regions and areas where your company operates."
+      title={t("editOperationLocations.title")}
+      description={t("editOperationLocations.description")}
       isReviewable={false}
       isVerified={false}
       isEditLocked={isEditLocked}
@@ -59,7 +61,7 @@ export function EditOperationLocationsSheet({
       <OperationLocationsEditor
         value={edited}
         onChange={setEdited}
-        placeholder="e.g. UK borough, postcode area, or custom location"
+        placeholder={t("editOperationLocations.editorPlaceholder")}
       />
     </EditSheetLayout>
   );

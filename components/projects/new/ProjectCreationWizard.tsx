@@ -14,6 +14,7 @@ import { CompaniesStep } from "./steps/CompaniesStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface Company {
   id: string;
@@ -28,35 +29,20 @@ interface ProjectCreationWizardProps {
   initialCompanyId?: string;
 }
 
-const WIZARD_STEPS: WizardStep[] = [
-  {
-    number: 1,
-    title: "Select Tender",
-    description: "Choose the tender for this project",
-  },
-  {
-    number: 2,
-    title: "Select Capabilities",
-    description: "Choose the capabilities needed",
-  },
-  {
-    number: 3,
-    title: "Select Companies",
-    description: "Choose companies with matching capabilities",
-  },
-  {
-    number: 4,
-    title: "Review & Create",
-    description: "Review and create the project",
-  },
-];
-
 export function ProjectCreationWizard({
   initialTenderId,
   initialCompanyId,
 }: ProjectCreationWizardProps) {
+  const t = useTranslations("ProjectWizard");
   const router = useRouter();
   const { user } = useAuth();
+
+  const WIZARD_STEPS: WizardStep[] = [
+    { number: 1, title: t("stepSelectTender"), description: t("stepSelectTenderDesc") },
+    { number: 2, title: t("stepSelectCapabilities"), description: t("stepSelectCapabilitiesDesc") },
+    { number: 3, title: t("stepSelectCompanies"), description: t("stepSelectCompaniesDesc") },
+    { number: 4, title: t("stepReviewCreate"), description: t("stepReviewCreateDesc") },
+  ];
 
   // Determine starting step based on whether we have a tender ID
   const [currentStep, setCurrentStep] = useState(initialTenderId ? 2 : 1);
@@ -109,7 +95,7 @@ export function ProjectCreationWizard({
         }
       } catch (error) {
         console.error("Error fetching companies:", error);
-        toast.error("Failed to load companies");
+        toast.error(t("companiesLoadFailed"));
       } finally {
         setLoadingCompanies(false);
       }
@@ -142,24 +128,16 @@ export function ProjectCreationWizard({
         ) {
           setSelectedCapabilities(result.suggestedCapabilityIds);
           setAiSuggestedCapabilities(result.suggestedCapabilityIds);
-          toast.success(
-            `AI suggested ${result.suggestedCapabilityIds.length} capabilities. You can edit the selection.`,
-          );
+          toast.success(t("aiSuggestedCount", { count: result.suggestedCapabilityIds.length }));
         } else {
-          toast.info(
-            "No specific capabilities were suggested. Please select manually.",
-          );
+          toast.info(t("aiNoSuggestions"));
         }
       } catch (error: any) {
         console.error("Error fetching suggested capabilities:", error);
         if (error?.status === 401) {
-          toast.error(
-            "Please log in to use AI suggestions. You can still select capabilities manually.",
-          );
+          toast.error(t("aiSuggestAuthError"));
         } else {
-          toast.error(
-            "Failed to get AI suggestions. Please select capabilities manually.",
-          );
+          toast.error(t("aiSuggestError"));
         }
       } finally {
         setIsLoadingCapabilities(false);
@@ -171,7 +149,7 @@ export function ProjectCreationWizard({
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [selectedTenderId, currentStep, user, selectedCapabilities.length]);
+  }, [selectedTenderId, currentStep, user, selectedCapabilities.length, t]);
 
   // Reset AI suggestions when tender changes
   useEffect(() => {
@@ -190,11 +168,11 @@ export function ProjectCreationWizard({
 
   const handleNext = () => {
     if (currentStep === 1 && !selectedTenderId) {
-      toast.error("Please select a tender to continue");
+      toast.error(t("tenderRequired"));
       return;
     }
     if (currentStep === 2 && selectedCapabilities.length === 0) {
-      toast.error("Please select at least one capability");
+      toast.error(t("capabilityRequired"));
       return;
     }
     setCurrentStep(currentStep + 1);
@@ -256,12 +234,12 @@ export function ProjectCreationWizard({
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="py-12 text-center">
-              <h2 className="text-xl font-semibold mb-2">No Company Found</h2>
+              <h2 className="text-xl font-semibold mb-2">{t("noCompanyTitle")}</h2>
               <p className="text-muted-foreground mb-6">
-                You need to create a company before you can start a project.
+                {t("noCompanyDesc")}
               </p>
               <Button onClick={() => router.push("/onboarding")}>
-                Create Company
+                {t("createCompany")}
               </Button>
             </CardContent>
           </Card>
@@ -276,10 +254,9 @@ export function ProjectCreationWizard({
         {/* Header */}
         <div className="flex items-center justify-between mb-6 shrink-0">
           <div>
-            <h1 className="text-2xl font-bold">Build Your Project Team</h1>
+            <h1 className="text-2xl font-bold">{t("title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Step {currentStep} of {WIZARD_STEPS.length}:{" "}
-              {WIZARD_STEPS[currentStep - 1].title}
+              {t("stepProgress", { current: currentStep, total: WIZARD_STEPS.length, title: WIZARD_STEPS[currentStep - 1].title })}
             </p>
           </div>
           <Button variant="ghost" size="icon" onClick={handleClose}>
@@ -353,8 +330,7 @@ export function ProjectCreationWizard({
                       <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         <span>
-                          AI is analyzing the tender and suggesting relevant
-                          capabilities...
+                          {t("aiAnalyzing")}
                         </span>
                       </div>
                     )}
@@ -363,8 +339,7 @@ export function ProjectCreationWizard({
                         <div className="flex items-center gap-2 text-sm bg-primary/10 text-primary p-3 rounded-lg">
                           <Sparkles className="w-4 h-4" />
                           <span>
-                            AI suggested {aiSuggestedCapabilities.length}{" "}
-                            capabilities. You can edit the selection below.
+                            {t("aiSuggestedCount", { count: aiSuggestedCapabilities.length })}
                           </span>
                         </div>
                       )}
@@ -407,10 +382,10 @@ export function ProjectCreationWizard({
               <div className="flex justify-between shrink-0 pt-4 border-t bg-background">
                 <Button variant="outline" onClick={handleBack}>
                   <ChevronLeft className="w-4 h-4 mr-2" />
-                  {currentStep === 1 ? "Cancel" : "Back"}
+                  {currentStep === 1 ? t("cancel") : t("back")}
                 </Button>
                 <Button onClick={handleNext} disabled={!canProceed()}>
-                  Next
+                  {t("next")}
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>

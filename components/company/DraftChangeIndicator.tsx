@@ -3,18 +3,21 @@
 import { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { FileEdit } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface DraftBlockProps {
   label?: string;
   children: ReactNode;
 }
 
-export function DraftBlock({ label = "Draft", children }: DraftBlockProps) {
+export function DraftBlock({ label, children }: DraftBlockProps) {
+  const t = useTranslations("CompanyPage");
+  const resolvedLabel = label ?? t("draftIndicator.draft");
   return (
     <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/50 p-3 space-y-2">
       <div className="flex items-center gap-1.5">
         <FileEdit className="h-3 w-3 text-amber-600" />
-        <span className="text-xs font-medium text-amber-700">{label}</span>
+        <span className="text-xs font-medium text-amber-700">{resolvedLabel}</span>
       </div>
       {children}
     </div>
@@ -34,14 +37,15 @@ export function DraftRelationChanges({
   nameMap,
   loading = false,
 }: DraftRelationChangesProps) {
+  const t = useTranslations("CompanyPage");
   if (added.length === 0 && removed.length === 0) return null;
 
   const getName = (id: string) => nameMap[id] ?? id;
 
   return (
-    <DraftBlock label="Pending changes">
+    <DraftBlock label={t("draftIndicator.pendingChanges")}>
       {loading && (
-        <p className="text-xs text-amber-600">Loading...</p>
+        <p className="text-xs text-amber-600">{t("draftIndicator.loading")}</p>
       )}
       {added.length > 0 && (
         <div className="flex flex-wrap gap-1">

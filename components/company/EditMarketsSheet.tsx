@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { EditSheetSkeleton } from "@/components/company/EditSheetSkeleton";
 import { MarketTreeSelector } from "@/components/company/MarketTreeSelector";
@@ -30,6 +31,7 @@ export function EditMarketsSheet({
   pendingRelation,
   onSaved,
 }: EditMarketsSheetProps) {
+  const t = useTranslations("CompanyPage");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [initialIds, setInitialIds] = useState<string[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
@@ -59,25 +61,25 @@ export function EditMarketsSheet({
           setInitialIds(effectiveIds);
           setNameMap(Object.fromEntries(markets.map((m) => [m.id, m.name])));
         })
-        .catch(() => toast.error("Failed to load markets"))
+        .catch(() => toast.error(t("editMarketsSheet.failedToLoad")))
         .finally(() => setLoading(false));
     }
-  }, [open, companyId, pendingRelation]);
+  }, [open, companyId, pendingRelation, t]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
       const result = await api.syncMarkets(companyId, selectedIds);
       if (result.draftSaved) {
-        toast.success(result.message || "Market changes saved as draft.");
+        toast.success(result.message || t("editMarketsSheet.successDraft"));
       } else {
-        toast.success("Markets updated");
+        toast.success(t("editMarketsSheet.success"));
       }
       onSaved();
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving markets:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save");
+      toast.error(error instanceof Error ? error.message : t("editMarketsSheet.failedToSave"));
     } finally {
       setSaving(false);
     }
@@ -90,26 +92,24 @@ export function EditMarketsSheet({
     <EditSheetLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Markets"
-      description="Select the markets your company serves."
+      title={t("editMarketsSheet.title")}
+      description={t("editMarketsSheet.description")}
       isReviewable={true}
       isVerified={isVerified}
       isEditLocked={isEditLocked}
       isSaving={saving}
       onSave={handleSave}
-      saveLabel={hasChanges ? undefined : "No Changes"}
+      saveLabel={hasChanges ? undefined : t("editMarketsSheet.noChanges")}
     >
       {isLoading && <EditSheetSkeleton />}
       <div className={isLoading ? "hidden" : "flex flex-col lg:grid lg:grid-cols-[1fr_1.5fr] gap-6 h-full"}>
         {/* Left column: search + selected */}
         <div className="space-y-4 lg:overflow-y-auto">
-          <p className="text-sm text-muted-foreground">
-            Select the markets your company serves.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("editMarketsSheet.bodyHint")}</p>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search markets..."
+              placeholder={t("editMarketsSheet.searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -118,7 +118,7 @@ export function EditMarketsSheet({
           {selectedIds.length > 0 && (
             <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
               <h3 className="font-medium text-sm">
-                Selected ({selectedIds.length})
+                {t("editMarketsSheet.selectedCount", { count: selectedIds.length })}
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {selectedIds.map((id) => (

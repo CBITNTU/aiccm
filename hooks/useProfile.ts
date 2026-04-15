@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/queryKeys";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ export function useProfile(userId: string | undefined) {
 }
 
 export function useUpdateProfile(userId: string | undefined) {
+  const t = useTranslations("Profile");
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -44,10 +46,10 @@ export function useUpdateProfile(userId: string | undefined) {
           },
         );
       }
-      toast.success("Profile updated successfully");
+      toast.success(t("toastSuccess"));
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update profile");
+      toast.error(error.message || t("toastErrorFallback"));
     },
   });
 }

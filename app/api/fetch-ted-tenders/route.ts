@@ -209,9 +209,10 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
     contactPoint: buyerContact,
   };
 
-  // Build notice URL
+  // Build notice URL using the current TED portal format. The legacy
+  // `/udl?uri=TED:NOTICE:` URLs no longer resolve on the new TED EU site.
   const noticeUrl = noticeIdentifier
-    ? `https://ted.europa.eu/udl?uri=TED:NOTICE:${noticeIdentifier}`
+    ? `https://ted.europa.eu/en/notice/-/detail/${noticeIdentifier}`
     : "https://ted.europa.eu";
 
   return {

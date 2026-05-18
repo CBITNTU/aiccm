@@ -1979,7 +1979,18 @@
       "analyzeCompany": "Analyze Company",
       "analyzing": "Analyzing...",
       "limitReached": "Limit Reached",
-      "thisMonth": "this month"
+      "thisMonth": "this month",
+      "suggestedMarkets": {
+        "title": "AI-Suggested Markets",
+        "description": "Based on your company profile, you may operate in these markets:",
+        "verifiedNote": "Applying will save these as a draft for admin review.",
+        "apply": "Apply AI Suggestions",
+        "applying": "Applying...",
+        "applied": "Markets applied successfully.",
+        "savedAsDraft": "Market suggestions saved as draft. Submit for review when ready.",
+        "applyFailed": "Failed to apply market suggestions. Please try again.",
+        "editLocked": "Cannot edit markets while a change review is pending."
+      }
     },
     "team": {
       "title": "Team Members",

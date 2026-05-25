@@ -34,6 +34,9 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "test:ollama": "node scripts/test-ollama-matching.mjs",
+    "test:ollama:zod": "tsx scripts/test-ollama-zod.ts",
+    "bench:matching": "tsx benchmarks/matching/run.ts",
+    "bench:matching:compare": "tsx benchmarks/matching/compare.ts",
     "prepare": "husky"
   },
   "dependencies": {

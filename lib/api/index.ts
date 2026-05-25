@@ -4,6 +4,8 @@ import type { AuthenticatedApiUser } from "@/lib/api/types";
 /** Model ids supported for matching (demo and production). */
 export const MATCHING_MODEL_IDS = {
   "gpt-5-nano": "gpt-5-nano",
+  "ollama/qwen2.5:7b": "ollama/qwen2.5:7b",
+  "ollama/qwen2.5:3b": "ollama/qwen2.5:3b",
 } as const;
 export type MatchingModelId = keyof typeof MATCHING_MODEL_IDS;
 

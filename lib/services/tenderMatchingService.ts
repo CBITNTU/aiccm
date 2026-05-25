@@ -1,6 +1,5 @@
  
-import { type MatchingModelId } from "@/lib/api";
-import { aiGenerateObject } from "@/lib/ai";
+import { aiGenerateObject, getMatchingModelFromEnv, isOllamaModelId } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { db } from "@/lib/db";
 import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers, companyTaxonomies, taxonomies, companyStandards, standardsRef, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
@@ -17,7 +16,8 @@ export type ReasoningEffort =
 
 export interface ScoreTenderMatchOptions {
   demo?: boolean;
-  model?: MatchingModelId;
+  /** Model ID. Known IDs live in MATCHING_MODEL_IDS but local Ollama tags are accepted too. */
+  model?: string;
   batchLabel?: string;
   /** GPT-5 nano only: reduce thinking for faster/cheaper runs (e.g. "low", "minimal", "none"). */
   reasoningEffort?: ReasoningEffort;
@@ -49,7 +49,7 @@ export async function scoreTenderMatch(
   tenderId: string,
   options?: ScoreTenderMatchOptions,
 ): Promise<MatchingScore> {
-  const model: string | undefined = options?.model;
+  const model: string | undefined = options?.model ?? getMatchingModelFromEnv();
   const isDemo = options?.demo === true;
   const batchLabel = options?.batchLabel ?? "User A";
   // Fetch company data with AI-generated summary and taxonomy
@@ -321,13 +321,15 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   let score: MatchingScore;
 
   try {
+    const useOllama = model != null && isOllamaModelId(model);
     const parsed = await aiGenerateObject({
       schema: matchingScoreSchema,
       system: systemPrompt,
       prompt: userPrompt,
       modelId: model,
-      maxTokens: 8000,
-      estTokens: 4000,
+      maxTokens: useOllama ? 4096 : 8000,
+      estTokens: useOllama ? 2000 : 4000,
+      temperature: useOllama ? 0.2 : undefined,
     });
 
     // Get scores from AI (no overallScore from AI - we calculate it)

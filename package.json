@@ -33,6 +33,7 @@
     "db:fresh": "node scripts/reset-and-seed.mjs",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
+    "test:ollama": "node scripts/test-ollama-matching.mjs",
     "prepare": "husky"
   },
   "dependencies": {

@@ -66,7 +66,7 @@ export async function processJob(job: {
       }
       const meta = (job.metadata ?? {}) as {
         demo?: boolean;
-        model?: "gpt-5-nano";
+        model?: string;
         batchLabel?: string;
         reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
       };

@@ -1975,7 +1975,18 @@
       "analyzeCompany": "分析公司",
       "analyzing": "分析中...",
       "limitReached": "已达上限",
-      "thisMonth": "本月"
+      "thisMonth": "本月",
+      "suggestedMarkets": {
+        "title": "AI 推荐市场",
+        "description": "根据您的公司资料，您可能活跃于以下市场：",
+        "verifiedNote": "应用后将作为草稿保存，等待管理员审核。",
+        "apply": "应用 AI 推荐",
+        "applying": "应用中...",
+        "applied": "市场已成功应用。",
+        "savedAsDraft": "市场推荐已保存为草稿，准备好后请提交审核。",
+        "applyFailed": "应用市场推荐失败，请重试。",
+        "editLocked": "变更审核待处理期间无法编辑市场信息。"
+      }
     },
     "team": {
       "title": "团队成员",

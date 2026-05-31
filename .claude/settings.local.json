@@ -6,7 +6,9 @@
       "Bash(npx tsc:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\leymy\\\\ntu\\\\aiccm\" -Directory)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

@@ -3,6 +3,7 @@ import {
   companies,
   companyCapabilities,
   companyCapabilitiesRef,
+  markets,
 } from "@/lib/db/schema/app";
 import { eq, asc, isNull } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
@@ -205,6 +206,7 @@ export async function generateCompanyCapabilityTaxonomy(
   const uniqueIds = await assignCapabilitiesLocally(companyId);
   console.log("[CompanyAI:taxonomy] Matched capability IDs:", uniqueIds);
 
+  // aiCapabilityTaxonomy is an AI-only field — always safe to update.
   await db
     .update(companies)
     .set({
@@ -213,19 +215,103 @@ export async function generateCompanyCapabilityTaxonomy(
     })
     .where(eq(companies.id, companyId));
 
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(companyCapabilities)
-      .where(eq(companyCapabilities.companyId, companyId));
-    if (uniqueIds.length > 0) {
-      await tx.insert(companyCapabilities).values(
-        uniqueIds.map((capabilityId) => ({ companyId, capabilityId })),
-      );
-    }
-  });
+  // The company_capabilities junction table is a REVIEWABLE_RELATION. For
+  // verified companies, changes require human approval and must not be
+  // overwritten by AI analysis directly.
+  const [row] = await db
+    .select({ verificationStatus: companies.verificationStatus })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+
+  if (row?.verificationStatus !== "verified") {
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(companyCapabilities)
+        .where(eq(companyCapabilities.companyId, companyId));
+      if (uniqueIds.length > 0) {
+        await tx.insert(companyCapabilities).values(
+          uniqueIds.map((capabilityId) => ({ companyId, capabilityId })),
+        );
+      }
+    });
+  } else {
+    console.log("[CompanyAI:taxonomy] Skipping junction table update — company is verified");
+  }
 
   console.log("[CompanyAI:taxonomy] DB save confirmed for company", companyId);
   return uniqueIds;
+}
+
+const LOCAL_MARKETS_MIN_SCORE = 1;
+const LOCAL_MARKETS_MAX = 5;
+
+/**
+ * Suggest top-level markets for a company using keyword scoring (no AI).
+ * Only considers L1 parent markets to keep the candidate set manageable.
+ * Stores suggestions in aiAnalysis.aiSuggestedMarkets (never auto-applies).
+ */
+export async function generateCompanyMarketSuggestions(companyId: string): Promise<string[]> {
+  const companyResult = await db
+    .select({
+      companyName: companies.companyName,
+      description: companies.description,
+      keyCapabilities: companies.keyCapabilities,
+      certifications: companies.certifications,
+      equipment: companies.equipment,
+      pastProjects: companies.pastProjects,
+      aiAnalysis: companies.aiAnalysis,
+    })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+
+  const company = companyResult[0];
+  if (!company) throw new Error("Company not found");
+
+  const parts = [
+    company.companyName,
+    company.description,
+    company.keyCapabilities,
+    company.certifications,
+    company.equipment,
+    company.pastProjects,
+  ].filter(Boolean) as string[];
+
+  const companyText = parts.join(" ");
+  const companyTextLower = companyText.toLowerCase();
+  const companyWords = toSearchWords(companyText);
+  if (companyWords.length === 0) return [];
+
+  const l1Markets = await db
+    .select({ id: markets.id, name: markets.name })
+    .from(markets)
+    .where(isNull(markets.parentId))
+    .orderBy(asc(markets.sortOrder), asc(markets.name));
+
+  if (l1Markets.length === 0) return [];
+
+  const scored = l1Markets.map((m) => ({
+    id: m.id,
+    score: scoreCapabilityMatch(companyWords, companyTextLower, m.name, null),
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+  const suggestedIds = scored
+    .filter((s) => s.score >= LOCAL_MARKETS_MIN_SCORE)
+    .slice(0, LOCAL_MARKETS_MAX)
+    .map((s) => s.id);
+
+  const existingAnalysis = (company.aiAnalysis as Record<string, unknown>) ?? {};
+  await db
+    .update(companies)
+    .set({
+      aiAnalysis: { ...existingAnalysis, aiSuggestedMarkets: suggestedIds },
+      updatedAt: new Date(),
+    })
+    .where(eq(companies.id, companyId));
+
+  return suggestedIds;
 }
 
 /**

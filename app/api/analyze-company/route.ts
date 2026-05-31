@@ -6,6 +6,7 @@ import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   generateCompanyCapabilityTaxonomy,
   generateCompanySummary,
+  generateCompanyMarketSuggestions,
 } from "@/lib/services/companyAIService";
 import type { DeepCompanyAnalysis } from "@/lib/api/types";
 import { z } from "zod";
@@ -251,29 +252,33 @@ export async function POST(request: NextRequest) {
 
     const companyInfo = analysis.companyInfo || {};
 
-    if (
-      companyInfo.key_capabilities &&
-      (!company.keyCapabilities || company.keyCapabilities.length < 50)
-    ) {
-      updateData.keyCapabilities = companyInfo.key_capabilities as string;
-    }
-    if (
-      companyInfo.equipment &&
-      (!company.equipment || company.equipment.length < 20)
-    ) {
-      updateData.equipment = companyInfo.equipment as string;
-    }
-    if (
-      companyInfo.certifications &&
-      (!company.certifications || company.certifications.length < 20)
-    ) {
-      updateData.certifications = companyInfo.certifications as string;
-    }
-    if (
-      companyInfo.past_projects &&
-      (!company.pastProjects || company.pastProjects.length < 50)
-    ) {
-      updateData.pastProjects = companyInfo.past_projects as string;
+    // For verified companies, reviewable text fields are human-approved and must
+    // not be overwritten by AI. Only fill sparse data for unverified companies.
+    if (company.verificationStatus !== "verified") {
+      if (
+        companyInfo.key_capabilities &&
+        (!company.keyCapabilities || company.keyCapabilities.length < 50)
+      ) {
+        updateData.keyCapabilities = companyInfo.key_capabilities as string;
+      }
+      if (
+        companyInfo.equipment &&
+        (!company.equipment || company.equipment.length < 20)
+      ) {
+        updateData.equipment = companyInfo.equipment as string;
+      }
+      if (
+        companyInfo.certifications &&
+        (!company.certifications || company.certifications.length < 20)
+      ) {
+        updateData.certifications = companyInfo.certifications as string;
+      }
+      if (
+        companyInfo.past_projects &&
+        (!company.pastProjects || company.pastProjects.length < 50)
+      ) {
+        updateData.pastProjects = companyInfo.past_projects as string;
+      }
     }
     if (companyInfo.contact_person && !company.contactPerson) {
       updateData.contactPerson = companyInfo.contact_person as string;
@@ -329,6 +334,16 @@ export async function POST(request: NextRequest) {
       console.error("[CompanyAI:analyze] Capability taxonomy FAILED:", capabilityError);
     }
 
+    // Generate market suggestions (L1 parent markets only, keyword matching)
+    let suggestedMarketIds: string[] = [];
+    try {
+      console.log("[CompanyAI:analyze] Starting market suggestions...");
+      suggestedMarketIds = await generateCompanyMarketSuggestions(companyId);
+      console.log("[CompanyAI:analyze] Market suggestions —", suggestedMarketIds);
+    } catch (marketError) {
+      console.error("[CompanyAI:analyze] Market suggestions FAILED:", marketError);
+    }
+
     // Generate AI summary for matching and UI display
     try {
       console.log("[CompanyAI:analyze] Starting summary generation...");
@@ -353,6 +368,7 @@ export async function POST(request: NextRequest) {
     return apiResponse({
       success: true,
       analysis,
+      suggestedMarketIds,
     });
   } catch (error) {
     return handleApiError(error);

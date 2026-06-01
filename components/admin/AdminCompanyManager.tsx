@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import type {
   AdminCompanyListParams,
-  AdminCompanyListResponse,
   AdminCompanyListType,
   AdminCompanyStats,
   AdminCompanyVerificationStatus,
   CompanyRecord as Company,
 } from "@/lib/api/types";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -91,21 +92,10 @@ export function AdminCompanyManager() {
     { value: "verified", label: t("filters.verified"), icon: ShieldCheck },
   ];
   const [activeTab, setActiveTab] = useState<AdminCompanyTab>("user-companies");
-  const [stats, setStats] = useState<AdminCompanyStats>(EMPTY_STATS);
 
-  const [userCompanies, setUserCompanies] = useState<Company[]>([]);
   const [userPage, setUserPage] = useState(1);
-  const [userTotalCount, setUserTotalCount] = useState(0);
-  const [userTotalPages, setUserTotalPages] = useState(0);
-  const [userLoading, setUserLoading] = useState(true);
-  const [userLoaded, setUserLoaded] = useState(false);
 
-  const [systemCompanies, setSystemCompanies] = useState<Company[]>([]);
   const [systemPage, setSystemPage] = useState(1);
-  const [systemTotalCount, setSystemTotalCount] = useState(0);
-  const [systemTotalPages, setSystemTotalPages] = useState(0);
-  const [systemLoading, setSystemLoading] = useState(false);
-  const [systemLoaded, setSystemLoaded] = useState(false);
 
   // Per-tab search state
   const [userSearch, setUserSearch] = useState("");
@@ -118,53 +108,41 @@ export function AdminCompanyManager() {
 
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const queryClient = useQueryClient();
 
-  const applyListResponse = useCallback(
-    (type: AdminCompanyListType, data: AdminCompanyListResponse) => {
-      setStats(data.stats);
+  const userQueryParams: AdminCompanyListParams = {
+    type: "user",
+    page: userPage,
+    pageSize: PAGE_SIZE,
+    search: debouncedUserSearch,
+    verificationStatus: verificationFilter,
+  };
 
-      if (type === "system") {
-        setSystemCompanies(data.companies);
-        setSystemTotalCount(data.totalCount);
-        setSystemTotalPages(data.totalPages);
-        setSystemLoaded(true);
-        return;
-      }
+  const systemQueryParams: AdminCompanyListParams = {
+    type: "system",
+    page: systemPage,
+    pageSize: PAGE_SIZE,
+    search: debouncedSystemSearch,
+  };
 
-      setUserCompanies(data.companies);
-      setUserTotalCount(data.totalCount);
-      setUserTotalPages(data.totalPages);
-      setUserLoaded(true);
-    },
-    [],
-  );
+  const userCompaniesQuery = useQuery({
+    queryKey: queryKeys.adminCompanies(userQueryParams),
+    queryFn: () => api.adminListCompanies(userQueryParams),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+  });
 
-  const fetchCompanies = useCallback(async (
-    options: AdminCompanyListParams,
-  ): Promise<Company[]> => {
-    const listType = options.type ?? "user";
-    if (listType === "system") {
-      setSystemLoading(true);
-    } else {
-      setUserLoading(true);
-    }
-
-    try {
-      const data = await api.adminListCompanies(options);
-      applyListResponse(listType, data);
-      return data.companies;
-    } catch (error) {
-      console.error("Error fetching companies:", error);
-      toast.error(t("toasts.loadError"));
-      return [];
-    } finally {
-      if (listType === "system") {
-        setSystemLoading(false);
-      } else {
-        setUserLoading(false);
-      }
-    }
-  }, [applyListResponse, t]);
+  const systemCompaniesQuery = useQuery({
+    queryKey: queryKeys.adminCompanies(systemQueryParams),
+    queryFn: () => api.adminListCompanies(systemQueryParams),
+    enabled: activeTab === "system-companies",
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     setUserPage(1);
@@ -175,25 +153,32 @@ export function AdminCompanyManager() {
   }, [debouncedSystemSearch]);
 
   useEffect(() => {
-    fetchCompanies({
-      type: "user",
-      page: userPage,
-      pageSize: PAGE_SIZE,
-      search: debouncedUserSearch,
-      verificationStatus: verificationFilter,
-    });
-  }, [debouncedUserSearch, fetchCompanies, userPage, verificationFilter]);
+    if (userCompaniesQuery.isError) {
+      console.error("Error fetching user companies:", userCompaniesQuery.error);
+      toast.error(t("toasts.loadError"));
+    }
+  }, [t, userCompaniesQuery.error, userCompaniesQuery.isError]);
 
   useEffect(() => {
-    if (activeTab !== "system-companies") return;
+    if (systemCompaniesQuery.isError) {
+      console.error("Error fetching system companies:", systemCompaniesQuery.error);
+      toast.error(t("toasts.loadError"));
+    }
+  }, [t, systemCompaniesQuery.error, systemCompaniesQuery.isError]);
 
-    fetchCompanies({
-      type: "system",
-      page: systemPage,
-      pageSize: PAGE_SIZE,
-      search: debouncedSystemSearch,
-    });
-  }, [activeTab, debouncedSystemSearch, fetchCompanies, systemPage]);
+  const userData = userCompaniesQuery.data;
+  const systemData = systemCompaniesQuery.data;
+  const stats: AdminCompanyStats = userData?.stats ?? systemData?.stats ?? EMPTY_STATS;
+  const userCompanies = userData?.companies ?? [];
+  const systemCompanies = systemData?.companies ?? [];
+  const userInitialLoading = userCompaniesQuery.isPending && !userData;
+  const systemInitialLoading =
+    activeTab === "system-companies" && systemCompaniesQuery.isPending && !systemData;
+  const systemLoaded = !!systemData;
+  const userTotalCount = userData?.totalCount ?? 0;
+  const userTotalPages = userData?.totalPages ?? 0;
+  const systemTotalCount = systemData?.totalCount ?? 0;
+  const systemTotalPages = systemData?.totalPages ?? 0;
 
   const handleDeleteCompany = async (
     companyId: string,
@@ -208,28 +193,16 @@ export function AdminCompanyManager() {
         const nextPage = systemCompanies.length === 1 && systemPage > 1 ? systemPage - 1 : systemPage;
         if (nextPage !== systemPage) {
           setSystemPage(nextPage);
-        } else {
-          await fetchCompanies({
-            type: "system",
-            page: nextPage,
-            pageSize: PAGE_SIZE,
-            search: debouncedSystemSearch,
-          });
         }
       } else {
         const nextPage = userCompanies.length === 1 && userPage > 1 ? userPage - 1 : userPage;
         if (nextPage !== userPage) {
           setUserPage(nextPage);
-        } else {
-          await fetchCompanies({
-            type: "user",
-            page: nextPage,
-            pageSize: PAGE_SIZE,
-            search: debouncedUserSearch,
-            verificationStatus: verificationFilter,
-          });
         }
       }
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.adminCompaniesRoot(),
+      });
     } catch (error) {
       console.error("Error deleting company:", error);
       toast.error(t("toasts.deleteError", { name: companyName }));
@@ -239,20 +212,14 @@ export function AdminCompanyManager() {
   };
 
   const handleCompanyUpdated = async () => {
-    const refreshed = await fetchCompanies({
-      type: "user",
-      page: userPage,
-      pageSize: PAGE_SIZE,
-      search: debouncedUserSearch,
-      verificationStatus: verificationFilter,
-    });
+    const refreshed = await userCompaniesQuery.refetch();
     if (selectedCompany) {
-      const updated = refreshed.find((c) => c.id === selectedCompany.id);
+      const updated = refreshed.data?.companies.find((c) => c.id === selectedCompany.id);
       if (updated) setSelectedCompany(updated);
     }
   };
 
-  if (userLoading && !userLoaded) {
+  if (userInitialLoading) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -366,7 +333,7 @@ export function AdminCompanyManager() {
           </div>
 
           {/* Company list */}
-          {userLoading ? (
+          {userInitialLoading ? (
             <CompanyListLoading label={t("loading")} />
           ) : userCompanies.length === 0 ? (
             <div className="rounded-lg border border-dashed py-12 text-center">
@@ -396,7 +363,7 @@ export function AdminCompanyManager() {
                 pageSize={PAGE_SIZE}
                 totalCount={userTotalCount}
                 totalPages={userTotalPages}
-                loading={userLoading}
+                loading={userCompaniesQuery.isFetching}
                 onPageChange={setUserPage}
               />
             </TooltipProvider>
@@ -419,7 +386,7 @@ export function AdminCompanyManager() {
             />
           </div>
 
-          {systemLoading ? (
+          {systemInitialLoading ? (
             <CompanyListLoading label={t("loading")} />
           ) : systemLoaded && systemCompanies.length === 0 ? (
             <div className="rounded-lg border border-dashed py-12 text-center">
@@ -445,7 +412,7 @@ export function AdminCompanyManager() {
                 pageSize={PAGE_SIZE}
                 totalCount={systemTotalCount}
                 totalPages={systemTotalPages}
-                loading={systemLoading}
+                loading={systemCompaniesQuery.isFetching}
                 onPageChange={setSystemPage}
               />
             </>

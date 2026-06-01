@@ -442,6 +442,12 @@
       "newCompany": "新公司",
       "joinCompany": "加入公司"
     },
+    "onboarding": {
+      "ready": "可审批",
+      "incomplete": "入驻未完成：{step}",
+      "incompleteHelper": "该用户尚未完成入驻流程。当前步骤：{step}。",
+      "unknownStep": "未知步骤"
+    },
     "hideCompanyDetails": "隐藏公司详情",
     "viewCompanyDetails": "查看公司详情",
     "rejectButton": "拒绝",

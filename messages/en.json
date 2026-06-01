@@ -442,6 +442,12 @@
       "newCompany": "New Company",
       "joinCompany": "Join Company"
     },
+    "onboarding": {
+      "ready": "Ready for approval",
+      "incomplete": "Onboarding incomplete: {step}",
+      "incompleteHelper": "This user has not finished onboarding yet. Current step: {step}.",
+      "unknownStep": "Unknown step"
+    },
     "hideCompanyDetails": "Hide Company Details",
     "viewCompanyDetails": "View Company Details",
     "rejectButton": "Reject",

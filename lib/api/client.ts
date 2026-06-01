@@ -1214,6 +1214,8 @@ export const api = {
           mediumThreshold?: number;
           requireSharedTaxonomy?: boolean;
           useStructuralRerank?: boolean;
+          useEmbedRerank?: boolean;
+          /** @deprecated use useEmbedRerank */
           useLlmRerank?: boolean;
         }
       | {
@@ -1225,6 +1227,7 @@ export const api = {
           mediumThreshold?: number;
           requireSharedTaxonomy?: boolean;
           useStructuralRerank?: boolean;
+          useEmbedRerank?: boolean;
           useLlmRerank?: boolean;
         }
       | {
@@ -1237,6 +1240,7 @@ export const api = {
           mediumThreshold?: number;
           requireSharedTaxonomy?: boolean;
           useStructuralRerank?: boolean;
+          useEmbedRerank?: boolean;
           useLlmRerank?: boolean;
         },
   ) =>

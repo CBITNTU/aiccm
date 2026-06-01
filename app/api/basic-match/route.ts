@@ -31,6 +31,7 @@ const baseSchema = {
   mediumThreshold: z.number().min(0).max(1).optional(),
   requireSharedTaxonomy: z.boolean().optional(),
   useStructuralRerank: z.boolean().optional(),
+  useEmbedRerank: z.boolean().optional(),
   useLlmRerank: z.boolean().optional(),
 };
 

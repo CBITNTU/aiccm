@@ -12,9 +12,9 @@ import {
   type CompanyMatchContext,
 } from "@/lib/services/basicMatchContext";
 import {
-  llmRerankEnabled,
-  scoreRelevance,
-} from "@/lib/services/basicMatchLlmReranker";
+  embedRerankEnabled,
+  embedRerankScore,
+} from "@/lib/services/basicMatchEmbedReranker";
 
 /**
  * Basic (semantic) matching via pgvector + structural fusion rerank.
@@ -32,7 +32,9 @@ export interface BasicMatchOptions {
   requireSharedTaxonomy?: boolean;
   /** Fuse vector + CPV + taxonomy + location scores. Default on. */
   useStructuralRerank?: boolean;
-  /** Re-score top hits with a small Ollama model (slow). Requires BASIC_MATCH_LLM_RERANK=1. */
+  /** Re-score top hits with query↔tender embed similarity (same model as Basic Match). */
+  useEmbedRerank?: boolean;
+  /** @deprecated Use useEmbedRerank */
   useLlmRerank?: boolean;
 }
 
@@ -316,11 +318,13 @@ export async function basicMatchTendersForCompany(
     .toSorted((a, b) => b.similarity - a.similarity)
     .slice(0, limit);
 
-  const wantLlm =
-    (options.useLlmRerank === true || llmRerankEnabled()) &&
+  const wantEmbedRerank =
+    (options.useEmbedRerank === true ||
+      options.useLlmRerank === true ||
+      embedRerankEnabled()) &&
     matches.length > 1;
 
-  if (wantLlm) {
+  if (wantEmbedRerank) {
     const queryText = companyQueryText(ctx);
     const rerankTop = Math.min(matches.length, 12);
     const head = matches.slice(0, rerankTop);
@@ -329,14 +333,17 @@ export async function basicMatchTendersForCompany(
     const rescored = await Promise.all(
       head.map(async (m) => {
         const snippet = [m.title, m.buyer, m.location].filter(Boolean).join(" — ");
-        const llm = await scoreRelevance(queryText, snippet);
-        if (llm == null) return m;
-        const blended = 0.65 * m.similarity + 0.35 * llm;
-        return {
-          ...m,
-          similarity: blended,
-          band: bandFor(blended, high, medium),
-        };
+        try {
+          const embedSim = await embedRerankScore(queryText, snippet);
+          const blended = 0.6 * m.similarity + 0.4 * embedSim;
+          return {
+            ...m,
+            similarity: blended,
+            band: bandFor(blended, high, medium),
+          };
+        } catch {
+          return m;
+        }
       }),
     );
 

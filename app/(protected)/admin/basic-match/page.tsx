@@ -328,7 +328,7 @@ export default function BasicMatchAdminPage() {
         <p className="text-muted-foreground">
           Coarse semantic matching backed by local{" "}
           <code className="text-xs px-1 py-0.5 rounded bg-muted">
-            nomic-embed-text
+            qwen3-embedding
           </code>{" "}
           embeddings + pgvector. No LLM calls at query time — typical latency is
           tens of milliseconds.

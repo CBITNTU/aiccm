@@ -1,20 +1,25 @@
 /**
  * Local embedding generation via Ollama.
  *
- * Default model: nomic-embed-text (768 dims, ~50 MB, very fast on CPU).
- * Override via OLLAMA_EMBED_MODEL env var.
+ * Default: `qwen3-embedding:0.6b` (same Qwen family as MATCHING_MODEL benchmarks).
+ * Chat models (qwen2.5:7b, etc.) are for structured LLM scoring only — not embeddings.
  *
- * We deliberately bypass the AI SDK here because the embedding endpoints in
- * @ai-sdk/openai don't talk to Ollama cleanly and we want a single dependency
- * surface for this experiment.
+ * Override via OLLAMA_EMBED_MODEL / OLLAMA_EMBED_DIM / OLLAMA_HOST.
  */
 
-const OLLAMA_HOST =
-  process.env.OLLAMA_HOST?.trim() || "http://127.0.0.1:11434";
-const EMBED_MODEL =
-  process.env.OLLAMA_EMBED_MODEL?.trim() || "nomic-embed-text";
+function ollamaHost(): string {
+  const raw =
+    process.env.OLLAMA_HOST?.trim() ||
+    process.env.OLLAMA_BASE_URL?.trim() ||
+    "http://127.0.0.1:11434";
+  return raw.replace(/\/v1\/?$/, "").replace(/\/$/, "");
+}
 
-export const EMBEDDING_DIM = 768;
+const EMBED_MODEL =
+  process.env.OLLAMA_EMBED_MODEL?.trim() || "qwen3-embedding:0.6b";
+
+/** Stored pgvector width; Qwen3 supports MRL — request this many dims from Ollama. */
+export const EMBEDDING_DIM = Number(process.env.OLLAMA_EMBED_DIM) || 768;
 
 interface OllamaEmbedResponse {
   embedding?: number[];
@@ -37,10 +42,15 @@ export async function embedText(text: string): Promise<EmbedResult> {
     throw new Error("embedText: input must be non-empty");
   }
 
-  const res = await fetch(`${OLLAMA_HOST}/api/embeddings`, {
+  const host = ollamaHost();
+  const res = await fetch(`${host}/api/embed`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: EMBED_MODEL, prompt: trimmed }),
+    body: JSON.stringify({
+      model: EMBED_MODEL,
+      input: trimmed,
+      dimensions: EMBEDDING_DIM,
+    }),
   });
 
   if (!res.ok) {
@@ -55,18 +65,22 @@ export async function embedText(text: string): Promise<EmbedResult> {
     throw new Error(`Ollama embed error: ${data.error}`);
   }
 
-  const vector = data.embedding ?? data.embeddings?.[0];
+  const vector = data.embeddings?.[0] ?? data.embedding;
   if (!vector || vector.length === 0) {
     throw new Error("Ollama embed returned no vector");
+  }
+
+  if (vector.length !== EMBEDDING_DIM) {
+    throw new Error(
+      `Ollama embed dimension mismatch: expected ${EMBEDDING_DIM}, got ${vector.length} (model ${EMBED_MODEL})`,
+    );
   }
 
   return { vector, model: EMBED_MODEL, dim: vector.length };
 }
 
 /**
- * Embed a batch sequentially (Ollama doesn't support true batching over the
- * single-prompt embeddings endpoint, but sequential is still fast — ~20-50ms
- * per call on an M-series Mac).
+ * Embed a batch sequentially (Ollama embed API is one input per request).
  */
 export async function embedBatch(texts: string[]): Promise<EmbedResult[]> {
   const out: EmbedResult[] = [];

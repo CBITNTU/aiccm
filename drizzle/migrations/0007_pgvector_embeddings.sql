@@ -17,7 +17,7 @@ ALTER TABLE "tenders"
 --> statement-breakpoint
 
 -- HNSW index for cosine-distance ANN. Cosine works well for normalised
--- sentence embeddings like nomic-embed-text. m / ef_construction defaults
+-- sentence embeddings (default: qwen3-embedding @ 768 dims via MRL). m / ef_construction defaults
 -- (16 / 64) are appropriate for tens of thousands of rows; tune if needed.
 CREATE INDEX IF NOT EXISTS "tenders_embedding_hnsw_idx"
   ON "tenders"

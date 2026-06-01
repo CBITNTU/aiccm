@@ -52,7 +52,7 @@ strictly more accurate second pass. Together they form a classic
 
 We added a 768-dim `vector` column to `companies` and `tenders`, indexed each
 with HNSW under cosine distance, and wired a local Ollama model
-(`nomic-embed-text`, 274&nbsp;MB) behind a thin embedding service. Every write path
+(`qwen3-embedding:0.6b`, same Qwen family as local matching benchmarks) behind a thin embedding service. Every write path
 on companies/tenders synchronously recomputes the row's embedding (idempotent
 via a SHA hash of the source text). Reads are pure SQL — no LLM, no
 network — and return ranked candidates in ~25&nbsp;ms. A new
@@ -78,7 +78,7 @@ modes.
 │         │                                          fields into one     │
 │         │                                          dense block of text │
 │         ▼                                                              │
-│  embedText(source) ──── HTTP ──► Ollama  (nomic-embed-text, 768d)      │
+│  embedText(source) ──── HTTP ──► Ollama  (qwen3-embedding, 768d MRL)   │
 │         │                                                              │
 │         ▼                                                              │
 │  UPDATE companies/tenders                                              │
@@ -161,7 +161,7 @@ typed `number[]` columns. Reads/writes for vector ops still use raw SQL via
 |---|---|---|
 | **Migration** | `drizzle/migrations/0007_pgvector_embeddings.sql` | Extension + columns + HNSW indexes |
 | **Schema** | `lib/db/schema/app.ts` | `customType` for `vector(768)`, columns on `companies` & `tenders` |
-| **Embedder** | `lib/ai/embeddings.ts` | Thin `fetch` wrapper around Ollama `/api/embeddings`; configurable via `OLLAMA_HOST`, `OLLAMA_EMBED_MODEL` |
+| **Embedder** | `lib/ai/embeddings.ts` | Ollama `/api/embed` wrapper; default `qwen3-embedding:0.6b` @ 768d (MRL). `MATCHING_MODEL` is separate (chat/LLM scoring). |
 | **Service** | `lib/services/embeddingService.ts` | `buildCompanySource`, `buildTenderSource`, `embedCompany`, `embedTender`, `embedQuery`. Hash-based dedupe via `embedding_source_hash` |
 | **Matcher** | `lib/services/basicMatchingService.ts` | Three raw-SQL functions: `basicMatchTendersForCompany`, `basicMatchCompaniesForTender`, `basicMatchTendersForQuery`. Cosine distance + band thresholds. |
 | **Queue** | `lib/services/queueService.ts`, `jobProcessor.ts` | New `compute_embedding` job type (for async re-embeds) |
@@ -229,8 +229,8 @@ unchanged, ~17&nbsp;ms when re-embedding). Can run as a nightly job.
 ### Local prerequisites
 
 ```bash
-# 1. Ollama with the embed model
-ollama pull nomic-embed-text                    # 274 MB
+# 1. Ollama with the embed model (not the chat model used for benchmarks)
+ollama pull qwen3-embedding:0.6b
 
 # 2. Postgres with pgvector
 docker compose up -d                             # uses pgvector/pgvector:pg18
@@ -266,7 +266,7 @@ PAGES=50 DAYS_BACK=365 node scripts/import-uk-tenders.mjs
 | Symptom | Diagnose | Fix |
 |---|---|---|
 | `/matches` returns empty results | `SELECT embedding IS NULL ...` for that company | `npm run embed:backfill` |
-| Embedding fails on save | Ollama down? | `ollama serve` + `ollama list \| grep nomic-embed-text` |
+| Embedding fails on save | Ollama down or wrong model? | `ollama serve` + `ollama list \| grep qwen3-embedding` |
 | Match results look random | HNSW corrupted or wrong column dim | `REINDEX INDEX tenders_embedding_hnsw_idx;` |
 | 400 from `fetch-uk-tenders` on page 2+ | Upstream cursor with mismatched date range | Already fixed — script decodes the cursor and forwards `updatedFrom` + `updatedTo` |
 | 429 from upstream during bulk import | OK — built-in 30 s backoff + retry | Just wait; script auto-resumes |
@@ -346,9 +346,9 @@ capture trigger can enqueue jobs and the worker drains them.
   vocabulary with the company description ("schools" ↔ "primary education
   estate"). It will also miss tenders where the embedding model fails — but
   those failures show up as low band, not silent silence.
-- **Not multilingual.** `nomic-embed-text` is English-only. For Welsh / EU
-  TED tenders, swap to `bge-m3` or `nomic-embed-text-v1.5` (same architecture,
-  one env var).
+- **Two Ollama models.** `MATCHING_MODEL` (e.g. `qwen2.5:7b`) is for deep LLM
+  scoring; `OLLAMA_EMBED_MODEL` (default `qwen3-embedding:0.6b`) is for Basic
+  Match vectors. Do not point the embedder at a chat model.
 - **Not personalised.** Two users at the same company see the same matches.
   Personalisation would happen in a later re-rank stage, not here.
 
@@ -375,7 +375,7 @@ capture trigger can enqueue jobs and the worker drains them.
 
 ```bash
 docker compose up -d
-ollama list | grep nomic-embed-text   # must be present
+ollama list | grep qwen3-embedding    # must be present (separate from qwen2.5 chat)
 npm run embed:backfill                # after fresh seed / import
 npm run dev
 ```
@@ -392,6 +392,8 @@ Log in as superadmin (`admin@tndrx.dev` from local seed) and open **Admin → Ba
 | Education / venture builder signup | User **Matches** page | Company **Hazy test** after onboarding — education tenders should rank above generic construction noise |
 
 Company → tender mode uses **competency-aware re-ranking**: profile competencies from `company_capabilities` are embedded into the company vector and used to boost / penalise candidates (e.g. construction tenders sink when the profile has no construction competencies).
+
+After switching embed models, run `FORCE=1 npm run embed:backfill` — vectors are not compatible across models.
 
 **Weaker path (avoid as the opener)** — A brand-new company with only a website URL and no competencies selected yet. Run **Re-analyze** on the company page, then **Refresh** on Matches.
 

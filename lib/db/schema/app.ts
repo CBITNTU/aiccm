@@ -17,7 +17,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
-// pgvector column. Stored as `vector(N)`. nomic-embed-text emits 768-dim vectors.
+// pgvector column. Stored as `vector(N)`. Default embedder: qwen3-embedding @ 768 (MRL).
 const vector = (dim: number) =>
   customType<{ data: number[]; driverData: string }>({
     dataType() {
@@ -35,7 +35,7 @@ const vector = (dim: number) =>
     },
   });
 
-const EMBEDDING_DIM = 768; // nomic-embed-text
+const EMBEDDING_DIM = 768; // qwen3-embedding:0.6b with OLLAMA_EMBED_DIM=768
 
 // Enums
 export const appRoleEnum = pgEnum("app_role", [

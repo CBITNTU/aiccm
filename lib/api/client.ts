@@ -1200,4 +1200,56 @@ export const api = {
       remaining: number;
       resetsAt: string;
     }>(`companies/${companyId}/analysis-usage`, { method: "GET" }),
+
+  // Basic (semantic) matching via pgvector
+  basicMatch: (
+    input:
+      | {
+          mode: "tenders-for-company";
+          companyId: string;
+          limit?: number;
+          minScore?: number;
+          status?: string;
+          highThreshold?: number;
+          mediumThreshold?: number;
+        }
+      | {
+          mode: "companies-for-tender";
+          tenderId: string;
+          limit?: number;
+          minScore?: number;
+          highThreshold?: number;
+          mediumThreshold?: number;
+        }
+      | {
+          mode: "tenders-for-query";
+          query: string;
+          limit?: number;
+          minScore?: number;
+          status?: string;
+          highThreshold?: number;
+          mediumThreshold?: number;
+        },
+  ) =>
+    apiCall<{
+      mode: string;
+      elapsedMs: number;
+      count: number;
+      results: Array<{
+        tenderId?: string;
+        companyId?: string;
+        title?: string;
+        buyer?: string;
+        companyName?: string;
+        postcode?: string | null;
+        cpvCodes?: string[] | null;
+        location?: string | null;
+        deadline?: string | null;
+        status?: string | null;
+        similarity: number;
+        vectorSimilarity?: number;
+        capabilityMatch?: boolean;
+        band: "high" | "medium" | "low";
+      }>;
+    }>("basic-match", { body: input }),
 };

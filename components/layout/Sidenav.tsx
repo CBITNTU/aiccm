@@ -36,6 +36,7 @@ import {
   SlidersHorizontal,
   FlaskConical,
   Globe,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -68,6 +69,12 @@ const mainNavItems: NavigationItem[] = [
     labelKey: "nav.tenders",
     href: "/tenders",
     icon: FileText,
+    hideForPending: false,
+  },
+  {
+    labelKey: "nav.matches",
+    href: "/matches",
+    icon: Sparkles,
     hideForPending: false,
   },
   {
@@ -121,6 +128,7 @@ const adminNavGroups: AdminNavGroup[] = [
       { labelKey: "admin.taxonomy", href: "/admin/taxonomy", icon: Tags, hideForPending: true },
       { labelKey: "admin.settings", href: "/admin/settings", icon: SlidersHorizontal, hideForPending: true },
       { labelKey: "admin.demoSync", href: "/admin/demo-sync", icon: FlaskConical, hideForPending: true },
+      { labelKey: "admin.basicMatch", href: "/admin/basic-match", icon: FlaskConical, hideForPending: true },
     ],
   },
 ];

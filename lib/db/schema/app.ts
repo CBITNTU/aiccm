@@ -13,8 +13,29 @@ import {
   unique,
   primaryKey,
   index,
+  customType,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
+
+// pgvector column. Stored as `vector(N)`. nomic-embed-text emits 768-dim vectors.
+const vector = (dim: number) =>
+  customType<{ data: number[]; driverData: string }>({
+    dataType() {
+      return `vector(${dim})`;
+    },
+    toDriver(value: number[]): string {
+      return `[${value.join(",")}]`;
+    },
+    fromDriver(value: string): number[] {
+      // pgvector returns "[1,2,3]" — strip brackets and split
+      return value
+        .slice(1, -1)
+        .split(",")
+        .map((n) => Number(n));
+    },
+  });
+
+const EMBEDDING_DIM = 768; // nomic-embed-text
 
 // Enums
 export const appRoleEnum = pgEnum("app_role", [
@@ -97,6 +118,10 @@ export const companies = pgTable("companies", {
   taxonomyGeneratedAt: timestamp("taxonomy_generated_at", { withTimezone: true }),
   summaryGeneratedAt: timestamp("summary_generated_at", { withTimezone: true }),
   contentHash: text("content_hash"),
+  // Basic matching: vector embedding of the company's textual summary + capabilities.
+  embedding: vector(EMBEDDING_DIM)("embedding"),
+  embeddingGeneratedAt: timestamp("embedding_generated_at", { withTimezone: true }),
+  embeddingSourceHash: text("embedding_source_hash"),
   digitalMaturity: text("digital_maturity"),
   safetyRating: text("safety_rating"),
   marketPosition: text("market_position"),
@@ -159,6 +184,10 @@ export const tenders = pgTable("tenders", {
   aiCapabilityTaxonomy: jsonb("ai_capability_taxonomy"),
   taxonomyGeneratedAt: timestamp("taxonomy_generated_at", { withTimezone: true }),
   summaryGeneratedAt: timestamp("summary_generated_at", { withTimezone: true }),
+  // Basic matching: vector embedding of the tender's textual summary + requirements.
+  embedding: vector(EMBEDDING_DIM)("embedding"),
+  embeddingGeneratedAt: timestamp("embedding_generated_at", { withTimezone: true }),
+  embeddingSourceHash: text("embedding_source_hash"),
 });
 
 // ============================================================================

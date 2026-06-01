@@ -11,6 +11,7 @@
  *   MATCHING_MODEL=ollama/qwen2.5:7b ./node_modules/.bin/tsx benchmarks/matching/run.ts
  *   REPEATS=5 ./node_modules/.bin/tsx benchmarks/matching/run.ts
  *   CASES=construction-nhs-me-same-city,it-vs-construction-mismatch ./node_modules/.bin/tsx benchmarks/matching/run.ts
+ *   NO_THINK=1 ./node_modules/.bin/tsx benchmarks/matching/run.ts   # injects /no_think for Qwen 3/3.5
  */
 import { config } from "dotenv";
 import { execSync } from "node:child_process";
@@ -65,6 +66,10 @@ const repeats = Math.max(1, Number(process.env.REPEATS) || 3);
 const caseFilter = process.env.CASES?.split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+// Qwen 3 / 3.5 thinking mode soft-switch. Injecting /no_think disables the
+// reasoning trace via the OpenAI-compatible Ollama endpoint (which doesn't
+// honour the native `think: false` parameter).
+const noThink = process.env.NO_THINK === "1" || process.env.NO_THINK === "true";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -182,11 +187,13 @@ async function runCaseOnce(c: BenchmarkCase): Promise<CaseRunResult> {
   const started = Date.now();
   try {
     const model = resolveModel(modelId);
+    const promptBody = `${c.company}\n\n${c.tender}`;
+    const prompt = noThink ? `/no_think ${promptBody}` : promptBody;
     const result = await generateObject({
       model,
       schema: zodSchema(matchingScoreSchema),
       system: c.systemOverride ?? SYSTEM_PROMPT,
-      prompt: `${c.company}\n\n${c.tender}`,
+      prompt,
       maxOutputTokens: 4096,
       temperature: 0.2,
     });
@@ -280,7 +287,7 @@ async function main() {
   console.log(`Cases:        ${cases.length}`);
   console.log(`Repeats:      ${repeats}`);
   console.log(`Total calls:  ${cases.length * repeats}`);
-  console.log(`Prompt ver:   ${PROMPT_VERSION}`);
+  console.log(`Prompt ver:   ${PROMPT_VERSION}${noThink ? " (+/no_think)" : ""}`);
   console.log(`Schema ver:   ${SCHEMA_VERSION}`);
   console.log(`Git:          ${gitSha()}\n`);
 
@@ -316,7 +323,7 @@ async function main() {
   const result: BenchmarkResultFile = {
     resultsVersion: RESULTS_VERSION,
     model: modelId,
-    promptVersion: PROMPT_VERSION,
+    promptVersion: noThink ? `${PROMPT_VERSION}+nothink` : PROMPT_VERSION,
     schemaVersion: SCHEMA_VERSION,
     git: gitSha(),
     createdAt: startedAt.toISOString(),

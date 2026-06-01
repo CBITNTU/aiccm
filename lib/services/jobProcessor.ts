@@ -8,11 +8,13 @@ import {
   generateCompanyCapabilityTaxonomy,
 } from "@/lib/services/companyAIService";
 import { scoreTenderMatch } from "@/lib/services/tenderMatchingService";
+import { embedCompany, embedTender } from "@/lib/services/embeddingService";
 import { type JobType } from "@/lib/services/queueService";
 
 export async function processJob(job: {
   id: string;
   jobType: JobType;
+  entityType?: "company" | "tender" | string | null;
   entityId: string;
   companyId?: string | null;
   tenderId?: string | null;
@@ -53,11 +55,35 @@ export async function processJob(job: {
       // Local keyword taxonomy first (no AI, reliable), then AI summary
       const companyTaxonomyIds = await generateCompanyCapabilityTaxonomy(job.entityId, fullRegen);
       const companySummaryText = await generateCompanySummary(job.entityId);
+      try {
+        await embedCompany(job.entityId, { force: true });
+      } catch (embedError) {
+        console.error(
+          `Embedding after company_ai_complete failed (non-fatal) for ${job.entityId}:`,
+          embedError,
+        );
+      }
       return {
         success: true,
         summary: companySummaryText,
         taxonomy: companyTaxonomyIds,
       };
+    }
+
+    case "compute_embedding": {
+      const meta = (job.metadata ?? {}) as { force?: boolean };
+      const force = meta.force === true;
+      if (job.entityType === "company") {
+        const result = await embedCompany(job.entityId, { force });
+        return { success: true, ...result };
+      }
+      if (job.entityType === "tender") {
+        const result = await embedTender(job.entityId, { force });
+        return { success: true, ...result };
+      }
+      throw new Error(
+        `compute_embedding: unsupported entityType "${job.entityType}" for job ${job.id}`,
+      );
     }
 
     case "tender_matching": {

@@ -72,6 +72,7 @@ async function pollAndProcess() {
         const result = await processJob({
           id: job.id,
           jobType: job.jobType as JobType,
+          entityType: job.entityType as "company" | "tender",
           entityId: job.entityId,
           companyId: job.companyId,
           tenderId: job.tenderId,

@@ -1277,6 +1277,7 @@
     "nav": {
       "dashboard": "Dashboard",
       "tenders": "Tenders",
+      "matches": "Matches",
       "directory": "Company Directory",
       "projects": "Projects",
       "myCompany": "My Company",
@@ -1293,7 +1294,8 @@
       "onboarding": "Onboarding",
       "taxonomy": "Taxonomy",
       "settings": "Settings",
-      "demoSync": "Demo Sync"
+      "demoSync": "Demo Sync",
+      "basicMatch": "Basic Match"
     },
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar",

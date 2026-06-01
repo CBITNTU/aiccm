@@ -36,7 +36,10 @@
     "test:ollama": "node scripts/test-ollama-matching.mjs",
     "test:ollama:zod": "tsx scripts/test-ollama-zod.ts",
     "bench:matching": "tsx benchmarks/matching/run.ts",
+    "bench:matching:bundled": "tsx benchmarks/matching/bundled.ts",
     "bench:matching:compare": "tsx benchmarks/matching/compare.ts",
+    "bench:matching:summary": "tsx benchmarks/matching/summary.ts",
+    "embed:backfill": "tsx scripts/backfill-embeddings.ts",
     "prepare": "husky"
   },
   "dependencies": {

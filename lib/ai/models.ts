@@ -56,8 +56,23 @@ export const SUPPORTED_MODELS = [
     provider: "ollama",
   },
   {
-    id: "ollama/qwen2.5:3b",
-    name: "Qwen 2.5 3B (Ollama)",
+    id: "ollama/qwen2.5:14b",
+    name: "Qwen 2.5 14B (Ollama)",
+    provider: "ollama",
+  },
+  {
+    id: "ollama/qwen3:8b",
+    name: "Qwen 3 8B (Ollama)",
+    provider: "ollama",
+  },
+  {
+    id: "ollama/qwen3:14b",
+    name: "Qwen 3 14B (Ollama)",
+    provider: "ollama",
+  },
+  {
+    id: "ollama/qwen3:30b",
+    name: "Qwen 3 30B MoE (Ollama)",
     provider: "ollama",
   },
 ] as const;

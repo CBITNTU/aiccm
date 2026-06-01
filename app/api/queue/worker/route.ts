@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       const jobsToProcess: Array<{
         id: string;
         jobType: string;
+        entityType: string;
         entityId: string;
         companyId: string | null;
         tenderId: string | null;
@@ -147,6 +148,7 @@ export async function POST(request: NextRequest) {
         jobsToProcess.push({
           id: job.id,
           jobType: job.jobType,
+          entityType: job.entityType,
           entityId: job.entityId,
           companyId: job.companyId,
           tenderId: job.tenderId,
@@ -199,6 +201,7 @@ export async function POST(request: NextRequest) {
           const result = await processJob({
             id: job.id,
             jobType: job.jobType as JobType,
+            entityType: job.entityType as "company" | "tender",
             entityId: job.entityId,
             companyId: job.companyId,
             tenderId: job.tenderId,

@@ -82,7 +82,6 @@ async function main() {
 
   console.log("Resetting local public schema for Drizzle baseline migration...");
   console.log("Warning: this is destructive and should only be used for local development.");
-  console.log("Note: avoid mixing `supabase db push` and `drizzle-kit migrate` on the same local DB lifecycle.");
 
   await resetPublicSchema(databaseUrl);
 

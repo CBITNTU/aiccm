@@ -614,6 +614,12 @@
       "noCompaniesHint": "请调整搜索或筛选条件",
       "noSystemCompanies": "未找到系统公司"
     },
+    "pagination": {
+      "showingRange": "显示第 {start}-{end} 条，共 {total} 条",
+      "pageStatus": "第 {page} 页，共 {totalPages} 页",
+      "previous": "上一页",
+      "next": "下一页"
+    },
     "systemDescription": "由 AI 生成或导入的参考公司，用于招标匹配与平台演示。",
     "systemWarning": "删除系统公司需要超级管理员权限且不可恢复。",
     "importToolsDescription": "导入公司数据或触发全公司 AI 重新分析。",

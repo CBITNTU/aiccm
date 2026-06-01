@@ -58,6 +58,29 @@ export function AdminCompanyDetailSheet({
   onCompanyUpdated,
 }: AdminCompanyDetailSheetProps) {
   const t = useTranslations("AdminCompanyDetail");
+  const [fetchedCompany, setFetchedCompany] = useState<CompanyRecord | null>(null);
+
+  useEffect(() => {
+    if (!company) return;
+
+    let isCurrent = true;
+
+    api.adminGetCompany(company.id)
+      .then((data) => {
+        if (isCurrent) setFetchedCompany(data.company);
+      })
+      .catch((error) => {
+        console.error("Error fetching company details:", error);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [company]);
+
+  const visibleCompany =
+    fetchedCompany?.id === company?.id ? fetchedCompany : company;
+
   return (
     <Sheet open={!!company} onOpenChange={() => onClose()}>
       <SheetContent
@@ -66,9 +89,9 @@ export function AdminCompanyDetailSheet({
       >
         <SheetTitle className="sr-only">{t("srTitle")}</SheetTitle>
         <SheetDescription className="sr-only">{t("srDescription")}</SheetDescription>
-        {company && (
+        {visibleCompany && (
           <SheetInner
-            company={company}
+            company={visibleCompany}
             onClose={onClose}
             onCompanyUpdated={onCompanyUpdated}
           />

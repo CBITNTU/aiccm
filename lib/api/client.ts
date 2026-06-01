@@ -1212,6 +1212,9 @@ export const api = {
           status?: string;
           highThreshold?: number;
           mediumThreshold?: number;
+          requireSharedTaxonomy?: boolean;
+          useStructuralRerank?: boolean;
+          useLlmRerank?: boolean;
         }
       | {
           mode: "companies-for-tender";
@@ -1220,6 +1223,9 @@ export const api = {
           minScore?: number;
           highThreshold?: number;
           mediumThreshold?: number;
+          requireSharedTaxonomy?: boolean;
+          useStructuralRerank?: boolean;
+          useLlmRerank?: boolean;
         }
       | {
           mode: "tenders-for-query";
@@ -1229,6 +1235,9 @@ export const api = {
           status?: string;
           highThreshold?: number;
           mediumThreshold?: number;
+          requireSharedTaxonomy?: boolean;
+          useStructuralRerank?: boolean;
+          useLlmRerank?: boolean;
         },
   ) =>
     apiCall<{
@@ -1249,6 +1258,9 @@ export const api = {
         similarity: number;
         vectorSimilarity?: number;
         capabilityMatch?: boolean;
+        cpvScore?: number;
+        taxonomyScore?: number;
+        locationScore?: number;
         band: "high" | "medium" | "low";
       }>;
     }>("basic-match", { body: input }),

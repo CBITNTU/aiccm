@@ -10,9 +10,29 @@ import {
   companyCapabilities,
   companyCapabilitiesRef,
   competencyTaxonomySeed,
+  tenderTaxonomies,
+  taxonomies,
 } from "@/lib/db/schema/app";
 import { embedText, vectorToLiteral } from "@/lib/ai/embeddings";
 import { getCpvCodeName } from "@/lib/cpvCodes";
+
+function formatBudgetLine(
+  budgetMin: number | null | undefined,
+  budgetMax: number | null | undefined,
+): string {
+  const min = budgetMin != null && budgetMin > 0 ? budgetMin / 100 : null;
+  const max = budgetMax != null && budgetMax > 0 ? budgetMax / 100 : null;
+  if (min != null && max != null) {
+    return `Contract value: £${min.toLocaleString("en-GB")} – £${max.toLocaleString("en-GB")}`;
+  }
+  if (max != null) {
+    return `Contract value: up to £${max.toLocaleString("en-GB")}`;
+  }
+  if (min != null) {
+    return `Contract value: from £${min.toLocaleString("en-GB")}`;
+  }
+  return "";
+}
 
 /**
  * Embedding source text construction.
@@ -100,6 +120,23 @@ export async function fetchCompanyCapabilityLabels(
     .where(eq(companyCapabilities.companyId, companyId));
 
   return rows.map((r) => r.name);
+}
+
+/** Taxonomy names linked on the tender (plus resolved AI taxonomy UUIDs). */
+export async function fetchTenderCapabilityLabels(
+  tenderId: string,
+  aiCapabilityTaxonomy: unknown,
+): Promise<string[]> {
+  const junctionRows = await db
+    .select({ name: taxonomies.name })
+    .from(tenderTaxonomies)
+    .innerJoin(taxonomies, eq(tenderTaxonomies.taxonomyId, taxonomies.id))
+    .where(eq(tenderTaxonomies.tenderId, tenderId));
+
+  const taxonomyIds = parseUuidList(aiCapabilityTaxonomy);
+  const fromAi = await resolveCapabilityNamesByIds(taxonomyIds);
+
+  return [...new Set([...junctionRows.map((r) => r.name), ...fromAi])];
 }
 
 // ============================================================================
@@ -195,7 +232,7 @@ export async function embedCompany(
     return { status: "skipped", reason: "unchanged source" };
   }
 
-  const { vector } = await embedText(source);
+  const { vector } = await embedText(source, "company");
   const literal = vectorToLiteral(vector);
 
   await db.execute(sql`
@@ -219,16 +256,31 @@ export function buildTenderSource(tender: {
   description: string | null;
   cpvCodes: string[] | null;
   location: string | null;
+  deadline: Date | null;
+  budgetMin: number | null;
+  budgetMax: number | null;
   aiSummary: string | null;
   aiCapabilityTaxonomy: unknown;
   requirements: unknown;
+  capabilityLabels?: string[];
 }): string {
+  const capabilityLine =
+    tender.capabilityLabels && tender.capabilityLabels.length > 0
+      ? `Sector tags: ${tender.capabilityLabels.join("; ")}`
+      : "";
+
+  const deadlineLine = tender.deadline
+    ? `Deadline: ${tender.deadline.toISOString().slice(0, 10)}`
+    : "";
+
   return joinNonEmpty([
     `Tender: ${tender.title}`,
     `Buyer: ${tender.buyer}`,
     tender.aiSummary ? `Summary: ${tender.aiSummary}` : tender.description,
+    capabilityLine,
     cpvNames(tender.cpvCodes) ? `CPV: ${cpvNames(tender.cpvCodes)}` : "",
-    jsonbToString(tender.aiCapabilityTaxonomy) ? `Taxonomy: ${jsonbToString(tender.aiCapabilityTaxonomy)}` : "",
+    formatBudgetLine(tender.budgetMin, tender.budgetMax),
+    deadlineLine,
     jsonbToString(tender.requirements) ? `Requirements: ${jsonbToString(tender.requirements)}` : "",
     tender.location ? `Location: ${tender.location}` : "",
   ]);
@@ -249,6 +301,9 @@ export async function embedTender(
       description: tenders.description,
       cpvCodes: tenders.cpvCodes,
       location: tenders.location,
+      deadline: tenders.deadline,
+      budgetMin: tenders.budgetMin,
+      budgetMax: tenders.budgetMax,
       aiSummary: tenders.aiSummary,
       aiCapabilityTaxonomy: tenders.aiCapabilityTaxonomy,
       requirements: tenders.requirements,
@@ -262,7 +317,12 @@ export async function embedTender(
     return { status: "skipped", reason: "tender not found" };
   }
 
-  const source = buildTenderSource(row);
+  const capabilityLabels = await fetchTenderCapabilityLabels(
+    tenderId,
+    row.aiCapabilityTaxonomy,
+  );
+
+  const source = buildTenderSource({ ...row, capabilityLabels });
   if (!source.trim()) {
     return { status: "skipped", reason: "no content to embed" };
   }
@@ -272,7 +332,7 @@ export async function embedTender(
     return { status: "skipped", reason: "unchanged source" };
   }
 
-  const { vector } = await embedText(source);
+  const { vector } = await embedText(source, "tender");
   const literal = vectorToLiteral(vector);
 
   await db.execute(sql`
@@ -291,6 +351,6 @@ export async function embedTender(
 // ============================================================================
 
 export async function embedQuery(text: string): Promise<number[]> {
-  const { vector } = await embedText(text);
+  const { vector } = await embedText(text, "query");
   return vector;
 }

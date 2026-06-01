@@ -29,6 +29,9 @@ const baseSchema = {
   status: z.string().max(40).optional(),
   highThreshold: z.number().min(0).max(1).optional(),
   mediumThreshold: z.number().min(0).max(1).optional(),
+  requireSharedTaxonomy: z.boolean().optional(),
+  useStructuralRerank: z.boolean().optional(),
+  useLlmRerank: z.boolean().optional(),
 };
 
 const schema = z.discriminatedUnion("mode", [

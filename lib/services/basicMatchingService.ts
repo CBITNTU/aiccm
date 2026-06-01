@@ -1,38 +1,39 @@
-import { sql } from "drizzle-orm";
+import { sql, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import {
-  embedQuery,
-  fetchCompanyCapabilityLabels,
-} from "@/lib/services/embeddingService";
+import { tenderTaxonomies } from "@/lib/db/schema/app";
+import { embedQuery } from "@/lib/services/embeddingService";
 import { vectorToLiteral } from "@/lib/ai/embeddings";
+import {
+  fetchCompanyMatchContext,
+  cpvOverlapScore,
+  taxonomyOverlapScore,
+  locationOverlapScore,
+  type CompanyMatchContext,
+} from "@/lib/services/basicMatchContext";
+import {
+  llmRerankEnabled,
+  scoreRelevance,
+} from "@/lib/services/basicMatchLlmReranker";
 
 /**
- * Basic (semantic) matching via pgvector cosine similarity.
- *
- * Design:
- * - One ANN query per company OR per tender. Sub-50ms on tens of thousands of
- *   rows with an HNSW index.
- * - Cosine distance (`<=>`) on normalised embeddings. Similarity is reported
- *   as `1 - distance` ∈ [0, 1]; the band threshold is configurable.
- * - Optional structural filters (status, CPV overlap, location) are applied
- *   BEFORE the vector op via a CTE-style prefilter when feasible.
- *
- * This is the "first-pass" matcher: it surfaces 50-200 candidates instantly.
- * The expensive LLM scoring still runs on demand for the few you actually
- * want to deep-analyse.
+ * Basic (semantic) matching via pgvector + structural fusion rerank.
  */
 
 export type Band = "high" | "medium" | "low";
 
 export interface BasicMatchOptions {
   limit?: number;
-  // Optional structural pre-filter
-  status?: string; // e.g. "open"
-  minScore?: number; // 0..1, drop anything below this similarity
-  // Band thresholds; tuned to be intentionally generous for a coarse filter
-  highThreshold?: number; // default 0.72
-  mediumThreshold?: number; // default 0.55
+  status?: string;
+  minScore?: number;
+  highThreshold?: number;
+  mediumThreshold?: number;
+  /** When company has EIC taxonomies, only return tenders sharing at least one. Default on. */
+  requireSharedTaxonomy?: boolean;
+  /** Fuse vector + CPV + taxonomy + location scores. Default on. */
+  useStructuralRerank?: boolean;
+  /** Re-score top hits with a small Ollama model (slow). Requires BASIC_MATCH_LLM_RERANK=1. */
+  useLlmRerank?: boolean;
 }
 
 export interface BasicTenderMatch {
@@ -46,6 +47,9 @@ export interface BasicTenderMatch {
   similarity: number;
   vectorSimilarity?: number;
   capabilityMatch?: boolean;
+  cpvScore?: number;
+  taxonomyScore?: number;
+  locationScore?: number;
   band: Band;
 }
 
@@ -57,20 +61,28 @@ export interface BasicCompanyMatch {
   band: Band;
 }
 
-function bandFor(
-  sim: number,
-  high = 0.72,
-  medium = 0.55,
-): Band {
+function structuralRerankEnabled(options: BasicMatchOptions): boolean {
+  if (options.useStructuralRerank === false) return false;
+  return process.env.BASIC_MATCH_STRUCTURAL !== "0";
+}
+
+function requireTaxonomyFilter(
+  options: BasicMatchOptions,
+  ctx: CompanyMatchContext,
+): boolean {
+  if (!ctx.hasTaxonomies) return false;
+  if (options.requireSharedTaxonomy === false) return false;
+  return process.env.BASIC_MATCH_REQUIRE_TAXONOMY !== "0";
+}
+
+function bandFor(sim: number, high = 0.72, medium = 0.55): Band {
   if (sim >= high) return "high";
   if (sim >= medium) return "medium";
   return "low";
 }
 
-const CAPABILITY_BOOST = 0.07;
 const DOMAIN_MISMATCH_PENALTY = 0.08;
 
-/** Domains we penalise when absent from the company profile competencies. */
 const DOMAIN_MISMATCH_RULES: Array<{
   tenderNeedle: string;
   companyNeedles: string[];
@@ -124,23 +136,64 @@ function domainMismatchPenalty(
 
   for (const rule of DOMAIN_MISMATCH_RULES) {
     if (!haystack.includes(rule.tenderNeedle)) continue;
-    const hasDomain = rule.companyNeedles.some((n) => companyHaystack.includes(n));
+    const hasDomain = rule.companyNeedles.some((n) =>
+      companyHaystack.includes(n),
+    );
     if (!hasDomain) return DOMAIN_MISMATCH_PENALTY;
   }
   return 0;
 }
 
-function hybridTenderScore(
-  vectorSimilarity: number,
-  tenderText: string,
-  capabilityLabels: string[],
-): { similarity: number; capabilityMatch: boolean } {
-  const capabilityMatch = tenderMatchesCapability(tenderText, capabilityLabels);
-  let similarity = vectorSimilarity;
-  if (capabilityMatch) similarity += CAPABILITY_BOOST;
-  similarity -= domainMismatchPenalty(tenderText, capabilityLabels);
-  similarity = Math.max(0, Math.min(1, similarity));
-  return { similarity, capabilityMatch };
+function fusionScore(input: {
+  vectorSimilarity: number;
+  cpvScore: number;
+  taxonomyScore: number;
+  locationScore: number;
+  capabilityMatch: boolean;
+  domainPenalty: number;
+}): number {
+  let score =
+    0.5 * input.vectorSimilarity +
+    0.15 * input.cpvScore +
+    0.15 * input.taxonomyScore +
+    0.1 * input.locationScore;
+
+  if (input.capabilityMatch) score += 0.08;
+  score -= input.domainPenalty;
+
+  return Math.max(0, Math.min(1, score));
+}
+
+async function loadTenderTaxonomyMap(
+  tenderIds: string[],
+): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (tenderIds.length === 0) return map;
+
+  const rows = await db
+    .select({
+      tenderId: tenderTaxonomies.tenderId,
+      taxonomyId: tenderTaxonomies.taxonomyId,
+    })
+    .from(tenderTaxonomies)
+    .where(inArray(tenderTaxonomies.tenderId, tenderIds));
+
+  for (const row of rows) {
+    const list = map.get(row.tenderId) ?? [];
+    list.push(row.taxonomyId);
+    map.set(row.tenderId, list);
+  }
+  return map;
+}
+
+function companyQueryText(ctx: CompanyMatchContext): string {
+  return [
+    ctx.capabilityLabels.join("; "),
+    ctx.taxonomyNames.join("; "),
+    ctx.locationText,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -150,13 +203,14 @@ export async function basicMatchTendersForCompany(
   companyId: string,
   options: BasicMatchOptions = {},
 ): Promise<BasicTenderMatch[]> {
-  const limit = options.limit ?? 50;
-  const minScore = options.minScore ?? 0;
+  const limit = options.limit ?? 20;
+  const minScore = options.minScore ?? 0.62;
   const high = options.highThreshold ?? 0.78;
   const medium = options.mediumThreshold ?? 0.62;
-  const candidateLimit = Math.min(limit * 4, 200);
+  const candidateLimit = Math.min(limit * 5, 250);
 
-  const capabilityLabels = await fetchCompanyCapabilityLabels(companyId);
+  const ctx = await fetchCompanyMatchContext(companyId);
+  const taxonomyFilter = requireTaxonomyFilter(options, ctx);
 
   const result = await db.execute(sql`
     WITH q AS (
@@ -176,6 +230,16 @@ export async function basicMatchTendersForCompany(
     WHERE t.embedding IS NOT NULL
       AND (SELECT embedding FROM q) IS NOT NULL
       ${options.status ? sql`AND t.status = ${options.status}` : sql``}
+      ${
+        taxonomyFilter
+          ? sql`AND EXISTS (
+              SELECT 1 FROM company_taxonomies ct
+              INNER JOIN tender_taxonomies tt
+                ON tt.taxonomy_id = ct.taxonomy_id AND tt.tender_id = t.id
+              WHERE ct.company_id = ${companyId}
+            )`
+          : sql``
+      }
     ORDER BY t.embedding <=> (SELECT embedding FROM q)
     LIMIT ${sql.raw(String(candidateLimit))}
   `);
@@ -192,32 +256,96 @@ export async function basicMatchTendersForCompany(
     distance: number;
   };
 
-  return (result.rows as Row[])
-    .map((r) => {
-      const vectorSimilarity = 1 - Number(r.distance);
-      const tenderText = [r.title, r.description, r.buyer].filter(Boolean).join(" ");
-      const { similarity, capabilityMatch } = hybridTenderScore(
-        vectorSimilarity,
-        tenderText,
-        capabilityLabels,
-      );
-      return {
-        tenderId: r.id,
-        title: r.title,
-        buyer: r.buyer,
-        cpvCodes: r.cpv_codes,
-        location: r.location,
-        deadline: r.deadline,
-        status: r.status,
-        similarity,
-        vectorSimilarity,
-        capabilityMatch,
-        band: bandFor(similarity, high, medium),
-      };
-    })
+  const rows = result.rows as Row[];
+  const taxonomyMap = await loadTenderTaxonomyMap(rows.map((r) => r.id));
+  const useFusion = structuralRerankEnabled(options);
+
+  let matches: BasicTenderMatch[] = rows.map((r) => {
+    const vectorSimilarity = 1 - Number(r.distance);
+    const tenderText = [r.title, r.description, r.buyer].filter(Boolean).join(" ");
+    const capabilityMatch = tenderMatchesCapability(
+      tenderText,
+      ctx.capabilityLabels,
+    );
+    const domainPenalty = domainMismatchPenalty(tenderText, ctx.capabilityLabels);
+
+    const tenderTaxIds = taxonomyMap.get(r.id) ?? [];
+    const cpvScore = cpvOverlapScore(ctx.cpvDivisions, r.cpv_codes);
+    const taxonomyScore = taxonomyOverlapScore(ctx.taxonomyIds, tenderTaxIds);
+    const locScore = locationOverlapScore(ctx.locationText, r.location);
+
+    const similarity = useFusion
+      ? fusionScore({
+          vectorSimilarity,
+          cpvScore,
+          taxonomyScore,
+          locationScore: locScore,
+          capabilityMatch,
+          domainPenalty: domainPenalty,
+        })
+      : Math.max(
+          0,
+          Math.min(
+            1,
+            vectorSimilarity +
+              (capabilityMatch ? 0.07 : 0) -
+              domainPenalty,
+          ),
+        );
+
+    return {
+      tenderId: r.id,
+      title: r.title,
+      buyer: r.buyer,
+      cpvCodes: r.cpv_codes,
+      location: r.location,
+      deadline: r.deadline,
+      status: r.status,
+      similarity,
+      vectorSimilarity,
+      capabilityMatch,
+      cpvScore,
+      taxonomyScore,
+      locationScore: locScore,
+      band: bandFor(similarity, high, medium),
+    };
+  });
+
+  matches = matches
     .filter((m) => m.similarity >= minScore)
     .toSorted((a, b) => b.similarity - a.similarity)
     .slice(0, limit);
+
+  const wantLlm =
+    (options.useLlmRerank === true || llmRerankEnabled()) &&
+    matches.length > 1;
+
+  if (wantLlm) {
+    const queryText = companyQueryText(ctx);
+    const rerankTop = Math.min(matches.length, 12);
+    const head = matches.slice(0, rerankTop);
+    const tail = matches.slice(rerankTop);
+
+    const rescored = await Promise.all(
+      head.map(async (m) => {
+        const snippet = [m.title, m.buyer, m.location].filter(Boolean).join(" — ");
+        const llm = await scoreRelevance(queryText, snippet);
+        if (llm == null) return m;
+        const blended = 0.65 * m.similarity + 0.35 * llm;
+        return {
+          ...m,
+          similarity: blended,
+          band: bandFor(blended, high, medium),
+        };
+      }),
+    );
+
+    matches = [...rescored, ...tail].toSorted(
+      (a, b) => b.similarity - a.similarity,
+    );
+  }
+
+  return matches;
 }
 
 /**
@@ -270,7 +398,7 @@ export async function basicMatchCompaniesForTender(
 }
 
 /**
- * Free-text semantic search across tenders (useful for an admin "search bar").
+ * Free-text semantic search across tenders.
  */
 export async function basicMatchTendersForQuery(
   queryText: string,

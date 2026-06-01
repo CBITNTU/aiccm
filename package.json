@@ -39,6 +39,7 @@
     "bench:matching:bundled": "tsx benchmarks/matching/bundled.ts",
     "bench:matching:compare": "tsx benchmarks/matching/compare.ts",
     "bench:matching:summary": "tsx benchmarks/matching/summary.ts",
+    "bench:matching:retrieval": "tsx benchmarks/matching/retrieval/run.ts",
     "embed:backfill": "tsx scripts/backfill-embeddings.ts",
     "prepare": "husky"
   },

@@ -399,10 +399,33 @@ After switching embed models, run `FORCE=1 npm run embed:backfill` — vectors a
 
 ---
 
-## 14. Open questions / future work
+## 14. Improving Basic Match accuracy
 
-1. **Structural hybrid.** CPV overlap, location proximity, budget bands in SQL
-   pre-filters (competency re-rank is already in place for company → tender).
+Implemented levers (all on by default unless env disables):
+
+| Lever | What it does |
+| --- | --- |
+| **Richer embed text** | Company/tender competencies as names; tender budget + deadline; Qwen task instructions |
+| **Structural fusion** | Blends vector (50%), CPV division (15%), EIC taxonomy overlap (15%), location (10%), competency hit (+8%) |
+| **Taxonomy SQL filter** | If the company has EIC taxonomies, only tenders sharing ≥1 taxonomy enter the candidate pool |
+| **Domain penalties** | Construction/demolition/surveying tenders penalised when profile lacks those domains |
+| **Optional LLM rerank** | `BASIC_MATCH_LLM_RERANK=1` re-scores top 12 with `OLLAMA_RERANK_MODEL` (slow) |
+| **Stronger embedder** | `OLLAMA_EMBED_MODEL=qwen3-embedding:4b` (keep `OLLAMA_EMBED_DIM=768`) |
+
+After changing embed text or model:
+
+```bash
+FORCE=1 npm run embed:backfill
+npm run bench:matching:retrieval
+```
+
+Env toggles: `BASIC_MATCH_STRUCTURAL=0`, `BASIC_MATCH_REQUIRE_TAXONOMY=0`, `OLLAMA_EMBED_INSTRUCTIONS=0`.
+
+---
+
+## 15. Open questions / future work
+
+1. **Dedicated Qwen reranker model** when Ollama ships stable `qwen3-reranker` pulls.
 2. **Re-rank on click.** When a user opens a basic match, run the existing LLM
    scorer on just that pair and persist the result. Best of both worlds:
    instant browsing + deep explanations on demand.
@@ -411,6 +434,7 @@ After switching embed models, run `FORCE=1 npm run embed:backfill` — vectors a
 4. **Drift monitoring.** Track band distribution over time; alert if it
    shifts (could indicate stale embeddings or model drift).
 5. **Multilingual support** for TED ingestion (see §11).
+6. **Explicit company CPV codes** instead of inferring divisions from text.
 
 ---
 

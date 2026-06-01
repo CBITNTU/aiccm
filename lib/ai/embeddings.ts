@@ -1,11 +1,21 @@
 /**
  * Local embedding generation via Ollama.
  *
- * Default: `qwen3-embedding:0.6b` (same Qwen family as MATCHING_MODEL benchmarks).
+ * Default: `qwen3-embedding:0.6b` (Qwen family; use `qwen3-embedding:4b` for higher quality).
  * Chat models (qwen2.5:7b, etc.) are for structured LLM scoring only — not embeddings.
  *
  * Override via OLLAMA_EMBED_MODEL / OLLAMA_EMBED_DIM / OLLAMA_HOST.
  */
+
+export type EmbedTask = "company" | "tender" | "query";
+
+const EMBED_INSTRUCTIONS: Record<EmbedTask, string> = {
+  company:
+    "Represent this organisation profile for public procurement tender matching.",
+  tender:
+    "Represent this procurement opportunity for supplier organisation matching.",
+  query: "Retrieve tenders relevant to this search query:",
+};
 
 function ollamaHost(): string {
   const raw =
@@ -21,6 +31,8 @@ const EMBED_MODEL =
 /** Stored pgvector width; Qwen3 supports MRL — request this many dims from Ollama. */
 export const EMBEDDING_DIM = Number(process.env.OLLAMA_EMBED_DIM) || 768;
 
+const USE_INSTRUCTIONS = process.env.OLLAMA_EMBED_INSTRUCTIONS !== "0";
+
 interface OllamaEmbedResponse {
   embedding?: number[];
   embeddings?: number[][];
@@ -33,12 +45,24 @@ export interface EmbedResult {
   dim: number;
 }
 
+export function formatEmbedInput(
+  body: string,
+  task: EmbedTask = "query",
+): string {
+  const trimmed = body.trim();
+  if (!USE_INSTRUCTIONS || !trimmed) return trimmed;
+  return `${EMBED_INSTRUCTIONS[task]}\n\n${trimmed}`;
+}
+
 /**
  * Embed a single string. Throws on network / model error.
  */
-export async function embedText(text: string): Promise<EmbedResult> {
-  const trimmed = text.trim();
-  if (!trimmed) {
+export async function embedText(
+  text: string,
+  task: EmbedTask = "query",
+): Promise<EmbedResult> {
+  const payload = formatEmbedInput(text, task);
+  if (!payload) {
     throw new Error("embedText: input must be non-empty");
   }
 
@@ -48,7 +72,7 @@ export async function embedText(text: string): Promise<EmbedResult> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: EMBED_MODEL,
-      input: trimmed,
+      input: payload,
       dimensions: EMBEDDING_DIM,
     }),
   });
@@ -82,10 +106,13 @@ export async function embedText(text: string): Promise<EmbedResult> {
 /**
  * Embed a batch sequentially (Ollama embed API is one input per request).
  */
-export async function embedBatch(texts: string[]): Promise<EmbedResult[]> {
+export async function embedBatch(
+  texts: string[],
+  task: EmbedTask = "query",
+): Promise<EmbedResult[]> {
   const out: EmbedResult[] = [];
   for (const t of texts) {
-    out.push(await embedText(t));
+    out.push(await embedText(t, task));
   }
   return out;
 }

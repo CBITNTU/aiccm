@@ -1,7 +1,7 @@
 /**
  * EIC (European Innovation Council) standard taxonomy.
  * This is the basic taxonomy used across the platform. Not dynamic — fixed list.
- * DB seed: supabase/migrations/20260130000000_seed_eic_taxonomy.sql
+ * DB seed: drizzle/migrations/0006_seed_eic_taxonomy.sql
  */
 
 export interface EICCategory {

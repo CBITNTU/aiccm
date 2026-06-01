@@ -53,6 +53,33 @@ function mapAdminCompanyPayload(
   return mapped;
 }
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ companyId: string }> },
+) {
+  try {
+    const { user } = await requireAuth(request);
+    const isAdmin = await checkSuperadminRole(user.id);
+    if (!isAdmin) throw new AuthError("Admin access required");
+
+    const { companyId } = await params;
+
+    const result = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
+
+    if (!result[0]) {
+      throw new Error("Company not found");
+    }
+
+    return apiResponse({ company: result[0] });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ companyId: string }> },

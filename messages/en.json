@@ -442,6 +442,12 @@
       "newCompany": "New Company",
       "joinCompany": "Join Company"
     },
+    "onboarding": {
+      "ready": "Ready for approval",
+      "incomplete": "Onboarding incomplete: {step}",
+      "incompleteHelper": "This user has not finished onboarding yet. Current step: {step}.",
+      "unknownStep": "Unknown step"
+    },
     "hideCompanyDetails": "Hide Company Details",
     "viewCompanyDetails": "View Company Details",
     "rejectButton": "Reject",
@@ -607,6 +613,12 @@
       "noCompanies": "No companies found",
       "noCompaniesHint": "Try adjusting your search or filter",
       "noSystemCompanies": "No system companies found"
+    },
+    "pagination": {
+      "showingRange": "Showing {start}-{end} of {total}",
+      "pageStatus": "Page {page} of {totalPages}",
+      "previous": "Previous",
+      "next": "Next"
     },
     "systemDescription": "AI-generated and imported reference companies used for tender matching and platform demonstrations.",
     "systemWarning": "Deleting system companies requires superadmin permissions and cannot be undone.",

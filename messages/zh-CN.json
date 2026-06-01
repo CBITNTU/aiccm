@@ -442,6 +442,12 @@
       "newCompany": "新公司",
       "joinCompany": "加入公司"
     },
+    "onboarding": {
+      "ready": "可审批",
+      "incomplete": "入驻未完成：{step}",
+      "incompleteHelper": "该用户尚未完成入驻流程。当前步骤：{step}。",
+      "unknownStep": "未知步骤"
+    },
     "hideCompanyDetails": "隐藏公司详情",
     "viewCompanyDetails": "查看公司详情",
     "rejectButton": "拒绝",
@@ -607,6 +613,12 @@
       "noCompanies": "未找到公司",
       "noCompaniesHint": "请调整搜索或筛选条件",
       "noSystemCompanies": "未找到系统公司"
+    },
+    "pagination": {
+      "showingRange": "显示第 {start}-{end} 条，共 {total} 条",
+      "pageStatus": "第 {page} 页，共 {totalPages} 页",
+      "previous": "上一页",
+      "next": "下一页"
     },
     "systemDescription": "由 AI 生成或导入的参考公司，用于招标匹配与平台演示。",
     "systemWarning": "删除系统公司需要超级管理员权限且不可恢复。",

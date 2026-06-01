@@ -11,10 +11,10 @@ This doc describes how to test the "Last sync state" on **Admin → Tenders** an
 
 1. **Local stack**
    - `npm run dev` (Next.js on http://localhost:3000).
-   - Local Supabase: `npm run supabase:start` and `npm run supabase:db-push` so `platform_settings` exists.
+   - Local Postgres: `npm run docker:up`, `npm run db:migrate`, and optionally `npm run db:seed` so `platform_settings` exists.
 
 2. **Superadmin user**
-   - Status and trigger are superadmin-only. Use the seeded superadmin from `supabase/seed.sql` or give your user the `superadmin` role in `user_roles`.
+   - Status and trigger are superadmin-only. Use the seeded superadmin from `scripts/seed-local-db.mjs` (`npm run db:seed`) or give your user the `superadmin` role in `user_roles`.
 
 ## Manual test steps
 
@@ -34,7 +34,7 @@ This doc describes how to test the "Last sync state" on **Admin → Tenders** an
    - **If sync fails** (e.g. external APIs down): You should see an error toast; "Last sync finished" should **not** change to "now" (only successful syncs update it).
 
 5. **Verify in DB (optional)**  
-   In Supabase SQL editor or `psql`:
+   In `psql` or your database SQL editor:
 
    ```sql
    SELECT key, value, updated_at
@@ -46,7 +46,7 @@ This doc describes how to test the "Last sync state" on **Admin → Tenders** an
 
 ## Quick API checks (with auth cookie)
 
-1. Get a session cookie: log in in the browser, then DevTools → Application → Cookies → copy the Supabase auth cookie value (or use the cookie header from a request to `/api/...`).
+1. Get a session cookie: log in in the browser, then DevTools → Application → Cookies → copy the Better Auth session cookie value (or use the cookie header from a request to `/api/...`).
 
 2. **Status (GET)**  
    Replace `YOUR_COOKIE` with your session cookie:
@@ -88,4 +88,4 @@ This doc describes how to test the "Last sync state" on **Admin → Tenders** an
 - **UI**: `components/admin/AdminTenderSyncSchedule.tsx` (uses `api.getTenderSyncStatus()`, `api.triggerTenderSync()`).
 - **APIs**: `app/api/admin/tender-sync-status/route.ts`, `app/api/admin/tender-sync/route.ts`.
 - **Storage**: `lib/services/tenderSyncSchedule.ts` (reads/writes `platform_settings`).
-- **Migrations**: `supabase/migrations/20260209000000_add_platform_settings.sql`, RLS in `20260214000000_add_rls_platform_settings_demo_results.sql`.
+- **Migrations**: Drizzle migrations in `drizzle/migrations/` (including `platform_settings` schema).

@@ -314,6 +314,55 @@ function FreeTextSearch() {
   );
 }
 
+function InferenceHealthBanner() {
+  const healthQ = useQuery({
+    queryKey: ["admin", "inference-health"],
+    queryFn: () => api.adminGetInferenceHealth(),
+    staleTime: 30_000,
+  });
+
+  if (healthQ.isLoading) {
+    return (
+      <div className="text-xs text-muted-foreground flex items-center gap-2">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Checking inference…
+      </div>
+    );
+  }
+
+  if (healthQ.isError || !healthQ.data) return null;
+
+  const { embedding, inference, embeddingConfig } = healthQ.data;
+  const allOk = embedding.ok && inference.ok;
+
+  return (
+    <div
+      className={`rounded-md border px-3 py-2 text-xs flex flex-wrap items-center gap-x-3 gap-y-1 ${
+        allOk
+          ? "border-emerald-300/60 bg-emerald-500/5"
+          : "border-destructive/40 bg-destructive/5"
+      }`}
+    >
+      <span className="font-medium">
+        {allOk ? "Inference online" : "Inference issue"}
+      </span>
+      <span className="text-muted-foreground">
+        embed: {embeddingConfig.provider}/{embeddingConfig.model} @{" "}
+        {embeddingConfig.dim}d
+        {embedding.ok
+          ? ` (${embedding.latencyMs} ms)`
+          : ` — ${embedding.error ?? "failed"}`}
+      </span>
+      <span className="text-muted-foreground">
+        llm: {inference.baseUrl}
+        {inference.ok
+          ? ` (${inference.latencyMs} ms)`
+          : ` — ${inference.error ?? "failed"}`}
+      </span>
+    </div>
+  );
+}
+
 export default function BasicMatchAdminPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -334,6 +383,8 @@ export default function BasicMatchAdminPage() {
           tens of milliseconds.
         </p>
       </div>
+
+      <InferenceHealthBanner />
 
       <Card>
         <CardHeader className="pb-3">

@@ -1,13 +1,22 @@
 /**
- * Local embedding generation via Ollama.
+ * Embedding generation — provider-agnostic entry point.
  *
- * Default: `qwen3-embedding:0.6b` (Qwen family; use `qwen3-embedding:4b` for higher quality).
- * Chat models (qwen2.5:7b, etc.) are for structured LLM scoring only — not embeddings.
- *
- * Override via OLLAMA_EMBED_MODEL / OLLAMA_EMBED_DIM / OLLAMA_HOST.
+ * Configure via EMBED_PROVIDER / EMBED_MODEL / EMBED_DIM / EMBED_BASE_URL.
+ * Legacy OLLAMA_EMBED_* vars remain supported (see docs/deployment-profiles.md).
  */
 
-export type EmbedTask = "company" | "tender" | "query";
+import {
+  getEmbedConfig,
+  summarizeEmbedConfig,
+  type EmbedProviderId,
+} from "@/lib/ai/embedConfig";
+import {
+  embedWithProvider,
+  type EmbedResult,
+  type EmbedTask,
+} from "@/lib/ai/embedProviders";
+
+export type { EmbedTask, EmbedResult, EmbedProviderId };
 
 const EMBED_INSTRUCTIONS: Record<EmbedTask, string> = {
   company:
@@ -17,41 +26,25 @@ const EMBED_INSTRUCTIONS: Record<EmbedTask, string> = {
   query: "Retrieve tenders relevant to this search query:",
 };
 
-function ollamaHost(): string {
-  const raw =
-    process.env.OLLAMA_HOST?.trim() ||
-    process.env.OLLAMA_BASE_URL?.trim() ||
-    "http://127.0.0.1:11434";
-  return raw.replace(/\/v1\/?$/, "").replace(/\/$/, "");
-}
-
-const EMBED_MODEL =
-  process.env.OLLAMA_EMBED_MODEL?.trim() || "qwen3-embedding:0.6b";
-
-/** Stored pgvector width; Qwen3 supports MRL — request this many dims from Ollama. */
-export const EMBEDDING_DIM = Number(process.env.OLLAMA_EMBED_DIM) || 768;
-
-const USE_INSTRUCTIONS = process.env.OLLAMA_EMBED_INSTRUCTIONS !== "0";
-
-interface OllamaEmbedResponse {
-  embedding?: number[];
-  embeddings?: number[][];
-  error?: string;
-}
-
-export interface EmbedResult {
-  vector: number[];
-  model: string;
-  dim: number;
-}
+/** Stored pgvector width — must match Drizzle schema `vector(N)`. */
+export const EMBEDDING_DIM = Number(
+  process.env.EMBED_DIM?.trim() ||
+    process.env.OLLAMA_EMBED_DIM?.trim() ||
+    "768",
+);
 
 export function formatEmbedInput(
   body: string,
   task: EmbedTask = "query",
+  useInstructions = true,
 ): string {
   const trimmed = body.trim();
-  if (!USE_INSTRUCTIONS || !trimmed) return trimmed;
+  if (!useInstructions || !trimmed) return trimmed;
   return `${EMBED_INSTRUCTIONS[task]}\n\n${trimmed}`;
+}
+
+export function getEmbeddingConfigSummary() {
+  return summarizeEmbedConfig(getEmbedConfig());
 }
 
 /**
@@ -61,50 +54,30 @@ export async function embedText(
   text: string,
   task: EmbedTask = "query",
 ): Promise<EmbedResult> {
-  const payload = formatEmbedInput(text, task);
+  const config = getEmbedConfig();
+  const payload = formatEmbedInput(text, task, config.useInstructions);
   if (!payload) {
     throw new Error("embedText: input must be non-empty");
   }
 
-  const host = ollamaHost();
-  const res = await fetch(`${host}/api/embed`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: EMBED_MODEL,
-      input: payload,
-      dimensions: EMBEDDING_DIM,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
+  if (config.provider === "openai" && !config.apiKey) {
     throw new Error(
-      `Ollama embed failed (${res.status}): ${body.slice(0, 200)}`,
+      "OpenAI embed provider requires OPENAI_API_KEY or EMBED_API_KEY",
     );
   }
 
-  const data = (await res.json()) as OllamaEmbedResponse;
-  if (data.error) {
-    throw new Error(`Ollama embed error: ${data.error}`);
-  }
-
-  const vector = data.embeddings?.[0] ?? data.embedding;
-  if (!vector || vector.length === 0) {
-    throw new Error("Ollama embed returned no vector");
-  }
-
-  if (vector.length !== EMBEDDING_DIM) {
+  if (config.dim !== EMBEDDING_DIM) {
     throw new Error(
-      `Ollama embed dimension mismatch: expected ${EMBEDDING_DIM}, got ${vector.length} (model ${EMBED_MODEL})`,
+      `EMBED_DIM (${config.dim}) does not match schema EMBEDDING_DIM (${EMBEDDING_DIM}). ` +
+        "Update lib/db/schema/app.ts and run a migration before changing dimensions.",
     );
   }
 
-  return { vector, model: EMBED_MODEL, dim: vector.length };
+  return embedWithProvider(payload, config);
 }
 
 /**
- * Embed a batch sequentially (Ollama embed API is one input per request).
+ * Embed a batch sequentially (most providers accept one input per request).
  */
 export async function embedBatch(
   texts: string[],
@@ -122,4 +95,29 @@ export async function embedBatch(
  */
 export function vectorToLiteral(vec: number[]): string {
   return `[${vec.join(",")}]`;
+}
+
+/**
+ * Lightweight connectivity probe for admin diagnostics.
+ */
+export async function probeEmbeddingProvider(): Promise<{
+  ok: boolean;
+  latencyMs: number;
+  config: ReturnType<typeof summarizeEmbedConfig>;
+  error?: string;
+}> {
+  const config = getEmbedConfig();
+  const summary = summarizeEmbedConfig(config);
+  const started = Date.now();
+  try {
+    await embedWithProvider("health check probe", config);
+    return { ok: true, latencyMs: Date.now() - started, config: summary };
+  } catch (e) {
+    return {
+      ok: false,
+      latencyMs: Date.now() - started,
+      config: summary,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
 }

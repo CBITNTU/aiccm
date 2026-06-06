@@ -92,6 +92,7 @@ export async function processJob(job: {
       }
       const meta = (job.metadata ?? {}) as {
         demo?: boolean;
+        force?: boolean;
         model?: string;
         batchLabel?: string;
         reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -104,6 +105,7 @@ export async function processJob(job: {
       });
       const score = await scoreTenderMatch(job.companyId, job.tenderId, {
         demo: meta.demo,
+        force: meta.force,
         model: meta.model,
         batchLabel: meta.batchLabel,
         reasoningEffort: meta.reasoningEffort,

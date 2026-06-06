@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useOrg } from "@/hooks/useOrg";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,12 +25,14 @@ import {
   PoundSterling,
   Award,
   Tag,
+  Target,
   Users,
 } from "lucide-react";
 import { formatCpvCode } from "@/lib/cpvCodes";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import type { TenderMatchRecord, TenderRecord } from "@/lib/api/types";
 import { resolveExternalNoticeLink } from "@/lib/tenders/externalNoticeLink";
+import { toast } from "sonner";
 
 type TenderData = TenderRecord;
 type MatchData = TenderMatchRecord;
@@ -44,15 +48,45 @@ export default function TenderDetailPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { role } = useUserRole();
+  const { selectedOrg } = useOrg();
 
   const tenderId = params.tenderId as string;
-  const companyId = searchParams.get("companyId");
+  const companyIdFromUrl = searchParams.get("companyId");
+  const effectiveCompanyId = companyIdFromUrl ?? selectedOrg?.id ?? null;
 
   const [tender, setTender] = useState<TenderData | null>(null);
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [taxonomies, setTaxonomies] = useState<Taxonomy[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [deepResearching, setDeepResearching] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const { data: matchingConfig } = useQuery({
+    queryKey: ["matchingConfig"],
+    queryFn: () => api.getMatchingConfig(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const matchingModel = matchingConfig?.matchingModel ?? "AI model";
+
+  const loadMatchData = useCallback(async (companyId: string) => {
+    const matchResult = await api.getTenderMatch(tenderId, companyId);
+    if (matchResult.match) {
+      setMatchData(matchResult.match as MatchData);
+      return true;
+    }
+    return false;
+  }, [tenderId]);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => stopPolling(), [stopPolling]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,12 +103,8 @@ export default function TenderDetailPage() {
         setTender(tenderResult.tender as TenderData);
         setTaxonomies(tenderResult.taxonomies);
 
-        // Fetch match data if companyId provided
-        if (companyId) {
-          const matchResult = await api.getTenderMatch(tenderId, companyId);
-          if (matchResult.match) {
-            setMatchData(matchResult.match as MatchData);
-          }
+        if (effectiveCompanyId) {
+          await loadMatchData(effectiveCompanyId);
         }
       } catch (error) {
         console.error("Error fetching tender:", error);
@@ -85,7 +115,71 @@ export default function TenderDetailPage() {
     };
 
     fetchData();
-  }, [tenderId, companyId]);
+  }, [tenderId, effectiveCompanyId, loadMatchData]);
+
+  const runDeepResearch = async (force = false) => {
+    if (!effectiveCompanyId) {
+      toast.error(t("deepResearchNoCompany"));
+      return;
+    }
+
+    if (!force && matchData) {
+      toast.info(t("deepResearchCached"));
+      return;
+    }
+
+    setDeepResearching(true);
+    stopPolling();
+
+    try {
+      const result = await api.triggerDeepMatch(
+        effectiveCompanyId,
+        [tenderId],
+        { force },
+      );
+
+      if (result.status === "all_cached") {
+        setDeepResearching(false);
+        await loadMatchData(effectiveCompanyId);
+        toast.info(t("deepResearchCached"));
+        return;
+      }
+
+      const modelLabel = result.matchingModel ?? matchingModel;
+      toast.success(t("deepResearchQueued", { model: modelLabel }));
+
+      let attempts = 0;
+      pollRef.current = setInterval(async () => {
+        attempts += 1;
+        try {
+          const found = await loadMatchData(effectiveCompanyId);
+          if (found) {
+            stopPolling();
+            setDeepResearching(false);
+            toast.success(t("deepResearchComplete"));
+            const tenderResult = await api.getTender(tenderId);
+            if (tenderResult.tender) {
+              setTender(tenderResult.tender as TenderData);
+              setTaxonomies(tenderResult.taxonomies);
+            }
+          } else if (attempts >= 40) {
+            stopPolling();
+            setDeepResearching(false);
+          }
+        } catch {
+          if (attempts >= 40) {
+            stopPolling();
+            setDeepResearching(false);
+          }
+        }
+      }, 3000);
+    } catch (error) {
+      setDeepResearching(false);
+      toast.error(
+        error instanceof Error ? error.message : t("deepResearchError"),
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -186,7 +280,7 @@ export default function TenderDetailPage() {
 
   const handleCreateProject = () => {
     const params = new URLSearchParams();
-    if (companyId) params.set("companyId", companyId);
+    if (effectiveCompanyId) params.set("companyId", effectiveCompanyId);
     params.set("tenderId", tenderId);
     router.push(`/projects/new?${params.toString()}`);
   };
@@ -197,7 +291,7 @@ export default function TenderDetailPage() {
       JSON.stringify({
         tenderId: tender.id,
         tenderTitle: tender.title,
-        companyId: companyId,
+        companyId: effectiveCompanyId,
       }),
     );
     router.push("/vo");
@@ -316,6 +410,24 @@ export default function TenderDetailPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3">
+            {effectiveCompanyId && !isRestricted && (
+              <Button
+                onClick={() => runDeepResearch(Boolean(matchData))}
+                disabled={deepResearching}
+                variant={matchData ? "outline" : "default"}
+              >
+                {deepResearching ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Target className="w-4 h-4 mr-2" />
+                )}
+                {deepResearching
+                  ? t("deepResearchInProgress", { model: matchingModel })
+                  : matchData
+                    ? t("reRunDeepResearch", { model: matchingModel })
+                    : t("deepResearchWithModel", { model: matchingModel })}
+              </Button>
+            )}
             {externalNoticeLink.url && (
               <Button variant="outline" onClick={handleViewExternal}>
                 <ExternalLink className="w-4 h-4 mr-2" />
@@ -328,7 +440,7 @@ export default function TenderDetailPage() {
                 {t("createProject")}
               </Button>
             )}
-            {companyId && matchData && !isRestricted && (
+            {effectiveCompanyId && matchData && !isRestricted && (
               <Button variant="outline" onClick={handleBuildTeam}>
                 <Users className="w-4 h-4 mr-2" />
                 {t("buildConsultingTeam")}
@@ -416,6 +528,20 @@ export default function TenderDetailPage() {
       </div>
 
       {/* Match Analysis Section */}
+      {effectiveCompanyId && !matchData && !deepResearching && !isRestricted && (
+        <Card className="mb-8 border-dashed">
+          <CardContent className="py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              {t("matchAnalysisPrompt")}
+            </p>
+            <Button onClick={() => runDeepResearch(false)} className="shrink-0">
+              <Target className="w-4 h-4 mr-2" />
+              {t("deepResearchWithModel", { model: matchingModel })}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {matchData && (
         <>
           <Separator className="mb-8" />

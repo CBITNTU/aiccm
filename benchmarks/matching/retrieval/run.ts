@@ -98,7 +98,10 @@ async function main() {
   const summary = {
     ranAt: new Date().toISOString(),
     topK: TOP_K,
-    embedModel: process.env.OLLAMA_EMBED_MODEL ?? "qwen3-embedding:0.6b",
+    embedModel:
+      process.env.EMBED_MODEL ??
+      process.env.OLLAMA_EMBED_MODEL ??
+      "qwen3-embedding:0.6b",
     cases: results.length,
     hits: hits.length,
     mrrAtK: Number(mrr.toFixed(3)),

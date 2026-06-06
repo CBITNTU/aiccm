@@ -1,5 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 
+import { getInferenceBaseUrl } from "@/lib/ai/embedConfig";
+
 /** Prefix for model IDs routed to a local Ollama instance (OpenAI-compatible API). */
 export const OLLAMA_MODEL_PREFIX = "ollama/";
 
@@ -14,17 +16,17 @@ export function toOllamaModelName(modelId: string): string {
 }
 
 /**
- * OpenAI-compatible client for Ollama (`ollama serve`, default :11434).
- * Set OLLAMA_BASE_URL if not using the default (e.g. remote VM).
+ * OpenAI-compatible client for Ollama / vLLM / LiteLLM / custom gateways.
+ * Set INFERENCE_BASE_URL (or legacy OLLAMA_BASE_URL) for remote inference.
  */
 export function getOllamaProvider() {
   if (!ollamaProvider) {
-    const raw =
-      process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434/v1";
-    const baseURL = raw.endsWith("/v1") ? raw : `${raw.replace(/\/$/, "")}/v1`;
     ollamaProvider = createOpenAI({
-      baseURL,
-      apiKey: process.env.OLLAMA_API_KEY?.trim() || "ollama",
+      baseURL: getInferenceBaseUrl(),
+      apiKey:
+        process.env.INFERENCE_API_KEY?.trim() ||
+        process.env.OLLAMA_API_KEY?.trim() ||
+        "ollama",
     });
   }
   return ollamaProvider;
@@ -34,4 +36,64 @@ export function getOllamaProvider() {
 export function getMatchingModelFromEnv(): string | undefined {
   const id = process.env.MATCHING_MODEL?.trim();
   return id || undefined;
+}
+
+/**
+ * Ping inference host (Ollama /tags or OpenAI-compatible models list).
+ */
+export async function probeInferenceHost(): Promise<{
+  ok: boolean;
+  latencyMs: number;
+  baseUrl: string;
+  error?: string;
+}> {
+  const baseUrl = getInferenceBaseUrl();
+  const host = baseUrl.replace(/\/v1\/?$/, "");
+  const apiKey =
+    process.env.INFERENCE_API_KEY?.trim() ||
+    process.env.EMBED_API_KEY?.trim() ||
+    process.env.OLLAMA_API_KEY?.trim();
+  const authHeaders: Record<string, string> = apiKey
+    ? { Authorization: `Bearer ${apiKey}` }
+    : {};
+  const started = Date.now();
+
+  // Ollama native
+  try {
+    const tagsRes = await fetch(`${host}/api/tags`, {
+      headers: authHeaders,
+      signal: AbortSignal.timeout(8000),
+    });
+    if (tagsRes.ok) {
+      return { ok: true, latencyMs: Date.now() - started, baseUrl };
+    }
+  } catch {
+    // fall through to OpenAI-compatible probe
+  }
+
+  try {
+    const modelsRes = await fetch(`${baseUrl}/models`, {
+      headers: {
+        ...authHeaders,
+        Authorization: authHeaders.Authorization ?? "Bearer ollama",
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (modelsRes.ok) {
+      return { ok: true, latencyMs: Date.now() - started, baseUrl };
+    }
+    return {
+      ok: false,
+      latencyMs: Date.now() - started,
+      baseUrl,
+      error: `models endpoint returned ${modelsRes.status}`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      latencyMs: Date.now() - started,
+      baseUrl,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
 }

@@ -296,18 +296,20 @@ for the shortlisting step.
 
 ### Local → Vercel
 
-Production has no GPU and limited cold-start budget, so Ollama isn't an
-option. The migration is mechanical:
+Production has no GPU and cannot run Ollama inside serverless functions. Use a
+**remote inference plane** (shared Ollama over Tailscale, vLLM, etc.) or optional
+OpenAI embeddings. See **`docs/deployment-profiles.md`** for profiles, env vars,
+and a **free-tier setup for a 3–4 person team**.
 
-1. **Embedder.** Replace the `fetch` call in `lib/ai/embeddings.ts` with the
-   Vercel AI SDK's `@ai-sdk/openai` embeddings (`text-embedding-3-small` is
-   $0.02 / 1M tokens, 1536 dims).
-2. **Dimension.** Change `EMBEDDING_DIM` (768 → 1536) and re-issue the
-   migration: `ALTER TABLE … ALTER COLUMN embedding TYPE vector(1536)`.
-3. **Backfill.** `FORCE=1 npm run embed:backfill` runs once on prod data.
+Summary:
+
+1. **Embedder.** `EMBED_PROVIDER=ollama|openai|openai-compatible` — configured in
+   `lib/ai/embeddings.ts` via the provider registry (no code fork per customer).
+2. **Dimension.** Keep `EMBED_DIM=768` unless benchmarks justify a migration.
+3. **Backfill.** `FORCE=1 npm run embed:backfill` after provider or model change.
 4. **Matching service code does not change.**
 
-Cost at 100k tenders + 10k companies + 1k searches/day:
+Cost if using OpenAI embeddings at 100k tenders + 10k companies + 1k searches/day:
 
 - One-time embed: 110k × ~200 tokens × $0.02/1M = **$0.44 one-time**
 - Steady-state re-embed (10% changes/day): ~$0.04/day

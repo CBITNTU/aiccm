@@ -73,7 +73,7 @@ const mainNavItems: NavigationItem[] = [
   },
   {
     labelKey: "nav.matches",
-    href: "/matches",
+    href: "/tenders?tab=matches",
     icon: Sparkles,
     hideForPending: false,
   },
@@ -144,6 +144,7 @@ interface SidebarContentProps {
   isRestrictedUser: boolean;
   isAdmin: boolean;
   adminStats?: AdminStatsData;
+  filteredAdminNavGroups: AdminNavGroup[];
   toggleCollapsed: () => void;
   filteredMainNavItems: NavigationItem[];
   isActiveRoute: (href: string) => boolean;
@@ -292,6 +293,7 @@ function SidebarContent({
   adminStats,
   toggleCollapsed,
   filteredMainNavItems,
+  filteredAdminNavGroups,
   isActiveRoute,
   handleNavClick,
   handleSignOut,
@@ -368,7 +370,7 @@ function SidebarContent({
                   </div>
                 )}
 
-                {adminNavGroups.map((group, groupIndex) => (
+                {filteredAdminNavGroups.map((group, groupIndex) => (
                   <div key={groupIndex}>
                     {groupIndex > 0 && (
                       <div className={cn("py-1", isCollapsed && !isMobile && "py-0.5")}>
@@ -544,6 +546,8 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
     return true;
   });
 
+  const filteredAdminNavGroups = adminNavGroups;
+
   // Check if route is active
   const isActiveRoute = (href: string) => {
     if (href === "/dashboard") {
@@ -589,6 +593,7 @@ export function Sidenav({ mobileOpen, onMobileOpenChange }: SidenavProps) {
     adminStats,
     toggleCollapsed,
     filteredMainNavItems,
+    filteredAdminNavGroups,
     isActiveRoute,
     handleNavClick,
     handleSignOut,

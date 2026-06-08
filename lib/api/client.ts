@@ -447,7 +447,6 @@ export const api = {
   getCompanyCapabilities: (companyId: string) =>
     apiCall<{
       capabilities: { id: string; name: string; category: string }[];
-      allCapabilities: { id: string; name: string; category: string }[];
       verificationStatus: string;
       competencyLimit: number | null;
       pendingCompetencyRequest: {
@@ -457,6 +456,13 @@ export const api = {
         createdAt: string;
       } | null;
     }>(`companies/${companyId}/capabilities`, { method: "GET" }),
+
+  /** Resolve names for a small set of capability ids without fetching the full list. */
+  getCapabilityNames: (ids: string[]) =>
+    apiCall<{ capabilities: { id: string; name: string }[] }>(
+      `capabilities?ids=${encodeURIComponent(ids.join(","))}`,
+      { method: "GET" },
+    ),
 
   syncCapabilities: (companyId: string, capabilityIds: string[]) =>
     apiCall<{
@@ -474,6 +480,13 @@ export const api = {
     apiCall<{
       markets: { id: string; name: string; parentId: string | null; sortOrder: number }[];
     }>("markets", { method: "GET" }),
+
+  /** Resolve names for a small set of market ids without fetching the full list. */
+  getMarketNames: (ids: string[]) =>
+    apiCall<{ markets: { id: string; name: string }[] }>(
+      `markets?ids=${encodeURIComponent(ids.join(","))}`,
+      { method: "GET" },
+    ),
 
   getStandards: (companyId?: string) =>
     apiCall<{

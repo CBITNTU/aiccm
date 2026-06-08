@@ -14,7 +14,7 @@ import {
   competencyChangeRequests,
   companyVerificationRequests,
 } from "@/lib/db/schema/app";
-import { eq, and, inArray, asc, desc } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { getPlatformVerificationSettings } from "@/lib/platformVerificationSettings";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 
@@ -44,17 +44,6 @@ export async function GET(
         eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id),
       )
       .where(eq(companyCapabilities.companyId, companyId));
-
-    // Fetch all available capabilities
-    const allCapabilities = await db
-      .select({
-        id: companyCapabilitiesRef.id,
-        name: companyCapabilitiesRef.name,
-        category: companyCapabilitiesRef.category,
-      })
-      .from(companyCapabilitiesRef)
-      .where(eq(companyCapabilitiesRef.isActive, true))
-      .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
 
     // Get company verification status and settings for limits
     const company = await db
@@ -86,7 +75,6 @@ export async function GET(
 
     return apiResponse({
       capabilities: capData,
-      allCapabilities,
       verificationStatus: company?.verificationStatus ?? "unverified",
       competencyLimit: company?.verificationStatus === "unverified" || company?.verificationStatus === "pending_verification"
         ? settings.unverifiedCompetencyLimit

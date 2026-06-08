@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { api } from "@/lib/api/client";
+import { useReferenceMarkets } from "@/hooks/useReferenceData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -170,8 +170,12 @@ export function MarketTreeSelector({
 }: MarketTreeSelectorProps) {
   const t = useTranslations("CompanyPage");
   const isControlled = externalSearchTerm !== undefined;
-  const [markets, setMarkets] = useState<MarketNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  const marketsQuery = useReferenceMarkets();
+  const markets = useMemo<MarketNode[]>(
+    () => marketsQuery.data ?? [],
+    [marketsQuery.data],
+  );
+  const loading = marketsQuery.isPending;
   const [internalSearchTerm, setInternalSearchTerm] = useState("");
   const searchTerm = isControlled ? externalSearchTerm : internalSearchTerm;
   const setSearchTerm = isControlled ? (onSearchTermChange ?? (() => {})) : setInternalSearchTerm;
@@ -184,23 +188,17 @@ export function MarketTreeSelector({
     onReadyRef.current = onReady;
   });
 
+  // Reference list is loaded (and cached) via useReferenceMarkets. Sync the
+  // derived name map / expanded ids once data is available.
   useEffect(() => {
-    const fetchMarkets = async () => {
-      try {
-        const result = await api.getMarkets();
-        const mks = result.markets || [];
-        setMarkets(mks);
-        onNameMapChangeRef.current?.(Object.fromEntries(mks.map((m) => [m.id, m.name])));
-        const allIds = new Set(mks.map((m) => m.id));
-        setExpandedIds(allIds);
-      } catch (error) {
-        console.error("Error fetching markets:", error);
-      }
-      setLoading(false);
-      onReadyRef.current?.();
-    };
-    fetchMarkets();
-  }, []);
+    if (marketsQuery.isPending) return;
+    onNameMapChangeRef.current?.(
+      Object.fromEntries(markets.map((m) => [m.id, m.name])),
+    );
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand all markets once reference data loads
+    setExpandedIds(new Set(markets.map((m) => m.id)));
+    onReadyRef.current?.();
+  }, [markets, marketsQuery.isPending]);
 
   const tree = useMemo(() => buildTree(markets), [markets]);
   const filteredTree = useMemo(

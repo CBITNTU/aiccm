@@ -10,6 +10,7 @@ import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { EditSheetSkeleton } from "@/components/company/EditSheetSkeleton";
 import { CapabilityTreeSelector } from "@/components/tenders/CapabilityTreeSelector";
 import { api } from "@/lib/api/client";
+import { useCompanyCapabilities } from "@/hooks/useCompanyTaxonomy";
 import type { PendingChangesRelationField } from "@/lib/companyFieldCategories";
 
 interface EditCompetenciesSheetProps {
@@ -38,9 +39,13 @@ export function EditCompetenciesSheet({
   const [initialIds, setInitialIds] = useState<string[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [treeReady, setTreeReady] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Company's current capabilities come from the shared cache the tab already
+  // populated, so opening the sheet triggers no extra request (only enabled while open).
+  const companyCapsQuery = useCompanyCapabilities(open ? companyId : undefined);
+  const loading = open && companyCapsQuery.isPending;
 
   const draftAddedSet = useMemo(
     () => new Set(pendingRelation?.added ?? []),
@@ -50,22 +55,22 @@ export function EditCompetenciesSheet({
   const handleTreeReady = useCallback(() => setTreeReady(true), []);
 
   useEffect(() => {
-    if (open) {
-      setLoading(true);
+    if (!open) {
       setTreeReady(false);
-      api
-        .getCompanyCapabilities(companyId)
-        .then((data) => {
-          const approvedIds = data.capabilities.map((c) => c.id);
-          const effectiveIds = pendingRelation ? pendingRelation.proposed : approvedIds;
-          setSelectedIds(effectiveIds);
-          setInitialIds(effectiveIds);
-          setNameMap(Object.fromEntries(data.capabilities.map((c) => [c.id, c.name])));
-        })
-        .catch(() => toast.error(t("editCompetenciesSheet.failedToLoad")))
-        .finally(() => setLoading(false));
+      return;
     }
-  }, [open, companyId, pendingRelation, t]);
+    if (companyCapsQuery.isError) {
+      toast.error(t("editCompetenciesSheet.failedToLoad"));
+      return;
+    }
+    const data = companyCapsQuery.data;
+    if (!data) return;
+    const approvedIds = data.capabilities.map((c) => c.id);
+    const effectiveIds = pendingRelation ? pendingRelation.proposed : approvedIds;
+    setSelectedIds(effectiveIds);
+    setInitialIds(effectiveIds);
+    setNameMap(Object.fromEntries(data.capabilities.map((c) => [c.id, c.name])));
+  }, [open, companyCapsQuery.data, companyCapsQuery.isError, pendingRelation, t]);
 
   const handleSelectionChange = (ids: string[]) => {
     if (!isVerified && competencyLimit !== null && ids.length > competencyLimit) {

@@ -1294,8 +1294,7 @@
       "onboarding": "Onboarding",
       "taxonomy": "Taxonomy",
       "settings": "Settings",
-      "demoSync": "Demo Sync",
-      "basicMatch": "Basic Match"
+      "demoSync": "Demo Sync"
     },
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar",

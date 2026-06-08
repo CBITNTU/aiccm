@@ -139,7 +139,7 @@ npm run embed:backfill
 npm run test:ollama
 ```
 
-Health check in the app: Admin → Basic Match, or `GET /api/admin/inference/health`.
+Health check: `GET /api/admin/inference/health` (superadmin).
 
 ### Profile B — app only (no Ollama)
 
@@ -311,7 +311,7 @@ After first deploy:
 
 1. Confirm `BETTER_AUTH_URL` matches the live URL (including custom domain).
 2. Run `db:migrate` and `embed:backfill` against production `DATABASE_URL` if not done in CI.
-3. Check Admin → Basic Match inference health.
+3. Check `GET /api/admin/inference/health`.
 4. In Vercel → Deployments → **Cron Jobs**, confirm jobs are registered.
 5. Test login (Resend must be configured for new signups).
 

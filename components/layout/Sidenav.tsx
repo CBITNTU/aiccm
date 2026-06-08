@@ -128,7 +128,6 @@ const adminNavGroups: AdminNavGroup[] = [
       { labelKey: "admin.taxonomy", href: "/admin/taxonomy", icon: Tags, hideForPending: true },
       { labelKey: "admin.settings", href: "/admin/settings", icon: SlidersHorizontal, hideForPending: true },
       { labelKey: "admin.demoSync", href: "/admin/demo-sync", icon: FlaskConical, hideForPending: true },
-      { labelKey: "admin.basicMatch", href: "/admin/basic-match", icon: FlaskConical, hideForPending: true },
     ],
   },
 ];

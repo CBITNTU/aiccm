@@ -37,7 +37,7 @@ for the whole team.
 
 Legacy `OLLAMA_*` vars still work for solo local dev.
 
-**Health check:** `GET /api/admin/inference/health` or Admin → Basic Match banner.
+**Health check:** `GET /api/admin/inference/health` (superadmin).
 
 ---
 

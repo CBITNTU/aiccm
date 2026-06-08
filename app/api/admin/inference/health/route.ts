@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       schemaEmbeddingDim: Number(
         process.env.EMBED_DIM?.trim() ||
           process.env.OLLAMA_EMBED_DIM?.trim() ||
-          "768",
+          "1536",
       ),
     });
   } catch (e) {

@@ -101,7 +101,7 @@ In development, a background queue poller processes async jobs automatically (De
 
 ## AI / matching setup (local)
 
-**Basic Match** (semantic scores on the Matches tab) is always on. It needs **embeddings** stored in Postgres (`vector(768)` columns). **Deep Research** (full LLM scoring) is optional and runs via the job queue.
+**Basic Match** (semantic scores on the Matches tab) is always on. It needs **embeddings** stored in Postgres (`vector(1536)` columns). **Deep Research** (full LLM scoring) is optional and runs via the job queue.
 
 ### Profile A — full local dev (with Ollama)
 
@@ -121,7 +121,7 @@ ollama pull qwen2.5:7b
 ```env
 EMBED_PROVIDER=ollama
 EMBED_MODEL=qwen3-embedding:0.6b
-EMBED_DIM=768
+EMBED_DIM=1536
 EMBED_BASE_URL=http://127.0.0.1:11434
 INFERENCE_BASE_URL=http://127.0.0.1:11434/v1
 MATCHING_MODEL=ollama/qwen2.5:7b
@@ -150,7 +150,7 @@ To use OpenAI embeddings instead of Ollama:
 ```env
 EMBED_PROVIDER=openai
 EMBED_MODEL=text-embedding-3-small
-EMBED_DIM=768
+EMBED_DIM=1536
 OPENAI_API_KEY=sk-…
 ```
 
@@ -215,7 +215,7 @@ DATABASE_URL="postgresql://…" npm run db:migrate
 DATABASE_URL="postgresql://…" npm run embed:backfill
 ```
 
-Migration `0007_pgvector_embeddings.sql` adds `vector(768)` columns and HNSW indexes — required for Basic Match.
+Migrations `0007_pgvector_embeddings.sql` + `0008_embedding_dim_1536.sql` add `vector(1536)` columns and HNSW indexes — required for Basic Match (OpenAI `text-embedding-3-small`).
 
 ### Step 2 — Inference (pick one)
 
@@ -235,7 +235,7 @@ Put HTTPS in front (Caddy/nginx). Then set on Vercel:
 ```env
 EMBED_PROVIDER=ollama
 EMBED_MODEL=qwen3-embedding:0.6b
-EMBED_DIM=768
+EMBED_DIM=1536
 EMBED_BASE_URL=https://inference.yourdomain.com
 INFERENCE_BASE_URL=https://inference.yourdomain.com/v1
 INFERENCE_API_KEY=<same secret as inference server>
@@ -248,9 +248,10 @@ MATCHING_MODEL=ollama/qwen2.5:7b
 ```env
 EMBED_PROVIDER=openai
 EMBED_MODEL=text-embedding-3-small
-EMBED_DIM=768
 OPENAI_API_KEY=sk-…
 ```
+
+Production default (no `EMBED_PROVIDER`): **OpenAI** `text-embedding-3-small` @ **1536** when `OPENAI_API_KEY` is set and no hosted inference URL is configured.
 
 Production **never** calls `localhost` for embeddings. Local Ollama is dev-only.
 

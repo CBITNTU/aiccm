@@ -16,8 +16,9 @@ import {
   customType,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
+import { STORAGE_EMBEDDING_DIM } from "@/lib/ai/embeddingDim";
 
-// pgvector column. Stored as `vector(N)`. Default embedder: qwen3-embedding @ 768 (MRL).
+// pgvector column. Stored as `vector(N)`. Default embedder: OpenAI text-embedding-3-small @ 1536.
 const vector = (dim: number) =>
   customType<{ data: number[]; driverData: string }>({
     dataType() {
@@ -35,7 +36,7 @@ const vector = (dim: number) =>
     },
   });
 
-const EMBEDDING_DIM = 768; // qwen3-embedding:0.6b with OLLAMA_EMBED_DIM=768
+const EMBEDDING_DIM = STORAGE_EMBEDDING_DIM;
 
 // Enums
 export const appRoleEnum = pgEnum("app_role", [

@@ -393,7 +393,7 @@ export default function BasicMatchAdminPage() {
             How it works
           </CardTitle>
           <CardDescription className="text-sm">
-            Every company and tender is embedded once into a 768-dim vector
+            Every company and tender is embedded once into a 1536-dim vector
             using a local 280&nbsp;MB model. At query time we do a single
             HNSW-indexed cosine-distance lookup, then competency-aware
             re-ranking for company → tender mode. Bands (company mode):{" "}

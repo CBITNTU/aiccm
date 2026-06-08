@@ -5,6 +5,11 @@
  * OpenAI-compatible gateway). Legacy OLLAMA_* env vars remain supported.
  */
 
+import {
+  OLLAMA_NATIVE_EMBED_DIM,
+  STORAGE_EMBEDDING_DIM,
+} from "@/lib/ai/embeddingDim";
+
 export type EmbedProviderId = "ollama" | "openai" | "openai-compatible";
 
 export interface EmbedConfig {
@@ -18,8 +23,8 @@ export interface EmbedConfig {
 }
 
 const DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434";
-const DEFAULT_EMBED_MODEL = "qwen3-embedding:0.6b";
-const DEFAULT_EMBED_DIM = 768;
+const DEFAULT_OLLAMA_EMBED_MODEL = "qwen3-embedding:0.6b";
+const DEFAULT_OPENAI_EMBED_MODEL = "text-embedding-3-small";
 
 function trimEnv(key: string): string | undefined {
   const v = process.env[key]?.trim();
@@ -44,10 +49,6 @@ export function getOllamaHost(): string {
 
   const raw = fromEmbed ?? fromInference ?? fromLegacy;
   return raw.replace(/\/v1\/?$/, "").replace(/\/$/, "");
-}
-
-function isProductionRuntime(): boolean {
-  return process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
 }
 
 function hasRemoteInferenceUrl(): boolean {
@@ -80,14 +81,22 @@ function resolveProvider(): EmbedProviderId {
   ) {
     return explicit;
   }
-  // Production: hosted inference service, or OpenAI embeddings fallback.
-  // Local Ollama is dev-only unless explicitly configured with a remote URL.
-  if (isProductionRuntime() && !hasRemoteInferenceUrl()) {
-    if (trimEnv("OPENAI_API_KEY") || trimEnv("EMBED_API_KEY")) {
-      return "openai";
-    }
+  // Hosted inference VPS (team Ollama) — not localhost.
+  if (hasRemoteInferenceUrl()) {
+    return "ollama";
+  }
+  // Default: OpenAI text-embedding-3-small when a key is available (prod + local).
+  if (trimEnv("OPENAI_API_KEY") || trimEnv("EMBED_API_KEY")) {
+    return "openai";
   }
   return "ollama";
+}
+
+function resolveDefaultEmbedDim(provider: EmbedProviderId): number {
+  if (provider === "openai" || provider === "openai-compatible") {
+    return STORAGE_EMBEDDING_DIM;
+  }
+  return OLLAMA_NATIVE_EMBED_DIM;
 }
 
 function resolveApiKey(provider: EmbedProviderId): string | undefined {
@@ -99,15 +108,22 @@ function resolveApiKey(provider: EmbedProviderId): string | undefined {
   );
 }
 
+function resolveDefaultEmbedModel(provider: EmbedProviderId): string {
+  if (provider === "openai") {
+    return DEFAULT_OPENAI_EMBED_MODEL;
+  }
+  return DEFAULT_OLLAMA_EMBED_MODEL;
+}
+
 export function getEmbedConfig(): EmbedConfig {
   const provider = resolveProvider();
   const model =
     trimEnv("EMBED_MODEL") ??
     trimEnv("OLLAMA_EMBED_MODEL") ??
-    DEFAULT_EMBED_MODEL;
+    resolveDefaultEmbedModel(provider);
   const dim =
     Number(trimEnv("EMBED_DIM") ?? trimEnv("OLLAMA_EMBED_DIM")) ||
-    DEFAULT_EMBED_DIM;
+    resolveDefaultEmbedDim(provider);
   const useInstructions =
     trimEnv("EMBED_INSTRUCTIONS") !== "0" &&
     trimEnv("OLLAMA_EMBED_INSTRUCTIONS") !== "0";

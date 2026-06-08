@@ -45,9 +45,10 @@ export const ollamaEmbeddingProvider: EmbeddingProvider = {
       throw new Error("Ollama embed returned no vector");
     }
 
-    if (vector.length !== config.dim) {
+  // qwen3-embedding:0.6b caps at 1024 even if a larger `dimensions` is requested.
+    if (vector.length > config.dim) {
       throw new Error(
-        `Ollama embed dimension mismatch: expected ${config.dim}, got ${vector.length} (model ${config.model})`,
+        `Ollama embed dimension mismatch: expected at most ${config.dim}, got ${vector.length} (model ${config.model})`,
       );
     }
 

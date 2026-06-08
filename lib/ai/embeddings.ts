@@ -10,6 +10,7 @@ import {
   summarizeEmbedConfig,
   type EmbedProviderId,
 } from "@/lib/ai/embedConfig";
+import { STORAGE_EMBEDDING_DIM } from "@/lib/ai/embeddingDim";
 import {
   embedWithProvider,
   type EmbedResult,
@@ -27,11 +28,16 @@ const EMBED_INSTRUCTIONS: Record<EmbedTask, string> = {
 };
 
 /** Stored pgvector width — must match Drizzle schema `vector(N)`. */
-export const EMBEDDING_DIM = Number(
-  process.env.EMBED_DIM?.trim() ||
-    process.env.OLLAMA_EMBED_DIM?.trim() ||
-    "768",
-);
+export const EMBEDDING_DIM = STORAGE_EMBEDDING_DIM;
+
+/** Pad or truncate provider output to the schema width (e.g. Ollama 1024 → 1536). */
+export function fitEmbeddingToStorage(vec: number[]): number[] {
+  if (vec.length === STORAGE_EMBEDDING_DIM) return vec;
+  if (vec.length > STORAGE_EMBEDDING_DIM) {
+    return vec.slice(0, STORAGE_EMBEDDING_DIM);
+  }
+  return [...vec, ...Array(STORAGE_EMBEDDING_DIM - vec.length).fill(0)];
+}
 
 export function formatEmbedInput(
   body: string,
@@ -66,14 +72,14 @@ export async function embedText(
     );
   }
 
-  if (config.dim !== EMBEDDING_DIM) {
-    throw new Error(
-      `EMBED_DIM (${config.dim}) does not match schema EMBEDDING_DIM (${EMBEDDING_DIM}). ` +
-        "Update lib/db/schema/app.ts and run a migration before changing dimensions.",
-    );
-  }
+  const result = await embedWithProvider(payload, config);
+  const vector = fitEmbeddingToStorage(result.vector);
 
-  return embedWithProvider(payload, config);
+  return {
+    ...result,
+    vector,
+    dim: vector.length,
+  };
 }
 
 /**

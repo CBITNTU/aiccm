@@ -28,7 +28,7 @@ for the whole team.
 |---|---|---|
 | `EMBED_PROVIDER` | `ollama` \| `openai` \| `openai-compatible` | `ollama` |
 | `EMBED_MODEL` | Embedding model | `qwen3-embedding:0.6b` |
-| `EMBED_DIM` | Vector width (must match DB schema) | `768` |
+| `EMBED_DIM` | Vector width (must match DB schema) | `1536` |
 | `EMBED_BASE_URL` | Ollama origin (no `/v1`) | `https://inference.example.com` |
 | `INFERENCE_BASE_URL` | Chat LLM `/v1` base | `https://inference.example.com/v1` |
 | `INFERENCE_API_KEY` | Bearer token for hosted Ollama | shared secret |
@@ -115,7 +115,7 @@ INFERENCE_BASE_URL=https://inference.tndrx.dev/v1
 INFERENCE_API_KEY=<same secret as inference server>
 EMBED_API_KEY=<same secret>
 EMBED_MODEL=qwen3-embedding:0.6b
-EMBED_DIM=768
+EMBED_DIM=1536
 MATCHING_MODEL=ollama/qwen2.5:7b
 DATABASE_URL=postgresql://…          # Neon / Supabase with pgvector
 BETTER_AUTH_SECRET=…
@@ -192,7 +192,7 @@ Only if you cannot run the inference service. Not “own models”.
 ```bash
 EMBED_PROVIDER=openai
 EMBED_MODEL=text-embedding-3-small
-EMBED_DIM=768
+EMBED_DIM=1536
 OPENAI_API_KEY=sk-…
 ```
 
@@ -218,10 +218,12 @@ Same codebase, different inference URL per deployment.
 
 ---
 
-## Dimension choice (768 vs 1536)
+## Dimension choice (1536 default)
 
-Vercel does **not** require 1536. Keep `EMBED_DIM=768` unless benchmarks justify
-a migration. Higher dims ≠ automatically better — model choice matters more.
+Production uses **OpenAI `text-embedding-3-small` @ 1536** (`vector(1536)` in Postgres).
+Migration `0008_embedding_dim_1536.sql` resizes columns from 768 if you applied an earlier build.
+
+Local Ollama dev must use **`EMBED_DIM=1536`** to match the schema (or set `EMBED_PROVIDER=openai`).
 
 ---
 

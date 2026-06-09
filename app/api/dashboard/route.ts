@@ -16,16 +16,6 @@ export async function GET(request: NextRequest) {
     // Get user's company IDs
     const companyIds = await getUserCompanyIds(user.id);
 
-    // Fetch companies
-    let companiesData: (typeof companies.$inferSelect)[] = [];
-    if (companyIds.length > 0) {
-      companiesData = await db
-        .select()
-        .from(companies)
-        .where(inArray(companies.id, companyIds))
-        .orderBy(desc(companies.createdAt));
-    }
-
     // Fetch total tenders count
     const tendersCountResult = await db.select({ count: count() }).from(tenders);
     const totalTenders = tendersCountResult[0]?.count || 0;
@@ -90,11 +80,10 @@ export async function GET(request: NextRequest) {
     }
 
     return apiResponse({
-      companies: companiesData,
       stats: {
         totalTenders,
         matchingResults: matchingResultsCount,
-        companies: companiesData.length,
+        companies: companyIds.length,
         projects: projectsCount,
       },
       recentMatches,

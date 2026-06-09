@@ -350,12 +350,6 @@ export const api = {
       body: data,
     }),
 
-  // User role
-  getUserRole: () =>
-    apiCall<{ role: string | null; isAdmin: boolean }>("user-role", {
-      method: "GET",
-    }),
-
   // Taxonomies
   getTaxonomies: () =>
     apiCall<{
@@ -827,7 +821,6 @@ export const api = {
   // Dashboard
   getDashboard: () =>
     apiCall<{
-      companies: Record<string, unknown>[];
       stats: {
         totalTenders: number;
         matchingResults: number;

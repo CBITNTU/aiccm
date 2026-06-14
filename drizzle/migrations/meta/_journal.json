@@ -50,6 +50,13 @@
       "when": 1775100000000,
       "tag": "0006_seed_eic_taxonomy",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0007_fix_ted_notice_urls",
+      "breakpoints": true
     }
   ]
 }

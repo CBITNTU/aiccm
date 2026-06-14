@@ -189,22 +189,39 @@ export function PendingChangesBar({
     (marketCount > 0 ? 1 : 0) +
     (stdCount > 0 ? 1 : 0);
 
-  // Fetch reference names for relation diffs
-  const needsCapLabels = !!pendingChanges.capabilities;
-  const needsMarketLabels = !!pendingChanges.markets;
+  // Pending-change diffs only need names for the handful of added/removed ids,
+  // so resolve those targeted instead of fetching the entire reference list.
+  const capPendingIds = useMemo(
+    () =>
+      pendingChanges.capabilities
+        ? [...pendingChanges.capabilities.added, ...pendingChanges.capabilities.removed]
+        : [],
+    [pendingChanges.capabilities],
+  );
+  const marketPendingIds = useMemo(
+    () =>
+      pendingChanges.markets
+        ? [...pendingChanges.markets.added, ...pendingChanges.markets.removed]
+        : [],
+    [pendingChanges.markets],
+  );
+
+  const needsCapLabels = capPendingIds.length > 0;
+  const needsMarketLabels = marketPendingIds.length > 0;
+  // Standards reference list is small, so the full list is fine here.
   const needsStandardLabels = !!pendingChanges.standards;
 
   const [capQuery, marketQuery, stdQuery] = useQueries({
     queries: [
       {
-        queryKey: queryKeys.referenceCapabilities(),
-        queryFn: async () => (await api.getCapabilities()).capabilities,
+        queryKey: ["capabilityNames", [...capPendingIds].sort()],
+        queryFn: async () => (await api.getCapabilityNames(capPendingIds)).capabilities,
         staleTime: 30 * 60 * 1000,
         enabled: needsCapLabels,
       },
       {
-        queryKey: queryKeys.referenceMarkets(),
-        queryFn: async () => (await api.getMarkets()).markets,
+        queryKey: ["marketNames", [...marketPendingIds].sort()],
+        queryFn: async () => (await api.getMarketNames(marketPendingIds)).markets,
         staleTime: 30 * 60 * 1000,
         enabled: needsMarketLabels,
       },

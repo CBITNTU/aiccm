@@ -36,7 +36,6 @@ import {
   SlidersHorizontal,
   FlaskConical,
   Globe,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -69,12 +68,6 @@ const mainNavItems: NavigationItem[] = [
     labelKey: "nav.tenders",
     href: "/tenders",
     icon: FileText,
-    hideForPending: false,
-  },
-  {
-    labelKey: "nav.matches",
-    href: "/tenders?tab=matches",
-    icon: Sparkles,
     hideForPending: false,
   },
   {

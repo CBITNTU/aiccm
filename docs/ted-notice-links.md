@@ -55,22 +55,27 @@ Implementation summary:
 
 ## Database backfill
 
-Migration: `supabase/migrations/20260418000000_fix_ted_notice_urls.sql`
+Migration: `drizzle/migrations/0007_fix_ted_notice_urls.sql`
 
-It rewrites legacy `udl?uri=TED:NOTICE:` URLs in `documents` to the `/en/notice/-/detail/` format.
+It rewrites legacy `udl?uri=TED:NOTICE:` URLs in `documents` to the `/en/notice/-/detail/` format. **Data-only** — no schema change. Only rows with legacy TED URLs are updated (UK Find a Tender rows are untouched).
 
-**Local Drizzle dev** — `npm run db:migrate` does **not** run Supabase SQL files. Apply manually:
-
-```bash
-psql "$DATABASE_URL" -f supabase/migrations/20260418000000_fix_ted_notice_urls.sql
-```
-
-**Supabase hosted / prod** — push via Supabase CLI or run the same SQL in the dashboard:
+Apply with Drizzle (local or production):
 
 ```bash
-npm run supabase:db-push        # local Supabase
-npm run supabase:db-push:prod   # production project
+npm run db:migrate
 ```
+
+Or against a remote database:
+
+```bash
+DATABASE_URL="postgresql://…" npm run db:migrate
+```
+
+**Optional:** run the count query below first; if `legacy_ted_urls` is 0, you can skip the migration and rely on the ingester fix for new imports only.
+
+**Do not use** `supabase/migrations/` — the project uses **Drizzle** migrations under `drizzle/migrations/`.
+
+> **Note:** If PR #56 (pgvector embeddings) lands before this PR, renumber this file to `0009_fix_ted_notice_urls.sql` and append the journal entry after `0008_embedding_dim_1536`.
 
 ### Migration edge cases
 
@@ -131,7 +136,11 @@ SET
 WHERE id = (SELECT id FROM tenders LIMIT 1);
 ```
 
-Run the migration SQL file, then re-query — URLs should show `/en/notice/-/detail/300146-2026`.
+Run migrations (includes this backfill when legacy TED rows exist):
+
+```bash
+npm run db:migrate
+```
 
 Open the tender in the app and click the external link.
 
@@ -143,7 +152,7 @@ Open the tender in the app and click the external link.
 | External link resolver | `lib/tenders/externalNoticeLink.ts` |
 | Tender detail UI | `app/(protected)/tenders/[tenderId]/page.tsx` |
 | Admin import UI | `components/admin/AdminTenderImport.tsx` |
-| Backfill migration | `supabase/migrations/20260418000000_fix_ted_notice_urls.sql` |
+| Backfill migration | `drizzle/migrations/0007_fix_ted_notice_urls.sql` |
 | Fix PR | [#52 — Fix TED EU notice link on tender details](https://github.com/CBITNTU/aiccm/pull/52) |
 
 ## Quick reference

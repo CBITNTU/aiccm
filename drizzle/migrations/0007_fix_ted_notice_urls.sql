@@ -1,13 +1,7 @@
 -- Replace legacy TED notice URLs with the current TED portal format.
+-- Data-only migration (no schema change). Safe to skip if zero legacy TED rows.
 --
--- Notices ingested via app/api/fetch-ted-tenders previously stored URLs of the
--- form `https://ted.europa.eu/udl?uri=TED:NOTICE:<id>`. That endpoint no longer
--- resolves on the new TED EU site, which broke the "View on TED (EU)" link on
--- the tender details screen. The current format is
--- `https://ted.europa.eu/en/notice/-/detail/<publication-number>`.
---
--- Older ingests sometimes used notice-identifier (UUID) in the legacy URL;
--- when reference_number holds a publication number (NNNNNN-YYYY), prefer that.
+-- See docs/ted-notice-links.md
 
 UPDATE public.tenders
 SET documents = jsonb_set(
@@ -34,6 +28,7 @@ SET documents = jsonb_set(
 )
 WHERE documents ? 'specification_url'
   AND documents ->> 'specification_url' LIKE 'http%://ted.europa.eu/udl?uri=TED:NOTICE:%';
+--> statement-breakpoint
 
 UPDATE public.tenders
 SET documents = jsonb_set(
@@ -60,8 +55,8 @@ SET documents = jsonb_set(
 )
 WHERE documents ? 'application_url'
   AND documents ->> 'application_url' LIKE 'http%://ted.europa.eu/udl?uri=TED:NOTICE:%';
+--> statement-breakpoint
 
--- Rows already migrated to detail/<uuid> but reference_number is a publication id.
 UPDATE public.tenders
 SET documents = jsonb_set(
   jsonb_set(

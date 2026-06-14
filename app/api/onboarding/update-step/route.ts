@@ -339,6 +339,21 @@ export async function POST(request: NextRequest) {
             console.error("Failed to queue company taxonomy job:", queueError);
           }
 
+          // Compute the basic-match embedding immediately so the user can see
+          // matches without waiting for the AI taxonomy job. Best-effort: a
+          // failure here must never block onboarding completion.
+          try {
+            const { embedCompany } = await import(
+              "@/lib/services/embeddingService"
+            );
+            await embedCompany(company.id);
+          } catch (embedError) {
+            console.error(
+              "Initial company embedding failed (non-fatal):",
+              embedError,
+            );
+          }
+
           // Log company creation during onboarding
           await logApiEvent(request, {
             actionType: "company_created",

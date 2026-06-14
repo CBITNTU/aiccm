@@ -1,0 +1,37 @@
+{
+  "ranAt": "2026-06-01T10:26:37.028Z",
+  "topK": 15,
+  "embedModel": "qwen3-embedding:0.6b",
+  "cases": 3,
+  "hits": 3,
+  "mrrAtK": 0.733,
+  "results": [
+    {
+      "id": "clearsite-demolition",
+      "companyName": "ClearSite Demolition Ltd",
+      "hitRank": 1,
+      "topTitle": "Demolition and Site Clearance - Docklands",
+      "topScore": 0.7563893816662837,
+      "negativeInTop5": false,
+      "elapsedMs": 10
+    },
+    {
+      "id": "precision-surveying",
+      "companyName": "PrecisionPoint Surveying Ltd",
+      "hitRank": 1,
+      "topTitle": "Land Survey Services Framework - South East",
+      "topScore": 0.7574500687998669,
+      "negativeInTop5": false,
+      "elapsedMs": 4
+    },
+    {
+      "id": "hazy-education",
+      "companyName": "Hazy test",
+      "hitRank": 5,
+      "topTitle": "Flexible Framework for Vocational and Skill Based Interventions",
+      "topScore": 0.7371535342393788,
+      "negativeInTop5": false,
+      "elapsedMs": 26
+    }
+  ]
+}

@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "construction-nhs-me-same-city",
+      "label": "Construction × NHS M&E (same city, strong fit)",
+      "tags": ["industry-match", "construction", "nhs"],
+      "company": "Company: Acme Construction Ltd\nCapabilities: Commercial fit-out, mechanical & electrical, project management\nCertifications: ISO 9001, CHAS, SSIP\nPast Projects: 12 schools, 4 NHS clinics in East Midlands\nLocation: Derby DE1",
+      "tender": "Tender: NHS ward refurbishment — mechanical and electrical works\nBuyer: NHS Trust\nBudget: £450k–£700k\nLocation: Derby",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "min": 60 },
+        { "kind": "scoreRange", "axis": "location", "min": 70 },
+        { "kind": "scoreRange", "axis": "certification", "min": 50 },
+        { "kind": "reasonsCount", "min": 2, "max": 4 },
+        { "kind": "suggestionsCount", "min": 2, "max": 3 }
+      ]
+    },
+    {
+      "id": "construction-nhs-me-wrong-city",
+      "label": "Construction × NHS M&E (right industry, wrong city)",
+      "tags": ["industry-match", "location-penalty"],
+      "company": "Company: Acme Construction Ltd\nCapabilities: Commercial fit-out, mechanical & electrical, project management\nCertifications: ISO 9001, CHAS, SSIP\nPast Projects: 12 schools, 4 NHS clinics in East Midlands\nLocation: Nottingham NG1",
+      "tender": "Tender: NHS ward refurbishment — mechanical and electrical works\nBuyer: NHS Trust\nBudget: £450k–£700k\nLocation: Aberdeen AB1",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "min": 50 },
+        { "kind": "scoreRange", "axis": "location", "max": 40 },
+        { "kind": "reasonsCount", "min": 2, "max": 4 }
+      ]
+    },
+    {
+      "id": "it-vs-construction-mismatch",
+      "label": "IT consultancy × Construction (industry mismatch)",
+      "tags": ["industry-mismatch"],
+      "company": "Company: Byteforge Software\nCapabilities: SaaS development, AI integrations, devops\nCertifications: ISO 27001, Cyber Essentials Plus\nLocation: London EC1",
+      "tender": "Tender: Construction of a 12-classroom primary school\nBuyer: County Council\nBudget: £4.2m–£5.0m\nLocation: Leicester",
+      "assertions": [
+        { "kind": "industryMismatch" },
+        { "kind": "reasonsCount", "min": 1 }
+      ]
+    },
+    {
+      "id": "marketing-vs-roads-mismatch",
+      "label": "Marketing agency × Road resurfacing (industry mismatch)",
+      "tags": ["industry-mismatch"],
+      "company": "Company: Brightline Marketing\nCapabilities: Branding, digital campaigns, content production\nCertifications: GDPR-compliant; ISO 9001\nLocation: Manchester M1",
+      "tender": "Tender: A52 carriageway resurfacing — 6km\nBuyer: National Highways\nBudget: £2.8m–£3.4m\nLocation: Nottinghamshire",
+      "assertions": [
+        { "kind": "industryMismatch" }
+      ]
+    },
+    {
+      "id": "law-firm-vs-it-mismatch",
+      "label": "Law firm × IT infrastructure (industry mismatch)",
+      "tags": ["industry-mismatch"],
+      "company": "Company: Hartwell & Co Solicitors\nCapabilities: Corporate law, conveyancing, contract drafting\nCertifications: Lexcel\nLocation: Bristol BS1",
+      "tender": "Tender: Council-wide network refresh and cybersecurity uplift\nBuyer: City Council\nBudget: £900k–£1.4m\nLocation: Bristol",
+      "assertions": [
+        { "kind": "industryMismatch" }
+      ]
+    },
+    {
+      "id": "healthcare-consulting-nhs-digital",
+      "label": "Healthcare consultancy × NHS digital transformation (strong fit)",
+      "tags": ["industry-match", "consulting"],
+      "company": "Company: Clinity Health Advisors\nCapabilities: Clinical pathway redesign, EPR rollout, NHS digital transformation\nCertifications: DSPT, ISO 27001\nPast Projects: 6 NHS Trusts, NHSX programmes\nLocation: Leeds LS1",
+      "tender": "Tender: Digital transformation programme delivery for an NHS Trust\nBuyer: NHS Trust\nBudget: £200k–£350k\nLocation: Manchester",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "min": 70 },
+        { "kind": "scoreRange", "axis": "experience", "min": 60 },
+        { "kind": "scoreRange", "axis": "certification", "min": 60 }
+      ]
+    },
+    {
+      "id": "roofing-vs-landscaping-partial",
+      "label": "Roofing SME × Landscaping (partial / no overlap)",
+      "tags": ["industry-mismatch", "partial-overlap"],
+      "company": "Company: Pinnacle Roofing\nCapabilities: Roofing, gutter works, scaffolding\nCertifications: CHAS\nLocation: Coventry CV1",
+      "tender": "Tender: Public park landscaping and pathway works\nBuyer: Borough Council\nBudget: £80k–£150k\nLocation: Coventry",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "max": 25 },
+        { "kind": "scoreRange", "axis": "location", "min": 80 }
+      ]
+    },
+    {
+      "id": "sparse-company-profile",
+      "label": "Sparse company profile (minimal data)",
+      "tags": ["sparse-data"],
+      "company": "Company: Tiny Ltd\nCapabilities: General contracting",
+      "tender": "Tender: Multi-storey car park refurbishment\nBuyer: City Council\nBudget: £1.2m–£1.8m\nLocation: Birmingham",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "max": 60 },
+        { "kind": "scoreRange", "axis": "experience", "max": 50 }
+      ]
+    },
+    {
+      "id": "certs-but-no-experience",
+      "label": "Strong certifications, no past project experience",
+      "tags": ["partial-data"],
+      "company": "Company: Newco Civils\nCapabilities: Civil engineering, groundworks\nCertifications: ISO 9001, ISO 14001, ISO 45001, CHAS, Constructionline Gold\nLocation: Sheffield S1",
+      "tender": "Tender: Town centre civil engineering improvements\nBuyer: Sheffield City Council\nBudget: £600k–£900k\nLocation: Sheffield",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "certification", "min": 70 },
+        { "kind": "scoreRange", "axis": "experience", "max": 50 },
+        { "kind": "scoreRange", "axis": "location", "min": 80 }
+      ]
+    },
+    {
+      "id": "experience-but-no-certs",
+      "label": "Strong experience, no certifications listed",
+      "tags": ["partial-data"],
+      "company": "Company: Legacy Builders\nCapabilities: Construction project delivery, refurbishment\nPast Projects: 30 commercial refurbishments over 12 years across the Midlands\nLocation: Birmingham B1",
+      "tender": "Tender: Heritage building refurbishment\nBuyer: National Trust\nBudget: £400k–£600k\nLocation: Birmingham",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "experience", "min": 60 },
+        { "kind": "scoreRange", "axis": "certification", "max": 40 },
+        { "kind": "scoreRange", "axis": "location", "min": 80 }
+      ]
+    },
+    {
+      "id": "multi-sector-company-match",
+      "label": "Multi-sector company (one sector matches tender)",
+      "tags": ["industry-match", "multi-sector"],
+      "company": "Company: Helix Group\nCapabilities: Construction, facilities management, IT services\nCertifications: ISO 9001\nPast Projects: 4 hospital FM contracts, 3 school builds\nLocation: Reading RG1",
+      "tender": "Tender: Hospital facilities management 3-year contract\nBuyer: NHS Foundation Trust\nBudget: £1.4m–£2.0m\nLocation: Reading",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "min": 60 },
+        { "kind": "scoreRange", "axis": "experience", "min": 50 },
+        { "kind": "scoreRange", "axis": "location", "min": 80 }
+      ]
+    },
+    {
+      "id": "large-tender-small-company",
+      "label": "Very large tender vs small company (capability fit, scale risk)",
+      "tags": ["scale-mismatch"],
+      "company": "Company: Microbuild Ltd\nCapabilities: Residential construction\nPast Projects: 6 single-house builds totalling £1.2m\nLocation: Oxford OX1",
+      "tender": "Tender: 800-home housing development\nBuyer: Homes England\nBudget: £85m–£110m\nLocation: Oxford",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "max": 60 },
+        { "kind": "scoreRange", "axis": "experience", "max": 40 }
+      ]
+    },
+    {
+      "id": "small-tender-large-company",
+      "label": "Tiny tender for a small specialist firm",
+      "tags": ["scale-match"],
+      "company": "Company: Eastside Electrical\nCapabilities: Domestic electrical installation, repairs\nCertifications: NICEIC\nLocation: Cambridge CB1",
+      "tender": "Tender: Replace lighting in 3 council offices\nBuyer: Cambridge City Council\nBudget: £8k–£12k\nLocation: Cambridge",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "min": 60 },
+        { "kind": "scoreRange", "axis": "location", "min": 80 }
+      ]
+    },
+    {
+      "id": "generic-company-description",
+      "label": "Generic / vague capability description",
+      "tags": ["vague-data"],
+      "company": "Company: Generic Solutions\nCapabilities: Professional services, bespoke solutions, consulting\nLocation: Cardiff CF10",
+      "tender": "Tender: Provision of mental health support services\nBuyer: Welsh Government\nBudget: £500k–£800k\nLocation: Cardiff",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "max": 50 }
+      ]
+    },
+    {
+      "id": "telecoms-vs-telecoms",
+      "label": "Telecoms × Telecoms (direct industry match)",
+      "tags": ["industry-match", "telecoms"],
+      "company": "Company: SignalEdge Networks\nCapabilities: Fibre rollout, telecom infrastructure, civils for ducting\nCertifications: NRSWA, NICEIC, ISO 9001\nPast Projects: BT Openreach subcontract, 3 city-wide fibre programmes\nLocation: Manchester M1",
+      "tender": "Tender: City fibre backbone expansion programme\nBuyer: Greater Manchester Combined Authority\nBudget: £6m–£9m\nLocation: Manchester",
+      "assertions": [
+        { "kind": "scoreRange", "axis": "capability", "min": 75 },
+        { "kind": "scoreRange", "axis": "experience", "min": 60 },
+        { "kind": "scoreRange", "axis": "certification", "min": 60 },
+        { "kind": "scoreRange", "axis": "location", "min": 80 }
+      ]
+    }
+  ]
+}

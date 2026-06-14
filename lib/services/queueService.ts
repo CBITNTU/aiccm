@@ -13,7 +13,8 @@ export type JobType =
   | "company_summary"
   | "company_taxonomy"
   | "company_ai_complete" // Combined summary + taxonomy in one call
-  | "tender_matching";
+  | "tender_matching"
+  | "compute_embedding"; // Local pgvector embedding of a company or tender
 
 export type JobStatus = "pending" | "processing" | "completed" | "failed";
 

@@ -5,7 +5,6 @@ import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { enqueueBatch } from "@/lib/services/queueService";
-import { getPlatformAISettings } from "@/lib/platformSettings";
 import { getPlatformMatchingSettings } from "@/lib/platformMatchingSettings";
 import { getMatchingRunsThisMonth, getEffectiveMatchingLimit, getNextMonthStart } from "@/lib/matchingUsage";
 import type { TenderMatchResult } from "@/lib/api/types";
@@ -189,6 +188,7 @@ export async function POST(request: NextRequest) {
 
     const requestBody = await request.json().catch(() => ({}));
     const targetCompanyId = requestBody.companyId;
+    const force = requestBody.force === true;
 
     let company: typeof companies.$inferSelect | null = null;
 
@@ -291,13 +291,43 @@ export async function POST(request: NextRequest) {
 
     console.log(`Found ${tenderResults.length} tenders to analyze`);
 
-    const platformAi = await getPlatformAISettings();
-    const metadata: Record<string, unknown> = { model: platformAi.defaultAiModel };
-    if (platformAi.defaultReasoningEffort !== "default") {
-      metadata.reasoningEffort = platformAi.defaultReasoningEffort;
+    const {
+      findTenderIdsWithCachedMatches,
+      splitTendersForDeepMatch,
+      resolveMatchingJobMetadata,
+    } = await import("@/lib/services/tenderMatchingService");
+
+    const allTenderIds = tenderResults.map((t) => t.id);
+    const cachedIds = await findTenderIdsWithCachedMatches(
+      companyData.id,
+      allTenderIds,
+    );
+    const { toQueue, skipped } = splitTendersForDeepMatch(
+      allTenderIds,
+      cachedIds,
+      force,
+    );
+
+    if (toQueue.length === 0) {
+      return apiResponse({
+        message: "All tenders already analyzed",
+        analyzedCount: 0,
+        upToDate: true,
+        skippedCount: skipped.length,
+      });
     }
 
-    const jobs = tenderResults.map((tender) => ({
+    const { metadata: matchingMetadata, matchingModel } =
+      await resolveMatchingJobMetadata();
+    const metadata: Record<string, unknown> = {
+      ...matchingMetadata,
+      force,
+    };
+
+    const tenderIdSet = new Set(toQueue);
+    const jobs = tenderResults
+      .filter((tender) => tenderIdSet.has(tender.id))
+      .map((tender) => ({
       jobType: "tender_matching" as const,
       entityType: "tender" as const,
       entityId: tender.id,
@@ -399,14 +429,17 @@ export async function POST(request: NextRequest) {
       userEmail: user?.email || undefined,
       entityType: "company",
       entityId: companyData.id,
-      details: { batchId, totalTenders: tenderResults.length, companyName: companyData.companyName },
+      details: { batchId, totalTenders: toQueue.length, skippedCount: skipped.length, companyName: companyData.companyName },
     }).catch(() => {});
 
     return apiResponse({
       message: "Tender matching started",
       batchId: batchId,
-      totalTenders: tenderResults.length,
+      totalTenders: toQueue.length,
+      skippedCount: skipped.length,
       queuedJobs: jobIds.length,
+      matchingModel,
+      status: "processing",
     });
   } catch (error) {
     console.error("Error in match-tenders:", error);

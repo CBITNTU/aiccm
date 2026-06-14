@@ -211,25 +211,43 @@ async function fetchFromFindTenderAPI(
   params.append("stages", "tender");
 
   if (cursor) {
+    // Find-a-Tender's pagination requires the EXACT same `updatedFrom` and
+    // `updatedTo` that were used for the cursor's original page — sending
+    // only the cursor (or with a re-generated date range) returns 400.
+    // The cursor is base64 of `updatedFrom=...|updatedTo=...|nextCursor=N`,
+    // so we decode it and forward all three.
     params.append("cursor", cursor);
-  }
-
-  if (filters?.dateFrom) {
-    params.append(
-      "updatedFrom",
-      new Date(filters.dateFrom as string).toISOString().slice(0, 19),
-    );
+    try {
+      const decoded = Buffer.from(cursor, "base64").toString("utf8");
+      const parts = Object.fromEntries(
+        decoded.split("|").map((p) => {
+          const eq = p.indexOf("=");
+          return eq === -1 ? [p, ""] : [p.slice(0, eq), p.slice(eq + 1)];
+        }),
+      );
+      if (parts.updatedFrom) params.append("updatedFrom", parts.updatedFrom);
+      if (parts.updatedTo) params.append("updatedTo", parts.updatedTo);
+    } catch (e) {
+      console.error("Failed to decode upstream cursor:", e);
+    }
   } else {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    params.append("updatedFrom", thirtyDaysAgo.toISOString().slice(0, 19));
-  }
+    if (filters?.dateFrom) {
+      params.append(
+        "updatedFrom",
+        new Date(filters.dateFrom as string).toISOString().slice(0, 19),
+      );
+    } else {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      params.append("updatedFrom", thirtyDaysAgo.toISOString().slice(0, 19));
+    }
 
-  if (filters?.dateTo) {
-    params.append(
-      "updatedTo",
-      new Date(filters.dateTo as string).toISOString().slice(0, 19),
-    );
+    if (filters?.dateTo) {
+      params.append(
+        "updatedTo",
+        new Date(filters.dateTo as string).toISOString().slice(0, 19),
+      );
+    }
   }
 
   const url = `${FIND_TENDER_API_BASE}/ocdsReleasePackages?${params.toString()}`;
@@ -404,6 +422,44 @@ export async function POST(request: NextRequest) {
           console.log(
             `Successfully imported ${newTenders.length} new tenders to database (${duplicatesCount} duplicates skipped)`,
           );
+
+          // Compute basic-match embeddings for the newly imported tenders so
+          // they're immediately searchable. Best-effort: a failure here must
+          // not roll back the import. We embed in parallel with a small
+          // concurrency cap because Ollama can saturate easily.
+          if (insertedTenders && insertedTenders.length > 0) {
+            try {
+              const { embedTender } = await import(
+                "@/lib/services/embeddingService"
+              );
+              const CONCURRENCY = 4;
+              const queue = [...insertedTenders];
+              await Promise.all(
+                Array.from({ length: CONCURRENCY }, async () => {
+                  while (queue.length > 0) {
+                    const t = queue.shift();
+                    if (!t) break;
+                    try {
+                      await embedTender(t.id);
+                    } catch (e) {
+                      console.error(
+                        `Embedding tender ${t.id} failed (non-fatal):`,
+                        e,
+                      );
+                    }
+                  }
+                }),
+              );
+              console.log(
+                `Embedded ${insertedTenders.length} newly imported tenders`,
+              );
+            } catch (embedError) {
+              console.error(
+                "Bulk tender embedding failed (non-fatal):",
+                embedError,
+              );
+            }
+          }
 
           // Log tender import event
           await logApiEvent(request, {

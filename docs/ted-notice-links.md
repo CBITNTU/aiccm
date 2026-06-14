@@ -75,7 +75,7 @@ DATABASE_URL="postgresql://…" npm run db:migrate
 
 **Do not use** `supabase/migrations/` — the project uses **Drizzle** migrations under `drizzle/migrations/`.
 
-> **Note:** If PR #56 (pgvector embeddings) lands before this PR, renumber this file to `0009_fix_ted_notice_urls.sql` and append the journal entry after `0008_embedding_dim_1536`.
+Migration order after PR #52 + #56: `0007_fix_ted_notice_urls` (TED links) then `0008_pgvector_embeddings_1536` (Basic Match).
 
 ### Migration edge cases
 

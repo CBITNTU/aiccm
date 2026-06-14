@@ -1,0 +1,49 @@
+# TNDRX inference plane — always-on Ollama for embeddings + LLM scoring.
+# Deploy to any VPS (Hetzner, Oracle Free, Fly, Railway) or run locally to
+# mimic prod:  docker compose -f infra/inference/docker-compose.yml up -d
+#
+# Requires ~8 GB RAM minimum (qwen2.5:7b + qwen3-embedding:0.6b on CPU).
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: tndrx-inference
+    restart: unless-stopped
+    ports:
+      - "${INFERENCE_PORT:-11434}:11434"
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      # Set in .env — clients send Authorization: Bearer <key>
+      OLLAMA_API_KEY: ${INFERENCE_API_KEY:-}
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # One-shot model pull after Ollama is up (re-run: docker compose run --rm bootstrap)
+  bootstrap:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        echo "Pulling embedding model…"
+        ollama pull ${EMBED_MODEL:-qwen3-embedding:0.6b}
+        echo "Pulling chat model…"
+        ollama pull ${CHAT_MODEL:-qwen2.5:7b}
+        echo "Models ready:"
+        ollama list
+    profiles:
+      - bootstrap
+
+volumes:
+  ollama_models:
+    driver: local

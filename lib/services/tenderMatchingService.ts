@@ -1,10 +1,11 @@
  
-import { type MatchingModelId } from "@/lib/api";
-import { aiGenerateObject } from "@/lib/ai";
+import { aiGenerateObject, getMatchingModelFromEnv, isOllamaModelId } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
+import { ensureTenderResearchCached } from "@/lib/services/tenderResearchCache";
+import { getPlatformAISettings } from "@/lib/platformSettings";
 import { db } from "@/lib/db";
 import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers, companyTaxonomies, taxonomies, companyStandards, standardsRef, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
-import { eq, inArray, or } from "drizzle-orm";
+import { eq, inArray, and, or } from "drizzle-orm";
 
 /** Reasoning effort for GPT-5 models: lower = faster, fewer reasoning tokens. */
 export type ReasoningEffort =
@@ -17,7 +18,10 @@ export type ReasoningEffort =
 
 export interface ScoreTenderMatchOptions {
   demo?: boolean;
-  model?: MatchingModelId;
+  /** Re-run LLM even when a matching_results row already exists. */
+  force?: boolean;
+  /** Model ID. Known IDs live in MATCHING_MODEL_IDS but local Ollama tags are accepted too. */
+  model?: string;
   batchLabel?: string;
   /** GPT-5 nano only: reduce thinking for faster/cheaper runs (e.g. "low", "minimal", "none"). */
   reasoningEffort?: ReasoningEffort;
@@ -40,6 +44,69 @@ export interface MatchingScore {
   };
 }
 
+type MatchingResultRow = typeof matchingResults.$inferSelect;
+
+function matchingScoreFromRow(row: MatchingResultRow): MatchingScore {
+  const ai = (row.aiAnalysis ?? {}) as {
+    analysis?: string;
+    score_explanations?: MatchingScore["scoreExplanations"];
+  };
+  return {
+    overallScore: row.overallScore ?? 0,
+    capabilityScore: row.capabilityScore ?? 0,
+    experienceScore: row.experienceScore ?? 0,
+    locationScore: row.locationScore ?? 0,
+    certificationScore: row.certificationScore ?? 0,
+    matchReasons: row.matchReasons ?? [],
+    improvementSuggestions: row.improvementSuggestions ?? [],
+    aiAnalysis: ai.analysis ?? "",
+    scoreExplanations: ai.score_explanations,
+  };
+}
+
+/** Tender IDs that already have a stored deep-match row for this company. */
+export async function findTenderIdsWithCachedMatches(
+  companyId: string,
+  tenderIds: string[],
+): Promise<Set<string>> {
+  if (tenderIds.length === 0) return new Set();
+  const rows = await db
+    .select({ tenderId: matchingResults.tenderId })
+    .from(matchingResults)
+    .where(
+      and(
+        eq(matchingResults.companyId, companyId),
+        inArray(matchingResults.tenderId, tenderIds),
+      ),
+    );
+  return new Set(rows.map((r) => r.tenderId));
+}
+
+export function splitTendersForDeepMatch(
+  tenderIds: string[],
+  cachedIds: Set<string>,
+  force: boolean,
+): { toQueue: string[]; skipped: string[] } {
+  if (force) {
+    return { toQueue: tenderIds, skipped: [] };
+  }
+  const toQueue: string[] = [];
+  const skipped: string[] = [];
+  for (const id of tenderIds) {
+    if (cachedIds.has(id)) skipped.push(id);
+    else toQueue.push(id);
+  }
+  return { toQueue, skipped };
+}
+
+export interface BatchScoreResult {
+  jobCount: number;
+  batchId: string | null;
+  matchingModel: string;
+  skippedCount: number;
+  status: "queued" | "all_cached";
+}
+
 /**
  * Score a tender match for a company.
  * When options.demo is true, writes to demo_matching_results and uses options.model (else platform default).
@@ -49,9 +116,29 @@ export async function scoreTenderMatch(
   tenderId: string,
   options?: ScoreTenderMatchOptions,
 ): Promise<MatchingScore> {
-  const model: string | undefined = options?.model;
+  const model: string | undefined = options?.model ?? getMatchingModelFromEnv();
   const isDemo = options?.demo === true;
   const batchLabel = options?.batchLabel ?? "User A";
+
+  if (!isDemo && !options?.force) {
+    const [existing] = await db
+      .select()
+      .from(matchingResults)
+      .where(
+        and(
+          eq(matchingResults.companyId, companyId),
+          eq(matchingResults.tenderId, tenderId),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      return matchingScoreFromRow(existing);
+    }
+  }
+
+  // Cache tender AI summary + taxonomy + embedding once for all users.
+  await ensureTenderResearchCached(tenderId);
+
   // Fetch company data with AI-generated summary and taxonomy
   const companyRows = await db
     .select({
@@ -321,13 +408,15 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   let score: MatchingScore;
 
   try {
+    const useOllama = model != null && isOllamaModelId(model);
     const parsed = await aiGenerateObject({
       schema: matchingScoreSchema,
       system: systemPrompt,
       prompt: userPrompt,
       modelId: model,
-      maxTokens: 8000,
-      estTokens: 4000,
+      maxTokens: useOllama ? 4096 : 8000,
+      estTokens: useOllama ? 2000 : 4000,
+      temperature: useOllama ? 0.2 : undefined,
     });
 
     // Get scores from AI (no overallScore from AI - we calculate it)
@@ -528,6 +617,21 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   return score;
 }
 
+/** Job metadata: dev `MATCHING_MODEL` overrides platform default when set. */
+export async function resolveMatchingJobMetadata(): Promise<{
+  metadata: Record<string, unknown>;
+  matchingModel: string;
+}> {
+  const platformAi = await getPlatformAISettings();
+  const matchingModel =
+    getMatchingModelFromEnv() ?? platformAi.defaultAiModel;
+  const metadata: Record<string, unknown> = { model: matchingModel };
+  if (platformAi.defaultReasoningEffort !== "default") {
+    metadata.reasoningEffort = platformAi.defaultReasoningEffort;
+  }
+  return { metadata, matchingModel };
+}
+
 /**
  * Batch score tenders for a company
  * This queues matching jobs rather than processing immediately
@@ -535,7 +639,9 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
 export async function batchScoreTendersForCompany(
   companyId: string,
   tenderIds?: string[],
-): Promise<{ jobCount: number; batchId: string }> {
+  userId?: string,
+  options: { force?: boolean } = {},
+): Promise<BatchScoreResult> {
   // If no tender IDs provided, fetch all open tenders
   let tendersToMatch: string[] = [];
 
@@ -550,24 +656,51 @@ export async function batchScoreTendersForCompany(
     tendersToMatch = openTenders.map((t) => t.id);
   }
 
-  // Queue matching jobs (this will be handled by the queue service)
+  const { metadata, matchingModel } = await resolveMatchingJobMetadata();
+  const cachedIds = await findTenderIdsWithCachedMatches(
+    companyId,
+    tendersToMatch,
+  );
+  const { toQueue, skipped } = splitTendersForDeepMatch(
+    tendersToMatch,
+    cachedIds,
+    options.force === true,
+  );
+
+  if (toQueue.length === 0) {
+    return {
+      jobCount: 0,
+      batchId: null,
+      matchingModel,
+      skippedCount: skipped.length,
+      status: "all_cached",
+    };
+  }
+
   const { enqueueBatch } = await import("./queueService");
 
-  const jobs = tendersToMatch.map((tenderId) => ({
+  const jobs = toQueue.map((tenderId) => ({
     jobType: "tender_matching" as const,
     entityType: "tender" as const,
     entityId: tenderId,
     companyId,
     tenderId,
-    priority: 10, // High priority for user-triggered matching
+    priority: 10,
+    metadata: { ...metadata, force: options.force === true },
   }));
 
   const { batchId } = await enqueueBatch(
     jobs,
     "company_matching",
-    undefined,
+    userId,
     companyId,
   );
 
-  return { jobCount: jobs.length, batchId };
+  return {
+    jobCount: jobs.length,
+    batchId,
+    matchingModel,
+    skippedCount: skipped.length,
+    status: "queued",
+  };
 }

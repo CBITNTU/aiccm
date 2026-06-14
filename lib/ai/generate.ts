@@ -3,6 +3,7 @@ import { generateObject, generateText, zodSchema } from "ai";
 import type { LanguageModel } from "ai";
 import type { ZodType } from "zod";
 import { resolveModel, getProviderName } from "./models";
+import { isOllamaModelId } from "./ollama";
 import { getPlatformModel } from "./provider";
 import { runLLM } from "@/lib/services/llmLimiter";
 
@@ -41,6 +42,9 @@ function normaliseReasoningEffort(
 
   // Gemini: pass through; buildProviderOptions maps to thinkingBudget
   if (modelId.startsWith("gemini-")) return effort;
+
+  // Ollama: no reasoning-effort API
+  if (isOllamaModelId(modelId)) return undefined;
 
   // OpenAI: only GPT-5 models support reasoning effort
   const isGPT5 = modelId.startsWith("gpt-5");
@@ -91,6 +95,10 @@ function buildProviderOptions(
     if (budget != null) {
       return { google: { thinkingConfig: { thinkingBudget: budget } } };
     }
+    return undefined;
+  }
+
+  if (provider === "ollama") {
     return undefined;
   }
 

@@ -140,7 +140,7 @@ export const api = {
     ),
 
   // Match tenders
-  matchTenders: (companyId?: string) =>
+  matchTenders: (companyId?: string, options?: { force?: boolean }) =>
     apiCall<{
       message: string;
       analyzedCount: number;
@@ -150,10 +150,14 @@ export const api = {
         overallScore: number;
       }[];
       upToDate?: boolean;
+      skippedCount?: number;
       batchId?: string;
       totalTenders?: number;
     }>("match-tenders", {
-      body: companyId ? { companyId } : {},
+      body: {
+        ...(companyId ? { companyId } : {}),
+        force: options?.force === true,
+      },
     }),
 
   // Create project
@@ -1211,6 +1215,40 @@ export const api = {
       unverifiedAnalysisRunsPerMonth: number;
     }>("admin/settings/verification", { method: "PATCH", body: updates }),
 
+  /** Superadmin: probe embedding provider + LLM inference reachability. */
+  adminGetInferenceHealth: () =>
+    apiCall<{
+      embedding: {
+        ok: boolean;
+        latencyMs: number;
+        config: {
+          provider: string;
+          model: string;
+          dim: number;
+          baseUrl: string;
+          useInstructions: boolean;
+          hasApiKey: boolean;
+        };
+        error?: string;
+      };
+      inference: {
+        ok: boolean;
+        latencyMs: number;
+        baseUrl: string;
+        error?: string;
+      };
+      matchingModel: string | null;
+      embeddingConfig: {
+        provider: string;
+        model: string;
+        dim: number;
+        baseUrl: string;
+        useInstructions: boolean;
+        hasApiKey: boolean;
+      };
+      schemaEmbeddingDim: number;
+    }>("admin/inference/health", { method: "GET" }),
+
   // Company usage stats
   getCompanyMatchingUsage: (companyId: string) =>
     apiCall<{
@@ -1227,4 +1265,99 @@ export const api = {
       remaining: number;
       resetsAt: string;
     }>(`companies/${companyId}/analysis-usage`, { method: "GET" }),
+
+  // Basic (semantic) matching via pgvector — always available
+  basicMatch: (
+    input:
+      | {
+          mode: "tenders-for-company";
+          companyId: string;
+          limit?: number;
+          minScore?: number;
+          status?: string;
+          highThreshold?: number;
+          mediumThreshold?: number;
+          requireSharedTaxonomy?: boolean;
+          useStructuralRerank?: boolean;
+          useEmbedRerank?: boolean;
+          /** @deprecated use useEmbedRerank */
+          useLlmRerank?: boolean;
+        }
+      | {
+          mode: "companies-for-tender";
+          tenderId: string;
+          limit?: number;
+          minScore?: number;
+          highThreshold?: number;
+          mediumThreshold?: number;
+          requireSharedTaxonomy?: boolean;
+          useStructuralRerank?: boolean;
+          useEmbedRerank?: boolean;
+          useLlmRerank?: boolean;
+        }
+      | {
+          mode: "tenders-for-query";
+          query: string;
+          limit?: number;
+          minScore?: number;
+          status?: string;
+          highThreshold?: number;
+          mediumThreshold?: number;
+          requireSharedTaxonomy?: boolean;
+          useStructuralRerank?: boolean;
+          useEmbedRerank?: boolean;
+          useLlmRerank?: boolean;
+        },
+  ) =>
+    apiCall<{
+      mode: string;
+      elapsedMs: number;
+      count: number;
+      results: Array<{
+        tenderId?: string;
+        companyId?: string;
+        title?: string;
+        buyer?: string;
+        companyName?: string;
+        postcode?: string | null;
+        cpvCodes?: string[] | null;
+        location?: string | null;
+        deadline?: string | null;
+        status?: string | null;
+        similarity: number;
+        vectorSimilarity?: number;
+        capabilityMatch?: boolean;
+        cpvScore?: number;
+        taxonomyScore?: number;
+        locationScore?: number;
+        band: "high" | "medium" | "low";
+      }>;
+    }>("basic-match", { body: input }),
+
+  /** Queue deep (LLM) matching for specific tenders or all open tenders. */
+  getMatchingConfig: () =>
+    apiCall<{ matchingModel: string }>("match-tenders/config", {
+      method: "GET",
+    }),
+
+  triggerDeepMatch: (
+    companyId: string,
+    tenderIds?: string[],
+    options?: { force?: boolean },
+  ) =>
+    apiCall<{
+      success: boolean;
+      status: "queued" | "all_cached";
+      jobCount: number;
+      skippedCount?: number;
+      companyId: string;
+      batchId: string | null;
+      matchingModel: string;
+    }>("match-tenders/trigger", {
+      body: {
+        companyId,
+        force: options?.force === true,
+        ...(tenderIds?.length ? { tenderIds } : {}),
+      },
+    }),
 };

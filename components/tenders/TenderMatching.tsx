@@ -26,11 +26,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TenderMatchCard } from "./TenderMatchCard";
+import { BasicTenderMatchCard } from "./BasicTenderMatchCard";
 import { ResultsHeader } from "./ResultsHeader";
 import { MatchingReadinessDialog } from "./MatchingReadinessDialog";
 import { checkMatchingReadiness, type ReadinessResult } from "@/lib/matchingReadiness";
 import { queryKeys } from "@/lib/queryKeys";
-import type { CompanyRecord } from "@/lib/api/types";
+import type { CompanyRecord, TenderRecord } from "@/lib/api/types";
 
 export interface MatchingFiltersState {
   keyword?: string;
@@ -135,31 +136,218 @@ export function TenderMatching({
 
   const {
     data: matchingData,
-    isLoading: loading,
+    isLoading: deepLoading,
     refetch: refetchMatchingResults,
   } = useMatchingResults({
     companyId,
     tenderStatus: filters.tenderStatus || "active",
     keyword: filters.keyword,
-    minScore: filters.minScore,
-    maxScore: filters.maxScore,
-    showApplied: filters.showApplied,
-    quickFilter: filters.quickFilter,
+    minScore: 0,
+    maxScore: 100,
+    showApplied: "all",
+    quickFilter: null,
     sortBy: filters.sortBy,
     sortDirection: filters.sortDirection,
-    page: currentPage,
-    pageSize: itemsPerPage,
+    page: 1,
+    pageSize: 500,
   });
 
   const matchingResults = useMemo(
     () => (matchingData?.results as unknown as MatchingResult[]) ?? [],
     [matchingData],
   );
-  const totalCount = matchingData?.totalCount ?? 0;
+  const deepAnalyzedCount = matchingData?.totalCount ?? matchingResults.length;
+
+  const tenderSearchStatus =
+    filters.tenderStatus === "active" || !filters.tenderStatus
+      ? undefined
+      : filters.tenderStatus === "all"
+        ? "all"
+        : filters.tenderStatus;
+
+  const {
+    data: tendersData,
+    isLoading: tendersLoading,
+    refetch: refetchTenders,
+  } = useQuery({
+    queryKey: queryKeys.tenders({
+      context: "matches-tab",
+      companyId,
+      page: currentPage,
+      filtersKey,
+    }),
+    queryFn: () =>
+      api.searchTenders({
+        keyword: filters.keyword,
+        ...(tenderSearchStatus && tenderSearchStatus !== "all"
+          ? { status: tenderSearchStatus }
+          : {}),
+        page: currentPage,
+        pageSize: itemsPerPage,
+        sortBy:
+          filters.sortBy === "overall_score" ||
+          filters.sortBy === "capability_score" ||
+          filters.sortBy === "experience_score" ||
+          filters.sortBy === "location_score" ||
+          filters.sortBy === "certification_score" ||
+          filters.sortBy === "created_at"
+            ? "deadline"
+            : filters.sortBy,
+        sortDirection: filters.sortDirection,
+      }),
+    enabled: !!companyId,
+    staleTime: 30 * 1000,
+  });
+
+  const allTenders = useMemo(
+    () => (tendersData?.tenders as TenderRecord[]) ?? [],
+    [tendersData],
+  );
+
+  const {
+    data: basicData,
+    isLoading: basicLoading,
+    refetch: refetchBasicMatch,
+  } = useQuery({
+    queryKey: queryKeys.basicMatchForCompany(companyId!, {
+      overlay: true,
+      requireSharedTaxonomy: false,
+    }),
+    queryFn: () =>
+      api.basicMatch({
+        mode: "tenders-for-company",
+        companyId: companyId!,
+        limit: 500,
+        minScore: 0,
+        requireSharedTaxonomy: false,
+      }),
+    enabled: !!companyId,
+    staleTime: 60 * 1000,
+  });
+
+  const basicMatches = useMemo(
+    () => basicData?.results ?? [],
+    [basicData?.results],
+  );
+
+  const deepByTenderId = useMemo(() => {
+    const map = new Map<string, MatchingResult>();
+    for (const r of matchingResults) {
+      map.set(r.tenderId, r);
+    }
+    return map;
+  }, [matchingResults]);
+
+  const basicByTenderId = useMemo(() => {
+    const map = new Map<string, (typeof basicMatches)[number]>();
+    for (const b of basicMatches) {
+      if (b.tenderId) map.set(b.tenderId, b);
+    }
+    return map;
+  }, [basicMatches]);
+
+  const displayTenders = useMemo(() => {
+    let rows = allTenders;
+
+    if (filters.minScore > 0 || filters.maxScore < 100) {
+      rows = rows.filter((tender) => {
+        const deep = deepByTenderId.get(tender.id);
+        if (deep) {
+          return (
+            deep.overallScore >= filters.minScore &&
+            deep.overallScore <= filters.maxScore
+          );
+        }
+        const basic = basicByTenderId.get(tender.id);
+        const pct = Math.round((basic?.similarity ?? 0) * 100);
+        return pct >= filters.minScore && pct <= filters.maxScore;
+      });
+    }
+
+    if (filters.showApplied === "applied") {
+      rows = rows.filter((t) => deepByTenderId.get(t.id)?.isApplied);
+    } else if (filters.showApplied === "not_applied") {
+      rows = rows.filter((t) => {
+        const deep = deepByTenderId.get(t.id);
+        return !deep || !deep.isApplied;
+      });
+    } else if (filters.showApplied === "bookmarked") {
+      rows = rows.filter((t) => deepByTenderId.get(t.id)?.isBookmarked);
+    }
+
+    if (filters.quickFilter === "high_score") {
+      rows = rows.filter((t) => {
+        const deep = deepByTenderId.get(t.id);
+        if (deep) return deep.overallScore >= 80;
+        const basic = basicByTenderId.get(t.id);
+        return (basic?.similarity ?? 0) >= 0.8;
+      });
+    } else if (filters.quickFilter === "urgent") {
+      const sevenDays = Date.now() + 7 * 24 * 60 * 60 * 1000;
+      rows = rows.filter((t) => {
+        if (!t.deadline) return false;
+        const d = new Date(t.deadline).getTime();
+        return d >= Date.now() && d <= sevenDays;
+      });
+    } else if (filters.quickFilter === "high_value") {
+      rows = rows.filter(
+        (t) => (t.budgetMax ?? 0) >= 1_000_000 || (t.budgetMin ?? 0) >= 1_000_000,
+      );
+    }
+
+    if (
+      filters.sortBy === "overall_score" ||
+      filters.sortBy === "capability_score" ||
+      filters.sortBy === "experience_score" ||
+      filters.sortBy === "location_score" ||
+      filters.sortBy === "certification_score"
+    ) {
+      const scoreKey = filters.sortBy.replace("_score", "") as
+        | "overall"
+        | "capability"
+        | "experience"
+        | "location"
+        | "certification";
+      const dir = filters.sortDirection === "asc" ? 1 : -1;
+      rows = [...rows].sort((a, b) => {
+        const scoreFor = (t: TenderRecord) => {
+          const deep = deepByTenderId.get(t.id);
+          if (deep) {
+            if (scoreKey === "overall") return deep.overallScore ?? 0;
+            if (scoreKey === "capability") return deep.capabilityScore ?? 0;
+            if (scoreKey === "experience") return deep.experienceScore ?? 0;
+            if (scoreKey === "location") return deep.locationScore ?? 0;
+            return deep.certificationScore ?? 0;
+          }
+          const basic = basicByTenderId.get(t.id);
+          return Math.round((basic?.similarity ?? 0) * 100);
+        };
+        return (scoreFor(a) - scoreFor(b)) * dir;
+      });
+    }
+
+    return rows;
+  }, [
+    allTenders,
+    filters.minScore,
+    filters.maxScore,
+    filters.showApplied,
+    filters.quickFilter,
+    filters.sortBy,
+    filters.sortDirection,
+    deepByTenderId,
+    basicByTenderId,
+  ]);
+
+  const totalCount = tendersData?.totalCount ?? 0;
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
+  const endIndex = Math.min(startIndex + displayTenders.length, totalCount);
+
+  const loading =
+    (tendersLoading && allTenders.length === 0) ||
+    (basicLoading && basicMatches.length === 0 && allTenders.length === 0);
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -186,6 +374,9 @@ export function TenderMatching({
     staleTime: 5 * 60 * 1000,
   });
 
+  const [deepResearchTenderId, setDeepResearchTenderId] = useState<
+    string | null
+  >(null);
   const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [readinessDialogOpen, setReadinessDialogOpen] = useState(false);
@@ -352,6 +543,7 @@ export function TenderMatching({
           }
           setMatchingProgress(null);
           invalidateMatchingResults();
+          void refetchBasicMatch();
           if (data.status === "completed") {
             toast.success(t("matchingCompleted", { count: data.completedJobs }));
           } else {
@@ -391,8 +583,53 @@ export function TenderMatching({
         console.error("Error checking matching progress:", error);
       }
     },
-    [companyId, invalidateMatchingResults, t],
+    [companyId, invalidateMatchingResults, refetchBasicMatch, t],
   );
+
+  const runDeepResearchForTender = useCallback(
+    async (tenderId: string) => {
+      if (!companyId) return;
+      if (deepByTenderId.has(tenderId)) {
+        toast.info(t("deepResearchCached"));
+        return;
+      }
+      setDeepResearchTenderId(tenderId);
+      try {
+        const data = await api.triggerDeepMatch(companyId, [tenderId]);
+        if (data.status === "all_cached") {
+          toast.info(t("deepResearchCached"));
+          invalidateMatchingResults();
+          return;
+        }
+        if (data.batchId && companyId) {
+          localStorage.setItem(`matching_batch_${companyId}`, data.batchId);
+          setMatchingProgress({
+            batchId: data.batchId,
+            totalJobs: data.jobCount,
+            completedJobs: 0,
+            failedJobs: 0,
+            status: "processing",
+            progressPercent: 0,
+          });
+          checkMatchingProgress(data.batchId);
+        }
+        toast.success(t("deepResearchQueued"));
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : t("deepResearchError"),
+        );
+      } finally {
+        setDeepResearchTenderId(null);
+      }
+    },
+    [companyId, checkMatchingProgress, deepByTenderId, invalidateMatchingResults, t],
+  );
+
+  const refreshAll = useCallback(() => {
+    void refetchTenders();
+    void refetchBasicMatch();
+    void refetchMatchingResults();
+  }, [refetchTenders, refetchBasicMatch, refetchMatchingResults]);
 
   useEffect(() => {
     if (user && companyId) {
@@ -418,7 +655,8 @@ export function TenderMatching({
     return () => clearInterval(interval);
   }, [isProcessing, batchId, checkMatchingProgress, invalidateMatchingResults]);
 
-  const startAnalysis = useCallback(async () => {
+  const startAnalysis = useCallback(async (options?: { force?: boolean }) => {
+    const force = options?.force === true;
     setInternalAnalyzing(true);
 
     if (companyId) {
@@ -435,7 +673,7 @@ export function TenderMatching({
       const response = await fetch("/api/match-tenders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId }),
+        body: JSON.stringify({ companyId, force }),
       });
 
       if (!response.ok) {
@@ -484,6 +722,17 @@ export function TenderMatching({
         throw new Error("Invalid response format from server");
       }
 
+      if (data.upToDate) {
+        toast.info(
+          t("allTendersAlreadyAnalyzed", {
+            count: data.skippedCount ?? 0,
+          }),
+        );
+        setInternalAnalyzing(false);
+        invalidateMatchingResults();
+        return;
+      }
+
       if (data.status === "already_running") {
         console.log(
           `ℹ️ Batch ${data.batchId} already running for this company`,
@@ -494,6 +743,11 @@ export function TenderMatching({
           `✅ Created new batch: ${data.batchId} (${data.totalTenders} tenders)`,
         );
         toast.success(t("matchingStarted", { count: data.totalTenders }));
+        if (data.skippedCount > 0) {
+          toast.info(
+            t("matchingSkippedCached", { count: data.skippedCount }),
+          );
+        }
       }
 
       if (data.batchId && companyId) {
@@ -529,7 +783,7 @@ export function TenderMatching({
     } finally {
       setInternalAnalyzing(false);
     }
-  }, [companyId, checkMatchingProgress, fetchMatchingUsage, t]);
+  }, [companyId, checkMatchingProgress, fetchMatchingUsage, invalidateMatchingResults, t]);
 
   const runAnalysis = useCallback(() => {
     if (!companyId) {
@@ -567,8 +821,16 @@ export function TenderMatching({
       }
     }
 
-    startAnalysis();
+    startAnalysis({ force: false });
   }, [companyId, companyData, analyzing, matchingProgress, startAnalysis, companyTaxonomyData?.taxonomies?.length, companyStandardsData?.standards?.length, companyCapabilitiesData?.capabilities?.length, t]);
+
+  const runAnalysisFresh = useCallback(() => {
+    if (!companyId) {
+      toast.error(t("pleaseSelectCompany"));
+      return;
+    }
+    startAnalysis({ force: true });
+  }, [companyId, startAnalysis, t]);
 
   const deleteResult = async (resultId: string) => {
     setDeleting(resultId);
@@ -627,10 +889,15 @@ export function TenderMatching({
             end={endIndex}
             currentPage={currentPage}
             totalPages={totalPages}
-            loading={loading}
-            onRefresh={() => refetchMatchingResults()}
+            loading={loading || deepLoading}
+            onRefresh={refreshAll}
           />
-          <div className="flex items-center gap-2 sm:shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            {deepAnalyzedCount > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {t("deepAnalyzedCount", { count: deepAnalyzedCount })}
+              </span>
+            )}
             {matchingUsage && !analyzing && (
               <TooltipProvider>
                 <Tooltip>
@@ -668,10 +935,20 @@ export function TenderMatching({
               ) : (
                 <>
                   <Target className="w-4 h-4 mr-2" />
-                  {t("reRunAnalysis")}
+                  {t("deepResearchAll")}
                 </>
               )}
             </Button>
+            {deepAnalyzedCount > 0 && !readOnly ? (
+              <Button
+                onClick={runAnalysisFresh}
+                disabled={analyzing || loading || limitReached}
+                size="sm"
+                variant="outline"
+              >
+                {t("reRunDeepResearchAll")}
+              </Button>
+            ) : null}
           </div>
         </div>
       )}
@@ -717,7 +994,7 @@ export function TenderMatching({
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">{t("loading")}</span>
         </div>
-      ) : matchingResults.length === 0 ? (
+      ) : displayTenders.length === 0 ? (
         <div className="text-center py-16">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">
@@ -725,11 +1002,21 @@ export function TenderMatching({
           </h3>
           <p className="text-muted-foreground mb-4">
             {totalCount === 0 && currentPage === 1
-              ? t("noResultsDescription")
+              ? t("noResultsDescriptionBasic")
               : t("noResultsFiltered")}
           </p>
           {totalCount === 0 && currentPage === 1 && !readOnly && (
             <div className="flex flex-col items-center gap-2">
+              <Button
+                onClick={refreshAll}
+                disabled={basicLoading}
+                variant="outline"
+              >
+                {basicLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                {t("refreshBasicMatches")}
+              </Button>
               <Button
                 onClick={runAnalysis}
                 disabled={analyzing || limitReached}
@@ -740,7 +1027,7 @@ export function TenderMatching({
                 }
               >
                 <Target className="w-4 h-4 mr-2" />
-                {analyzing ? t("analyzing") : t("startAnalysis")}
+                {analyzing ? t("analyzing") : t("deepResearchAll")}
               </Button>
               {matchingUsage && (
                 <span className={`flex items-center gap-1 text-xs ${limitReached ? "text-destructive" : "text-muted-foreground"}`}>
@@ -756,23 +1043,49 @@ export function TenderMatching({
       ) : (
         <>
           <div className="space-y-3">
-            {matchingResults.map((result) => (
-              <TenderMatchCard
-                key={result.id}
-                result={result}
-                onViewDetails={() => {
-                  router.push(
-                    `/tenders/${result.tenderId}?companyId=${companyId}`,
-                  );
-                }}
-                onBookmark={() =>
-                  toggleBookmark(result.id, result.isBookmarked)
-                }
-                onDelete={() => deleteResult(result.id)}
-                isDeleting={deleting === result.id}
-                readOnly={readOnly}
-              />
-            ))}
+            {displayTenders.map((tender) => {
+              const tenderId = tender.id;
+              const deep = deepByTenderId.get(tenderId);
+              if (deep) {
+                return (
+                  <TenderMatchCard
+                    key={deep.id}
+                    result={deep}
+                    onViewDetails={() => {
+                      router.push(
+                        `/tenders/${tenderId}?companyId=${companyId}`,
+                      );
+                    }}
+                    onBookmark={() =>
+                      toggleBookmark(deep.id, deep.isBookmarked)
+                    }
+                    onDelete={() => deleteResult(deep.id)}
+                    isDeleting={deleting === deep.id}
+                    readOnly={readOnly}
+                  />
+                );
+              }
+              const basic = basicByTenderId.get(tenderId);
+              return (
+                <BasicTenderMatchCard
+                  key={tenderId}
+                  match={{
+                    tenderId,
+                    title: tender.title,
+                    buyer: tender.buyer ?? "",
+                    location: tender.location ?? null,
+                    deadline: tender.deadline ?? null,
+                    status: tender.status ?? null,
+                    similarity: basic?.similarity ?? 0,
+                    band: (basic?.band as "high" | "medium" | "low") ?? "low",
+                  }}
+                  companyId={companyId!}
+                  onDeepResearch={() => runDeepResearchForTender(tenderId)}
+                  deepResearchPending={deepResearchTenderId === tenderId}
+                  readOnly={readOnly}
+                />
+              );
+            })}
           </div>
 
           {/* Pagination Controls */}
@@ -846,7 +1159,7 @@ export function TenderMatching({
           onOpenChange={setReadinessDialogOpen}
           companyId={companyId}
           readiness={readinessResult}
-          onRunAnyway={startAnalysis}
+          onRunAnyway={() => startAnalysis({ force: false })}
         />
       )}
     </div>

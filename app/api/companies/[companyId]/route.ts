@@ -312,6 +312,34 @@ export async function PUT(
       return apiResponse({ error: "Company not found" }, 404);
     }
 
+    // Refresh the basic-match embedding if any text field that contributes to
+    // the source vector has changed. Synchronous, but with a hard try-catch:
+    // failures (Ollama down, etc.) must never break the user's save.
+    const EMBED_TRIGGER_FIELDS = [
+      "companyName",
+      "description",
+      "keyCapabilities",
+      "certifications",
+      "equipment",
+      "pastProjects",
+      "postcode",
+      "address",
+    ] as const;
+    const embedDirty = EMBED_TRIGGER_FIELDS.some((f) => f in directUpdates);
+    if (embedDirty) {
+      try {
+        const { embedCompany } = await import(
+          "@/lib/services/embeddingService"
+        );
+        await embedCompany(companyId);
+      } catch (embedError) {
+        console.error(
+          "Company embedding refresh failed (non-fatal):",
+          embedError,
+        );
+      }
+    }
+
     return apiResponse({
       company: data[0],
       hasPendingChanges: data[0].pendingChanges != null,

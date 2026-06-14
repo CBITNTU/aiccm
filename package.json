@@ -22,6 +22,18 @@
     "db:fresh": "node scripts/reset-and-seed.mjs",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
+    "test:ollama": "node scripts/test-ollama-matching.mjs",
+    "test:ollama:zod": "tsx scripts/test-ollama-zod.ts",
+    "bench:matching": "tsx benchmarks/matching/run.ts",
+    "bench:matching:bundled": "tsx benchmarks/matching/bundled.ts",
+    "bench:matching:compare": "tsx benchmarks/matching/compare.ts",
+    "bench:matching:summary": "tsx benchmarks/matching/summary.ts",
+    "bench:matching:retrieval": "tsx benchmarks/matching/retrieval/run.ts",
+    "embed:backfill": "tsx scripts/backfill-embeddings.ts",
+    "inference:up": "docker compose -f infra/inference/docker-compose.yml up -d",
+    "inference:down": "docker compose -f infra/inference/docker-compose.yml down",
+    "inference:bootstrap": "docker compose -f infra/inference/docker-compose.yml --profile bootstrap run --rm bootstrap",
+    "inference:logs": "docker compose -f infra/inference/docker-compose.yml logs -f ollama",
     "prepare": "husky"
   },
   "dependencies": {

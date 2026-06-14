@@ -353,6 +353,17 @@ export async function POST(request: NextRequest) {
       console.error("[CompanyAI:analyze] Summary generation FAILED:", summaryError);
     }
 
+    // Refresh basic-match vector after AI fields are written
+    try {
+      const { embedCompany } = await import("@/lib/services/embeddingService");
+      await embedCompany(companyId, { force: true });
+    } catch (embedError) {
+      console.error(
+        "[CompanyAI:analyze] Embedding refresh failed (non-fatal):",
+        embedError,
+      );
+    }
+
     logApiEvent(request, {
       actionType: "company_updated",
       userId: user.id,

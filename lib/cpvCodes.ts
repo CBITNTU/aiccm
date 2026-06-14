@@ -75,3 +75,36 @@ export function formatCpvCode(code: string): { code: string; name: string } {
     name: getCpvCodeName(code),
   };
 }
+
+/** First two digits of a CPV code (division), e.g. "45211300" → "45". */
+export function cpvDivision(code: string): string {
+  const digits = code.replace(/\D/g, "");
+  if (digits.length < 2) return digits;
+  return digits.slice(0, 2);
+}
+
+/**
+ * Infer CPV divisions from free text (capabilities, summary). Used when companies
+ * have no explicit CPV list — complements EIC taxonomy overlap in Basic Match.
+ */
+export function inferCpvDivisionsFromText(text: string): string[] {
+  const hay = text.toLowerCase();
+  const divisions = new Set<string>();
+
+  const rules: Array<{ division: string; pattern: RegExp }> = [
+    { division: "45", pattern: /\b(construction|civil engineering|demolition|building work|scaffolding)\b/ },
+    { division: "71", pattern: /\b(survey|geospatial|mapping|architect)\b/ },
+    { division: "80", pattern: /\b(education|training|school|vocational|learning|teaching)\b/ },
+    { division: "85", pattern: /\b(health|nhs|social care|medical)\b/ },
+    { division: "72", pattern: /\b(software|it services|digital|cyber|data platform)\b/ },
+    { division: "90", pattern: /\b(cleaning|waste|environmental|refuse)\b/ },
+    { division: "50", pattern: /\b(maintenance|repair)\b/ },
+    { division: "79", pattern: /\b(business services|consulting|recruitment)\b/ },
+  ];
+
+  for (const { division, pattern } of rules) {
+    if (pattern.test(hay)) divisions.add(division);
+  }
+
+  return [...divisions];
+}

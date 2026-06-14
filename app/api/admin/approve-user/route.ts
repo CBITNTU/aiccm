@@ -29,6 +29,7 @@ import {
   fetchCompanySources,
   runPrefillAI,
 } from "@/lib/services/companyEnrichmentService";
+import { ONBOARDING_STEPS, ONBOARDING_STEP_NAMES } from "@/lib/onboarding";
 
 export interface ApproveUserRequest {
   userId: string;
@@ -736,6 +737,17 @@ export async function GET(request: NextRequest) {
           companyName,
           signupType,
           company,
+          onboarding: {
+            currentStep:
+              profile.onboardingStep || ONBOARDING_STEPS.EMAIL_VERIFICATION,
+            currentStepName:
+              ONBOARDING_STEP_NAMES[
+                (profile.onboardingStep ||
+                  ONBOARDING_STEPS.EMAIL_VERIFICATION) as keyof typeof ONBOARDING_STEP_NAMES
+              ] || "Unknown",
+            completedAt: profile.onboardingCompletedAt,
+            isComplete: !!profile.onboardingCompletedAt,
+          },
         };
       }),
     );

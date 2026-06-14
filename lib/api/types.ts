@@ -72,6 +72,39 @@ export interface CompanyRecord {
   analysisRunsLimit?: number | null;
 }
 
+export type AdminCompanyListType = "user" | "system";
+export type AdminCompanyVerificationStatus =
+  | "all"
+  | "unverified"
+  | "pending_verification"
+  | "verified";
+
+export interface AdminCompanyStats {
+  total: number;
+  user: number;
+  system: number;
+  verified: number;
+  pending: number;
+  unverified: number;
+}
+
+export interface AdminCompanyListParams {
+  type?: AdminCompanyListType;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  verificationStatus?: AdminCompanyVerificationStatus;
+}
+
+export interface AdminCompanyListResponse {
+  companies: CompanyRecord[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  stats: AdminCompanyStats;
+}
+
 export interface AdminPendingCompanyDetails {
   id: string;
   companyName: string;

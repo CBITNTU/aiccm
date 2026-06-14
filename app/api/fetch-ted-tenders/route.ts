@@ -144,11 +144,35 @@ function extractLocalised(
   return "";
 }
 
+function firstString(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value) && typeof value[0] === "string") {
+    return value[0].trim();
+  }
+  return "";
+}
+
+/** TED portal URLs use publication-number (e.g. 300146-2026), not notice-identifier UUID. */
+function getPublicationNumber(notice: Record<string, unknown>): string {
+  return (
+    firstString(notice["publication-number"]) ||
+    firstString(notice["BT-01-notice"]) ||
+    ""
+  );
+}
+
+function getNoticeIdentifier(notice: Record<string, unknown>): string {
+  return (
+    firstString(notice["notice-identifier"]) ||
+    firstString(notice["BT-01-notice"]) ||
+    ""
+  );
+}
+
 function transformTEDToTender(notice: Record<string, unknown>): TenderData {
-  const noticeIdentifier =
-    (notice["notice-identifier"] as string) ||
-    (notice["BT-01-notice"] as string) ||
-    "";
+  const noticeIdentifier = getNoticeIdentifier(notice);
+  const publicationNumber = getPublicationNumber(notice);
+  const portalNoticeId = publicationNumber || noticeIdentifier;
 
   const title =
     extractLocalised(notice["notice-title"]) ||
@@ -209,13 +233,15 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
     contactPoint: buyerContact,
   };
 
-  // Build notice URL
-  const noticeUrl = noticeIdentifier
-    ? `https://ted.europa.eu/udl?uri=TED:NOTICE:${noticeIdentifier}`
+  // Build notice URL using the current TED portal format. The legacy
+  // `/udl?uri=TED:NOTICE:` URLs no longer resolve on the new TED EU site.
+  // See docs/ted-notice-links.md (publication-number vs notice-identifier UUID).
+  const noticeUrl = portalNoticeId
+    ? `https://ted.europa.eu/en/notice/-/detail/${portalNoticeId}`
     : "https://ted.europa.eu";
 
   return {
-    reference_number: noticeIdentifier,
+    reference_number: portalNoticeId,
     title: title || "Untitled Tender",
     buyer: buyer,
     cpv_codes: cpvCodes.length > 0 ? cpvCodes : [],
@@ -236,7 +262,7 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
       specification_url: noticeUrl,
       application_url: noticeUrl,
     },
-    external_id: noticeIdentifier,
+    external_id: noticeIdentifier || portalNoticeId,
     source: "ted",
   };
 }
@@ -296,6 +322,7 @@ async function fetchFromTEDAPI(
 
   const fields = [
     "notice-identifier",
+    "publication-number",
     "notice-title",
     "description-lot",
     "description-proc",

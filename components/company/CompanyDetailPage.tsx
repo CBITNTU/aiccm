@@ -175,10 +175,15 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
 
         <TabsContent value="intelligence">
           <IntelligenceTab
+            companyId={companyId}
+            isOwner={data.isOwner}
+            isVerified={data.isVerified}
+            isEditLocked={data.isEditLocked}
             financialData={data.financialData}
             analysis={data.analysis}
             isAnalyzing={data.isAnalyzing}
             onAnalyze={data.handleRefreshAnalysis}
+            onDataRefresh={data.refreshCompanyData}
             analysisUsage={data.analysisUsage}
             analysisLimitReached={data.analysisLimitReached}
           />

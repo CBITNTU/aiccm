@@ -1,6 +1,11 @@
 // Frontend API client for calling Next.js API routes
 // This will be used in Phase 2 (frontend migration) to replace supabase.functions.invoke()
-import type { CompanyRecord, MatchingResultRecord } from "@/lib/api/types";
+import type {
+  AdminCompanyListParams,
+  AdminCompanyListResponse,
+  CompanyRecord,
+  MatchingResultRecord,
+} from "@/lib/api/types";
 import type { FetchUKTendersResponse, TenderFeedRecord } from "@/lib/api/types";
 import {
   normalizeCompanyRecord,
@@ -851,9 +856,22 @@ export const api = {
     }>("admin/stats", { method: "GET" }),
 
   // Admin - Companies
-  adminListCompanies: () =>
-    apiCall<{ companies: Record<string, unknown>[] }>("admin/companies", {
+  adminListCompanies: (params?: AdminCompanyListParams) =>
+    apiCall<
+      Omit<AdminCompanyListResponse, "companies"> & {
+        companies: Record<string, unknown>[];
+      }
+    >("admin/companies", {
       method: "GET",
+      params: params
+        ? {
+            type: params.type,
+            page: params.page,
+            pageSize: params.pageSize,
+            search: params.search,
+            verificationStatus: params.verificationStatus,
+          }
+        : undefined,
     }).then((data) => ({
       ...data,
       companies: data.companies.map((company) => normalizeCompanyRecord(company)),
@@ -863,6 +881,15 @@ export const api = {
     apiCall<{ success: boolean }>(`admin/companies/${companyId}`, {
       method: "DELETE",
     }),
+
+  adminGetCompany: (companyId: string) =>
+    apiCall<{ company: Record<string, unknown> }>(
+      `admin/companies/${companyId}`,
+      { method: "GET" },
+    ).then((data) => ({
+      ...data,
+      company: normalizeCompanyRecord(data.company),
+    })),
 
   adminUpdateCompany: (
     companyId: string,

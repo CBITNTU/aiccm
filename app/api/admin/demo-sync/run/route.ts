@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       await truncateDemoMatchingResults();
     } catch (truncateError) {
       return apiError(
-        "Failed to truncate demo table. Run migrations (e.g. supabase db push). " +
+        "Failed to truncate demo table. Run migrations (e.g. npm run db:migrate). " +
           String(truncateError),
         500,
       );

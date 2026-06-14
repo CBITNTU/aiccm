@@ -215,7 +215,7 @@ DATABASE_URL="postgresql://…" npm run db:migrate
 DATABASE_URL="postgresql://…" npm run embed:backfill
 ```
 
-Migrations `0007_pgvector_embeddings.sql` + `0008_embedding_dim_1536.sql` add `vector(1536)` columns and HNSW indexes — required for Basic Match (OpenAI `text-embedding-3-small`).
+Migration `0008_pgvector_embeddings_1536.sql` adds `vector(1536)` columns and HNSW indexes — required for Basic Match (OpenAI `text-embedding-3-small`). Migration `0007_fix_ted_notice_urls.sql` (from main) fixes legacy TED external links.
 
 ### Step 2 — Inference (pick one)
 
@@ -364,3 +364,4 @@ docs/               # Deployment and matching guides
 - [`docs/basic-matching.md`](docs/basic-matching.md) — how Basic Match works
 - [`CLAUDE.md`](CLAUDE.md) — architecture notes for contributors
 - [`.env.local.example`](.env.local.example) — full env reference
+- [`docs/ted-notice-links.md`](docs/ted-notice-links.md) — TED URL backfill (migration `0007`)

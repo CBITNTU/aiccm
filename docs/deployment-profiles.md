@@ -221,7 +221,7 @@ Same codebase, different inference URL per deployment.
 ## Dimension choice (1536 default)
 
 Production uses **OpenAI `text-embedding-3-small` @ 1536** (`vector(1536)` in Postgres).
-Migration `0008_embedding_dim_1536.sql` resizes columns from 768 if you applied an earlier build.
+Migration `0008_pgvector_embeddings_1536.sql` adds embedding columns at 1536 directly.
 
 Local Ollama dev must use **`EMBED_DIM=1536`** to match the schema (or set `EMBED_PROVIDER=openai`).
 

@@ -120,18 +120,18 @@ modes.
 
 ## 5. Database changes
 
-### Migration: `drizzle/migrations/0007_pgvector_embeddings.sql`
+### Migration: `drizzle/migrations/0008_pgvector_embeddings_1536.sql`
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 
 ALTER TABLE companies
-  ADD COLUMN embedding              vector(768),
+  ADD COLUMN embedding              vector(1536),
   ADD COLUMN embedding_generated_at timestamptz,
   ADD COLUMN embedding_source_hash  text;
 
 ALTER TABLE tenders
-  ADD COLUMN embedding              vector(768),
+  ADD COLUMN embedding              vector(1536),
   ADD COLUMN embedding_generated_at timestamptz,
   ADD COLUMN embedding_source_hash  text;
 
@@ -159,8 +159,8 @@ typed `number[]` columns. Reads/writes for vector ops still use raw SQL via
 
 | Layer | File | Responsibility |
 |---|---|---|
-| **Migration** | `drizzle/migrations/0007_pgvector_embeddings.sql` | Extension + columns + HNSW indexes |
-| **Schema** | `lib/db/schema/app.ts` | `customType` for `vector(768)`, columns on `companies` & `tenders` |
+| **Migration** | `drizzle/migrations/0008_pgvector_embeddings_1536.sql` | Extension + columns + HNSW indexes |
+| **Schema** | `lib/db/schema/app.ts` | `customType` for `vector(1536)`, columns on `companies` & `tenders` |
 | **Embedder** | `lib/ai/embeddings.ts` | Ollama `/api/embed` wrapper; default `qwen3-embedding:0.6b` @ 768d (MRL). `MATCHING_MODEL` is separate (chat/LLM scoring). |
 | **Service** | `lib/services/embeddingService.ts` | `buildCompanySource`, `buildTenderSource`, `embedCompany`, `embedTender`, `embedQuery`. Hash-based dedupe via `embedding_source_hash` |
 | **Matcher** | `lib/services/basicMatchingService.ts` | Three raw-SQL functions: `basicMatchTendersForCompany`, `basicMatchCompaniesForTender`, `basicMatchTendersForQuery`. Cosine distance + band thresholds. |

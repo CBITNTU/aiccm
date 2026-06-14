@@ -27,13 +27,13 @@ The following are already in place and safe for production:
 **Defense:** `sanitizeHexToken()` + parameterized queries.
 
 **Current state:**
-- Supabase client uses parameterized queries by default (`.eq()`, `.select()`, etc.), so raw SQL injection via app code is not an issue.
+- Drizzle ORM uses parameterized queries; raw SQL in `lib/db/raw.ts` uses bound parameters via the `sql` template tag.
 - Invite **token** is user-controlled: it is hashed with `hashToken(token)` and the hash is used in `.eq("token_hash", tokenHash)`. The hash is a fixed-length hex string, so it is safe. The risk is accepting arbitrary token strings (e.g. very long or malformed) before hashing.
 
 **Done:**
 - [x] `sanitizeHexToken()` in `lib/utils/invite-token.ts` (64 hex chars only).
 - [x] Used in `app/api/team/invite/validate/route.ts` and `app/api/auth/signup-invite/route.ts` (POST and PUT).
-- [x] All DB access uses Supabase parameterized APIs (no raw SQL with user input).
+- [x] All DB access uses Drizzle parameterized queries (no raw SQL with unbound user input).
 
 ---
 
@@ -113,7 +113,7 @@ The following are already in place and safe for production:
 
 **Current state:**
 - Signup and signup-invite only enforce minimum length (6). No maximum length.
-- Supabase Auth may use bcrypt; very long passwords can be slow.
+- Better Auth uses bcrypt; very long passwords can be slow.
 
 **Planned work:**
 - [ ] **Enforce maximum password length** (e.g. 128 characters) in:

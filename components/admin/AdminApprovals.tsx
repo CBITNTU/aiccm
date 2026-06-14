@@ -56,6 +56,13 @@ interface CompanyDetails {
   contactPhone: string | null;
 }
 
+interface OnboardingStatus {
+  currentStep: number;
+  currentStepName: string;
+  completedAt: string | null;
+  isComplete: boolean;
+}
+
 interface PendingUser {
   userId: string;
   email: string;
@@ -68,6 +75,7 @@ interface PendingUser {
   companyName: string | null;
   signupType: string;
   company: CompanyDetails | null;
+  onboarding: OnboardingStatus;
 }
 
 interface JoinRequest {
@@ -93,6 +101,10 @@ function toPendingUser(input: unknown): PendingUser | null {
   if (typeof row.userId !== "string" || typeof row.email !== "string") {
     return null;
   }
+  const onboarding =
+    row.onboarding && typeof row.onboarding === "object"
+      ? (row.onboarding as Record<string, unknown>)
+      : {};
 
   return {
     userId: row.userId,
@@ -105,6 +117,17 @@ function toPendingUser(input: unknown): PendingUser | null {
     role: (row.role as string | undefined) ?? "individual",
     companyName: (row.companyName as string | null | undefined) ?? null,
     signupType: (row.signupType as string | undefined) ?? "individual",
+    onboarding: {
+      currentStep:
+        typeof onboarding.currentStep === "number" ? onboarding.currentStep : 1,
+      currentStepName:
+        typeof onboarding.currentStepName === "string"
+          ? onboarding.currentStepName
+          : "",
+      completedAt:
+        (onboarding.completedAt as string | null | undefined) ?? null,
+      isComplete: Boolean(onboarding.isComplete),
+    },
     company:
       row.company && typeof row.company === "object"
         ? {
@@ -487,6 +510,24 @@ export default function AdminApprovals() {
     }
   };
 
+  const getOnboardingBadge = (onboarding: OnboardingStatus) => {
+    if (onboarding.isComplete) {
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 hover:text-green-800">
+          {t("onboarding.ready")}
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 hover:text-amber-800">
+        {t("onboarding.incomplete", {
+          step: onboarding.currentStepName || t("onboarding.unknownStep"),
+        })}
+      </Badge>
+    );
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric",
@@ -577,6 +618,7 @@ export default function AdminApprovals() {
                             <div className="flex items-center gap-2 mb-2">
                               <h4 className="font-semibold">{userName}</h4>
                               {getSignupTypeBadge(user.signupType)}
+                              {getOnboardingBadge(user.onboarding)}
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                               <div className="flex items-center gap-1">
@@ -600,6 +642,17 @@ export default function AdminApprovals() {
                                 {formatDate(user.createdAt)}
                               </div>
                             </div>
+
+                            {!user.onboarding.isComplete && (
+                              <div className="mt-2 flex items-center gap-1 text-sm text-amber-600">
+                                <AlertCircle className="w-4 h-4" />
+                                {t("onboarding.incompleteHelper", {
+                                  step:
+                                    user.onboarding.currentStepName ||
+                                    t("onboarding.unknownStep"),
+                                })}
+                              </div>
+                            )}
 
                             {/* Expand/Collapse button for new-company signups */}
                             {hasCompanyDetails && (
@@ -1214,19 +1267,19 @@ export default function AdminApprovals() {
                 </h4>
                 <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                   <li className="flex items-start gap-2">
-                    <CheckCircle className="w-3 h-3 mt-1 flex-shrink-0" />
+                    <CheckCircle className="w-3 h-3 mt-1 shrink-0" />
                     <span>{t("approvalDialog.whatHappens1")}</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle className="w-3 h-3 mt-1 flex-shrink-0" />
+                    <CheckCircle className="w-3 h-3 mt-1 shrink-0" />
                     <span>{t("approvalDialog.whatHappens2")}</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle className="w-3 h-3 mt-1 flex-shrink-0" />
+                    <CheckCircle className="w-3 h-3 mt-1 shrink-0" />
                     <span>{t("approvalDialog.whatHappens3")}</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Sparkles className="w-3 h-3 mt-1 flex-shrink-0" />
+                    <Sparkles className="w-3 h-3 mt-1 shrink-0" />
                     <span>{t("approvalDialog.whatHappens4")}</span>
                   </li>
                 </ul>

@@ -211,6 +211,7 @@ export function TenderMatching({
   } = useQuery({
     queryKey: queryKeys.basicMatchForCompany(companyId!, {
       overlay: true,
+      requireSharedTaxonomy: false,
     }),
     queryFn: () =>
       api.basicMatch({
@@ -218,6 +219,7 @@ export function TenderMatching({
         companyId: companyId!,
         limit: 500,
         minScore: 0,
+        requireSharedTaxonomy: false,
       }),
     enabled: !!companyId,
     staleTime: 60 * 1000,

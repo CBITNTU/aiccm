@@ -37,9 +37,14 @@ export const openaiCompatibleEmbeddingProvider: EmbeddingProvider = {
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      throw new Error(
+      // Attach status + headers so the rate limiter's retry logic can detect
+      // 429/5xx and honor any Retry-After header.
+      const err = new Error(
         `Embeddings API failed (${res.status}): ${errBody.slice(0, 200)}`,
-      );
+      ) as Error & { status?: number; headers?: Headers };
+      err.status = res.status;
+      err.headers = res.headers;
+      throw err;
     }
 
     const data = (await res.json()) as OpenAIEmbedResponse;

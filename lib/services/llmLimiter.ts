@@ -255,3 +255,57 @@ export async function runGeminiLLM<T>(
     return withRetry(task);
   });
 }
+
+// ---------- Embedding-specific limiter ----------
+// Embeddings have their own (much higher) provider limits than chat. Defaults
+// below carry headroom for OpenAI text-embedding-3-small Tier 1 (3000 RPM,
+// 1M TPM). Override via env to match your account/tier.
+const EMBED_CONCURRENCY = parseInt(process.env.EMBED_CONCURRENCY ?? "8", 10);
+const EMBED_RPM_LIMIT = parseInt(process.env.EMBED_RPM_LIMIT ?? "2500", 10);
+const EMBED_TPM_BUDGET = parseInt(process.env.EMBED_TPM_BUDGET ?? "900000", 10);
+
+const embedLimit = pLimit(EMBED_CONCURRENCY);
+let embedMinuteWindowStart = Math.floor(now() / 60_000) * 60_000;
+let embedRequestsThisMinute = 0;
+let embedTokensThisMinute = 0;
+
+function ensureEmbedMinuteWindow() {
+  const n = now();
+  if (n - embedMinuteWindowStart >= 60_000) {
+    embedMinuteWindowStart = Math.floor(n / 60_000) * 60_000;
+    embedRequestsThisMinute = 0;
+    embedTokensThisMinute = 0;
+  }
+}
+
+async function waitForEmbedBudgets(estTokens: number) {
+  while (true) {
+    ensureEmbedMinuteWindow();
+    const rpmOK = embedRequestsThisMinute + 1 <= EMBED_RPM_LIMIT;
+    const tpmOK = embedTokensThisMinute + estTokens <= EMBED_TPM_BUDGET;
+    if (rpmOK && tpmOK) {
+      embedRequestsThisMinute += 1;
+      embedTokensThisMinute += estTokens;
+      return;
+    }
+    await sleep(Math.max(250, msUntilNextMinute()));
+  }
+}
+
+/**
+ * Run an embedding task with embedding-specific rate limits, throttling, and
+ * 429/5xx retry with Retry-After backoff. Used for bulk backfills and any
+ * realtime embed call.
+ *
+ * @param task       The function that actually calls the embeddings API
+ * @param estTokens  Estimated tokens for TPM accounting. Default 500.
+ */
+export async function runEmbedding<T>(
+  task: () => Promise<T>,
+  estTokens = 500,
+): Promise<T> {
+  return embedLimit(async () => {
+    await waitForEmbedBudgets(estTokens);
+    return withRetry(task);
+  });
+}

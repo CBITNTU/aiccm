@@ -48,17 +48,26 @@ function pad(n: number, w = 4) {
 async function backfillCompanies(deps: Deps) {
   const { db, sql, companies, embedCompany } = deps;
   console.log("\n=== Companies ===");
+  // Only embed companies that belong to a real user. System-generated companies
+  // (user_id IS NULL) are excluded even under FORCE.
+  const userScoped = sql`${companies.userId} IS NOT NULL`;
   const rows = await db
     .select({ id: companies.id, name: companies.companyName })
     .from(companies)
-    .where(FORCE ? sql`TRUE` : sql`${companies.embedding} IS NULL`)
+    .where(
+      FORCE
+        ? userScoped
+        : sql`${userScoped} AND ${companies.embedding} IS NULL`,
+    )
     .limit(LIMIT ?? 10_000);
 
   if (rows.length === 0) {
-    console.log("Nothing to do (all companies already embedded).");
+    console.log("Nothing to do (all user-owned companies already embedded).");
     return;
   }
-  console.log(`Embedding ${rows.length} companies...`);
+  console.log(
+    `Embedding ${rows.length} companies (system companies without a user are skipped)...`,
+  );
 
   let ok = 0;
   let skip = 0;

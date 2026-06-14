@@ -16,6 +16,7 @@ import {
   type EmbedResult,
   type EmbedTask,
 } from "@/lib/ai/embedProviders";
+import { runEmbedding } from "@/lib/services/llmLimiter";
 
 export type { EmbedTask, EmbedResult, EmbedProviderId };
 
@@ -72,7 +73,13 @@ export async function embedText(
     );
   }
 
-  const result = await embedWithProvider(payload, config);
+  // Route through the embedding rate limiter (throttle + 429/Retry-After
+  // backoff). estTokens ~ chars/4 for TPM accounting.
+  const estTokens = Math.ceil(payload.length / 4);
+  const result = await runEmbedding(
+    () => embedWithProvider(payload, config),
+    estTokens,
+  );
   const vector = fitEmbeddingToStorage(result.vector);
 
   return {

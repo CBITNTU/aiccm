@@ -70,9 +70,23 @@ export async function POST(
       throw new AuthError("No access to this company");
     }
 
-    // Get current company data
+    // Get current company data (only the fields this handler reads/snapshots)
     const company = await db
-      .select()
+      .select({
+        verificationStatus: companies.verificationStatus,
+        companyName: companies.companyName,
+        description: companies.description,
+        contactEmail: companies.contactEmail,
+        contactPhone: companies.contactPhone,
+        postcode: companies.postcode,
+        address: companies.address,
+        websiteUrl: companies.websiteUrl,
+        companiesHouseNumber: companies.companiesHouseNumber,
+        keyCapabilities: companies.keyCapabilities,
+        certifications: companies.certifications,
+        equipment: companies.equipment,
+        pastProjects: companies.pastProjects,
+      })
       .from(companies)
       .where(eq(companies.id, companyId))
       .then((rows) => rows[0]);

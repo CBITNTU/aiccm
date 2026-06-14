@@ -3,6 +3,7 @@ import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies, companyMembers, companyJoinRequests } from "@/lib/db/schema/app";
+import { companyListColumns } from "@/lib/db/columns";
 import { eq, and, inArray, desc } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch owned companies
     const ownedCompanies = await db
-      .select()
+      .select(companyListColumns)
       .from(companies)
       .where(eq(companies.userId, user.id))
       .orderBy(desc(companies.createdAt));
@@ -30,14 +31,14 @@ export async function GET(request: NextRequest) {
       );
 
     // Fetch member companies (excluding owned)
-    let memberCompanies: (typeof companies.$inferSelect)[] = [];
+    let memberCompanies: typeof ownedCompanies = [];
     const memberCompanyIds = memberships
       .map((m) => m.companyId)
       .filter((id) => !ownedIds.has(id));
 
     if (memberCompanyIds.length > 0) {
       memberCompanies = await db
-        .select()
+        .select(companyListColumns)
         .from(companies)
         .where(inArray(companies.id, memberCompanyIds));
     }
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       .select({
         companyId: companyJoinRequests.companyId,
         status: companyJoinRequests.status,
-        company: companies,
+        company: companyListColumns,
       })
       .from(companyJoinRequests)
       .innerJoin(companies, eq(companyJoinRequests.companyId, companies.id))

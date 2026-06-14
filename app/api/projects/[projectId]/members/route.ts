@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { virtualOrganizations, voMembers, companies } from "@/lib/db/schema/app";
+import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq } from "drizzle-orm";
 
 export async function POST(
@@ -65,7 +66,7 @@ export async function POST(
 
     // Fetch company data to return with the member
     const companyData = await db
-      .select()
+      .select(companyColumnsNoEmbedding)
       .from(companies)
       .where(eq(companies.id, companyId))
       .limit(1);

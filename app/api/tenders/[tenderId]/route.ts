@@ -3,6 +3,7 @@ import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { tenders, tenderTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { tenderColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq } from "drizzle-orm";
 
 export async function GET(
@@ -14,7 +15,7 @@ export async function GET(
     const { tenderId } = await params;
 
     const tenderResult = await db
-      .select()
+      .select(tenderColumnsNoEmbedding)
       .from(tenders)
       .where(eq(tenders.id, tenderId))
       .limit(1);

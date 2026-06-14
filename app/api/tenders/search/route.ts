@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { tenders, tenderTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { tenderListColumns } from "@/lib/db/columns";
 import { eq, and, or, ne, ilike, inArray, gte, lte, asc, desc, count, sql, SQL } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -144,7 +145,7 @@ export async function GET(request: NextRequest) {
     const [countResult, data] = await Promise.all([
       db.select({ count: count() }).from(tenders).where(whereClause),
       db
-        .select()
+        .select(tenderListColumns)
         .from(tenders)
         .where(whereClause)
         .orderBy(orderByClause)

@@ -25,7 +25,22 @@ export async function POST(
     }
 
     const company = await db
-      .select()
+      .select({
+        verificationStatus: companies.verificationStatus,
+        pendingChanges: companies.pendingChanges,
+        companyName: companies.companyName,
+        description: companies.description,
+        contactEmail: companies.contactEmail,
+        contactPhone: companies.contactPhone,
+        postcode: companies.postcode,
+        address: companies.address,
+        websiteUrl: companies.websiteUrl,
+        companiesHouseNumber: companies.companiesHouseNumber,
+        keyCapabilities: companies.keyCapabilities,
+        certifications: companies.certifications,
+        equipment: companies.equipment,
+        pastProjects: companies.pastProjects,
+      })
       .from(companies)
       .where(eq(companies.id, companyId))
       .then((rows) => rows[0]);

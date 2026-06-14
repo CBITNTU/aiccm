@@ -3,6 +3,7 @@ import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies, companyTaxonomies, taxonomies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
+import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq, and, or } from "drizzle-orm";
 
 export async function GET(
@@ -15,7 +16,7 @@ export async function GET(
 
     // Fetch company - visible if active or owned by user
     const companyRows = await db
-      .select()
+      .select(companyColumnsNoEmbedding)
       .from(companies)
       .where(
         and(

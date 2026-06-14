@@ -145,3 +145,10 @@ npm run start
 ```
 
 Build artifacts are generated in the `.next/` directory.
+
+## Documentation
+
+| Topic | Doc |
+|-------|-----|
+| TED (EU) notice links & backfill | [docs/ted-notice-links.md](docs/ted-notice-links.md) |
+| Admin tender sync testing | [docs/testing-admin-tender-sync.md](docs/testing-admin-tender-sync.md) |

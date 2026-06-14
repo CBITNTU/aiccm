@@ -18,6 +18,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/db/schema/app";
+import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq } from "drizzle-orm";
 import {
   companyHasSparseData,
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     // Verify ownership or superadmin
     const companyRows = await db
-      .select()
+      .select(companyColumnsNoEmbedding)
       .from(companies)
       .where(eq(companies.id, companyId))
       .limit(1);
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
         if (enriched) {
           // Re-read company to get enriched fields for the benchmark prompt
           const refreshed = await db
-            .select()
+            .select(companyColumnsNoEmbedding)
             .from(companies)
             .where(eq(companies.id, companyId))
             .limit(1);

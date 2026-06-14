@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { companies } from "@/lib/db/schema/app";
+import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq } from "drizzle-orm";
 import { aiGenerateObject } from "@/lib/ai";
 import { companyPrefillSchema, type CompanyPrefillData } from "@/lib/schemas/companyPrefill";
@@ -263,7 +264,7 @@ export function companyNeedsEnrichment(company: {
 export async function enrichCompanyData(companyId: string): Promise<boolean> {
   // 1. Read company from DB
   const rows = await db
-    .select()
+    .select(companyColumnsNoEmbedding)
     .from(companies)
     .where(eq(companies.id, companyId))
     .limit(1);

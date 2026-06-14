@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/db/schema/app";
+import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq, and, asc, count, ilike, isNull, or, type SQL } from "drizzle-orm";
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -265,7 +266,7 @@ export async function POST(request: NextRequest) {
     const result = await db
       .insert(companies)
       .values(insertData as typeof companies.$inferInsert)
-      .returning();
+      .returning(companyColumnsNoEmbedding);
 
     return apiResponse({ company: result[0] });
   } catch (error) {

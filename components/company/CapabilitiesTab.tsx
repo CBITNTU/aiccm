@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Tag, Globe, Award, Loader2 } from "lucide-react";
 import { SectionCard } from "@/components/company/SectionCard";
@@ -13,6 +13,11 @@ import type { SectionPendingStatus } from "@/hooks/useCompanyPageData";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
+import {
+  useCompanyCapabilities,
+  useCompanyMarkets,
+  useCompanyStandards,
+} from "@/hooks/useCompanyTaxonomy";
 import { useTranslations } from "next-intl";
 
 interface CapabilitiesTabProps {
@@ -23,22 +28,6 @@ interface CapabilitiesTabProps {
   sectionPendingStatus: SectionPendingStatus;
   pendingChanges?: PendingChanges | null;
   onDataRefresh: () => void;
-}
-
-interface CapabilityItem {
-  id: string;
-  name: string;
-  category: string;
-}
-
-interface MarketItem {
-  id: string;
-  name: string;
-}
-
-interface StandardItem {
-  id: string;
-  name: string;
 }
 
 export function CapabilitiesTab({
@@ -55,80 +44,74 @@ export function CapabilitiesTab({
   const [editMarkets, setEditMarkets] = useState(false);
   const [editStandards, setEditStandards] = useState(false);
 
-  // Local display data
-  const [capabilities, setCapabilities] = useState<CapabilityItem[]>([]);
-  const [markets, setMarkets] = useState<MarketItem[]>([]);
-  const [standards, setStandards] = useState<StandardItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [competencyLimit, setCompetencyLimit] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
-  // Fetch reference names for draft diff display
-  const needsCapRef = !!pendingChanges?.capabilities;
-  const needsMarketRef = !!pendingChanges?.markets;
-  const needsStdRef = !!pendingChanges?.standards;
+  // Company-specific selections — small payloads, cached + deduped via React Query.
+  const capabilitiesQuery = useCompanyCapabilities(companyId);
+  const marketsQuery = useCompanyMarkets(companyId);
+  const standardsQuery = useCompanyStandards(companyId);
 
-  const [capRefQuery, marketRefQuery, stdRefQuery] = useQueries({
-    queries: [
-      {
-        queryKey: queryKeys.referenceCapabilities(),
-        queryFn: async () => (await api.getCapabilities()).capabilities,
-        staleTime: 30 * 60 * 1000,
-        enabled: needsCapRef,
-      },
-      {
-        queryKey: queryKeys.referenceMarkets(),
-        queryFn: async () => (await api.getMarkets()).markets,
-        staleTime: 30 * 60 * 1000,
-        enabled: needsMarketRef,
-      },
-      {
-        queryKey: queryKeys.referenceStandards(),
-        queryFn: async () => (await api.getStandards()).standards,
-        staleTime: 30 * 60 * 1000,
-        enabled: needsStdRef,
-      },
-    ],
+  const capabilities = capabilitiesQuery.data?.capabilities ?? [];
+  const competencyLimit = capabilitiesQuery.data?.competencyLimit ?? null;
+  const markets = marketsQuery.data?.markets ?? [];
+  const standards = standardsQuery.data?.standards ?? [];
+  const loading =
+    capabilitiesQuery.isPending || marketsQuery.isPending || standardsQuery.isPending;
+
+  // Pending-change diffs only need names for the handful of added/removed ids,
+  // so resolve those targeted instead of fetching the entire reference list.
+  const capPendingIds = useMemo(
+    () =>
+      pendingChanges?.capabilities
+        ? [...pendingChanges.capabilities.added, ...pendingChanges.capabilities.removed]
+        : [],
+    [pendingChanges],
+  );
+  const marketPendingIds = useMemo(
+    () =>
+      pendingChanges?.markets
+        ? [...pendingChanges.markets.added, ...pendingChanges.markets.removed]
+        : [],
+    [pendingChanges],
+  );
+
+  const capNamesQuery = useQuery({
+    queryKey: ["capabilityNames", [...capPendingIds].sort()],
+    queryFn: async () => (await api.getCapabilityNames(capPendingIds)).capabilities,
+    enabled: capPendingIds.length > 0,
+    staleTime: 30 * 60 * 1000,
+  });
+  const marketNamesQuery = useQuery({
+    queryKey: ["marketNames", [...marketPendingIds].sort()],
+    queryFn: async () => (await api.getMarketNames(marketPendingIds)).markets,
+    enabled: marketPendingIds.length > 0,
+    staleTime: 30 * 60 * 1000,
+  });
+  // Standards reference list is small, so the full list is fine here.
+  const stdRefQuery = useQuery({
+    queryKey: queryKeys.referenceStandards(),
+    queryFn: async () => (await api.getStandards()).standards,
+    enabled: !!pendingChanges?.standards,
+    staleTime: 30 * 60 * 1000,
   });
 
   const capNameMap = useMemo(
-    () => capRefQuery.data?.reduce<Record<string, string>>((acc, c) => { acc[c.id] = c.name; return acc; }, {}) ?? {},
-    [capRefQuery.data],
+    () => capNamesQuery.data?.reduce<Record<string, string>>((acc, c) => { acc[c.id] = c.name; return acc; }, {}) ?? {},
+    [capNamesQuery.data],
   );
   const marketNameMap = useMemo(
-    () => marketRefQuery.data?.reduce<Record<string, string>>((acc, m) => { acc[m.id] = m.name; return acc; }, {}) ?? {},
-    [marketRefQuery.data],
+    () => marketNamesQuery.data?.reduce<Record<string, string>>((acc, m) => { acc[m.id] = m.name; return acc; }, {}) ?? {},
+    [marketNamesQuery.data],
   );
   const stdNameMap = useMemo(
     () => stdRefQuery.data?.reduce<Record<string, string>>((acc, s) => { acc[s.id] = s.name; return acc; }, {}) ?? {},
     [stdRefQuery.data],
   );
 
-  useEffect(() => {
-    Promise.all([
-      api.getCompanyCapabilities(companyId),
-      api.getCompanyMarkets(companyId),
-      api.getCompanyStandards(companyId),
-    ])
-      .then(([capData, marketData, stdData]) => {
-        setCapabilities(capData.capabilities);
-        setCompetencyLimit(capData.competencyLimit ?? null);
-        setMarkets(marketData.markets || []);
-        setStandards(stdData.standards || []);
-      })
-      .finally(() => setLoading(false));
-  }, [companyId]);
-
   const handleSaved = () => {
-    // Refresh display data
-    Promise.all([
-      api.getCompanyCapabilities(companyId),
-      api.getCompanyMarkets(companyId),
-      api.getCompanyStandards(companyId),
-    ]).then(([capData, marketData, stdData]) => {
-      setCapabilities(capData.capabilities);
-      setMarkets(marketData.markets || []);
-      setStandards(stdData.standards || []);
-    });
+    queryClient.invalidateQueries({ queryKey: queryKeys.companyCapabilities(companyId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.companyMarkets(companyId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.companyStandards(companyId) });
     onDataRefresh();
   };
 
@@ -170,7 +153,7 @@ export function CapabilitiesTab({
               added={pendingChanges.capabilities.added}
               removed={pendingChanges.capabilities.removed}
               nameMap={capNameMap}
-              loading={needsCapRef && capRefQuery.isPending}
+              loading={capPendingIds.length > 0 && capNamesQuery.isPending}
             />
           )}
         </SectionCard>
@@ -202,7 +185,7 @@ export function CapabilitiesTab({
               added={pendingChanges.markets.added}
               removed={pendingChanges.markets.removed}
               nameMap={marketNameMap}
-              loading={needsMarketRef && marketRefQuery.isPending}
+              loading={marketPendingIds.length > 0 && marketNamesQuery.isPending}
             />
           )}
         </SectionCard>
@@ -234,7 +217,7 @@ export function CapabilitiesTab({
               added={pendingChanges.standards.added}
               removed={pendingChanges.standards.removed}
               nameMap={stdNameMap}
-              loading={needsStdRef && stdRefQuery.isPending}
+              loading={!!pendingChanges?.standards && stdRefQuery.isPending}
             />
           )}
         </SectionCard>

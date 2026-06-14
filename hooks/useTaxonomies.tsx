@@ -12,13 +12,14 @@ export interface Taxonomy {
   description: string | null;
 }
 
-export function useTaxonomies() {
+export function useTaxonomies(enabled = true) {
   const {
     data: taxonomies = [],
     isLoading: loading,
     refetch,
   } = useQuery({
     queryKey: queryKeys.taxonomies(),
+    enabled,
     queryFn: async () => {
       const data = await api.getTaxonomies();
       const items = data.taxonomies as Taxonomy[];

@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { api } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,19 +46,12 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
   const [_selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [eventsDialogOpen, setEventsDialogOpen] = useState(false);
   const [userEvents, setUserEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const { user } = useAuth();
-
-  useEffect(() => {
-    if (user) {
-      checkAdminStatus();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when user changes
-  }, [user]);
+  const { isAdmin, loading: roleLoading } = useUserRole();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -91,26 +85,13 @@ export default function AdminUsers() {
   }, [t]);
 
   useEffect(() => {
+    if (roleLoading) return;
     if (isAdmin) {
       fetchUsers();
-    }
-  }, [isAdmin, fetchUsers]);
-
-  const checkAdminStatus = async () => {
-    if (!user) return;
-
-    try {
-      const data = await api.getUserRole();
-      const admin = data.isAdmin ?? false;
-      setIsAdmin(admin);
-      if (!admin) {
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error("Error checking admin status:", error);
+    } else {
       setLoading(false);
     }
-  };
+  }, [isAdmin, roleLoading, fetchUsers]);
 
   const deleteUser = async (userId: string) => {
     if (!confirm(t("confirmDelete"))) {

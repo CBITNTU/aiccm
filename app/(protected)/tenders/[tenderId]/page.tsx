@@ -5,7 +5,7 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/hooks/useAuth";
 import { useOrg } from "@/hooks/useOrg";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export default function TenderDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { role } = useUserRole();
+  const { isPendingApproval, isOnboarding } = useAuth();
   const { selectedOrg } = useOrg();
 
   const tenderId = params.tenderId as string;
@@ -297,7 +297,7 @@ export default function TenderDetailPage() {
     router.push("/vo");
   };
 
-  const isRestricted = role === "pending";
+  const isRestricted = isPendingApproval || isOnboarding;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

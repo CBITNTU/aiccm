@@ -14,6 +14,7 @@ import {
 } from "@/lib/geocode";
 import { db } from "@/lib/db";
 import { companies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef, companyVerificationRequests } from "@/lib/db/schema/app";
+import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import {
   isReviewableField,
@@ -42,7 +43,7 @@ export async function GET(
 
     // Fetch company
     const companyResult = await db
-      .select()
+      .select(companyColumnsNoEmbedding)
       .from(companies)
       .where(eq(companies.id, companyId))
       .limit(1);
@@ -196,9 +197,12 @@ export async function PUT(
       "contactPerson", "equipment",
     ];
 
-    // Fetch current company data
+    // Fetch current company data (only the fields this handler reads)
     const company = await db
-      .select()
+      .select({
+        verificationStatus: companies.verificationStatus,
+        pendingChanges: companies.pendingChanges,
+      })
       .from(companies)
       .where(eq(companies.id, companyId))
       .then((rows) => rows[0]);
@@ -306,7 +310,7 @@ export async function PUT(
       .update(companies)
       .set(dbUpdate)
       .where(eq(companies.id, companyId))
-      .returning();
+      .returning(companyColumnsNoEmbedding);
 
     if (!data[0]) {
       return apiResponse({ error: "Company not found" }, 404);

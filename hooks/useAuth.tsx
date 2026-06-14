@@ -78,12 +78,11 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { data: sessionData, isPending } = authClient.useSession();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [hasResolvedInitialProfile, setHasResolvedInitialProfile] =
-    useState(false);
-  const [hasReadyUiInSession, setHasReadyUiInSession] = useState(false);
+  const { data: sessionData, isPending, refetch } = authClient.useSession();
+  // Tracks whether the cross-navigation "UI ready" marker existed in
+  // sessionStorage at mount, plus whether we've read it yet (avoids SSR
+  // hydration mismatch on flags that depend on sessionStorage).
+  const [storedReadyMarker, setStoredReadyMarker] = useState(false);
   const [isUiReadyHydrated, setIsUiReadyHydrated] = useState(false);
 
   const user = useMemo<AuthUser | null>(() => {
@@ -98,38 +97,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const session = sessionData?.session ?? null;
   const loading = isPending;
-  const activeProfile = user ? profile : null;
+
+  // Profile now rides on the session response (via the customSession plugin),
+  // so there's no separate fetch.
+  const profile = useMemo<ProfileData | null>(() => {
+    if (!user) return null;
+    return sessionData?.profile ?? null;
+  }, [user, sessionData?.profile]);
+
+  // Profile + role resolve exactly when the session resolves.
+  const profileLoading = loading;
   const userId = user?.id ?? null;
 
-  const markInitialProfileResolved = useCallback((targetUserId: string | null) => {
-    if (!targetUserId) return;
+  // The session (carrying profile + role) is resolved once it's no longer
+  // pending and we have a user.
+  const hasResolvedInitialProfile = !loading && !!userId;
+  // "Ready" if it was marked earlier this browser session, or it's ready now.
+  const hasReadyUiInSession = storedReadyMarker || hasResolvedInitialProfile;
 
-    setHasResolvedInitialProfile(true);
-    setHasReadyUiInSession(true);
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(getAuthUiReadyKey(targetUserId), "1");
-    }
+  // One-time hydration of the stored marker from sessionStorage on mount.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from sessionStorage
+    setStoredReadyMarker(readHasReadyUiInSession());
+    setIsUiReadyHydrated(true);
   }, []);
 
+  // Once the session resolves for a user, persist the marker so landing-page
+  // navigations within this browser session skip the auth skeleton. Write-only
+  // (external system) — no setState here.
   useEffect(() => {
-    if (!userId) {
-      if (!loading) {
-        setHasResolvedInitialProfile(false);
-      }
-      setHasReadyUiInSession(readHasReadyUiInSession());
-      setIsUiReadyHydrated(true);
-      return;
-    }
-
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const hasStoredReadyState =
-      sessionStorage.getItem(getAuthUiReadyKey(userId)) === "1";
-    setHasResolvedInitialProfile(hasStoredReadyState);
-    setHasReadyUiInSession(readHasReadyUiInSession());
-    setIsUiReadyHydrated(true);
+    if (loading || !userId || typeof window === "undefined") return;
+    sessionStorage.setItem(getAuthUiReadyKey(userId), "1");
   }, [loading, userId]);
 
   const signOut = useCallback(async () => {
@@ -140,9 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       await authClient.signOut();
-      setProfile(null);
-      setHasResolvedInitialProfile(false);
-      setHasReadyUiInSession(false);
+      setStoredReadyMarker(false);
       setIsUiReadyHydrated(false);
 
       window.location.replace("/");
@@ -152,74 +148,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  // Re-fetch the session so the customSession plugin recomputes the embedded
+  // profile/role (e.g. after the user completes an onboarding step).
   const refreshProfile = useCallback(async () => {
-    if (!user) {
-      setProfile(null);
-      setProfileLoading(false);
-      return;
-    }
-
     try {
-      setProfileLoading(true);
-      const res = await fetch("/api/profile/me");
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-      } else {
-        setProfile(null);
-      }
+      await refetch();
     } catch (err) {
       console.error("Error refreshing profile:", err);
-      setProfile(null);
-    } finally {
-      setProfileLoading(false);
-      markInitialProfileResolved(user.id);
     }
-  }, [markInitialProfileResolved, user]);
-
-  // Fetch profile data when user changes
-  useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      setProfileLoading(false);
-      return;
-    }
-
-    const abortController = new AbortController();
-
-    const fetchProfile = async () => {
-      try {
-        setProfileLoading(true);
-        const res = await fetch("/api/profile/me", {
-          signal: abortController.signal,
-        });
-
-        if (abortController.signal.aborted) return;
-
-        if (res.ok) {
-          const data = await res.json();
-          setProfile(data);
-        } else {
-          setProfile(null);
-        }
-      } catch (err) {
-        if (abortController.signal.aborted) return;
-        console.error("Error fetching profile:", err);
-        setProfile(null);
-      } finally {
-        if (!abortController.signal.aborted) {
-          setProfileLoading(false);
-          markInitialProfileResolved(user.id);
-        }
-      }
-    };
-
-    fetchProfile();
-
-    return () => {
-      abortController.abort();
-    };
-  }, [markInitialProfileResolved, user]);
+  }, [refetch]);
 
   const isOnboarding = useMemo(() => {
     if (!user || !profile) return false;
@@ -241,7 +178,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         hasResolvedInitialProfile,
         hasReadyUiInSession,
         isUiReadyHydrated,
-        profile: activeProfile,
+        profile,
         isOnboarding,
         isPendingApproval,
         signOut,

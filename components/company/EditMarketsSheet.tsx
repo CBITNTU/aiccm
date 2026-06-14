@@ -10,6 +10,7 @@ import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { EditSheetSkeleton } from "@/components/company/EditSheetSkeleton";
 import { MarketTreeSelector } from "@/components/company/MarketTreeSelector";
 import { api } from "@/lib/api/client";
+import { useCompanyMarkets } from "@/hooks/useCompanyTaxonomy";
 import type { PendingChangesRelationField } from "@/lib/companyFieldCategories";
 
 interface EditMarketsSheetProps {
@@ -36,9 +37,13 @@ export function EditMarketsSheet({
   const [initialIds, setInitialIds] = useState<string[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [treeReady, setTreeReady] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Company's current markets come from the shared cache the tab already
+  // populated, so opening the sheet triggers no extra request (only enabled while open).
+  const companyMarketsQuery = useCompanyMarkets(open ? companyId : undefined);
+  const loading = open && companyMarketsQuery.isPending;
 
   const draftAddedSet = useMemo(
     () => new Set(pendingRelation?.added ?? []),
@@ -48,23 +53,23 @@ export function EditMarketsSheet({
   const handleTreeReady = useCallback(() => setTreeReady(true), []);
 
   useEffect(() => {
-    if (open) {
-      setLoading(true);
+    if (!open) {
       setTreeReady(false);
-      api
-        .getCompanyMarkets(companyId)
-        .then((data) => {
-          const markets = data.markets || [];
-          const approvedIds = markets.map((m) => m.id);
-          const effectiveIds = pendingRelation ? pendingRelation.proposed : approvedIds;
-          setSelectedIds(effectiveIds);
-          setInitialIds(effectiveIds);
-          setNameMap(Object.fromEntries(markets.map((m) => [m.id, m.name])));
-        })
-        .catch(() => toast.error(t("editMarketsSheet.failedToLoad")))
-        .finally(() => setLoading(false));
+      return;
     }
-  }, [open, companyId, pendingRelation, t]);
+    if (companyMarketsQuery.isError) {
+      toast.error(t("editMarketsSheet.failedToLoad"));
+      return;
+    }
+    const data = companyMarketsQuery.data;
+    if (!data) return;
+    const markets = data.markets || [];
+    const approvedIds = markets.map((m) => m.id);
+    const effectiveIds = pendingRelation ? pendingRelation.proposed : approvedIds;
+    setSelectedIds(effectiveIds);
+    setInitialIds(effectiveIds);
+    setNameMap(Object.fromEntries(markets.map((m) => [m.id, m.name])));
+  }, [open, companyMarketsQuery.data, companyMarketsQuery.isError, pendingRelation, t]);
 
   const handleSave = async () => {
     try {

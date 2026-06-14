@@ -35,6 +35,17 @@ export async function getUserRoleByUserId(userId: string) {
 }
 
 /**
+ * Get all of a user's roles from the user_roles table.
+ * Used to resolve the effective app role (superadmin > sme-owner > first).
+ */
+export async function getUserRolesByUserId(userId: string) {
+  return db
+    .select({ role: userRoles.role })
+    .from(userRoles)
+    .where(eq(userRoles.userId, userId));
+}
+
+/**
  * Check if a user has a specific role.
  */
 export async function userHasRole(userId: string, role: string) {

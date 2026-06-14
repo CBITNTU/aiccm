@@ -13,6 +13,7 @@ import {
   standardsRef,
   profiles,
 } from "@/lib/db/schema/app";
+import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq, desc, and, ne, inArray } from "drizzle-orm";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 
@@ -51,7 +52,7 @@ export async function GET(
     ] = await Promise.all([
       // Full company data
       db
-        .select()
+        .select(companyColumnsNoEmbedding)
         .from(companies)
         .where(eq(companies.id, companyId))
         .then((rows) => rows[0] ?? null),

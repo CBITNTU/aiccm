@@ -15,6 +15,7 @@ import {
   companies,
   matchingResults,
 } from "@/lib/db/schema/app";
+import { companyColumnsNoEmbedding, tenderColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq, and, inArray } from "drizzle-orm";
 
 export async function GET(
@@ -29,7 +30,7 @@ export async function GET(
     const projectRows = await db
       .select({
         project: virtualOrganizations,
-        tenderData: tenders,
+        tenderData: tenderColumnsNoEmbedding,
       })
       .from(virtualOrganizations)
       .leftJoin(tenders, eq(virtualOrganizations.targetTenderId, tenders.id))
@@ -79,7 +80,7 @@ export async function GET(
     const membersData = await db
       .select({
         member: voMembers,
-        company: companies,
+        company: companyColumnsNoEmbedding,
       })
       .from(voMembers)
       .leftJoin(companies, eq(voMembers.companyId, companies.id))

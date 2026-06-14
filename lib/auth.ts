@@ -1,11 +1,12 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { organization, admin } from "better-auth/plugins";
+import { organization, admin, customSession } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import bcrypt from "bcryptjs";
 import { sendEmail, getPlatformName } from "@/lib/email";
+import { getProfileByUserId, getUserRolesByUserId } from "@/lib/db/queries";
 import { randomUUID } from "crypto";
 
 export const auth = betterAuth({
@@ -55,6 +56,38 @@ export const auth = betterAuth({
   plugins: [
     organization(),
     admin(),
+    // Augment the session response with the app role + profile state so the
+    // client doesn't need separate /api/user-role and /api/profile/me calls.
+    // NOTE: this replaces the get-session response body, so user + session
+    // MUST be spread back in.
+    customSession(async ({ user, session }) => {
+      const [roleRows, profile] = await Promise.all([
+        getUserRolesByUserId(user.id),
+        getProfileByUserId(user.id),
+      ]);
+
+      const appRole =
+        roleRows.find((r) => r.role === "superadmin")?.role ??
+        roleRows.find((r) => r.role === "sme-owner")?.role ??
+        roleRows[0]?.role ??
+        null;
+
+      return {
+        user,
+        session,
+        appRole,
+        isAdmin: appRole === "superadmin",
+        profile: profile
+          ? {
+              approvalStatus: profile.approvalStatus,
+              onboardingCompletedAt:
+                profile.onboardingCompletedAt?.toISOString() ?? null,
+              firstName: profile.firstName,
+              lastName: profile.lastName,
+            }
+          : null,
+      };
+    }),
     nextCookies(),
   ],
   secret: process.env.BETTER_AUTH_SECRET,

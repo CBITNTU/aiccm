@@ -40,5 +40,6 @@ export const queryKeys = {
   companyTaxonomies: (companyId: string) => ["companyTaxonomies", companyId] as const,
   companyStandards: (companyId: string) => ["companyStandards", companyId] as const,
   companyCapabilities: (companyId: string) => ["companyCapabilities", companyId] as const,
+  companyMarkets: (companyId: string) => ["companyMarkets", companyId] as const,
   adminStats: () => ["adminStats"] as const,
 };

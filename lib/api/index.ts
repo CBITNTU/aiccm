@@ -10,8 +10,12 @@ export const MATCHING_MODEL_IDS = {
 export type MatchingModelId = keyof typeof MATCHING_MODEL_IDS;
 
 // Standard API response helper
-export function apiResponse<T>(data: T, status: number = 200): NextResponse {
-  return NextResponse.json(data, { status });
+export function apiResponse<T>(
+  data: T,
+  status: number = 200,
+  headers?: HeadersInit,
+): NextResponse {
+  return NextResponse.json(data, { status, ...(headers && { headers }) });
 }
 
 // Error response helper

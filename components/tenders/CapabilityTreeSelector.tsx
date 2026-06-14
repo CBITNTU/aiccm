@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { api } from "@/lib/api/client";
+import { useReferenceCapabilities } from "@/hooks/useReferenceData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -135,8 +135,12 @@ export function CapabilityTreeSelector({
   onReady,
 }: CapabilityTreeSelectorProps) {
   const isControlled = externalSearchTerm !== undefined;
-  const [capabilities, setCapabilities] = useState<Capability[]>([]);
-  const [loading, setLoading] = useState(true);
+  const capabilitiesQuery = useReferenceCapabilities();
+  const capabilities = useMemo<Capability[]>(
+    () => capabilitiesQuery.data ?? [],
+    [capabilitiesQuery.data],
+  );
+  const loading = capabilitiesQuery.isPending;
   const [internalSearchTerm, setInternalSearchTerm] = useState("");
   const searchTerm = isControlled ? externalSearchTerm : internalSearchTerm;
   const setSearchTerm = isControlled ? (onSearchTermChange ?? (() => {})) : setInternalSearchTerm;
@@ -154,31 +158,23 @@ export function CapabilityTreeSelector({
     onReadyRef.current = onReady;
   });
 
+  // Reference list is loaded (and cached) via useReferenceCapabilities. Sync the
+  // derived name map / expanded categories once data is available.
   useEffect(() => {
-    const fetchCapabilities = async () => {
-      try {
-        const result = await api.getCapabilities();
-        const caps = result.capabilities || [];
-        setCapabilities(caps);
-        onNameMapChangeRef.current?.(Object.fromEntries(caps.map((c) => [c.id, c.name])));
-        // Auto-expand all categories by default
-        const categories = new Set(
-          result.capabilities
-            ?.map((c) => c.category)
-            .filter(
-              (cat): cat is string => cat !== null && cat !== undefined,
-            ) || [],
-        );
-        setExpandedCategories(categories);
-      } catch (error) {
-        console.error("Error fetching capabilities:", error);
-      }
-      setLoading(false);
-      onReadyRef.current?.();
-    };
-
-    fetchCapabilities();
-  }, []);
+    if (capabilitiesQuery.isPending) return;
+    onNameMapChangeRef.current?.(
+      Object.fromEntries(capabilities.map((c) => [c.id, c.name])),
+    );
+    // Auto-expand all categories by default
+    const categories = new Set(
+      capabilities
+        .map((c) => c.category)
+        .filter((cat): cat is string => cat !== null && cat !== undefined),
+    );
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-expand all categories once reference data loads
+    setExpandedCategories(categories);
+    onReadyRef.current?.();
+  }, [capabilities, capabilitiesQuery.isPending]);
 
   // Build tree from parentId when present; otherwise group by category
   const hasParentId = useMemo(

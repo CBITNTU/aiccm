@@ -26,6 +26,39 @@ type CompanyData = Pick<
   | "digitalMaturity"
 > & { location?: string | null };
 
+// Only the company fields this route reads (CompanyData + the limit check) — avoids
+// pulling the embedding vector and large AI JSONB out of Postgres on every match run.
+const companyMatchColumns = {
+  id: companies.id,
+  companyName: companies.companyName,
+  description: companies.description,
+  keyCapabilities: companies.keyCapabilities,
+  postcode: companies.postcode,
+  pastProjects: companies.pastProjects,
+  certifications: companies.certifications,
+  equipment: companies.equipment,
+  safetyRating: companies.safetyRating,
+  digitalMaturity: companies.digitalMaturity,
+  matchingRunsLimit: companies.matchingRunsLimit,
+  verificationStatus: companies.verificationStatus,
+};
+
+type CompanyMatchRow = Pick<
+  typeof companies.$inferSelect,
+  | "id"
+  | "companyName"
+  | "description"
+  | "keyCapabilities"
+  | "postcode"
+  | "pastProjects"
+  | "certifications"
+  | "equipment"
+  | "safetyRating"
+  | "digitalMaturity"
+  | "matchingRunsLimit"
+  | "verificationStatus"
+>;
+
 type TenderData = {
   id: string;
   title: string;
@@ -190,7 +223,7 @@ export async function POST(request: NextRequest) {
     const targetCompanyId = requestBody.companyId;
     const force = requestBody.force === true;
 
-    let company: typeof companies.$inferSelect | null = null;
+    let company: CompanyMatchRow | null = null;
 
     if (targetCompanyId) {
       const hasAccess = await isCompanyMember(user.id, targetCompanyId);
@@ -199,7 +232,7 @@ export async function POST(request: NextRequest) {
       }
 
       const result = await db
-        .select()
+        .select(companyMatchColumns)
         .from(companies)
         .where(and(eq(companies.id, targetCompanyId), eq(companies.status, "active")))
         .limit(1);
@@ -211,7 +244,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Get user's own active company first
       const ownResult = await db
-        .select()
+        .select(companyMatchColumns)
         .from(companies)
         .where(and(eq(companies.userId, user.id), eq(companies.status, "active")))
         .limit(1);
@@ -228,7 +261,7 @@ export async function POST(request: NextRequest) {
 
         if (membershipResult.length > 0) {
           const memberCompanyResult = await db
-            .select()
+            .select(companyMatchColumns)
             .from(companies)
             .where(and(eq(companies.id, membershipResult[0].companyId), eq(companies.status, "active")))
             .limit(1);
@@ -272,7 +305,7 @@ export async function POST(request: NextRequest) {
     const today = new Date().toISOString().split("T")[0];
 
     const tenderResults = await db
-      .select()
+      .select({ id: tenders.id })
       .from(tenders)
       .where(
         and(

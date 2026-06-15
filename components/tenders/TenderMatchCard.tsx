@@ -311,13 +311,14 @@ export function TenderMatchCard({
             onDeepResearch &&
             !readOnly && (
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeepResearch();
                 }}
                 disabled={deepResearchPending}
+                className="cursor-pointer disabled:cursor-not-allowed"
               >
                 {deepResearchPending ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />

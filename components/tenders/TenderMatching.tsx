@@ -52,6 +52,16 @@ const DEFAULT_FILTERS: MatchingFiltersState = {
   tenderStatus: "active",
 };
 
+// Minimum match score (percent) for a tender to appear in the list. Tenders that
+// score below this are "analysed, no match" noise (e.g. deep matches the capability
+// gate scored to 0%); we hide their cards and only surface the count instead.
+const MIN_MATCH_SCORE = 1;
+
+// We load the whole keyword/status-filtered tender universe in one request and
+// paginate the matched subset client-side. This cap matches the deep/basic match
+// fetch limits below; companies realistically have far fewer matches than this.
+const TENDER_FETCH_LIMIT = 500;
+
 interface MatchingResult {
   id: string;
   tenderId: string;
@@ -172,7 +182,7 @@ export function TenderMatching({
     queryKey: queryKeys.tenders({
       context: "matches-tab",
       companyId,
-      page: currentPage,
+      page: 1,
       filtersKey,
     }),
     queryFn: () =>
@@ -181,8 +191,8 @@ export function TenderMatching({
         ...(tenderSearchStatus && tenderSearchStatus !== "all"
           ? { status: tenderSearchStatus }
           : {}),
-        page: currentPage,
-        pageSize: itemsPerPage,
+        page: 1,
+        pageSize: TENDER_FETCH_LIMIT,
         sortBy:
           filters.sortBy === "overall_score" ||
           filters.sortBy === "capability_score" ||
@@ -245,8 +255,23 @@ export function TenderMatching({
     return map;
   }, [basicMatches]);
 
+  // Effective match score (percent) for a tender: deep overall score when it has
+  // been deep-analysed, otherwise the basic semantic similarity.
+  const effectiveScore = useCallback(
+    (tender: TenderRecord) => {
+      const deep = deepByTenderId.get(tender.id);
+      if (deep) return deep.overallScore ?? 0;
+      const basic = basicByTenderId.get(tender.id);
+      return Math.round((basic?.similarity ?? 0) * 100);
+    },
+    [deepByTenderId, basicByTenderId],
+  );
+
   const displayTenders = useMemo(() => {
     let rows = allTenders;
+
+    // Only surface tenders that actually matched; hide "analysed, no match" rows.
+    rows = rows.filter((tender) => effectiveScore(tender) >= MIN_MATCH_SCORE);
 
     if (filters.minScore > 0 || filters.maxScore < 100) {
       rows = rows.filter((tender) => {
@@ -336,17 +361,39 @@ export function TenderMatching({
     filters.sortDirection,
     deepByTenderId,
     basicByTenderId,
+    effectiveScore,
   ]);
 
-  const totalCount = tendersData?.totalCount ?? 0;
-
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  // Matched tenders are paginated client-side so counts/pages reflect real
+  // matches rather than the full tender universe.
+  const matchedCount = displayTenders.length;
+  const totalPages = Math.max(1, Math.ceil(matchedCount / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + displayTenders.length, totalCount);
+  const pagedTenders = useMemo(
+    () => displayTenders.slice(startIndex, startIndex + itemsPerPage),
+    [displayTenders, startIndex],
+  );
+  const endIndex = Math.min(startIndex + pagedTenders.length, matchedCount);
 
+  // Keep the current page within range when the matched set shrinks.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  // Whether the user has narrowed results — drives which empty state we show.
+  const filtersActive =
+    Boolean(filters.keyword) ||
+    filters.minScore > 0 ||
+    filters.maxScore < 100 ||
+    filters.showApplied !== "all" ||
+    (filters.quickFilter ?? null) !== null;
+
+  // Keep showing the loader until the match sources resolve — otherwise the
+  // score threshold would briefly hide every tender and flash the empty state
+  // while basic/deep matches are still in flight.
   const loading =
     (tendersLoading && allTenders.length === 0) ||
-    (basicLoading && basicMatches.length === 0 && allTenders.length === 0);
+    ((basicLoading || deepLoading) && matchedCount === 0);
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -887,16 +934,17 @@ export function TenderMatching({
   return (
     <div className="space-y-4">
       {/* Results summary */}
-      {!loading && totalCount > 0 && (
+      {!loading && matchedCount > 0 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <ResultsHeader
-            total={totalCount}
+            total={matchedCount}
             start={startIndex + 1}
             end={endIndex}
             currentPage={currentPage}
             totalPages={totalPages}
             loading={loading || deepLoading}
             onRefresh={refreshAll}
+            unit={t("matchesUnit")}
           />
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             {deepAnalyzedCount > 0 && (
@@ -1004,18 +1052,25 @@ export function TenderMatching({
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">{t("loading")}</span>
         </div>
-      ) : displayTenders.length === 0 ? (
+      ) : matchedCount === 0 ? (
         <div className="text-center py-16">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">
-            {t("noResultsTitle")}
+            {filtersActive ? t("noResultsTitle") : t("noMatchesTitle")}
           </h3>
-          <p className="text-muted-foreground mb-4">
-            {totalCount === 0 && currentPage === 1
-              ? t("noResultsDescriptionBasic")
-              : t("noResultsFiltered")}
+          <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+            {filtersActive
+              ? t("noResultsFiltered")
+              : allTenders.length > 0
+                ? t("noStrongMatches", { count: allTenders.length })
+                : t("noResultsDescriptionBasic")}
           </p>
-          {totalCount === 0 && currentPage === 1 && !readOnly && (
+          {deepAnalyzedCount > 0 && !filtersActive && (
+            <p className="text-xs text-muted-foreground mb-4">
+              {t("deepAnalyzedCount", { count: deepAnalyzedCount })}
+            </p>
+          )}
+          {!filtersActive && !readOnly && (
             <div className="flex flex-col items-center gap-2">
               <Button
                 onClick={refreshAll}
@@ -1053,7 +1108,7 @@ export function TenderMatching({
       ) : (
         <>
           <div className="space-y-3">
-            {displayTenders.map((tender) => {
+            {pagedTenders.map((tender) => {
               const tenderId = tender.id;
               const viewDetails = () =>
                 router.push(`/tenders/${tenderId}?companyId=${companyId}`);

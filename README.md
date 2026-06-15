@@ -340,6 +340,21 @@ After first deploy:
 
 ---
 
+## Internationalization (i18n)
+
+User-facing strings go through [`next-intl`](https://next-intl.dev). Translations live in
+`messages/<locale>.json` and the supported locales are declared in `i18n/locales.ts`.
+
+- **Supported locales:** English (`en`, default) and Simplified Chinese (`zh-CN`).
+- **Always update both locale files together.** Any key you add, rename, or remove must be
+  applied to **both** `messages/en.json` **and** `messages/zh-CN.json`, including the Simplified
+  Chinese translation. The two files must always contain the same set of keys — never leave a
+  string English-only or present in just one file.
+- No hardcoded UI text — read strings via `useTranslations("Namespace")` (client) or
+  `getTranslations("Namespace")` (server), using the same namespace/key in every locale.
+
+---
+
 ## Project structure
 
 ```

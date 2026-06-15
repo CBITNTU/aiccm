@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TenderMatchCard } from "./TenderMatchCard";
-import { BasicTenderMatchCard } from "./BasicTenderMatchCard";
 import { ResultsHeader } from "./ResultsHeader";
 import { MatchingReadinessDialog } from "./MatchingReadinessDialog";
 import { checkMatchingReadiness, type ReadinessResult } from "@/lib/matchingReadiness";
@@ -408,9 +407,10 @@ export function TenderMatching({
     totalJobs: number;
     completedJobs: number;
     failedJobs: number;
-    status: "processing" | "completed" | "failed";
+    status: "processing" | "completed" | "failed" | "cancelled";
     progressPercent: number;
   } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const analyzing =
     internalAnalyzing || matchingProgress?.status === "processing";
@@ -427,7 +427,8 @@ export function TenderMatching({
 
   const cancelMatching = useCallback(
     async (batchId: string) => {
-      console.log(`🛑 Attempting to cancel batch ${batchId}...`);
+      console.log(`🛑 Cancelling batch ${batchId}...`);
+      setIsCancelling(true);
 
       try {
         const response = await fetch("/api/match-tenders/cancel", {
@@ -436,44 +437,29 @@ export function TenderMatching({
           body: JSON.stringify({ batchId }),
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`✅ Successfully cancelled batch ${batchId}:`, data);
-        } else if (response.status === 404) {
-          console.log(
-            `⚠️ Batch ${batchId} not found (404) - may already be completed or never existed`,
-          );
-        } else {
-          const data = await response.json();
-          console.warn(
-            `⚠️ Cancel API returned ${response.status}:`,
-            data.error,
-          );
+        // The cancel endpoint is idempotent: a 2xx (cancelled or already-terminal)
+        // and a 404 (batch gone) both mean there is nothing left running, so we
+        // converge the UI to "no active batch". Only a real error keeps the
+        // progress bar up so the user can retry.
+        if (!response.ok && response.status !== 404) {
+          const data = await response.json().catch(() => ({}));
+          console.warn(`⚠️ Cancel API returned ${response.status}:`, data.error);
+          toast.error(data.error || t("cancelError"));
+          return;
         }
+
+        if (companyId) {
+          localStorage.removeItem(`matching_batch_${companyId}`);
+        }
+        setMatchingProgress(null);
+        toast.success(t("cancelledInfo"));
+        refetchMatchingResults();
       } catch (error) {
         console.error("Error calling cancel API:", error);
+        toast.error(t("cancelError"));
+      } finally {
+        setIsCancelling(false);
       }
-
-      if (companyId) {
-        localStorage.removeItem(`matching_batch_${companyId}`);
-        localStorage.removeItem(`stale_check_${batchId}`);
-
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith("stale_check_")) {
-            localStorage.removeItem(key);
-          }
-        }
-      }
-
-      setMatchingProgress(null);
-
-      console.log(`✅ Cleared all local state for company ${companyId}`);
-      toast.success(t("cancelledInfo"));
-
-      setTimeout(() => {
-        refetchMatchingResults();
-      }, 2000);
     },
     [companyId, refetchMatchingResults, t],
   );
@@ -536,7 +522,15 @@ export function TenderMatching({
         );
         setMatchingProgress(progressData);
 
-        if (data.status === "completed" || data.status === "failed") {
+        // The server is the sole authority on whether a batch is done. We only
+        // stop tracking when it reports a terminal status — never on a client-side
+        // timer. A batch sitting at 0% is still alive on the server and keeps
+        // polling until the server reconciles it to a terminal state.
+        if (
+          data.status === "completed" ||
+          data.status === "failed" ||
+          data.status === "cancelled"
+        ) {
           console.log(`Batch ${batchId} finished with status: ${data.status}`);
           if (companyId) {
             localStorage.removeItem(`matching_batch_${companyId}`);
@@ -546,38 +540,11 @@ export function TenderMatching({
           void refetchBasicMatch();
           if (data.status === "completed") {
             toast.success(t("matchingCompleted", { count: data.completedJobs }));
+          } else if (data.status === "cancelled") {
+            toast.info(t("cancelledInfo"));
           } else {
             toast.error(t("matchingFailed", { count: data.failedJobs }));
           }
-        }
-
-        if (
-          data.status === "processing" &&
-          data.completedJobs === 0 &&
-          data.failedJobs === 0
-        ) {
-          const staleCheckKey = `stale_check_${batchId}`;
-          const firstCheckTime = localStorage.getItem(staleCheckKey);
-
-          if (!firstCheckTime) {
-            localStorage.setItem(staleCheckKey, Date.now().toString());
-          } else {
-            const elapsed = Date.now() - parseInt(firstCheckTime);
-            if (elapsed > 60000) {
-              console.warn(
-                `⚠️ Batch ${batchId} stuck at 0 progress for ${Math.round(elapsed / 1000)}s - auto-clearing`,
-              );
-              if (companyId) {
-                localStorage.removeItem(`matching_batch_${companyId}`);
-              }
-              localStorage.removeItem(staleCheckKey);
-              setMatchingProgress(null);
-              toast.info(t("stuckInfo"));
-              return;
-            }
-          }
-        } else if (data.completedJobs > 0 || data.failedJobs > 0) {
-          localStorage.removeItem(`stale_check_${batchId}`);
         }
       } catch (error) {
         console.error("Error checking matching progress:", error);
@@ -631,15 +598,64 @@ export function TenderMatching({
     void refetchMatchingResults();
   }, [refetchTenders, refetchBasicMatch, refetchMatchingResults]);
 
+  // Hydrate the progress bar from the server's authoritative active-batch state.
+  // This — not localStorage — decides whether a run is in progress, so a refresh,
+  // a second tab, or returning to the page always reflects reality. localStorage
+  // is kept only as a non-authoritative hint.
+  const hydrateActiveBatch = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const response = await fetch(
+        `/api/match-tenders/active?companyId=${companyId}`,
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      const batch = data?.batch;
+
+      if (batch && batch.status === "processing") {
+        localStorage.setItem(`matching_batch_${companyId}`, batch.batchId);
+        setMatchingProgress({
+          batchId: batch.batchId,
+          totalJobs: batch.totalJobs ?? 0,
+          completedJobs: batch.completedJobs ?? 0,
+          failedJobs: batch.failedJobs ?? 0,
+          status: "processing",
+          progressPercent: batch.progressPercent ?? 0,
+        });
+      } else {
+        // Server reports no active run — clear any stale local progress.
+        localStorage.removeItem(`matching_batch_${companyId}`);
+        setMatchingProgress((prev) =>
+          prev?.status === "processing" ? null : prev,
+        );
+      }
+    } catch {
+      // Network hiccup: keep current state, never assume the job died.
+    }
+  }, [companyId]);
+
   useEffect(() => {
     if (user && companyId) {
-      const storedBatchId = localStorage.getItem(`matching_batch_${companyId}`);
-      if (storedBatchId) {
-        console.log(`🔄 Restoring batch from localStorage: ${storedBatchId}`);
-        checkMatchingProgress(storedBatchId);
-      }
+      void hydrateActiveBatch();
     }
-  }, [user, companyId, checkMatchingProgress]);
+  }, [user, companyId, hydrateActiveBatch]);
+
+  // Re-sync with the server whenever the user returns to the tab, so a run that
+  // finished (or that was started elsewhere) is reflected without a manual reload.
+  useEffect(() => {
+    if (!user || !companyId) return;
+    const onFocus = () => {
+      if (document.visibilityState === "visible") {
+        void hydrateActiveBatch();
+      }
+    };
+    window.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user, companyId, hydrateActiveBatch]);
 
   const batchId = matchingProgress?.batchId ?? null;
   const isProcessing = matchingProgress?.status === "processing";
@@ -658,16 +674,6 @@ export function TenderMatching({
   const startAnalysis = useCallback(async (options?: { force?: boolean }) => {
     const force = options?.force === true;
     setInternalAnalyzing(true);
-
-    if (companyId) {
-      const oldBatchId = localStorage.getItem(`matching_batch_${companyId}`);
-      if (oldBatchId) {
-        console.log(
-          `🧹 Clearing old batch ${oldBatchId} before starting new one`,
-        );
-        localStorage.removeItem(`stale_check_${oldBatchId}`);
-      }
-    }
 
     try {
       const response = await fetch("/api/match-tenders", {
@@ -924,7 +930,9 @@ export function TenderMatching({
                   ? t("pendingAccountRestricted")
                   : limitReached
                     ? t("limitReachedDetail", { used: matchingUsage?.used ?? 0, limit: matchingUsage?.limit ?? 0, date: matchingUsage ? new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : "" })
-                    : undefined
+                    : analyzing
+                      ? t("matchingInProgressDisabled")
+                      : undefined
               }
             >
               {analyzing ? (
@@ -970,13 +978,15 @@ export function TenderMatching({
                 variant="outline"
                 size="sm"
                 onClick={() => cancelMatching(matchingProgress.batchId)}
+                disabled={isCancelling}
                 className="h-7"
               >
-                <X className="h-3 w-3 mr-1" />
-                {matchingProgress.completedJobs === 0 &&
-                matchingProgress.failedJobs === 0
-                  ? t("clearAndRestart")
-                  : t("cancel")}
+                {isCancelling ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <X className="h-3 w-3 mr-1" />
+                )}
+                {isCancelling ? t("cancelling") : t("cancel")}
               </Button>
             </div>
           </div>
@@ -1045,17 +1055,32 @@ export function TenderMatching({
           <div className="space-y-3">
             {displayTenders.map((tender) => {
               const tenderId = tender.id;
+              const viewDetails = () =>
+                router.push(`/tenders/${tenderId}?companyId=${companyId}`);
               const deep = deepByTenderId.get(tenderId);
               if (deep) {
                 return (
                   <TenderMatchCard
                     key={deep.id}
-                    result={deep}
-                    onViewDetails={() => {
-                      router.push(
-                        `/tenders/${tenderId}?companyId=${companyId}`,
-                      );
-                    }}
+                    variant="deep"
+                    tenderId={tenderId}
+                    title={deep.tenders.title}
+                    buyer={deep.tenders.buyer}
+                    location={deep.tenders.location ?? null}
+                    description={deep.tenders.description ?? null}
+                    deadline={deep.tenders.deadline ?? null}
+                    status={deep.tenders.status ?? null}
+                    budgetMin={deep.tenders.budgetMin ?? null}
+                    budgetMax={deep.tenders.budgetMax ?? null}
+                    score={deep.overallScore}
+                    capabilityScore={deep.capabilityScore}
+                    experienceScore={deep.experienceScore}
+                    locationScore={deep.locationScore}
+                    certificationScore={deep.certificationScore}
+                    matchReasons={deep.matchReasons}
+                    isBookmarked={deep.isBookmarked}
+                    isApplied={deep.isApplied}
+                    onViewDetails={viewDetails}
                     onBookmark={() =>
                       toggleBookmark(deep.id, deep.isBookmarked)
                     }
@@ -1067,19 +1092,20 @@ export function TenderMatching({
               }
               const basic = basicByTenderId.get(tenderId);
               return (
-                <BasicTenderMatchCard
+                <TenderMatchCard
                   key={tenderId}
-                  match={{
-                    tenderId,
-                    title: tender.title,
-                    buyer: tender.buyer ?? "",
-                    location: tender.location ?? null,
-                    deadline: tender.deadline ?? null,
-                    status: tender.status ?? null,
-                    similarity: basic?.similarity ?? 0,
-                    band: (basic?.band as "high" | "medium" | "low") ?? "low",
-                  }}
-                  companyId={companyId!}
+                  variant="basic"
+                  tenderId={tenderId}
+                  title={tender.title}
+                  buyer={tender.buyer ?? ""}
+                  location={tender.location ?? null}
+                  description={tender.description ?? null}
+                  deadline={tender.deadline ?? null}
+                  status={tender.status ?? null}
+                  budgetMin={tender.budgetMin ?? null}
+                  budgetMax={tender.budgetMax ?? null}
+                  score={Math.round((basic?.similarity ?? 0) * 100)}
+                  onViewDetails={viewDetails}
                   onDeepResearch={() => runDeepResearchForTender(tenderId)}
                   deepResearchPending={deepResearchTenderId === tenderId}
                   readOnly={readOnly}

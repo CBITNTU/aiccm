@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
             // Check if batch is already complete
             if (
               batchStatus.status === "completed" ||
-              batchStatus.status === "failed"
+              batchStatus.status === "failed" ||
+              batchStatus.status === "cancelled"
             ) {
               console.log(
                 `Skipping job ${job.id} - batch ${job.batchId} is already ${batchStatus.status} (${batchStatus.completedJobs + batchStatus.failedJobs}/${batchStatus.totalJobs})`,
@@ -178,7 +179,8 @@ export async function POST(request: NextRequest) {
             if (
               batchStatus &&
               (batchStatus.status === "completed" ||
-                batchStatus.status === "failed")
+                batchStatus.status === "failed" ||
+                batchStatus.status === "cancelled")
             ) {
               console.log(
                 `Skipping job ${job.id} - batch ${job.batchId} is already ${batchStatus.status}`,

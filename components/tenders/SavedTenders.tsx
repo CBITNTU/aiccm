@@ -166,7 +166,24 @@ export function SavedTenders({
             <div key={result.id} className="list-item-deferred">
               <TenderMatchCard
               key={result.id}
-              result={result}
+              variant="deep"
+              tenderId={result.tenderId}
+              title={result.tenders.title}
+              buyer={result.tenders.buyer}
+              location={result.tenders.location ?? null}
+              description={result.tenders.description ?? null}
+              deadline={result.tenders.deadline ?? null}
+              status={result.tenders.status ?? null}
+              budgetMin={result.tenders.budgetMin ?? null}
+              budgetMax={result.tenders.budgetMax ?? null}
+              score={result.overallScore}
+              capabilityScore={result.capabilityScore}
+              experienceScore={result.experienceScore}
+              locationScore={result.locationScore}
+              certificationScore={result.certificationScore}
+              matchReasons={result.matchReasons}
+              isBookmarked={result.isBookmarked}
+              isApplied={result.isApplied}
               onViewDetails={() => {
                 router.push(`/tenders/${result.tenderId}?companyId=${result.companyId}`);
               }}

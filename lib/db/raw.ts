@@ -142,7 +142,10 @@ export async function incrementBatchProgress(
 SET
   completed_jobs = completed_jobs + (CASE WHEN ${outcome} = 'completed' THEN 1 ELSE 0 END),
   failed_jobs    = failed_jobs    + (CASE WHEN ${outcome} = 'failed'    THEN 1 ELSE 0 END),
+  -- Only recompute status for a live batch. A terminal status (cancelled/completed/failed)
+  -- must be preserved so a late job completion cannot un-cancel or revive the batch.
   status = CASE
+    WHEN status <> 'processing' THEN status
     WHEN (completed_jobs + failed_jobs + 1) >= total_jobs
     THEN CASE WHEN ${outcome} = 'failed' AND (failed_jobs + 1) = total_jobs THEN 'failed' ELSE 'completed' END
     ELSE 'processing'

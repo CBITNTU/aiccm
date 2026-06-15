@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
-import { getBatchStatus } from "@/lib/services/queueService";
+import { getBatchStatus, reconcileBatch } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export async function GET(request: NextRequest) {
@@ -17,20 +17,25 @@ export async function GET(request: NextRequest) {
       return apiError("Batch ID is required", 400);
     }
 
-    const batchStatus = await getBatchStatus(batchId);
+    const existing = await getBatchStatus(batchId);
 
-    if (!batchStatus) {
+    if (!existing) {
       return apiError("Batch not found", 404);
     }
 
     // Verify user has access to this batch (owner or team member)
-    if (batchStatus.companyId) {
+    if (existing.companyId) {
       const { isCompanyMember } = await import("@/lib/api/validation");
-      const hasAccess = await isCompanyMember(user.id, batchStatus.companyId);
+      const hasAccess = await isCompanyMember(user.id, existing.companyId);
       if (!hasAccess) {
         return apiError("Access denied", 403);
       }
     }
+
+    // Reconcile a possibly-drifted batch: if it's still "processing" but no live
+    // queue jobs remain, the server resolves it to a terminal state. The client
+    // relies on this instead of guessing the job is dead.
+    const batchStatus = (await reconcileBatch(batchId)) ?? existing;
 
     // Calculate progress percentage (handle edge cases)
     const totalProcessed = batchStatus.completedJobs + batchStatus.failedJobs;

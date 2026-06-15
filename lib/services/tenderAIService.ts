@@ -1,7 +1,11 @@
 import { db } from "@/lib/db";
 import { tenders, companyCapabilitiesRef } from "@/lib/db/schema/app";
-import { eq, asc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
+import {
+  getCapabilityCatalog,
+  invalidateCapabilityCatalog,
+} from "@/lib/services/capabilityCatalog";
 import {
   tenderCapabilitiesSchema,
   tenderSummaryAndTaxonomySchema,
@@ -107,14 +111,7 @@ export async function generateTenderCapabilityTaxonomy(
     throw new Error("Failed to fetch tender: Tender not found");
   }
 
-  const existingCapabilities = await db
-    .select({
-      id: companyCapabilitiesRef.id,
-      name: companyCapabilitiesRef.name,
-      category: companyCapabilitiesRef.category,
-    })
-    .from(companyCapabilitiesRef)
-    .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
+  const existingCapabilities = await getCapabilityCatalog();
 
   // Format capabilities for AI
   const capabilitiesByCategory: Record<
@@ -195,6 +192,9 @@ Return existing (IDs from list) and new (name, category).`;
     }
   }
 
+  // New rows added to the catalog — drop the cache so later jobs see them.
+  if (createdIds.length > 0) invalidateCapabilityCatalog();
+
   // Combine existing and newly created IDs
   const allCapabilityIds = [...existingIds, ...createdIds];
 
@@ -241,14 +241,7 @@ export async function generateTenderSummaryAndTaxonomy(
     throw new Error("Failed to fetch tender: Tender not found");
   }
 
-  const existingCapabilities = await db
-    .select({
-      id: companyCapabilitiesRef.id,
-      name: companyCapabilitiesRef.name,
-      category: companyCapabilitiesRef.category,
-    })
-    .from(companyCapabilitiesRef)
-    .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
+  const existingCapabilities = await getCapabilityCatalog();
 
   const capabilitiesByCategory: Record<
     string,
@@ -327,6 +320,9 @@ Return one object with summary, existing (IDs), and new (name/category).`;
       if (created[0]) createdIds.push(created[0].id);
     }
   }
+  // New rows added to the catalog — drop the cache so later jobs see them.
+  if (createdIds.length > 0) invalidateCapabilityCatalog();
+
   const uniqueIds = Array.from(new Set([...existingIds, ...createdIds]));
 
   await db

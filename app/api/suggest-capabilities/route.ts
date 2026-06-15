@@ -9,8 +9,9 @@ import { existingCapabilitiesSchema } from "@/lib/schemas/capabilitySuggestion";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { tenders, companyCapabilitiesRef, companyCapabilities } from "@/lib/db/schema/app";
-import { eq, asc } from "drizzle-orm";
+import { tenders, companyCapabilities } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
+import { getCapabilityCatalog } from "@/lib/services/capabilityCatalog";
 
 const suggestCapabilitiesInputSchema = z.object({
   tenderId: z.string().uuid(),
@@ -54,15 +55,8 @@ export async function POST(request: NextRequest) {
       return apiError("Tender not found", 404);
     }
 
-    // Fetch all available capabilities
-    const capabilities = await db
-      .select({
-        id: companyCapabilitiesRef.id,
-        name: companyCapabilitiesRef.name,
-        category: companyCapabilitiesRef.category,
-      })
-      .from(companyCapabilitiesRef)
-      .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
+    // Fetch all available capabilities (cached in-process catalog)
+    const capabilities = await getCapabilityCatalog();
 
     if (!capabilities || capabilities.length === 0) {
       return apiError("Failed to fetch capabilities", 500);

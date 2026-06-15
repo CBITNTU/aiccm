@@ -3,30 +3,21 @@ import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyCapabilitiesRef } from "@/lib/db/schema/app";
-import { eq, asc, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
+import { getCapabilityCatalog } from "@/lib/services/capabilityCatalog";
 
 type CapabilityRef = { id: string; name: string; category: string | null };
 
 // The reference taxonomy is global (identical for all users) and changes rarely.
-// Cache the full list in-process with a short TTL so concurrent/repeat requests
-// don't each hit the DB. Admin edits self-heal within the TTL window; the browser
-// also caches via Cache-Control, and clients dedupe via React Query.
-const FULL_LIST_TTL_MS = 10 * 60 * 1000;
-let cachedAll: { data: CapabilityRef[]; expiresAt: number } | null = null;
-
-async function getAllCapabilities(now: number): Promise<CapabilityRef[]> {
-  if (cachedAll && cachedAll.expiresAt > now) return cachedAll.data;
-  const data = await db
-    .select({
-      id: companyCapabilitiesRef.id,
-      name: companyCapabilitiesRef.name,
-      category: companyCapabilitiesRef.category,
-    })
-    .from(companyCapabilitiesRef)
-    .where(eq(companyCapabilitiesRef.isActive, true))
-    .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
-  cachedAll = { data, expiresAt: now + FULL_LIST_TTL_MS };
-  return data;
+// The shared catalog accessor caches the full list in-process with a short TTL so
+// concurrent/repeat requests don't each hit the DB. This endpoint returns the
+// active-only subset; the browser also caches via Cache-Control, and clients
+// dedupe via React Query.
+async function getAllCapabilities(): Promise<CapabilityRef[]> {
+  const data = await getCapabilityCatalog();
+  return data
+    .filter((c) => c.isActive)
+    .map(({ id, name, category }) => ({ id, name, category }));
 }
 
 export async function GET(request: NextRequest) {
@@ -51,7 +42,7 @@ export async function GET(request: NextRequest) {
       return apiResponse({ capabilities: data });
     }
 
-    const data = await getAllCapabilities(Date.now());
+    const data = await getAllCapabilities();
 
     return apiResponse(
       { capabilities: data },

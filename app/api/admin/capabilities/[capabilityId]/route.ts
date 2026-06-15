@@ -4,6 +4,7 @@ import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
+import { invalidateCapabilityCatalog } from "@/lib/services/capabilityCatalog";
 
 export async function PUT(
   request: NextRequest,
@@ -27,6 +28,8 @@ export async function PUT(
       throw new Error("Capability not found");
     }
 
+    invalidateCapabilityCatalog();
+
     return apiResponse({ capability: result[0] });
   } catch (error) {
     return handleApiError(error);
@@ -47,6 +50,8 @@ export async function DELETE(
     await db
       .delete(companyCapabilitiesRef)
       .where(eq(companyCapabilitiesRef.id, capabilityId));
+
+    invalidateCapabilityCatalog();
 
     return apiResponse({ success: true });
   } catch (error) {

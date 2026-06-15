@@ -8,6 +8,7 @@ import {
 import { eq, asc, isNull } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
 import { companySummaryAndTaxonomySchema } from "@/lib/schemas/capabilitySuggestion";
+import { getCapabilityCatalog } from "@/lib/services/capabilityCatalog";
 
 // ---------------------------------------------------------------------------
 // Local taxonomy helpers (keyword scoring, no AI)
@@ -358,15 +359,8 @@ export async function generateCompanySummaryAndTaxonomy(
     hasPostcode: !!company.postcode,
   });
 
-  // Fetch existing capabilities from static list (direct Drizzle query)
-  const existingCapabilities = await db
-    .select({
-      id: companyCapabilitiesRef.id,
-      name: companyCapabilitiesRef.name,
-      category: companyCapabilitiesRef.category,
-    })
-    .from(companyCapabilitiesRef)
-    .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
+  // Fetch existing capabilities from static list (cached in-process catalog)
+  const existingCapabilities = await getCapabilityCatalog();
 
   if (!existingCapabilities || existingCapabilities.length === 0) {
     throw new Error("Failed to fetch capabilities: No capabilities found");

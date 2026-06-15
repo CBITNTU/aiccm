@@ -4,9 +4,9 @@ import type {
   AdminCompanyListParams,
   AdminCompanyListResponse,
   CompanyRecord,
-  MatchingResultRecord,
 } from "@/lib/api/types";
 import type { FetchUKTendersResponse, TenderFeedRecord } from "@/lib/api/types";
+import type { TenderMatchesResponse } from "@/lib/api/types";
 import {
   normalizeCompanyRecord,
   normalizeMatchingResultRecord,
@@ -697,6 +697,42 @@ export const api = {
       results: data.results.map((result) => normalizeMatchingResultRecord(result)),
     })),
 
+  // Unified tender matches (deep + basic, merged/filtered/paginated server-side)
+  getTenderMatches: (params: {
+    companyId: string;
+    tenderStatus?: string;
+    keyword?: string;
+    minScore?: number;
+    maxScore?: number;
+    showApplied?: string;
+    quickFilter?: string | null;
+    sortBy?: string;
+    sortDirection?: string;
+    page?: number;
+    pageSize?: number;
+  }) =>
+    apiCall<TenderMatchesResponse>("tenders/matches", {
+      method: "GET",
+      params: {
+        companyId: params.companyId,
+        ...(params.tenderStatus && { tenderStatus: params.tenderStatus }),
+        ...(params.keyword && { keyword: params.keyword }),
+        ...(params.minScore != null &&
+          params.minScore > 0 && { minScore: params.minScore }),
+        ...(params.maxScore != null &&
+          params.maxScore < 100 && { maxScore: params.maxScore }),
+        ...(params.showApplied &&
+          params.showApplied !== "all" && {
+            showApplied: params.showApplied,
+          }),
+        ...(params.quickFilter && { quickFilter: params.quickFilter }),
+        ...(params.sortBy && { sortBy: params.sortBy }),
+        ...(params.sortDirection && { sortDirection: params.sortDirection }),
+        ...(params.page && { page: params.page }),
+        ...(params.pageSize && { pageSize: params.pageSize }),
+      },
+    }),
+
   deleteMatchingResult: (resultId: string) =>
     apiCall<{ success: boolean }>(`matching-results/${resultId}`, {
       method: "DELETE",
@@ -827,25 +863,7 @@ export const api = {
         companies: number;
         projects: number;
       };
-      recentMatches: Record<string, unknown>[];
-    }>("dashboard", { method: "GET" }).then((data) => ({
-      ...data,
-      recentMatches: data.recentMatches.map((result) => {
-        const normalizedResult = normalizeMatchingResultRecord(result);
-        const companies = result.companies as Record<string, unknown> | null | undefined;
-        const companyName =
-          typeof companies?.companyName === "string"
-            ? companies.companyName
-            : undefined;
-
-        return {
-          ...normalizedResult,
-          companies: companyName ? { companyName } : undefined,
-        } satisfies MatchingResultRecord & {
-          companies?: { companyName?: string };
-        };
-      }),
-    })),
+    }>("dashboard", { method: "GET" }),
 
   // Admin - Stats
   adminGetStats: () =>

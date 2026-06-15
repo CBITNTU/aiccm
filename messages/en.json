@@ -1359,17 +1359,6 @@
       "emptyTitle": "No Performance Benchmark Available",
       "emptyDescription": "Click \"Analyze\" to generate your company's performance benchmark"
     },
-    "recentMatches": {
-      "title": "Recent Matches",
-      "description": "Latest matches for {companyName}",
-      "descriptionFallback": "Your latest tender matching opportunities",
-      "runAnalysis": "Run Analysis",
-      "viewAll": "View All",
-      "due": "Due:",
-      "notAvailable": "N/A",
-      "matchSuffix": "% Match",
-      "viewDetails": "View Details"
-    },
     "quickActions": {
       "manageCompanies": "Manage Companies",
       "manageCompaniesDesc": "Update your company profiles and capabilities",
@@ -1451,10 +1440,11 @@
     "deepResearchComplete": "Deep research complete.",
     "deepResearchError": "Could not run deep research",
     "deepResearchInProgress": "Analyzing with {model}…",
+    "deepResearchInProgressShort": "Deep research in progress…",
     "deepResearchNoCompany": "Select a company to run deep research for this tender.",
     "matchAnalysisPrompt": "Run deep research for a detailed AI match score for your company.",
     "deepResearchCached": "Using saved analysis — no new AI run needed.",
-    "reRunDeepResearch": "Re-run deep research ({model})",
+    "reRunDeepResearch": "Re-run deep research",
     "reRunDeepResearchAll": "Re-run all deep research"
   },
   "TenderMatching": {

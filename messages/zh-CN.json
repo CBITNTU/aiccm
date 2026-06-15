@@ -1359,17 +1359,6 @@
       "emptyTitle": "暂无绩效基准",
       "emptyDescription": "点击「分析」生成贵公司的绩效基准"
     },
-    "recentMatches": {
-      "title": "最近匹配",
-      "description": "{companyName} 的最新匹配",
-      "descriptionFallback": "您最新的招标匹配机会",
-      "runAnalysis": "运行分析",
-      "viewAll": "查看全部",
-      "due": "截止：",
-      "notAvailable": "暂无",
-      "matchSuffix": "% 匹配",
-      "viewDetails": "查看详情"
-    },
     "quickActions": {
       "manageCompanies": "管理公司",
       "manageCompaniesDesc": "更新公司简介与能力",
@@ -1451,10 +1440,11 @@
     "deepResearchComplete": "深度分析完成。",
     "deepResearchError": "无法运行深度分析",
     "deepResearchInProgress": "正在使用 {model} 分析…",
+    "deepResearchInProgressShort": "深度分析进行中…",
     "deepResearchNoCompany": "请选择公司以对此招标运行深度分析。",
     "matchAnalysisPrompt": "运行深度分析以获取针对您公司的详细 AI 匹配评分。",
     "deepResearchCached": "使用已保存的分析——无需重新运行 AI。",
-    "reRunDeepResearch": "重新运行深度分析（{model}）",
+    "reRunDeepResearch": "重新运行深度分析",
     "reRunDeepResearchAll": "重新运行全部深度分析"
   },
   "TenderMatching": {

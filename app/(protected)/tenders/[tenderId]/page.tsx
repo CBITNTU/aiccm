@@ -70,14 +70,17 @@ export default function TenderDetailPage() {
 
   const matchingModel = matchingConfig?.matchingModel ?? "AI model";
 
-  const loadMatchData = useCallback(async (companyId: string) => {
-    const matchResult = await api.getTenderMatch(tenderId, companyId);
-    if (matchResult.match) {
-      setMatchData(matchResult.match as MatchData);
-      return true;
-    }
-    return false;
-  }, [tenderId]);
+  const loadMatchData = useCallback(
+    async (companyId: string) => {
+      const matchResult = await api.getTenderMatch(tenderId, companyId);
+      if (matchResult.match) {
+        setMatchData(matchResult.match as MatchData);
+        return true;
+      }
+      return false;
+    },
+    [tenderId],
+  );
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -186,9 +189,7 @@ export default function TenderDetailPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">
-            {t("loading")}
-          </span>
+          <span className="ml-2 text-muted-foreground">{t("loading")}</span>
         </div>
       </div>
     );
@@ -215,7 +216,10 @@ export default function TenderDetailPage() {
   const formatBudget = (min?: number | null, max?: number | null) => {
     if (!min && !max) return t("budgetNotDisclosed");
     if (min && max)
-      return t("budgetRange", { min: min.toLocaleString(), max: max.toLocaleString() });
+      return t("budgetRange", {
+        min: min.toLocaleString(),
+        max: max.toLocaleString(),
+      });
     if (min) return t("budgetFrom", { amount: min.toLocaleString() });
     if (max) return t("budgetUpTo", { amount: max.toLocaleString() });
     return t("budgetNotDisclosed");
@@ -259,7 +263,8 @@ export default function TenderDetailPage() {
 
   const sourceLabel = (() => {
     if (externalNoticeLink.source === "ted") return t("sourceTed");
-    if (externalNoticeLink.source === "find-a-tender") return t("sourceFindATender");
+    if (externalNoticeLink.source === "find-a-tender")
+      return t("sourceFindATender");
     if (externalNoticeLink.source === "contracts-finder")
       return t("sourceContractsFinder");
     return null;
@@ -341,9 +346,7 @@ export default function TenderDetailPage() {
               {tender.deadline && isDeadlineSoon(tender.deadline) && (
                 <Badge variant="destructive">{t("deadlineSoon")}</Badge>
               )}
-              {tender.status && (
-                <TenderStatusBadge status={tender.status} />
-              )}
+              {tender.status && <TenderStatusBadge status={tender.status} />}
               {matchData && (
                 <Badge
                   variant={getScoreVariant(matchData.overallScore ?? 0)}
@@ -378,7 +381,9 @@ export default function TenderDetailPage() {
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">{t("published")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("published")}
+                </p>
                 <p className="font-medium">
                   {tender.publicationDate
                     ? formatDate(tender.publicationDate)
@@ -422,10 +427,10 @@ export default function TenderDetailPage() {
                   <Target className="w-4 h-4 mr-2" />
                 )}
                 {deepResearching
-                  ? t("deepResearchInProgress", { model: matchingModel })
+                  ? t("deepResearchInProgressShort")
                   : matchData
-                    ? t("reRunDeepResearch", { model: matchingModel })
-                    : t("deepResearchWithModel", { model: matchingModel })}
+                    ? t("reRunDeepResearch")
+                    : t("deepResearch")}
               </Button>
             )}
             {externalNoticeLink.url && (
@@ -462,7 +467,7 @@ export default function TenderDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-blue-50 p-4 rounded-lg border border-blue-200">
                 {tender.aiSummary}
               </p>
             </CardContent>
@@ -528,19 +533,25 @@ export default function TenderDetailPage() {
       </div>
 
       {/* Match Analysis Section */}
-      {effectiveCompanyId && !matchData && !deepResearching && !isRestricted && (
-        <Card className="mb-8 border-dashed">
-          <CardContent className="py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              {t("matchAnalysisPrompt")}
-            </p>
-            <Button onClick={() => runDeepResearch(false)} className="shrink-0">
-              <Target className="w-4 h-4 mr-2" />
-              {t("deepResearchWithModel", { model: matchingModel })}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {effectiveCompanyId &&
+        !matchData &&
+        !deepResearching &&
+        !isRestricted && (
+          <Card className="mb-8 border-dashed">
+            <CardContent className="py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                {t("matchAnalysisPrompt")}
+              </p>
+              <Button
+                onClick={() => runDeepResearch(false)}
+                className="shrink-0"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                {t("deepResearch")}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
       {matchData && (
         <>
@@ -555,8 +566,12 @@ export default function TenderDetailPage() {
               <CardContent>
                 {(() => {
                   const scoreExplanations =
-                    ((matchData.aiAnalysis as { scoreExplanations?: unknown } | null | undefined)
-                      ?.scoreExplanations as {
+                    ((
+                      matchData.aiAnalysis as
+                        | { scoreExplanations?: unknown }
+                        | null
+                        | undefined
+                    )?.scoreExplanations as {
                       capability?: string;
                       experience?: string;
                       location?: string;

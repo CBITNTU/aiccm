@@ -9,11 +9,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type {
-  BenchmarkResultFile,
-  CaseAggregate,
-  ScoreAxis,
-} from "./types";
+import type { BenchmarkResultFile, ScoreAxis } from "./types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -71,12 +67,14 @@ function padLeft(s: string, w: number): string {
 }
 
 function printHorizontalRule(widths: number[]) {
-  console.log(
-    "+" + widths.map((w) => "-".repeat(w + 2)).join("+") + "+",
-  );
+  console.log("+" + widths.map((w) => "-".repeat(w + 2)).join("+") + "+");
 }
 
-function printRow(cells: string[], widths: number[], align: ("l" | "r" | "c")[] = []) {
+function printRow(
+  cells: string[],
+  widths: number[],
+  align: ("l" | "r" | "c")[] = [],
+) {
   const padded = cells.map((cell, i) => {
     const w = widths[i];
     const a = align[i] ?? "l";
@@ -88,14 +86,7 @@ function printRow(cells: string[], widths: number[], align: ("l" | "r" | "c")[] 
 }
 
 function summaryTable(loaded: Loaded[]) {
-  const headers = [
-    "Model",
-    "Schema",
-    "Assert",
-    "Avg ms",
-    "p95 ms",
-    "Repeats",
-  ];
+  const headers = ["Model", "Schema", "Assert", "Avg ms", "p95 ms", "Repeats"];
   const rows: string[][] = loaded.map((l) => [
     shortLabel(l.data.model),
     pct(l.data.summary.schemaValidRate),
@@ -203,7 +194,9 @@ function meanAxisTable(loaded: Loaded[]) {
 }
 
 function failureReport(loaded: Loaded[]) {
-  console.log("\n## Behaviour patterns (mean cap score, lower-is-better for mismatches)\n");
+  console.log(
+    "\n## Behaviour patterns (mean cap score, lower-is-better for mismatches)\n",
+  );
 
   const interesting = [
     { id: "it-vs-construction-mismatch", expect: "cap → 0" },
@@ -214,7 +207,10 @@ function failureReport(loaded: Loaded[]) {
     { id: "large-tender-small-company", expect: "cap ≤ 60, exp ≤ 40" },
   ];
 
-  const headers = ["Case (expected)", ...loaded.map((l) => shortLabel(l.data.model))];
+  const headers = [
+    "Case (expected)",
+    ...loaded.map((l) => shortLabel(l.data.model)),
+  ];
   const rows: string[][] = interesting.map(({ id, expect }) => {
     const label = `${id}  (${expect})`;
     const cells = [label];
@@ -224,7 +220,9 @@ function failureReport(loaded: Loaded[]) {
         cells.push("—");
         continue;
       }
-      cells.push(`cap=${c.mean.capability.toFixed(0)} exp=${c.mean.experience.toFixed(0)}`);
+      cells.push(
+        `cap=${c.mean.capability.toFixed(0)} exp=${c.mean.experience.toFixed(0)}`,
+      );
     }
     return cells;
   });
@@ -243,7 +241,8 @@ function failureReport(loaded: Loaded[]) {
 
 function main() {
   const args = process.argv.slice(2);
-  const loaded = args.length > 0 ? args.map((f) => load(resolve(f))) : loadAllFromDir();
+  const loaded =
+    args.length > 0 ? args.map((f) => load(resolve(f))) : loadAllFromDir();
 
   if (loaded.length === 0) {
     console.error("No result files found.");
@@ -253,7 +252,9 @@ function main() {
   console.log("# Matching benchmark summary");
   console.log(`Files: ${loaded.length}`);
   loaded.forEach((l) => {
-    console.log(`  - ${l.file}  (git ${l.data.git}, prompt ${l.data.promptVersion})`);
+    console.log(
+      `  - ${l.file}  (git ${l.data.git}, prompt ${l.data.promptVersion})`,
+    );
   });
 
   summaryTable(loaded);

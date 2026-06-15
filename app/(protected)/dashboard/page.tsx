@@ -8,19 +8,16 @@ import { useOrg } from "@/hooks/useOrg";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
 import { api } from "@/lib/api/client";
-import { TenderDetailDialog } from "@/components/TenderDetailDialog";
 import { TeamMembersCard } from "@/components/company/TeamMembersCard";
 import { VerificationBanner } from "@/components/company/VerificationBanner";
 import { DashboardSkeleton } from "./_components/skeletons/DashboardSkeleton";
 import { StatsCards } from "./_components/StatsCards";
 import { PerformanceBenchmarkCard } from "./_components/PerformanceBenchmarkCard";
 import { CompanyOverviewCard } from "./_components/CompanyOverviewCard";
-import { RecentMatchesSection } from "./_components/RecentMatchesSection";
 import { QuickActionsSection } from "./_components/QuickActionsSection";
 import type {
   Company,
   DashboardStats,
-  MatchingResult,
   CompanyAnalysis,
 } from "./_components/types";
 
@@ -42,13 +39,10 @@ export default function DashboardPage() {
     matchingResults: dashboardData?.stats.matchingResults ?? 0,
     companies: dashboardData?.stats.companies ?? 0,
     projects: dashboardData?.stats.projects ?? 0,
-    recentMatches: dashboardData?.recentMatches ?? [],
   };
 
   const [companyAnalysis, setCompanyAnalysis] =
     useState<CompanyAnalysis | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState<MatchingResult | null>(null);
   const [enrichedCompany, setEnrichedCompany] = useState<Company | null>(null);
 
   // Keep enrichedCompany in sync with selectedOrg
@@ -115,10 +109,6 @@ export default function DashboardPage() {
 
   const displayCompany = enrichedCompany ?? selectedOrg;
 
-  const filteredMatches = selectedOrg
-    ? stats.recentMatches.filter((match) => match.companyId === selectedOrg.id)
-    : stats.recentMatches;
-
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -163,27 +153,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {filteredMatches.length > 0 && (
-        <RecentMatchesSection
-          matches={filteredMatches}
-          companyName={selectedOrg?.companyName || undefined}
-          onViewDetails={(match) => {
-            setSelectedMatch(match);
-            setDialogOpen(true);
-          }}
-        />
-      )}
-
       <QuickActionsSection />
-
-      {selectedMatch && (
-        <TenderDetailDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          result={selectedMatch}
-          companyId={selectedOrg?.id}
-        />
-      )}
 
       <BusinessChatbot
         companyData={

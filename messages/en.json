@@ -993,7 +993,8 @@
     "emptySearch": "No capabilities match your search.",
     "empty": "No capabilities found. Create your first capability.",
     "total": "Total: {count} capabilities across {categories} categories",
-    "resetConfirm": "⚠️ WARNING: This will DELETE ALL capabilities and company-capability links!\n\nThis action cannot be undone. All companies will have their capabilities cleared.\n\nThe editable taxonomy will then be restored from the read-only seed table (populated by the CSV migration).\n\nAre you sure you want to proceed?",
+    "resetConfirm": "⚠️ WARNING: This will DELETE ALL capabilities and company-capability links!\n\nThis action cannot be undone. EVERY company will lose its approved competency selections AND any pending (draft) changes.\n\nThe editable taxonomy will then be restored from the read-only seed table (populated by the CSV migration).\n\nAre you sure you want to proceed?",
+    "resetConfirmTypePrompt": "This permanently wipes every company's competency selections and drafts. Type RESET (in capitals) to confirm.",
     "deleteDialog": {
       "title": "Delete Capability",
       "description": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
@@ -1034,6 +1035,7 @@
       "resetSuccessSeeded": "✅ Reset complete. Deleted {deleted} capabilities and {links} links. Reseeded {reseeded} from the seed table.",
       "resetSuccessEmpty": "✅ Reset complete. Deleted {deleted} capabilities and {links} links. Seed table is empty — run the taxonomy migration to populate it.",
       "resetFailed": "Failed to reset capabilities",
+      "resetCancelled": "Reset cancelled",
       "regenerateQueued": "Queued {jobs} AI processing jobs for {companies} companies",
       "regenerateFailed": "Failed to start regeneration"
     }

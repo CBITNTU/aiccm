@@ -38,6 +38,16 @@ export function DraftRelationChanges({
   loading = false,
 }: DraftRelationChangesProps) {
   const t = useTranslations("CompanyPage");
+
+  // Once names have loaded, drop ids that don't resolve — these are orphans
+  // (e.g. left behind by an admin capability reset) and would otherwise render
+  // as raw UUIDs. While loading we keep everything so valid ids aren't hidden.
+  const visibleAdded = loading ? added : added.filter((id) => id in nameMap);
+  const visibleRemoved = loading ? removed : removed.filter((id) => id in nameMap);
+
+  if (!loading && visibleAdded.length === 0 && visibleRemoved.length === 0) {
+    return null;
+  }
   if (added.length === 0 && removed.length === 0) return null;
 
   const getName = (id: string) => nameMap[id] ?? id;
@@ -47,9 +57,9 @@ export function DraftRelationChanges({
       {loading && (
         <p className="text-xs text-amber-600">{t("draftIndicator.loading")}</p>
       )}
-      {added.length > 0 && (
+      {visibleAdded.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {added.map((id) => (
+          {visibleAdded.map((id) => (
             <Badge
               key={id}
               variant="outline"
@@ -60,9 +70,9 @@ export function DraftRelationChanges({
           ))}
         </div>
       )}
-      {removed.length > 0 && (
+      {visibleRemoved.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {removed.map((id) => (
+          {visibleRemoved.map((id) => (
             <Badge
               key={id}
               variant="outline"

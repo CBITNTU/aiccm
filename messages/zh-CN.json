@@ -993,7 +993,8 @@
     "emptySearch": "没有符合搜索的能力。",
     "empty": "暂无能力，请创建第一项。",
     "total": "共 {count} 项能力，分布在 {categories} 个类别",
-    "resetConfirm": "⚠️ 警告：将删除全部能力及公司与能力的关联！\n\n此操作不可撤销，所有公司的能力将被清空。\n\n可编辑分类将从只读种子表恢复（由 CSV 迁移填充）。\n\n确定继续？",
+    "resetConfirm": "⚠️ 警告：将删除全部能力及公司与能力的关联！\n\n此操作不可撤销，每家公司已批准的能力选择以及任何待审（草稿）更改都将被清空。\n\n可编辑分类将从只读种子表恢复（由 CSV 迁移填充）。\n\n确定继续？",
+    "resetConfirmTypePrompt": "此操作将永久清除每家公司的能力选择和草稿。请输入 RESET（大写）以确认。",
     "deleteDialog": {
       "title": "删除能力",
       "description": "确定要删除「{name}」吗？此操作不可撤销。",
@@ -1034,6 +1035,7 @@
       "resetSuccessSeeded": "✅ 重置完成。已删除 {deleted} 项能力与 {links} 条关联，并从种子表重新填充 {reseeded} 项。",
       "resetSuccessEmpty": "✅ 重置完成。已删除 {deleted} 项能力与 {links} 条关联。种子表为空 — 请运行分类迁移以填充。",
       "resetFailed": "重置能力失败",
+      "resetCancelled": "已取消重置",
       "regenerateQueued": "已为 {companies} 家公司排队 {jobs} 个 AI 处理任务",
       "regenerateFailed": "启动重新生成失败"
     }

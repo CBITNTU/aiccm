@@ -12,6 +12,8 @@ interface ResultsHeaderProps {
   totalPages?: number;
   loading?: boolean;
   onRefresh?: () => void;
+  /** Noun for the counted items (defaults to "tenders"). */
+  unit?: string;
 }
 
 export function ResultsHeader({
@@ -22,6 +24,7 @@ export function ResultsHeader({
   totalPages,
   loading,
   onRefresh,
+  unit,
 }: ResultsHeaderProps) {
   const t = useTranslations("ResultsHeader");
   return (
@@ -33,7 +36,7 @@ export function ResultsHeader({
             {start}-{end}
           </span>{" "}
           {t("of")} <span className="font-medium text-foreground">{total}</span>{" "}
-          {t("tenders")}
+          {unit ?? t("tenders")}
         </p>
         {currentPage && totalPages && totalPages > 1 && (
           <p className="text-sm text-muted-foreground">

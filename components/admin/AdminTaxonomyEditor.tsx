@@ -383,6 +383,14 @@ const AdminTaxonomyEditor = () => {
 
     if (!confirmReset) return;
 
+    // Type-to-confirm guardrail: this destructively wipes every company's
+    // approved selections AND pending drafts, so require an explicit keyword.
+    const typed = window.prompt(t("resetConfirmTypePrompt"));
+    if (typed?.trim().toUpperCase() !== "RESET") {
+      toast.info(t("toasts.resetCancelled"));
+      return;
+    }
+
     try {
       setIsRegenerating(true);
 

@@ -6,8 +6,8 @@ import {
   handleApiError,
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { companies, tenders, matchingResults, virtualOrganizations } from "@/lib/db/schema/app";
-import { eq, inArray, desc, count } from "drizzle-orm";
+import { tenders, matchingResults, virtualOrganizations } from "@/lib/db/schema/app";
+import { inArray, count } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,53 +20,15 @@ export async function GET(request: NextRequest) {
     const tendersCountResult = await db.select({ count: count() }).from(tenders);
     const totalTenders = tendersCountResult[0]?.count || 0;
 
-    // Fetch matching results for user's companies
-    let recentMatches: Record<string, unknown>[] = [];
+    // Count matching results for user's companies
     let matchingResultsCount = 0;
 
     if (companyIds.length > 0) {
-      // Count total matching results
       const countResult = await db
         .select({ count: count() })
         .from(matchingResults)
         .where(inArray(matchingResults.companyId, companyIds));
       matchingResultsCount = countResult[0]?.count || 0;
-
-      // Fetch recent matches with joined data
-      const matchData = await db
-        .select({
-          match: matchingResults,
-          tenderTitle: tenders.title,
-          tenderBuyer: tenders.buyer,
-          tenderDeadline: tenders.deadline,
-          tenderDescription: tenders.description,
-          tenderLocation: tenders.location,
-          tenderBudgetMin: tenders.budgetMin,
-          tenderBudgetMax: tenders.budgetMax,
-          companyName: companies.companyName,
-        })
-        .from(matchingResults)
-        .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
-        .innerJoin(companies, eq(matchingResults.companyId, companies.id))
-        .where(inArray(matchingResults.companyId, companyIds))
-        .orderBy(desc(matchingResults.createdAt))
-        .limit(5);
-
-      recentMatches = matchData.map((row) => ({
-        ...row.match,
-        tenders: {
-          title: row.tenderTitle,
-          buyer: row.tenderBuyer,
-          deadline: row.tenderDeadline,
-          description: row.tenderDescription,
-          location: row.tenderLocation,
-          budgetMin: row.tenderBudgetMin,
-          budgetMax: row.tenderBudgetMax,
-        },
-        companies: {
-          companyName: row.companyName,
-        },
-      }));
     }
 
     // Fetch projects count
@@ -86,7 +48,6 @@ export async function GET(request: NextRequest) {
         companies: companyIds.length,
         projects: projectsCount,
       },
-      recentMatches,
     });
   } catch (error) {
     return handleApiError(error);

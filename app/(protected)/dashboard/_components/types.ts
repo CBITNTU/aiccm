@@ -1,4 +1,3 @@
-import type { MatchingResultRecord } from "@/lib/api/types";
 export type Company = import("@/lib/api/types").CompanyRecord;
 
 export interface DashboardStats {
@@ -6,14 +5,7 @@ export interface DashboardStats {
   matchingResults: number;
   companies: number;
   projects: number;
-  recentMatches: MatchingResult[];
 }
-
-export type MatchingResult = MatchingResultRecord & {
-  companies?: {
-    companyName?: string;
-  };
-};
 
 export interface CompanyAnalysis {
   performanceBenchmark: {

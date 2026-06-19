@@ -105,11 +105,6 @@ function expectedBandForDiagonal(c: BenchmarkCase): "high" | "medium" | "low" {
   return "high";
 }
 
-function renderTenderLine(c: BenchmarkCase, idx: number): string {
-  const tenderId = `t${idx + 1}_${c.id.slice(0, 24)}`;
-  return `--- tender ${tenderId} ---\n${c.tender.trim()}`;
-}
-
 interface BundleRun {
   caseId: string;
   expected: "high" | "medium" | "low";
@@ -168,7 +163,9 @@ async function runOnce(
       };
     }
 
-    const diagonal = object.results.find((r) => r.tenderId === diagonalTenderId);
+    const diagonal = object.results.find(
+      (r) => r.tenderId === diagonalTenderId,
+    );
     const offDiag = object.results.filter(
       (r) => r.tenderId !== diagonalTenderId,
     );
@@ -206,7 +203,9 @@ async function main() {
 
   console.log(`Model:        ${modelId}${noThink ? " (+/no_think)" : ""}`);
   console.log(`Anchors:      ${cases.length}`);
-  console.log(`Bundle size:  ${bundleSize} (1 diagonal + ${bundleSize - 1} distractors)`);
+  console.log(
+    `Bundle size:  ${bundleSize} (1 diagonal + ${bundleSize - 1} distractors)`,
+  );
   console.log(`Repeats:      ${repeats}`);
   console.log(`Total calls:  ${cases.length * repeats}`);
   console.log(`Total pairs:  ${cases.length * repeats * bundleSize}`);
@@ -247,10 +246,7 @@ async function main() {
     if (r.diagonalBand === "low" && r.expected === "high") diagLow_expHigh++;
   }
 
-  const offHighs = validRuns.reduce(
-    (s, r) => s + (r.offDiagonalHighs ?? 0),
-    0,
-  );
+  const offHighs = validRuns.reduce((s, r) => s + (r.offDiagonalHighs ?? 0), 0);
   const offTotals = validRuns.reduce(
     (s, r) => s + (r.offDiagonalTotal ?? 0),
     0,
@@ -260,13 +256,12 @@ async function main() {
   const avgLatency =
     latencies.length === 0
       ? 0
-      : Math.round(
-          latencies.reduce((s, x) => s + x, 0) / latencies.length,
-        );
+      : Math.round(latencies.reduce((s, x) => s + x, 0) / latencies.length);
   const sortedLat = [...latencies].sort((a, b) => a - b);
   const p95 =
-    sortedLat[Math.min(sortedLat.length - 1, Math.floor(0.95 * sortedLat.length))] ??
-    0;
+    sortedLat[
+      Math.min(sortedLat.length - 1, Math.floor(0.95 * sortedLat.length))
+    ] ?? 0;
   const totalPairs = validRuns.reduce(
     (s, r) => s + 1 + (r.offDiagonalTotal ?? 0),
     0,
@@ -276,18 +271,26 @@ async function main() {
     totalTimeMs > 0 ? (totalPairs / (totalTimeMs / 1000)).toFixed(2) : "—";
 
   console.log("\n────────────────────────────────────────");
-  console.log(`Schema-valid calls:   ${valid}/${total} (${((valid / total) * 100).toFixed(1)}%)`);
-  console.log(`Diagonal band agree:  ${diagAgree}/${validRuns.length} (${validRuns.length > 0 ? ((diagAgree / validRuns.length) * 100).toFixed(1) : 0}%)`);
+  console.log(
+    `Schema-valid calls:   ${valid}/${total} (${((valid / total) * 100).toFixed(1)}%)`,
+  );
+  console.log(
+    `Diagonal band agree:  ${diagAgree}/${validRuns.length} (${validRuns.length > 0 ? ((diagAgree / validRuns.length) * 100).toFixed(1) : 0}%)`,
+  );
   console.log(`  exp=high → got high: ${diagHigh_expHigh}`);
   console.log(`  exp=low  → got high: ${diagHigh_expLow}  (false positive)`);
   console.log(`  exp=high → got low : ${diagLow_expHigh}  (false negative)`);
-  console.log(`Off-diagonal highs:   ${offHighs}/${offTotals} (${offTotals > 0 ? ((offHighs / offTotals) * 100).toFixed(1) : 0}%) — should be low`);
+  console.log(
+    `Off-diagonal highs:   ${offHighs}/${offTotals} (${offTotals > 0 ? ((offHighs / offTotals) * 100).toFixed(1) : 0}%) — should be low`,
+  );
   console.log(`Avg latency/call:     ${avgLatency}ms`);
   console.log(`p95 latency/call:     ${p95}ms`);
   console.log(`Throughput:           ${pairsPerSecond} pairs/sec`);
   if (Number(pairsPerSecond) > 0) {
     const for500 = Math.round(500 / Number(pairsPerSecond));
-    console.log(`→ 500 pairs would take ~${for500}s (${(for500 / 60).toFixed(1)} min)`);
+    console.log(
+      `→ 500 pairs would take ~${for500}s (${(for500 / 60).toFixed(1)} min)`,
+    );
   }
 
   // ---- Persist -------------------------------------------------------------

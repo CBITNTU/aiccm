@@ -323,6 +323,51 @@ export function normalizeMatchingResultRecord(
   };
 }
 
+// Unified tender-match types — server merges deep (matching_results) and basic
+// (semantic) matches into one interleaved, paginated, 0%-filtered list.
+interface UnifiedMatchCommon {
+  tenderId: string;
+  title: string;
+  buyer: string;
+  description: string | null;
+  location: string | null;
+  deadline: string | null;
+  status: string | null;
+  budgetMin: number | null;
+  budgetMax: number | null;
+  /** Effective match score, 0-100. Deep: overallScore. Basic: round(similarity*100). */
+  score: number;
+}
+
+export interface UnifiedMatchDeep extends UnifiedMatchCommon {
+  variant: "deep";
+  /** matching_results.id — React key + bookmark/delete target. */
+  resultId: string;
+  capabilityScore: number;
+  experienceScore: number;
+  locationScore: number;
+  certificationScore: number;
+  matchReasons: string[];
+  isBookmarked: boolean;
+  isApplied: boolean;
+}
+
+export interface UnifiedMatchBasic extends UnifiedMatchCommon {
+  variant: "basic";
+}
+
+export type UnifiedMatch = UnifiedMatchDeep | UnifiedMatchBasic;
+
+export interface TenderMatchesResponse {
+  results: UnifiedMatch[];
+  /** Total matched tenders (deep filtered + basic overlay) for the current filters. */
+  matchedCount: number;
+  /** Total deep-researched tenders for this company+status, regardless of score/filters. */
+  deepResearchedCount: number;
+  page: number;
+  pageSize: number;
+}
+
 // Verification review types
 export interface ReviewFeedbackItem {
   section: string;

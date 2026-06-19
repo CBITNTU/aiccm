@@ -1,10 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
-import { getBatchStatus } from "@/lib/services/queueService";
+import { getBatchStatus, cancelBatch } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
-import { db } from "@/lib/db";
-import { batchJobs, processingQueue } from "@/lib/db/schema/app";
-import { eq, and, inArray } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,35 +32,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Only allow cancelling if batch is still processing
-    if (batchStatus.status !== "processing") {
-      return apiError(`Batch is already ${batchStatus.status}`, 400);
-    }
+    // Cancel: deletes pending queue items, marks in-flight + batch as cancelled.
+    // Idempotent — if the batch already finished, this is a no-op and we still
+    // return 200 so the client converges on the terminal state.
+    const result = await cancelBatch(batchId);
 
-    // Mark batch as failed (cancelled)
-    await db
-      .update(batchJobs)
-      .set({ status: "failed", updatedAt: new Date() })
-      .where(eq(batchJobs.id, batchId));
-
-    // Cancel all pending/processing jobs in this batch
-    const cancelResult = await db
-      .update(processingQueue)
-      .set({
-        status: "failed",
-        errorMessage: "Cancelled by user",
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(processingQueue.batchId, batchId),
-          inArray(processingQueue.status, ["pending", "processing"]),
-        ),
-      )
-      .returning({ id: processingQueue.id });
-
-    const cancelledCount = cancelResult.length;
-    console.log(`✅ Cancelled ${cancelledCount} jobs for batch ${batchId}`);
+    console.log(
+      result.cancelled
+        ? `✅ Cancelled batch ${batchId}: deleted ${result.deletedPending} pending, cancelled ${result.cancelledInFlight} in-flight`
+        : `ℹ️ Cancel no-op for batch ${batchId} — already ${result.status}`,
+    );
 
     await logApiEvent(request, {
       actionType: "matching_cancelled",
@@ -71,13 +49,23 @@ export async function POST(request: NextRequest) {
       userEmail: user.email || undefined,
       entityType: "batch_job",
       entityId: batchId,
-      details: { cancelled_jobs: cancelledCount },
+      details: {
+        cancelled: result.cancelled,
+        deleted_pending: result.deletedPending,
+        cancelled_in_flight: result.cancelledInFlight,
+        status: result.status,
+      },
     }).catch(() => {});
 
     return apiResponse({
-      message: "Matching cancelled successfully",
-      batchId: batchId,
-      cancelledJobs: cancelledCount,
+      message: result.cancelled
+        ? "Matching cancelled successfully"
+        : `Batch already ${result.status}`,
+      batchId,
+      cancelled: result.cancelled,
+      status: result.status,
+      deletedPending: result.deletedPending,
+      cancelledInFlight: result.cancelledInFlight,
     });
   } catch (error) {
     console.error("Error cancelling matching:", error);

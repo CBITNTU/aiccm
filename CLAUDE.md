@@ -240,11 +240,12 @@ Schema is defined in Drizzle format under `lib/db/schema/`. Tables use snake_cas
 
 ### Internationalization (i18n)
 
-The app uses **`next-intl`** for all user-facing strings. Configuration lives in `i18n/request.ts` and translations in `messages/en.json`.
+The app uses **`next-intl`** for all user-facing strings. Configuration lives in `i18n/request.ts`, the locale list in `i18n/locales.ts`, and translations in `messages/<locale>.json`.
 
-- **Only English is supported right now.** `locales = ["en"]` in `i18n/request.ts`. Do not add other locale files or wire up additional locales unless explicitly asked.
-- **Any new feature must use `next-intl` for user-facing strings** — no hardcoded UI text. Add the key to `messages/en.json` and read it via `useTranslations("Namespace")` in client components or `getTranslations("Namespace")` in server components.
-- **Namespacing**: group keys by component or feature name, matching the existing style in `en.json` (e.g. `Header`, `HeroSection`, `Onboarding`, `Auth`).
+- **Two locales are supported: English (`en`, default) and Simplified Chinese (`zh-CN`).** They are declared in `i18n/locales.ts` (`locales = ["en", "zh-CN"]`). Do not add further locales unless explicitly asked.
+- **Always keep both locale files in sync.** Every user-facing key you add, rename, or remove must be applied to **both** `messages/en.json` **and** `messages/zh-CN.json` — add the Simplified Chinese translation, never leave a key English-only or present in just one file. The two files must always have the same set of keys.
+- **Any new feature must use `next-intl` for user-facing strings** — no hardcoded UI text. Add the key to both locale files and read it via `useTranslations("Namespace")` in client components or `getTranslations("Namespace")` in server components.
+- **Namespacing**: group keys by component or feature name, matching the existing style in `en.json` (e.g. `Header`, `HeroSection`, `Onboarding`, `Auth`). Use the same namespace and key in every locale file.
 - **Migration status** — only these areas have been migrated so far:
   - Landing page (`app/page.tsx`, `components/layout/HeroSection.tsx`, `components/layout/Header.tsx`)
   - Auth pages (`app/auth/**`)
@@ -264,12 +265,22 @@ export function SaveButton() {
 }
 ```
 
-And in `messages/en.json`:
+And add the key to **both** locale files:
 
 ```json
+// messages/en.json
 {
   "TenderActions": {
     "save": "Save tender"
+  }
+}
+```
+
+```json
+// messages/zh-CN.json
+{
+  "TenderActions": {
+    "save": "保存招标"
   }
 }
 ```

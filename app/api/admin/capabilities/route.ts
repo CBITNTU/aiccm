@@ -4,6 +4,7 @@ import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { asc } from "drizzle-orm";
+import { invalidateCapabilityCatalog } from "@/lib/services/capabilityCatalog";
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest) {
       .insert(companyCapabilitiesRef)
       .values(body)
       .returning();
+
+    invalidateCapabilityCatalog();
 
     return apiResponse({ capability: result[0] });
   } catch (error) {

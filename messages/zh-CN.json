@@ -993,7 +993,8 @@
     "emptySearch": "没有符合搜索的能力。",
     "empty": "暂无能力，请创建第一项。",
     "total": "共 {count} 项能力，分布在 {categories} 个类别",
-    "resetConfirm": "⚠️ 警告：将删除全部能力及公司与能力的关联！\n\n此操作不可撤销，所有公司的能力将被清空。\n\n可编辑分类将从只读种子表恢复（由 CSV 迁移填充）。\n\n确定继续？",
+    "resetConfirm": "⚠️ 警告：将删除全部能力及公司与能力的关联！\n\n此操作不可撤销，每家公司已批准的能力选择以及任何待审（草稿）更改都将被清空。\n\n可编辑分类将从只读种子表恢复（由 CSV 迁移填充）。\n\n确定继续？",
+    "resetConfirmTypePrompt": "此操作将永久清除每家公司的能力选择和草稿。请输入 RESET（大写）以确认。",
     "deleteDialog": {
       "title": "删除能力",
       "description": "确定要删除「{name}」吗？此操作不可撤销。",
@@ -1034,6 +1035,7 @@
       "resetSuccessSeeded": "✅ 重置完成。已删除 {deleted} 项能力与 {links} 条关联，并从种子表重新填充 {reseeded} 项。",
       "resetSuccessEmpty": "✅ 重置完成。已删除 {deleted} 项能力与 {links} 条关联。种子表为空 — 请运行分类迁移以填充。",
       "resetFailed": "重置能力失败",
+      "resetCancelled": "已取消重置",
       "regenerateQueued": "已为 {companies} 家公司排队 {jobs} 个 AI 处理任务",
       "regenerateFailed": "启动重新生成失败"
     }
@@ -1359,17 +1361,6 @@
       "emptyTitle": "暂无绩效基准",
       "emptyDescription": "点击「分析」生成贵公司的绩效基准"
     },
-    "recentMatches": {
-      "title": "最近匹配",
-      "description": "{companyName} 的最新匹配",
-      "descriptionFallback": "您最新的招标匹配机会",
-      "runAnalysis": "运行分析",
-      "viewAll": "查看全部",
-      "due": "截止：",
-      "notAvailable": "暂无",
-      "matchSuffix": "% 匹配",
-      "viewDetails": "查看详情"
-    },
     "quickActions": {
       "manageCompanies": "管理公司",
       "manageCompaniesDesc": "更新公司简介与能力",
@@ -1451,10 +1442,11 @@
     "deepResearchComplete": "深度分析完成。",
     "deepResearchError": "无法运行深度分析",
     "deepResearchInProgress": "正在使用 {model} 分析…",
+    "deepResearchInProgressShort": "深度分析进行中…",
     "deepResearchNoCompany": "请选择公司以对此招标运行深度分析。",
     "matchAnalysisPrompt": "运行深度分析以获取针对您公司的详细 AI 匹配评分。",
     "deepResearchCached": "使用已保存的分析——无需重新运行 AI。",
-    "reRunDeepResearch": "重新运行深度分析（{model}）",
+    "reRunDeepResearch": "重新运行深度分析",
     "reRunDeepResearchAll": "重新运行全部深度分析"
   },
   "TenderMatching": {
@@ -1464,10 +1456,9 @@
     "noResultsDescription": "该公司暂无招标匹配结果。点击\"运行分析\"以分析可用招标。",
     "noResultsDescriptionBasic": "暂无语义匹配结果。请更新公司资料与能力后刷新。您也可以运行深度分析以获取详细 AI 评分。",
     "noResultsFiltered": "当前筛选条件下未找到匹配结果。请调整筛选条件后重试。",
-    "basicMatchBadge": "基础匹配",
-    "basicScore": "语义评分",
-    "viewDetails": "查看详情",
-    "deepResearch": "深度分析",
+    "noMatchesTitle": "暂无相关匹配",
+    "noStrongMatches": "我们已将您的资料与 {count} 条公开招标进行比对，但暂无相关匹配。请更新能力后刷新，或运行深度分析以获取详细 AI 评分。",
+    "matchesUnit": "条匹配",
     "deepResearchAll": "深度分析（全部）",
     "deepResearchQueued": "深度分析已加入队列——分析完成后将显示结果。",
     "deepResearchError": "无法加入深度分析队列",
@@ -1547,6 +1538,10 @@
   "TenderMatchCard": {
     "applied": "已申请",
     "saved": "已保存",
+    "deepResearchTag": "深度分析",
+    "basicMatchBadge": "基础匹配",
+    "basicNoBreakdownHint": "运行深度分析以获取能力、经验与资质评分",
+    "deepResearch": "深度分析",
     "tenderClosed": "该招标已截止",
     "capability": "能力：",
     "experience": "经验：",

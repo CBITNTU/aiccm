@@ -8,6 +8,8 @@ export const queryKeys = {
     ["tenders", filters] as const,
   matchingResults: (companyId: string, filters?: Record<string, unknown>) =>
     ["matchingResults", companyId, filters] as const,
+  tenderMatches: (companyId: string, filters?: Record<string, unknown>) =>
+    ["tenderMatches", companyId, filters] as const,
   basicMatchForCompany: (companyId: string, filters?: Record<string, unknown>) =>
     ["basicMatch", companyId, filters] as const,
   savedTenders: (companyId: string) => ["savedTenders", companyId] as const,

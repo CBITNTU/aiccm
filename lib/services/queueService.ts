@@ -29,6 +29,12 @@ export interface EnqueueJobOptions {
   metadata?: Record<string, unknown>; // For job-specific options (e.g., fullRegeneration)
 }
 
+export type BatchJobStatus =
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
 export interface BatchStatus {
   id: string;
   batchType: string;
@@ -36,7 +42,7 @@ export interface BatchStatus {
   completedJobs: number;
   failedJobs: number;
   companyId: string | null;
-  status: "processing" | "completed" | "failed";
+  status: BatchJobStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -541,10 +547,184 @@ export async function getBatchStatus(
     completedJobs: batch.completedJobs ?? 0,
     failedJobs: batch.failedJobs ?? 0,
     companyId: batch.companyId,
-    status: batch.status as "processing" | "completed" | "failed",
+    status: batch.status as BatchJobStatus,
     createdAt: batch.createdAt ? new Date(batch.createdAt) : new Date(),
     updatedAt: batch.updatedAt ? new Date(batch.updatedAt) : new Date(),
   };
+}
+
+/**
+ * Cancel a batch: hard-delete every still-pending queue item, mark any in-flight
+ * (processing) item as cancelled, and move the batch to the terminal `cancelled`
+ * status. The worker skips anything left over via its terminal-batch check.
+ *
+ * Idempotent: if the batch is already terminal (completed/failed/cancelled) this
+ * is a no-op and `cancelled` is returned false so callers can converge regardless.
+ */
+export async function cancelBatch(batchId: string): Promise<{
+  cancelled: boolean;
+  status: BatchJobStatus | null;
+  deletedPending: number;
+  cancelledInFlight: number;
+}> {
+  return db.transaction(async (tx) => {
+    // Only transition a batch that is still processing. Returning rows tells us
+    // whether we actually performed the cancellation.
+    const updatedBatch = await tx
+      .update(batchJobs)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(and(eq(batchJobs.id, batchId), eq(batchJobs.status, "processing")))
+      .returning({ id: batchJobs.id });
+
+    if (updatedBatch.length === 0) {
+      // Already terminal (or missing) — report current status without changing anything.
+      const current = await tx
+        .select({ status: batchJobs.status })
+        .from(batchJobs)
+        .where(eq(batchJobs.id, batchId))
+        .limit(1);
+      return {
+        cancelled: false,
+        status: (current[0]?.status as BatchJobStatus) ?? null,
+        deletedPending: 0,
+        cancelledInFlight: 0,
+      };
+    }
+
+    // Kill all pending jobs outright so a worker never picks them up.
+    const deleted = await tx
+      .delete(processingQueue)
+      .where(
+        and(
+          eq(processingQueue.batchId, batchId),
+          eq(processingQueue.status, "pending"),
+        ),
+      )
+      .returning({ id: processingQueue.id });
+
+    // Mark any in-flight job as cancelled. It may still finish in the worker, but
+    // the worker's terminal-batch check discards the result and incrementBatchProgress
+    // preserves the cancelled status.
+    const inFlight = await tx
+      .update(processingQueue)
+      .set({
+        status: "failed",
+        errorMessage: "Cancelled by user",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(processingQueue.batchId, batchId),
+          eq(processingQueue.status, "processing"),
+        ),
+      )
+      .returning({ id: processingQueue.id });
+
+    return {
+      cancelled: true,
+      status: "cancelled",
+      deletedPending: deleted.length,
+      cancelledInFlight: inFlight.length,
+    };
+  });
+}
+
+/**
+ * Reconcile a possibly-drifted batch. If a batch is still `processing` but no
+ * pending or processing queue rows remain for it, the counters drifted (e.g. jobs
+ * were lost or counts never caught up). Recompute completed/failed from the queue
+ * and move the batch to a terminal state so the client stops polling.
+ *
+ * No-op (returns the current status) when the batch is already terminal or still
+ * has live work. The server is the sole authority for "is this batch dead".
+ */
+export async function reconcileBatch(
+  batchId: string,
+): Promise<BatchStatus | null> {
+  const batch = await getBatchStatus(batchId);
+  if (!batch || batch.status !== "processing") {
+    return batch;
+  }
+
+  const jobs = await db
+    .select({ status: processingQueue.status })
+    .from(processingQueue)
+    .where(eq(processingQueue.batchId, batchId));
+
+  const counts = { pending: 0, processing: 0, completed: 0, failed: 0 };
+  for (const job of jobs) {
+    if (job.status === "pending") counts.pending++;
+    else if (job.status === "processing") counts.processing++;
+    else if (job.status === "completed") counts.completed++;
+    else if (job.status === "failed") counts.failed++;
+  }
+
+  // Still has live work — let it keep running.
+  if (counts.pending > 0 || counts.processing > 0) {
+    return batch;
+  }
+
+  // Drifted: no live jobs but batch never went terminal. Resolve from reality.
+  const processed = counts.completed + counts.failed;
+  const newStatus: BatchJobStatus =
+    processed > 0 && counts.completed === 0 ? "failed" : "completed";
+
+  const updated = await db
+    .update(batchJobs)
+    .set({
+      completedJobs: counts.completed,
+      failedJobs: counts.failed,
+      status: newStatus,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(batchJobs.id, batchId), eq(batchJobs.status, "processing")))
+    .returning();
+
+  if (updated.length === 0) {
+    // Someone else finished it first — return the latest.
+    return getBatchStatus(batchId);
+  }
+
+  return {
+    ...batch,
+    completedJobs: counts.completed,
+    failedJobs: counts.failed,
+    status: newStatus,
+    updatedAt: new Date(),
+  };
+}
+
+/**
+ * Get the company's currently-active (processing) tender-matching batch, if any.
+ * Reconciles a drifted batch first, so a batch that has actually finished is
+ * reported as terminal (and therefore not "active"). This is the authoritative
+ * source the client hydrates from on mount/focus.
+ */
+export async function getActiveMatchingBatchForCompany(
+  companyId: string,
+): Promise<BatchStatus | null> {
+  const rows = await db
+    .select({ id: batchJobs.id })
+    .from(batchJobs)
+    .where(
+      and(
+        eq(batchJobs.companyId, companyId),
+        eq(batchJobs.batchType, "tender_matching"),
+        eq(batchJobs.status, "processing"),
+      ),
+    )
+    .orderBy(desc(batchJobs.createdAt))
+    .limit(1);
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const reconciled = await reconcileBatch(rows[0].id);
+  if (!reconciled || reconciled.status !== "processing") {
+    return null;
+  }
+  return reconciled;
 }
 
 /**

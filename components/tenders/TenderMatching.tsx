@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useMatchingResults } from "@/hooks/useMatchingResults";
+import { useTenderMatches } from "@/hooks/useTenderMatches";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -26,12 +26,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TenderMatchCard } from "./TenderMatchCard";
-import { BasicTenderMatchCard } from "./BasicTenderMatchCard";
 import { ResultsHeader } from "./ResultsHeader";
 import { MatchingReadinessDialog } from "./MatchingReadinessDialog";
 import { checkMatchingReadiness, type ReadinessResult } from "@/lib/matchingReadiness";
 import { queryKeys } from "@/lib/queryKeys";
-import type { CompanyRecord, TenderRecord } from "@/lib/api/types";
+import type { CompanyRecord } from "@/lib/api/types";
 
 export interface MatchingFiltersState {
   keyword?: string;
@@ -52,33 +51,6 @@ const DEFAULT_FILTERS: MatchingFiltersState = {
   showApplied: "all",
   tenderStatus: "active",
 };
-
-interface MatchingResult {
-  id: string;
-  tenderId: string;
-  companyId: string;
-  overallScore: number;
-  capabilityScore: number;
-  experienceScore: number;
-  locationScore: number;
-  certificationScore: number;
-  matchReasons: string[] | null;
-  improvementSuggestions: string[];
-  aiAnalysis: Record<string, unknown>;
-  isBookmarked: boolean;
-  isApplied: boolean;
-  createdAt: string;
-  tenders: {
-    title: string;
-    buyer: string;
-    description: string;
-    location: string;
-    deadline: string;
-    budgetMin: number;
-    budgetMax: number;
-    status: string;
-  };
-}
 
 interface TenderMatchingProps {
   companyId?: string;
@@ -134,220 +106,48 @@ export function TenderMatching({
     queueMicrotask(() => setCurrentPage(1));
   }, [filtersKey]);
 
+  // Single unified query: the server merges deep + basic matches, filters out
+  // 0% matches, sorts, paginates, and returns counts. The client just renders.
   const {
-    data: matchingData,
-    isLoading: deepLoading,
-    refetch: refetchMatchingResults,
-  } = useMatchingResults({
+    data: matchesData,
+    isLoading: loading,
+    refetch: refetchMatches,
+  } = useTenderMatches({
     companyId,
     tenderStatus: filters.tenderStatus || "active",
     keyword: filters.keyword,
-    minScore: 0,
-    maxScore: 100,
-    showApplied: "all",
-    quickFilter: null,
+    minScore: filters.minScore,
+    maxScore: filters.maxScore,
+    showApplied: filters.showApplied,
+    quickFilter: filters.quickFilter ?? null,
     sortBy: filters.sortBy,
     sortDirection: filters.sortDirection,
-    page: 1,
-    pageSize: 500,
+    page: currentPage,
+    pageSize: itemsPerPage,
   });
 
-  const matchingResults = useMemo(
-    () => (matchingData?.results as unknown as MatchingResult[]) ?? [],
-    [matchingData],
-  );
-  const deepAnalyzedCount = matchingData?.totalCount ?? matchingResults.length;
+  const results = useMemo(() => matchesData?.results ?? [], [matchesData]);
+  const matchedCount = matchesData?.matchedCount ?? 0;
+  const deepAnalyzedCount = matchesData?.deepResearchedCount ?? 0;
 
-  const tenderSearchStatus =
-    filters.tenderStatus === "active" || !filters.tenderStatus
-      ? undefined
-      : filters.tenderStatus === "all"
-        ? "all"
-        : filters.tenderStatus;
-
-  const {
-    data: tendersData,
-    isLoading: tendersLoading,
-    refetch: refetchTenders,
-  } = useQuery({
-    queryKey: queryKeys.tenders({
-      context: "matches-tab",
-      companyId,
-      page: currentPage,
-      filtersKey,
-    }),
-    queryFn: () =>
-      api.searchTenders({
-        keyword: filters.keyword,
-        ...(tenderSearchStatus && tenderSearchStatus !== "all"
-          ? { status: tenderSearchStatus }
-          : {}),
-        page: currentPage,
-        pageSize: itemsPerPage,
-        sortBy:
-          filters.sortBy === "overall_score" ||
-          filters.sortBy === "capability_score" ||
-          filters.sortBy === "experience_score" ||
-          filters.sortBy === "location_score" ||
-          filters.sortBy === "certification_score" ||
-          filters.sortBy === "created_at"
-            ? "deadline"
-            : filters.sortBy,
-        sortDirection: filters.sortDirection,
-      }),
-    enabled: !!companyId,
-    staleTime: 30 * 1000,
-  });
-
-  const allTenders = useMemo(
-    () => (tendersData?.tenders as TenderRecord[]) ?? [],
-    [tendersData],
-  );
-
-  const {
-    data: basicData,
-    isLoading: basicLoading,
-    refetch: refetchBasicMatch,
-  } = useQuery({
-    queryKey: queryKeys.basicMatchForCompany(companyId!, {
-      overlay: true,
-      requireSharedTaxonomy: false,
-    }),
-    queryFn: () =>
-      api.basicMatch({
-        mode: "tenders-for-company",
-        companyId: companyId!,
-        limit: 500,
-        minScore: 0,
-        requireSharedTaxonomy: false,
-      }),
-    enabled: !!companyId,
-    staleTime: 60 * 1000,
-  });
-
-  const basicMatches = useMemo(
-    () => basicData?.results ?? [],
-    [basicData?.results],
-  );
-
-  const deepByTenderId = useMemo(() => {
-    const map = new Map<string, MatchingResult>();
-    for (const r of matchingResults) {
-      map.set(r.tenderId, r);
-    }
-    return map;
-  }, [matchingResults]);
-
-  const basicByTenderId = useMemo(() => {
-    const map = new Map<string, (typeof basicMatches)[number]>();
-    for (const b of basicMatches) {
-      if (b.tenderId) map.set(b.tenderId, b);
-    }
-    return map;
-  }, [basicMatches]);
-
-  const displayTenders = useMemo(() => {
-    let rows = allTenders;
-
-    if (filters.minScore > 0 || filters.maxScore < 100) {
-      rows = rows.filter((tender) => {
-        const deep = deepByTenderId.get(tender.id);
-        if (deep) {
-          return (
-            deep.overallScore >= filters.minScore &&
-            deep.overallScore <= filters.maxScore
-          );
-        }
-        const basic = basicByTenderId.get(tender.id);
-        const pct = Math.round((basic?.similarity ?? 0) * 100);
-        return pct >= filters.minScore && pct <= filters.maxScore;
-      });
-    }
-
-    if (filters.showApplied === "applied") {
-      rows = rows.filter((t) => deepByTenderId.get(t.id)?.isApplied);
-    } else if (filters.showApplied === "not_applied") {
-      rows = rows.filter((t) => {
-        const deep = deepByTenderId.get(t.id);
-        return !deep || !deep.isApplied;
-      });
-    } else if (filters.showApplied === "bookmarked") {
-      rows = rows.filter((t) => deepByTenderId.get(t.id)?.isBookmarked);
-    }
-
-    if (filters.quickFilter === "high_score") {
-      rows = rows.filter((t) => {
-        const deep = deepByTenderId.get(t.id);
-        if (deep) return deep.overallScore >= 80;
-        const basic = basicByTenderId.get(t.id);
-        return (basic?.similarity ?? 0) >= 0.8;
-      });
-    } else if (filters.quickFilter === "urgent") {
-      const sevenDays = Date.now() + 7 * 24 * 60 * 60 * 1000;
-      rows = rows.filter((t) => {
-        if (!t.deadline) return false;
-        const d = new Date(t.deadline).getTime();
-        return d >= Date.now() && d <= sevenDays;
-      });
-    } else if (filters.quickFilter === "high_value") {
-      rows = rows.filter(
-        (t) => (t.budgetMax ?? 0) >= 1_000_000 || (t.budgetMin ?? 0) >= 1_000_000,
-      );
-    }
-
-    if (
-      filters.sortBy === "overall_score" ||
-      filters.sortBy === "capability_score" ||
-      filters.sortBy === "experience_score" ||
-      filters.sortBy === "location_score" ||
-      filters.sortBy === "certification_score"
-    ) {
-      const scoreKey = filters.sortBy.replace("_score", "") as
-        | "overall"
-        | "capability"
-        | "experience"
-        | "location"
-        | "certification";
-      const dir = filters.sortDirection === "asc" ? 1 : -1;
-      rows = [...rows].sort((a, b) => {
-        const scoreFor = (t: TenderRecord) => {
-          const deep = deepByTenderId.get(t.id);
-          if (deep) {
-            if (scoreKey === "overall") return deep.overallScore ?? 0;
-            if (scoreKey === "capability") return deep.capabilityScore ?? 0;
-            if (scoreKey === "experience") return deep.experienceScore ?? 0;
-            if (scoreKey === "location") return deep.locationScore ?? 0;
-            return deep.certificationScore ?? 0;
-          }
-          const basic = basicByTenderId.get(t.id);
-          return Math.round((basic?.similarity ?? 0) * 100);
-        };
-        return (scoreFor(a) - scoreFor(b)) * dir;
-      });
-    }
-
-    return rows;
-  }, [
-    allTenders,
-    filters.minScore,
-    filters.maxScore,
-    filters.showApplied,
-    filters.quickFilter,
-    filters.sortBy,
-    filters.sortDirection,
-    deepByTenderId,
-    basicByTenderId,
-  ]);
-
-  const totalCount = tendersData?.totalCount ?? 0;
-
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  // Server-driven pagination — counts/pages reflect the matched set the server
+  // returns, not a client slice of the full tender universe.
+  const totalPages = Math.max(1, Math.ceil(matchedCount / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + displayTenders.length, totalCount);
+  const endIndex = Math.min(startIndex + results.length, matchedCount);
 
-  const loading =
-    (tendersLoading && allTenders.length === 0) ||
-    (basicLoading && basicMatches.length === 0 && allTenders.length === 0);
+  // Keep the current page within range when the matched set shrinks.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  // Whether the user has narrowed results — drives which empty state we show.
+  const filtersActive =
+    Boolean(filters.keyword) ||
+    filters.minScore > 0 ||
+    filters.maxScore < 100 ||
+    filters.showApplied !== "all" ||
+    (filters.quickFilter ?? null) !== null;
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -408,9 +208,10 @@ export function TenderMatching({
     totalJobs: number;
     completedJobs: number;
     failedJobs: number;
-    status: "processing" | "completed" | "failed";
+    status: "processing" | "completed" | "failed" | "cancelled";
     progressPercent: number;
   } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const analyzing =
     internalAnalyzing || matchingProgress?.status === "processing";
@@ -419,6 +220,11 @@ export function TenderMatching({
 
   const invalidateMatchingResults = useCallback(() => {
     if (companyId) {
+      // Refresh the unified matches list and the saved-tenders view (which still
+      // reads from the matching-results query key).
+      queryClient.invalidateQueries({
+        queryKey: ["tenderMatches", companyId],
+      });
       queryClient.invalidateQueries({
         queryKey: ["matchingResults", companyId],
       });
@@ -427,7 +233,8 @@ export function TenderMatching({
 
   const cancelMatching = useCallback(
     async (batchId: string) => {
-      console.log(`🛑 Attempting to cancel batch ${batchId}...`);
+      console.log(`🛑 Cancelling batch ${batchId}...`);
+      setIsCancelling(true);
 
       try {
         const response = await fetch("/api/match-tenders/cancel", {
@@ -436,46 +243,31 @@ export function TenderMatching({
           body: JSON.stringify({ batchId }),
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`✅ Successfully cancelled batch ${batchId}:`, data);
-        } else if (response.status === 404) {
-          console.log(
-            `⚠️ Batch ${batchId} not found (404) - may already be completed or never existed`,
-          );
-        } else {
-          const data = await response.json();
-          console.warn(
-            `⚠️ Cancel API returned ${response.status}:`,
-            data.error,
-          );
+        // The cancel endpoint is idempotent: a 2xx (cancelled or already-terminal)
+        // and a 404 (batch gone) both mean there is nothing left running, so we
+        // converge the UI to "no active batch". Only a real error keeps the
+        // progress bar up so the user can retry.
+        if (!response.ok && response.status !== 404) {
+          const data = await response.json().catch(() => ({}));
+          console.warn(`⚠️ Cancel API returned ${response.status}:`, data.error);
+          toast.error(data.error || t("cancelError"));
+          return;
         }
+
+        if (companyId) {
+          localStorage.removeItem(`matching_batch_${companyId}`);
+        }
+        setMatchingProgress(null);
+        toast.success(t("cancelledInfo"));
+        refetchMatches();
       } catch (error) {
         console.error("Error calling cancel API:", error);
+        toast.error(t("cancelError"));
+      } finally {
+        setIsCancelling(false);
       }
-
-      if (companyId) {
-        localStorage.removeItem(`matching_batch_${companyId}`);
-        localStorage.removeItem(`stale_check_${batchId}`);
-
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith("stale_check_")) {
-            localStorage.removeItem(key);
-          }
-        }
-      }
-
-      setMatchingProgress(null);
-
-      console.log(`✅ Cleared all local state for company ${companyId}`);
-      toast.success(t("cancelledInfo"));
-
-      setTimeout(() => {
-        refetchMatchingResults();
-      }, 2000);
     },
-    [companyId, refetchMatchingResults, t],
+    [companyId, refetchMatches, t],
   );
 
   const checkMatchingProgress = useCallback(
@@ -536,63 +328,39 @@ export function TenderMatching({
         );
         setMatchingProgress(progressData);
 
-        if (data.status === "completed" || data.status === "failed") {
+        // The server is the sole authority on whether a batch is done. We only
+        // stop tracking when it reports a terminal status — never on a client-side
+        // timer. A batch sitting at 0% is still alive on the server and keeps
+        // polling until the server reconciles it to a terminal state.
+        if (
+          data.status === "completed" ||
+          data.status === "failed" ||
+          data.status === "cancelled"
+        ) {
           console.log(`Batch ${batchId} finished with status: ${data.status}`);
           if (companyId) {
             localStorage.removeItem(`matching_batch_${companyId}`);
           }
           setMatchingProgress(null);
           invalidateMatchingResults();
-          void refetchBasicMatch();
           if (data.status === "completed") {
             toast.success(t("matchingCompleted", { count: data.completedJobs }));
+          } else if (data.status === "cancelled") {
+            toast.info(t("cancelledInfo"));
           } else {
             toast.error(t("matchingFailed", { count: data.failedJobs }));
           }
-        }
-
-        if (
-          data.status === "processing" &&
-          data.completedJobs === 0 &&
-          data.failedJobs === 0
-        ) {
-          const staleCheckKey = `stale_check_${batchId}`;
-          const firstCheckTime = localStorage.getItem(staleCheckKey);
-
-          if (!firstCheckTime) {
-            localStorage.setItem(staleCheckKey, Date.now().toString());
-          } else {
-            const elapsed = Date.now() - parseInt(firstCheckTime);
-            if (elapsed > 60000) {
-              console.warn(
-                `⚠️ Batch ${batchId} stuck at 0 progress for ${Math.round(elapsed / 1000)}s - auto-clearing`,
-              );
-              if (companyId) {
-                localStorage.removeItem(`matching_batch_${companyId}`);
-              }
-              localStorage.removeItem(staleCheckKey);
-              setMatchingProgress(null);
-              toast.info(t("stuckInfo"));
-              return;
-            }
-          }
-        } else if (data.completedJobs > 0 || data.failedJobs > 0) {
-          localStorage.removeItem(`stale_check_${batchId}`);
         }
       } catch (error) {
         console.error("Error checking matching progress:", error);
       }
     },
-    [companyId, invalidateMatchingResults, refetchBasicMatch, t],
+    [companyId, invalidateMatchingResults, t],
   );
 
   const runDeepResearchForTender = useCallback(
     async (tenderId: string) => {
       if (!companyId) return;
-      if (deepByTenderId.has(tenderId)) {
-        toast.info(t("deepResearchCached"));
-        return;
-      }
       setDeepResearchTenderId(tenderId);
       try {
         const data = await api.triggerDeepMatch(companyId, [tenderId]);
@@ -622,24 +390,71 @@ export function TenderMatching({
         setDeepResearchTenderId(null);
       }
     },
-    [companyId, checkMatchingProgress, deepByTenderId, invalidateMatchingResults, t],
+    [companyId, checkMatchingProgress, invalidateMatchingResults, t],
   );
 
   const refreshAll = useCallback(() => {
-    void refetchTenders();
-    void refetchBasicMatch();
-    void refetchMatchingResults();
-  }, [refetchTenders, refetchBasicMatch, refetchMatchingResults]);
+    void refetchMatches();
+  }, [refetchMatches]);
+
+  // Hydrate the progress bar from the server's authoritative active-batch state.
+  // This — not localStorage — decides whether a run is in progress, so a refresh,
+  // a second tab, or returning to the page always reflects reality. localStorage
+  // is kept only as a non-authoritative hint.
+  const hydrateActiveBatch = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const response = await fetch(
+        `/api/match-tenders/active?companyId=${companyId}`,
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      const batch = data?.batch;
+
+      if (batch && batch.status === "processing") {
+        localStorage.setItem(`matching_batch_${companyId}`, batch.batchId);
+        setMatchingProgress({
+          batchId: batch.batchId,
+          totalJobs: batch.totalJobs ?? 0,
+          completedJobs: batch.completedJobs ?? 0,
+          failedJobs: batch.failedJobs ?? 0,
+          status: "processing",
+          progressPercent: batch.progressPercent ?? 0,
+        });
+      } else {
+        // Server reports no active run — clear any stale local progress.
+        localStorage.removeItem(`matching_batch_${companyId}`);
+        setMatchingProgress((prev) =>
+          prev?.status === "processing" ? null : prev,
+        );
+      }
+    } catch {
+      // Network hiccup: keep current state, never assume the job died.
+    }
+  }, [companyId]);
 
   useEffect(() => {
     if (user && companyId) {
-      const storedBatchId = localStorage.getItem(`matching_batch_${companyId}`);
-      if (storedBatchId) {
-        console.log(`🔄 Restoring batch from localStorage: ${storedBatchId}`);
-        checkMatchingProgress(storedBatchId);
-      }
+      void hydrateActiveBatch();
     }
-  }, [user, companyId, checkMatchingProgress]);
+  }, [user, companyId, hydrateActiveBatch]);
+
+  // Re-sync with the server whenever the user returns to the tab, so a run that
+  // finished (or that was started elsewhere) is reflected without a manual reload.
+  useEffect(() => {
+    if (!user || !companyId) return;
+    const onFocus = () => {
+      if (document.visibilityState === "visible") {
+        void hydrateActiveBatch();
+      }
+    };
+    window.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user, companyId, hydrateActiveBatch]);
 
   const batchId = matchingProgress?.batchId ?? null;
   const isProcessing = matchingProgress?.status === "processing";
@@ -658,16 +473,6 @@ export function TenderMatching({
   const startAnalysis = useCallback(async (options?: { force?: boolean }) => {
     const force = options?.force === true;
     setInternalAnalyzing(true);
-
-    if (companyId) {
-      const oldBatchId = localStorage.getItem(`matching_batch_${companyId}`);
-      if (oldBatchId) {
-        console.log(
-          `🧹 Clearing old batch ${oldBatchId} before starting new one`,
-        );
-        localStorage.removeItem(`stale_check_${oldBatchId}`);
-      }
-    }
 
     try {
       const response = await fetch("/api/match-tenders", {
@@ -881,16 +686,17 @@ export function TenderMatching({
   return (
     <div className="space-y-4">
       {/* Results summary */}
-      {!loading && totalCount > 0 && (
+      {!loading && matchedCount > 0 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <ResultsHeader
-            total={totalCount}
+            total={matchedCount}
             start={startIndex + 1}
             end={endIndex}
             currentPage={currentPage}
             totalPages={totalPages}
-            loading={loading || deepLoading}
+            loading={loading}
             onRefresh={refreshAll}
+            unit={t("matchesUnit")}
           />
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             {deepAnalyzedCount > 0 && (
@@ -924,7 +730,9 @@ export function TenderMatching({
                   ? t("pendingAccountRestricted")
                   : limitReached
                     ? t("limitReachedDetail", { used: matchingUsage?.used ?? 0, limit: matchingUsage?.limit ?? 0, date: matchingUsage ? new Date(matchingUsage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : "" })
-                    : undefined
+                    : analyzing
+                      ? t("matchingInProgressDisabled")
+                      : undefined
               }
             >
               {analyzing ? (
@@ -970,13 +778,15 @@ export function TenderMatching({
                 variant="outline"
                 size="sm"
                 onClick={() => cancelMatching(matchingProgress.batchId)}
+                disabled={isCancelling}
                 className="h-7"
               >
-                <X className="h-3 w-3 mr-1" />
-                {matchingProgress.completedJobs === 0 &&
-                matchingProgress.failedJobs === 0
-                  ? t("clearAndRestart")
-                  : t("cancel")}
+                {isCancelling ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <X className="h-3 w-3 mr-1" />
+                )}
+                {isCancelling ? t("cancelling") : t("cancel")}
               </Button>
             </div>
           </div>
@@ -994,25 +804,32 @@ export function TenderMatching({
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">{t("loading")}</span>
         </div>
-      ) : displayTenders.length === 0 ? (
+      ) : matchedCount === 0 ? (
         <div className="text-center py-16">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">
-            {t("noResultsTitle")}
+            {filtersActive ? t("noResultsTitle") : t("noMatchesTitle")}
           </h3>
-          <p className="text-muted-foreground mb-4">
-            {totalCount === 0 && currentPage === 1
-              ? t("noResultsDescriptionBasic")
-              : t("noResultsFiltered")}
+          <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+            {filtersActive
+              ? t("noResultsFiltered")
+              : deepAnalyzedCount > 0
+                ? t("noStrongMatches", { count: deepAnalyzedCount })
+                : t("noResultsDescriptionBasic")}
           </p>
-          {totalCount === 0 && currentPage === 1 && !readOnly && (
+          {deepAnalyzedCount > 0 && !filtersActive && (
+            <p className="text-xs text-muted-foreground mb-4">
+              {t("deepAnalyzedCount", { count: deepAnalyzedCount })}
+            </p>
+          )}
+          {!filtersActive && !readOnly && (
             <div className="flex flex-col items-center gap-2">
               <Button
                 onClick={refreshAll}
-                disabled={basicLoading}
+                disabled={loading}
                 variant="outline"
               >
-                {basicLoading ? (
+                {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : null}
                 {t("refreshBasicMatches")}
@@ -1043,45 +860,58 @@ export function TenderMatching({
       ) : (
         <>
           <div className="space-y-3">
-            {displayTenders.map((tender) => {
-              const tenderId = tender.id;
-              const deep = deepByTenderId.get(tenderId);
-              if (deep) {
+            {results.map((m) => {
+              const viewDetails = () =>
+                router.push(`/tenders/${m.tenderId}?companyId=${companyId}`);
+              if (m.variant === "deep") {
                 return (
                   <TenderMatchCard
-                    key={deep.id}
-                    result={deep}
-                    onViewDetails={() => {
-                      router.push(
-                        `/tenders/${tenderId}?companyId=${companyId}`,
-                      );
-                    }}
+                    key={m.resultId}
+                    variant="deep"
+                    tenderId={m.tenderId}
+                    title={m.title}
+                    buyer={m.buyer}
+                    location={m.location}
+                    description={m.description}
+                    deadline={m.deadline}
+                    status={m.status}
+                    budgetMin={m.budgetMin}
+                    budgetMax={m.budgetMax}
+                    score={m.score}
+                    capabilityScore={m.capabilityScore}
+                    experienceScore={m.experienceScore}
+                    locationScore={m.locationScore}
+                    certificationScore={m.certificationScore}
+                    matchReasons={m.matchReasons}
+                    isBookmarked={m.isBookmarked}
+                    isApplied={m.isApplied}
+                    onViewDetails={viewDetails}
                     onBookmark={() =>
-                      toggleBookmark(deep.id, deep.isBookmarked)
+                      toggleBookmark(m.resultId, m.isBookmarked)
                     }
-                    onDelete={() => deleteResult(deep.id)}
-                    isDeleting={deleting === deep.id}
+                    onDelete={() => deleteResult(m.resultId)}
+                    isDeleting={deleting === m.resultId}
                     readOnly={readOnly}
                   />
                 );
               }
-              const basic = basicByTenderId.get(tenderId);
               return (
-                <BasicTenderMatchCard
-                  key={tenderId}
-                  match={{
-                    tenderId,
-                    title: tender.title,
-                    buyer: tender.buyer ?? "",
-                    location: tender.location ?? null,
-                    deadline: tender.deadline ?? null,
-                    status: tender.status ?? null,
-                    similarity: basic?.similarity ?? 0,
-                    band: (basic?.band as "high" | "medium" | "low") ?? "low",
-                  }}
-                  companyId={companyId!}
-                  onDeepResearch={() => runDeepResearchForTender(tenderId)}
-                  deepResearchPending={deepResearchTenderId === tenderId}
+                <TenderMatchCard
+                  key={m.tenderId}
+                  variant="basic"
+                  tenderId={m.tenderId}
+                  title={m.title}
+                  buyer={m.buyer}
+                  location={m.location}
+                  description={m.description}
+                  deadline={m.deadline}
+                  status={m.status}
+                  budgetMin={m.budgetMin}
+                  budgetMax={m.budgetMax}
+                  score={m.score}
+                  onViewDetails={viewDetails}
+                  onDeepResearch={() => runDeepResearchForTender(m.tenderId)}
+                  deepResearchPending={deepResearchTenderId === m.tenderId}
                   readOnly={readOnly}
                 />
               );

@@ -72,6 +72,23 @@ export function EditCompetenciesSheet({
     setNameMap(Object.fromEntries(data.capabilities.map((c) => [c.id, c.name])));
   }, [open, companyCapsQuery.data, companyCapsQuery.isError, pendingRelation, t]);
 
+  // Once the tree has loaded the full reference name map, drop any selected ids
+  // that no longer resolve to a capability (orphans left by an admin reset).
+  // This keeps the "Selected" badges from rendering raw UUIDs and stops the
+  // orphans from being re-persisted on save. Filtering initialIds too means a
+  // freshly-opened sheet on already-orphaned data shows no spurious changes.
+  useEffect(() => {
+    if (!treeReady) return;
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => id in nameMap);
+      return next.length === prev.length ? prev : next;
+    });
+    setInitialIds((prev) => {
+      const next = prev.filter((id) => id in nameMap);
+      return next.length === prev.length ? prev : next;
+    });
+  }, [treeReady, nameMap]);
+
   const handleSelectionChange = (ids: string[]) => {
     if (!isVerified && competencyLimit !== null && ids.length > competencyLimit) {
       toast.error(t("editCompetenciesSheet.limitToast", { limit: competencyLimit }));

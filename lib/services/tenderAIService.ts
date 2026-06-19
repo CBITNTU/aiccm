@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
-import { tenders, companyCapabilitiesRef } from "@/lib/db/schema/app";
-import { eq, asc } from "drizzle-orm";
+import { tenders } from "@/lib/db/schema/app";
+import { eq } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
+import { getCapabilityCatalog } from "@/lib/services/capabilityCatalog";
 import {
   tenderCapabilitiesSchema,
   tenderSummaryAndTaxonomySchema,
@@ -79,8 +80,9 @@ Summarize.`;
 }
 
 /**
- * Generate capability taxonomy for a tender
- * Returns array of capability IDs and creates new capabilities if needed
+ * Generate capability taxonomy for a tender.
+ * Returns an array of capability IDs assigned from the existing catalog only —
+ * never creates new capabilities.
  */
 export async function generateTenderCapabilityTaxonomy(
   tenderId: string,
@@ -107,14 +109,7 @@ export async function generateTenderCapabilityTaxonomy(
     throw new Error("Failed to fetch tender: Tender not found");
   }
 
-  const existingCapabilities = await db
-    .select({
-      id: companyCapabilitiesRef.id,
-      name: companyCapabilitiesRef.name,
-      category: companyCapabilitiesRef.category,
-    })
-    .from(companyCapabilitiesRef)
-    .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
+  const existingCapabilities = await getCapabilityCatalog();
 
   // Format capabilities for AI
   const capabilitiesByCategory: Record<
@@ -136,7 +131,7 @@ export async function generateTenderCapabilityTaxonomy(
     )
     .join("\n\n");
 
-  const systemPrompt = `Be selective - only capabilities clearly needed or highly relevant. Return existing IDs from the list, and new capabilities with name and category.`;
+  const systemPrompt = `Be selective - only capabilities clearly needed or highly relevant. ONLY return capability IDs from the provided list. Do NOT invent new capabilities.`;
 
   const userPrompt = `Tender Details:
 Title: ${tender.title || "N/A"}
@@ -151,7 +146,7 @@ ${tender.requirements ? `Requirements: ${typeof tender.requirements === "string"
 Available Capabilities:
 ${capabilitiesList}
 
-Return existing (IDs from list) and new (name, category).`;
+Return existing (IDs from the list above).`;
 
   const parsed = await aiGenerateObject({
     schema: tenderCapabilitiesSchema,
@@ -161,45 +156,13 @@ Return existing (IDs from list) and new (name, category).`;
     estTokens: 3000,
   });
 
-  const existingIds = parsed.existing;
-  const newCapabilities = parsed.new;
-
-  // Create new capabilities and remove duplicates
-  const createdIds: string[] = [];
-  for (const newCap of newCapabilities) {
-    if (!newCap.name || !newCap.category) continue;
-
-    // Check if capability already exists (case-insensitive)
-    const existing = existingCapabilities.find(
-      (c) => c.name.toLowerCase() === newCap.name.toLowerCase(),
-    );
-
-    if (existing) {
-      // Use existing capability
-      if (!existingIds.includes(existing.id)) {
-        existingIds.push(existing.id);
-      }
-    } else {
-      // Create new capability
-      const created = await db
-        .insert(companyCapabilitiesRef)
-        .values({
-          name: newCap.name,
-          category: newCap.category,
-        })
-        .returning({ id: companyCapabilitiesRef.id });
-
-      if (created[0]) {
-        createdIds.push(created[0].id);
-      }
-    }
-  }
-
-  // Combine existing and newly created IDs
-  const allCapabilityIds = [...existingIds, ...createdIds];
-
-  // Remove duplicates
-  const uniqueIds = Array.from(new Set(allCapabilityIds));
+  // Assign from the existing catalog only — never create new capabilities.
+  // Filter out any IDs the model returned that aren't in the catalog (hallucinated
+  // UUIDs, names echoed back instead of IDs, etc.).
+  const validIdSet = new Set(existingCapabilities.map((c) => c.id));
+  const uniqueIds = Array.from(
+    new Set((parsed.existing || []).filter((id) => validIdSet.has(id))),
+  );
 
   // Store taxonomy in database
   await db
@@ -241,14 +204,7 @@ export async function generateTenderSummaryAndTaxonomy(
     throw new Error("Failed to fetch tender: Tender not found");
   }
 
-  const existingCapabilities = await db
-    .select({
-      id: companyCapabilitiesRef.id,
-      name: companyCapabilitiesRef.name,
-      category: companyCapabilitiesRef.category,
-    })
-    .from(companyCapabilitiesRef)
-    .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
+  const existingCapabilities = await getCapabilityCatalog();
 
   const capabilitiesByCategory: Record<
     string,
@@ -279,8 +235,7 @@ export async function generateTenderSummaryAndTaxonomy(
 
   const systemPrompt = `You are an expert at analyzing tenders. Provide:
 1. "summary": A concise 200-word professional summary (key requirements, scope, budget, timeline, ideal candidate).
-2. "existing": Array of capability IDs (strings) from the provided list that are relevant.
-3. "new": Array of objects with "name" and "category" for new capabilities not in the list.`;
+2. "existing": Array of capability IDs (strings) from the provided list that are relevant. ONLY use IDs from the list — do NOT invent new capabilities.`;
 
   const userPrompt = `Tender:
 Title: ${tender.title || "N/A"}
@@ -295,7 +250,7 @@ ${requirementsText ? `Requirements: ${requirementsText}` : ""}
 Available capabilities:
 ${capabilitiesList}
 
-Return one object with summary, existing (IDs), and new (name/category).`;
+Return one object with summary and existing (IDs from the list above).`;
 
   const parsed = await aiGenerateObject({
     schema: tenderSummaryAndTaxonomySchema,
@@ -306,28 +261,13 @@ Return one object with summary, existing (IDs), and new (name/category).`;
   });
 
   const summary = parsed.summary;
-  const existingIds = parsed.existing;
-  const newCapabilities = parsed.new;
 
-  const createdIds: string[] = [];
-  for (const newCap of newCapabilities) {
-    if (!newCap.name || !newCap.category) continue;
-    const existing = existingCapabilities.find(
-      (c) => c.name.toLowerCase() === newCap.name.toLowerCase(),
-    );
-    if (existing) {
-      if (!existingIds.includes(existing.id)) {
-        existingIds.push(existing.id);
-      }
-    } else {
-      const created = await db
-        .insert(companyCapabilitiesRef)
-        .values({ name: newCap.name, category: newCap.category })
-        .returning({ id: companyCapabilitiesRef.id });
-      if (created[0]) createdIds.push(created[0].id);
-    }
-  }
-  const uniqueIds = Array.from(new Set([...existingIds, ...createdIds]));
+  // Assign from the existing catalog only — never create new capabilities.
+  // Filter out any IDs the model returned that aren't in the catalog.
+  const validIdSet = new Set(existingCapabilities.map((c) => c.id));
+  const uniqueIds = Array.from(
+    new Set((parsed.existing || []).filter((id) => validIdSet.has(id))),
+  );
 
   await db
     .update(tenders)

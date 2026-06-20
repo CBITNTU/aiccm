@@ -427,6 +427,11 @@ export async function POST(request: NextRequest) {
           // they're immediately searchable. Best-effort: a failure here must
           // not roll back the import. We embed in parallel with a small
           // concurrency cap because Ollama can saturate easily.
+          // Per-tender failures are tolerated here on purpose: each new tender
+          // also gets a `tender_ai_complete` job queued below, which re-embeds
+          // (force) once the AI summary exists — so a miss here is backstopped.
+          let embeddedOk = 0;
+          let embedFailed = 0;
           if (insertedTenders && insertedTenders.length > 0) {
             try {
               const { embedTender } = await import(
@@ -441,7 +446,9 @@ export async function POST(request: NextRequest) {
                     if (!t) break;
                     try {
                       await embedTender(t.id);
+                      embeddedOk++;
                     } catch (e) {
+                      embedFailed++;
                       console.error(
                         `Embedding tender ${t.id} failed (non-fatal):`,
                         e,
@@ -450,9 +457,15 @@ export async function POST(request: NextRequest) {
                   }
                 }),
               );
-              console.log(
-                `Embedded ${insertedTenders.length} newly imported tenders`,
-              );
+              if (embedFailed > 0) {
+                console.warn(
+                  `${embedFailed}/${insertedTenders.length} tender embeddings failed at import (will be retried by tender_ai_complete)`,
+                );
+              } else {
+                console.log(
+                  `Embedded ${insertedTenders.length} newly imported tenders`,
+                );
+              }
             } catch (embedError) {
               console.error(
                 "Bulk tender embedding failed (non-fatal):",
@@ -471,6 +484,8 @@ export async function POST(request: NextRequest) {
               importedCount: newTenders.length,
               duplicatesSkipped: duplicatesCount,
               totalFetched: tendersData.length,
+              embeddedOk,
+              embedFailed,
             },
           }).catch(() => {});
 

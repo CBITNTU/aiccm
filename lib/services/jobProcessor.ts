@@ -29,14 +29,26 @@ export async function processJob(job: {
       const taxonomy = await generateTenderCapabilityTaxonomy(job.entityId);
       return { success: true, taxonomy };
 
-    case "tender_ai_complete":
+    case "tender_ai_complete": {
       const { summary: tenderSummary, taxonomy: tenderTaxonomy } =
         await generateTenderSummaryAndTaxonomy(job.entityId);
+      // Re-embed from the freshly generated summary/taxonomy. force: true
+      // because the source just changed, so the source-hash dedupe would
+      // otherwise skip it. Mirrors company_ai_complete; non-fatal.
+      try {
+        await embedTender(job.entityId, { force: true });
+      } catch (embedError) {
+        console.error(
+          `Embedding after tender_ai_complete failed (non-fatal) for ${job.entityId}:`,
+          embedError,
+        );
+      }
       return {
         success: true,
         summary: tenderSummary,
         taxonomy: tenderTaxonomy,
       };
+    }
 
     case "company_summary":
       const companySummary = await generateCompanySummary(job.entityId);

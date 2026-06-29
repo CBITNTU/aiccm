@@ -16,7 +16,7 @@ import {
   Award,
   Lightbulb,
   MapPin,
-  PoundSterling,
+  Banknote,
   Calendar,
   Users,
   ExternalLink,
@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
 import type { MatchingResultRecord, TenderRecord } from "@/lib/api/types";
 
 interface TenderDetailDialogProps {
@@ -45,6 +47,8 @@ export function TenderDetailDialog({
   readOnly = false,
 }: TenderDetailDialogProps) {
   const router = useRouter();
+  const { currency } = useDeployment();
+  const tenderCurrency = resolveCurrencyConfig(result?.tenders?.currency, currency);
   const [tenderDetails, setTenderDetails] = useState<TenderRecord | null>(null);
   const [taxonomies, setTaxonomies] = useState<
     Array<{ id: string; name: string }>
@@ -192,14 +196,14 @@ export function TenderDetailDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {result.tenders?.budgetMin && result.tenders?.budgetMax && (
               <div className="flex items-center gap-2">
-                <PoundSterling className="w-4 h-4 text-muted-foreground" />
+                <Banknote className="w-4 h-4 text-muted-foreground" />
                 <div>
                   <div className="text-sm text-muted-foreground">
                     Budget Range
                   </div>
                   <div className="font-semibold">
-                    £{result.tenders.budgetMin.toLocaleString()} - £
-                    {result.tenders.budgetMax.toLocaleString()}
+                    {formatCurrency(result.tenders.budgetMin, tenderCurrency)} -{" "}
+                    {formatCurrency(result.tenders.budgetMax, tenderCurrency)}
                   </div>
                 </div>
               </div>

@@ -64,6 +64,13 @@
       "when": 1779811200000,
       "tag": "0008_pgvector_embeddings_1536",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782000000000,
+      "tag": "0009_tender_region_source_currency",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ export function TenderSelectionStep({
   onTenderSelect,
 }: TenderSelectionStepProps) {
   const t = useTranslations("TenderSelectionStep");
+  const { currency } = useDeployment();
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,11 +76,12 @@ export function TenderSelectionStep({
 
   const formatBudget = (min?: number | null, max?: number | null): string => {
     if (!min && !max) return t("notSpecified");
+    const sym = currency.symbol;
     if (min && max && min !== max) {
-      return `£${(min / 1000).toFixed(0)}k - £${(max / 1000).toFixed(0)}k`;
+      return `${sym}${(min / 1000).toFixed(0)}k - ${sym}${(max / 1000).toFixed(0)}k`;
     }
-    if (min) return `£${(min / 1000).toFixed(0)}k+`;
-    if (max) return `Up to £${(max / 1000).toFixed(0)}k`;
+    if (min) return `${sym}${(min / 1000).toFixed(0)}k+`;
+    if (max) return `Up to ${sym}${(max / 1000).toFixed(0)}k`;
     return t("notSpecified");
   };
 

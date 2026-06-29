@@ -3,6 +3,7 @@ import { aiGenerateObject, getMatchingModelFromEnv, isOllamaModelId } from "@/li
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { ensureTenderResearchCached } from "@/lib/services/tenderResearchCache";
 import { getPlatformAISettings } from "@/lib/platformSettings";
+import { getActiveProfile } from "@/lib/deployment";
 import { db } from "@/lib/db";
 import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers, companyTaxonomies, taxonomies, companyStandards, standardsRef, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { eq, inArray, and, or } from "drizzle-orm";
@@ -254,9 +255,10 @@ export async function scoreTenderMatch(
   }
 
   // Format budget range
+  const cur = getActiveProfile().currency.symbol;
   const budgetRange =
     tenderData.budgetMin || tenderData.budgetMax
-      ? `£${tenderData.budgetMin ? tenderData.budgetMin.toLocaleString() : "?"} - £${tenderData.budgetMax ? tenderData.budgetMax.toLocaleString() : "?"}`
+      ? `${cur}${tenderData.budgetMin ? tenderData.budgetMin.toLocaleString() : "?"} - ${cur}${tenderData.budgetMax ? tenderData.budgetMax.toLocaleString() : "?"}`
       : "Not specified";
 
   // Check data completeness for company

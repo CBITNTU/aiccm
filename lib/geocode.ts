@@ -1,3 +1,5 @@
+import { getActiveProfile } from "@/lib/deployment";
+
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 export interface GeocodeResult {
@@ -6,14 +8,19 @@ export interface GeocodeResult {
   displayName: string;
 }
 
+/** Whether the active deployment uses Google geocoding (disabled e.g. in China). */
+function googleEnabled(): boolean {
+  return getActiveProfile().geocodingProvider === "google";
+}
+
 export function isGeocodingEnabled(): boolean {
-  return !!GOOGLE_MAPS_API_KEY;
+  return googleEnabled() && !!GOOGLE_MAPS_API_KEY;
 }
 
 export async function geocodeLocation(
   query: string,
 ): Promise<GeocodeResult | null> {
-  if (!GOOGLE_MAPS_API_KEY) return null;
+  if (!googleEnabled() || !GOOGLE_MAPS_API_KEY) return null;
 
   const trimmed = query.trim();
   if (!trimmed) return null;

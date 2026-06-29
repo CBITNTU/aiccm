@@ -14,22 +14,25 @@ import {
   taxonomies,
 } from "@/lib/db/schema/app";
 import { embedText, vectorToLiteral } from "@/lib/ai/embeddings";
-import { getCpvCodeName } from "@/lib/cpvCodes";
+import { getActiveProfile } from "@/lib/deployment";
+import { getTaxonomyProvider } from "@/lib/taxonomy";
 
 function formatBudgetLine(
   budgetMin: number | null | undefined,
   budgetMax: number | null | undefined,
 ): string {
+  const cur = getActiveProfile().currency;
+  const fmt = (n: number) => n.toLocaleString(cur.locale);
   const min = budgetMin != null && budgetMin > 0 ? budgetMin / 100 : null;
   const max = budgetMax != null && budgetMax > 0 ? budgetMax / 100 : null;
   if (min != null && max != null) {
-    return `Contract value: £${min.toLocaleString("en-GB")} – £${max.toLocaleString("en-GB")}`;
+    return `Contract value: ${cur.symbol}${fmt(min)} – ${cur.symbol}${fmt(max)}`;
   }
   if (max != null) {
-    return `Contract value: up to £${max.toLocaleString("en-GB")}`;
+    return `Contract value: up to ${cur.symbol}${fmt(max)}`;
   }
   if (min != null) {
-    return `Contract value: from £${min.toLocaleString("en-GB")}`;
+    return `Contract value: from ${cur.symbol}${fmt(min)}`;
   }
   return "";
 }
@@ -65,8 +68,9 @@ function jsonbToString(value: unknown): string {
 
 function cpvNames(codes: string[] | null | undefined): string {
   if (!codes || codes.length === 0) return "";
+  const taxonomy = getTaxonomyProvider();
   return codes
-    .map((c) => `${c} ${getCpvCodeName(c)}`)
+    .map((c) => `${c} ${taxonomy.getName(c)}`)
     .join("; ");
 }
 

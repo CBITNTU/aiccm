@@ -203,6 +203,7 @@ export interface TenderRecord {
   deadline: string | null;
   budgetMin: number | null;
   budgetMax: number | null;
+  currency: string | null;
   referenceNumber: string | null;
   cpvCodes: string[] | null;
   aiSummary: string | null;
@@ -248,6 +249,7 @@ export interface MatchingResultRecord {
     deadline: string | null;
     budgetMin: number | null;
     budgetMax: number | null;
+    currency: string | null;
     status: string | null;
   } | null;
 }
@@ -264,6 +266,7 @@ export function normalizeTenderRecord(tender: Record<string, unknown>): TenderRe
     deadline: asStringOrNull(tender.deadline),
     budgetMin: asNumberOrNull(tender.budgetMin),
     budgetMax: asNumberOrNull(tender.budgetMax),
+    currency: asStringOrNull(tender.currency),
     referenceNumber: asStringOrNull(tender.referenceNumber),
     cpvCodes: asStringArrayOrNull(tender.cpvCodes),
     aiSummary: asStringOrNull(tender.aiSummary),
@@ -317,6 +320,7 @@ export function normalizeMatchingResultRecord(
           deadline: asStringOrNull(nestedTenders.deadline),
           budgetMin: asNumberOrNull(nestedTenders.budgetMin),
           budgetMax: asNumberOrNull(nestedTenders.budgetMax),
+          currency: asStringOrNull(nestedTenders.currency),
           status: asStringOrNull(nestedTenders.status),
         }
       : null,
@@ -335,6 +339,7 @@ interface UnifiedMatchCommon {
   status: string | null;
   budgetMin: number | null;
   budgetMax: number | null;
+  currency: string | null;
   /** Effective match score, 0-100. Deep: overallScore. Basic: round(similarity*100). */
   score: number;
 }

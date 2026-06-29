@@ -14,6 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { ONBOARDING_STEPS } from "@/lib/onboarding";
+import { useDeployment } from "@/lib/deployment/client";
 
 interface AccountTypeStepProps {
   onComplete: (accountType: "individual" | "business") => void;
@@ -21,6 +22,7 @@ interface AccountTypeStepProps {
 
 export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
   const t = useTranslations("Onboarding.accountType");
+  const { brand } = useDeployment();
   const [selectedType, setSelectedType] = useState<
     "individual" | "business" | null
   >(null);
@@ -67,7 +69,7 @@ export function AccountTypeStep({ onComplete }: AccountTypeStepProps) {
     <div className="w-full max-w-2xl mx-auto">
       <Card className="card-professional">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">{t("title")}</CardTitle>
+          <CardTitle className="text-2xl">{t("title", { brand: brand.name })}</CardTitle>
           <p className="text-muted-foreground mt-2">{t("subtitle")}</p>
         </CardHeader>
         <CardContent className="space-y-6">

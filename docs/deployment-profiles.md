@@ -22,6 +22,35 @@ for the whole team.
 
 ---
 
+## Region / whitelabel profile (`DEPLOYMENT_PROFILE`)
+
+The app ships one codebase that deploys as differently-branded, region-specific
+versions. The active region is selected at deploy time:
+
+```bash
+DEPLOYMENT_PROFILE=uk   # uk (default) | cn | th
+```
+
+This is resolved once at process start (`lib/deployment/`) and drives:
+
+| Concern | Where | UK | CN (stub) | TH (stub) |
+|---|---|---|---|---|
+| Brand name / support / logo / favicon | `brand` | TNDRX | TNDRX 中国 | TNDRX Thailand |
+| Theme palette | `theme` (overrides `globals.css`) | blue (default) | red | teal |
+| Default + allowed locales | `i18n` | en | zh-CN | th |
+| Currency | `currency` | GBP £ | CNY ¥ | THB ฿ |
+| Tender sources | `tenderSources` → `lib/tenders/registry` | Find a Tender + TED | manual | manual |
+| Company verification | `verificationProvider` → `lib/companies/registry` | Companies House + Endole | manual | manual |
+| Taxonomy | `taxonomy` → `lib/taxonomy` | CPV/EIC | stub (neutral) | stub (neutral) |
+| Geocoding | `geocodingProvider` | Google | none (blocked in CN) | Google |
+| AI default model | `ai.defaultModel` (seed for `platform_settings`) | gpt-5-nano | deepseek-chat | gpt-5-nano |
+
+**Adding a region's source/verification later:** implement a `TenderSourceAdapter`
+(`lib/tenders/adapters/`) and/or `CompanyRegistryAdapter`
+(`lib/companies/registry/adapters/`), register it, and reference its id from the
+profile in `lib/deployment/profiles/`. No core code changes required. `PLATFORM_NAME`
+/ `PLATFORM_URL` env vars still override the profile brand when set.
+
 ## Environment variables (app / Vercel)
 
 | Variable | Purpose | Example |

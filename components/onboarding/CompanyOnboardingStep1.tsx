@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { useDeployment } from "@/lib/deployment/client";
 
 interface Step1Data {
   companyName: string;
@@ -57,6 +58,11 @@ interface CompanyOnboardingStep1Props {
 }
 
 export function CompanyOnboardingStep1({ onNext }: CompanyOnboardingStep1Props) {
+  const { brand, verification } = useDeployment();
+  const consentSourcesText =
+    verification.consentSources.length > 0
+      ? verification.consentSources.join(", ") + ", and your website"
+      : "your website";
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<Step1Data>({
     companyName: "",
@@ -88,11 +94,11 @@ export function CompanyOnboardingStep1({ onNext }: CompanyOnboardingStep1Props) 
     }
 
     if (
+      verification.numberMaxLength &&
       formData.companiesHouseNumber &&
-      formData.companiesHouseNumber.length !== 8
+      formData.companiesHouseNumber.length !== verification.numberMaxLength
     ) {
-      newErrors.companiesHouseNumber =
-        "UK Companies House number must be 8 digits";
+      newErrors.companiesHouseNumber = `${verification.fieldLabel} must be ${verification.numberMaxLength} digits`;
     }
 
     if (!formData.consentDataFetch) {
@@ -208,7 +214,8 @@ export function CompanyOnboardingStep1({ onNext }: CompanyOnboardingStep1Props) 
 
           <div className="space-y-2">
             <Label htmlFor="companiesHouseNumber">
-              Companies House Number (optional, 8 digits if UK)
+              {verification.fieldLabel}
+              {verification.fieldHint ? ` (${verification.fieldHint})` : ""}
             </Label>
             <Input
               id="companiesHouseNumber"
@@ -219,8 +226,10 @@ export function CompanyOnboardingStep1({ onNext }: CompanyOnboardingStep1Props) 
                   companiesHouseNumber: e.target.value,
                 })
               }
-              placeholder="e.g., 12345678"
-              maxLength={8}
+              placeholder={
+                verification.numberMaxLength ? "e.g., 12345678" : ""
+              }
+              maxLength={verification.numberMaxLength}
               className={
                 errors.companiesHouseNumber ? "border-destructive" : ""
               }
@@ -289,7 +298,7 @@ export function CompanyOnboardingStep1({ onNext }: CompanyOnboardingStep1Props) 
               onChange={(e) =>
                 setFormData({ ...formData, contactPhone: e.target.value })
               }
-              placeholder="01234 567890"
+              placeholder={verification.phonePlaceholder}
             />
           </div>
         </div>
@@ -307,12 +316,12 @@ export function CompanyOnboardingStep1({ onNext }: CompanyOnboardingStep1Props) 
               htmlFor="consent"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              I allow TNDRX to fetch public data to prefill my profile{" "}
+              I allow {brand.name} to fetch public data to prefill my profile{" "}
               <span className="text-destructive">*</span>
             </label>
             <p className="text-xs text-muted-foreground">
-              We&apos;ll retrieve information from Companies House, Endole, and
-              your website to help complete your profile automatically.
+              We&apos;ll retrieve information from {consentSourcesText} to help
+              complete your profile automatically.
             </p>
             {errors.consentDataFetch && (
               <p className="text-sm text-destructive">

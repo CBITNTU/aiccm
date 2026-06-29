@@ -1,4 +1,5 @@
 import { getPlatformSettingsByKeys, upsertPlatformSetting } from "@/lib/db/queries";
+import { getActiveProfile } from "@/lib/deployment";
 
 export type DefaultReasoningEffort =
   | "default"
@@ -40,7 +41,8 @@ export async function getPlatformAISettings(): Promise<PlatformAISettings> {
 
   const map = new Map(rows.map((r) => [r.key, r.value]));
   cached = {
-    defaultAiModel: map.get(KEYS.default_ai_model) ?? "gpt-5-nano",
+    defaultAiModel:
+      map.get(KEYS.default_ai_model) ?? getActiveProfile().ai.defaultModel,
     defaultReasoningEffort:
       (map.get(KEYS.default_reasoning_effort) as DefaultReasoningEffort) ??
       "default",

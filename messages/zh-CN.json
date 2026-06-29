@@ -1,10 +1,10 @@
 {
   "Metadata": {
-    "title": "TNDRX - 协同商务市场",
-    "description": "借助 AI 发现企业优势、匹配招标并组建联合体。构建咨询团队，在 TNDRX 上拓展业务。"
+    "title": "{brand} - 协同商务市场",
+    "description": "借助 AI 发现企业优势、匹配招标并组建联合体。构建咨询团队，在 {brand} 上拓展业务。"
   },
   "Header": {
-    "brand": "TNDRX",
+    "brand": "{brand}",
     "tagline": "协同商务市场",
     "dashboard": "控制台",
     "signOut": "退出登录",
@@ -16,7 +16,7 @@
     "label": "语言"
   },
   "HeroSection": {
-    "headlineBrand": "TNDRX",
+    "headlineBrand": "{brand}",
     "headlineAccent": "以能力赋能协作",
     "subheadline": "借助 AI 发现企业优势、匹配招标并组建联合体。",
     "ctaAddCompany": "添加企业",
@@ -57,12 +57,12 @@
     },
     "footer": {
       "logoAlt": "商业与产业转型中心",
-      "poweredBy": "由 TNDRX 驱动"
+      "poweredBy": "由 {brand} 驱动"
     }
   },
   "Auth": {
     "main": {
-      "welcome": "欢迎使用 TNDRX",
+      "welcome": "欢迎使用 {brand}",
       "subheading": "进入您的招标控制台",
       "cardTitle": "账户访问",
       "tabSignIn": "登录",
@@ -193,7 +193,7 @@
       "errorFallback": "保存资料失败"
     },
     "accountType": {
-      "title": "您希望如何使用 TNDRX？",
+      "title": "您希望如何使用 {brand}？",
       "subtitle": "选择最符合您需求的选项",
       "individualTitle": "个人",
       "individualDescription": "不关联公司即可浏览与探索招标",
@@ -1410,9 +1410,9 @@
     "budget": "预算",
     "notSpecified": "未指定",
     "budgetNotDisclosed": "预算未披露",
-    "budgetFrom": "不低于 £{amount}",
-    "budgetUpTo": "不超过 £{amount}",
-    "budgetRange": "£{min} - £{max}",
+    "budgetFrom": "不低于 {amount}",
+    "budgetUpTo": "不超过 {amount}",
+    "budgetRange": "{min} - {max}",
     "matchPercent": "{score}% 匹配",
     "viewOnFindATender": "在 Find a Tender 上查看",
     "viewOnTed": "在 TED 上查看",
@@ -1480,6 +1480,9 @@
     "tenders": "条招标",
     "clearAndRestart": "清除并重启",
     "cancel": "取消",
+    "cancelling": "取消中...",
+    "cancelError": "无法取消匹配，请重试。",
+    "matchingInProgressDisabled": "该公司的深度分析已在进行中。",
     "analyzingProgress": "正在分析招标... 已完成 {percent}%",
     "failedCount": "（{count} 条失败）",
     "previous": "上一页",
@@ -1685,9 +1688,9 @@
     "budget": "预算",
     "notSpecified": "未指定",
     "budgetNotDisclosed": "预算未披露",
-    "budgetFrom": "不低于 £{amount}",
-    "budgetUpTo": "不超过 £{amount}",
-    "budgetRange": "£{min} - £{max}",
+    "budgetFrom": "不低于 {amount}",
+    "budgetUpTo": "不超过 {amount}",
+    "budgetRange": "{min} - {max}",
     "aiSummary": "AI 摘要",
     "description": "描述",
     "noDescription": "暂无描述",
@@ -2019,7 +2022,7 @@
       "addProjectHistory": "添加项目历史可提升招标匹配评分。",
       "proposedPastProjects": "拟议历史项目",
       "platformProjects": "平台项目",
-      "platformProjectsDescription": "TNDRX 上的虚拟组织项目",
+      "platformProjectsDescription": "{brand} 上的虚拟组织项目",
       "noPlatformProjects": "暂无平台项目。创建虚拟组织项目以与其他公司合作。"
     },
     "intelligence": {
@@ -2121,7 +2124,7 @@
       },
       "verifiedCompany": {
         "title": "已认证公司",
-        "description": "该公司已通过 TNDRX 认证。"
+        "description": "该公司已通过 {brand} 认证。"
       },
       "verifiedOn": "认证于 {date}。",
       "pendingVerification": {
@@ -2155,7 +2158,7 @@
       }
     },
     "verifiedBadge": {
-      "verifiedBy": "已由 TNDRX 认证",
+      "verifiedBy": "已由 {brand} 认证",
       "verified": "已认证"
     },
     "draftIndicator": {

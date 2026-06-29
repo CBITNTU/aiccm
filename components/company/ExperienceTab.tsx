@@ -12,6 +12,7 @@ import type { CompanyRecord } from "@/lib/api/types";
 import type { SectionPendingStatus } from "@/hooks/useCompanyPageData";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 
 function parsePastProjectsJson(raw: string | null | undefined): PastProject[] {
   if (!raw) return [];
@@ -48,6 +49,7 @@ export function ExperienceTab({
   onDataRefresh,
 }: ExperienceTabProps) {
   const t = useTranslations("CompanyPage");
+  const { brand } = useDeployment();
   const [editOpen, setEditOpen] = useState(false);
   const { data, isLoading } = useCompanyProjects(companyId);
 
@@ -133,7 +135,7 @@ export function ExperienceTab({
         {/* Platform Projects (VO) */}
         <SectionCard
           title={t("experience.platformProjects")}
-          description={t("experience.platformProjectsDescription")}
+          description={t("experience.platformProjectsDescription", { brand: brand.name })}
           icon={Building2}
           hideEdit
         >

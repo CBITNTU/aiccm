@@ -4,9 +4,7 @@ import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { companies, companyMembers } from "@/lib/db/schema/app";
 import { eq, and } from "drizzle-orm";
-
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36";
+import { getRegistryAdapter } from "@/lib/companies/registry";
 
 interface LookupCompanyRequest {
   companyNumber: string;
@@ -16,6 +14,8 @@ interface LookupCompanyResponse {
   success: boolean;
   error?: string;
   errorCode?: "INVALID_FORMAT" | "DUPLICATE" | "NOT_FOUND" | "FETCH_ERROR";
+  /** True when this region has no automated registry — caller proceeds to manual entry. */
+  manualEntry?: boolean;
   data?: {
     companyName: string;
     registeredAddress: string;
@@ -27,81 +27,6 @@ interface LookupCompanyResponse {
     companyName: string;
     hasAdmin: boolean;
   };
-}
-
-function normalizeCompanyNumber(companyNumber: string): string | null {
-  const clean = companyNumber.replace(/\s/g, "").toUpperCase();
-  if (/^\d{1,8}$/.test(clean)) {
-    return clean.padStart(8, "0");
-  }
-  if (/^(SC|NI|OC|SO|NC|NL|R0|IP|SP|IC|SI|NP)\d{6}$/.test(clean)) {
-    return clean;
-  }
-  return null;
-}
-
-async function fetchCompaniesHouseData(companyNumber: string): Promise<{
-  found: boolean;
-  companyName?: string;
-  registeredAddress?: string;
-  companyStatus?: string;
-  companyType?: string;
-  error?: string;
-}> {
-  const url = `https://find-and-update.company-information.service.gov.uk/company/${companyNumber}`;
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": UA,
-        "Accept-Language": "en-GB,en;q=0.9",
-      },
-    });
-
-    if (response.status === 404) {
-      return { found: false, error: "Company not found on Companies House" };
-    }
-
-    if (!response.ok) {
-      return { found: false, error: `Companies House returned ${response.status}` };
-    }
-
-    const html = await response.text();
-
-    const nameMatch =
-      html.match(/<h1[^>]*class="[^"]*heading-xlarge[^"]*"[^>]*>([^<]+)<\/h1>/i) ||
-      html.match(/<title>([^-<]+)/i);
-    const companyName = nameMatch ? nameMatch[1].trim().replace(/\s+/g, " ") : undefined;
-
-    const statusMatch =
-      html.match(/<dd[^>]*id="company-status"[^>]*>([^<]+)<\/dd>/i) ||
-      html.match(/Company status[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
-    const companyStatus = statusMatch ? statusMatch[1].trim() : undefined;
-
-    const addressMatch = html.match(
-      /Registered office address[\s\S]*?<dd[^>]*class="[^"]*text[^"]*"[^>]*>([\s\S]*?)<\/dd>/i,
-    );
-    let registeredAddress: string | undefined;
-    if (addressMatch) {
-      registeredAddress = addressMatch[1]
-        .replace(/<br\s*\/?>/gi, ", ")
-        .replace(/<[^>]+>/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-    }
-
-    const typeMatch = html.match(/Company type[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
-    const companyType = typeMatch ? typeMatch[1].trim() : undefined;
-
-    if (!companyName) {
-      return { found: false, error: "Could not parse company data from Companies House" };
-    }
-
-    return { found: true, companyName, registeredAddress, companyStatus, companyType };
-  } catch (error) {
-    console.error("Companies House fetch error:", error);
-    return { found: false, error: "Failed to connect to Companies House" };
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -120,7 +45,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const normalizedNumber = normalizeCompanyNumber(companyNumber);
+    const registry = getRegistryAdapter();
+    const normalizedNumber = registry.normalizeNumber(companyNumber);
     if (!normalizedNumber) {
       return apiResponse<LookupCompanyResponse>({
         success: false,
@@ -164,13 +90,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Fetch data from Companies House
-    const chData = await fetchCompaniesHouseData(normalizedNumber);
+    // Regions without an automated registry (e.g. CN/TH): accept the number and
+    // let onboarding proceed to manual entry / manual verification.
+    if (!registry.supportsLookup || !registry.lookup) {
+      return apiResponse<LookupCompanyResponse>({
+        success: true,
+        manualEntry: true,
+      });
+    }
 
-    if (!chData.found) {
+    // Automated registry lookup (UK Companies House).
+    const lookupResult = await registry.lookup(normalizedNumber);
+
+    if (!lookupResult.found || !lookupResult.data) {
       return apiResponse<LookupCompanyResponse>({
         success: false,
-        error: chData.error || "Company not found on Companies House",
+        error: lookupResult.error || "Company not found",
         errorCode: "NOT_FOUND",
       });
     }
@@ -183,12 +118,7 @@ export async function POST(request: NextRequest) {
 
     return apiResponse<LookupCompanyResponse>({
       success: true,
-      data: {
-        companyName: chData.companyName!,
-        registeredAddress: chData.registeredAddress || "",
-        companyStatus: chData.companyStatus || "Unknown",
-        companyType: chData.companyType,
-      },
+      data: lookupResult.data,
     });
   } catch (error) {
     console.error("Lookup company error:", error);

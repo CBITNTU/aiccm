@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { CompanyRecord as Company } from "@/lib/api/types";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 
 interface VerificationBannerProps {
   companyId: string;
@@ -61,6 +62,7 @@ export function VerificationBanner({
   latestResolvedRequest,
 }: VerificationBannerProps) {
   const t = useTranslations("CompanyPage");
+  const { brand } = useDeployment();
   const { data, isLoading } = useVerificationStatus(companyId);
   const submitMutation = useSubmitVerification();
   const [showDialog, setShowDialog] = useState(false);
@@ -228,7 +230,7 @@ export function VerificationBanner({
         <ShieldCheck className="h-4 w-4 text-emerald-600" />
         <AlertTitle className="text-emerald-800">{t("verification.verifiedCompany.title")}</AlertTitle>
         <AlertDescription className="text-emerald-700">
-          {t("verification.verifiedCompany.description")}
+          {t("verification.verifiedCompany.description", { brand: brand.name })}
           {verifiedAt && (
             <span className="ml-1">
               {t("verification.verifiedOn", { date: new Date(verifiedAt).toLocaleDateString() })}

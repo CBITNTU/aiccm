@@ -20,9 +20,11 @@ import {
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
 import { isValidRedirectUrl } from "@/lib/utils/redirectUrl";
+import { useDeployment } from "@/lib/deployment/client";
 
 export default function AuthPage() {
   const t = useTranslations("Auth");
+  const { brand } = useDeployment();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -198,7 +200,7 @@ export default function AuthPage() {
             <Building2 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            {t("main.welcome")}
+            {t("main.welcome", { brand: brand.name })}
           </h1>
           <p className="text-muted-foreground">{t("main.subheading")}</p>
         </div>

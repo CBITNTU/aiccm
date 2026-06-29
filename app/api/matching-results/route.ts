@@ -144,6 +144,7 @@ export async function GET(request: NextRequest) {
           deadline: tenders.deadline,
           budgetMin: tenders.budgetMin,
           budgetMax: tenders.budgetMax,
+          currency: tenders.currency,
           status: tenders.status,
         },
       })
@@ -174,6 +175,7 @@ export async function GET(request: NextRequest) {
         deadline: row.tender.deadline,
         budgetMin: row.tender.budgetMin,
         budgetMax: row.tender.budgetMax,
+        currency: row.tender.currency,
         status: row.tender.status,
       },
     }));

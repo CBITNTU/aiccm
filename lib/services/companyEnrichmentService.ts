@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { aiGenerateObject } from "@/lib/ai";
 import { companyPrefillSchema, type CompanyPrefillData } from "@/lib/schemas/companyPrefill";
 import { validateUrl } from "@/lib/api/validation";
+import { getRegistryAdapter } from "@/lib/companies/registry";
 
 const LOG = "[CompanyAI:enrich]";
 
@@ -278,6 +279,23 @@ export async function enrichCompanyData(companyId: string): Promise<boolean> {
   // 2. Check if enrichment is needed
   if (!companyNeedsEnrichment(company)) {
     console.log(`${LOG} Company "${company.companyName}" already has data or was enriched, skipping`);
+    return false;
+  }
+
+  // 2b. Regions without an automated registry don't support public-source enrichment.
+  if (!getRegistryAdapter().supportsEnrichment) {
+    console.log(`${LOG} Region has no automated enrichment; marking manual for "${company.companyName}"`);
+    await db
+      .update(companies)
+      .set({
+        systemExtracted: {
+          ...((company.systemExtracted as Record<string, unknown>) || {}),
+          enrichedAt: new Date().toISOString(),
+          enrichmentResult: "manual_region",
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(companies.id, companyId));
     return false;
   }
 

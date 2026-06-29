@@ -102,6 +102,7 @@ interface Tender {
   deadline?: string;
   budgetMin?: number;
   budgetMax?: number;
+  currency?: string | null;
   description?: string;
   externalId?: string;
   referenceNumber?: string;
@@ -1078,6 +1079,7 @@ export default function ConsultingPage() {
                   deadline: tender.deadline ?? null,
                   budgetMin: tender.budgetMin ?? null,
                   budgetMax: tender.budgetMax ?? tender.value ?? null,
+                  currency: tender.currency ?? null,
                   referenceNumber: tender.referenceNumber ?? null,
                   cpvCodes: null,
                   aiSummary: null,

@@ -15,7 +15,7 @@ import {
   Calendar,
   MapPin,
   Building2,
-  PoundSterling,
+  Banknote,
   ExternalLink,
   Tag as TagIcon,
   Plus,
@@ -24,6 +24,8 @@ import { formatCpvCode } from "@/lib/cpvCodes";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import type { TenderRecord } from "@/lib/api/types";
 import { resolveExternalNoticeLink } from "@/lib/tenders/externalNoticeLink";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
 
 interface TenderViewDialogProps {
   tender: TenderRecord | null;
@@ -41,15 +43,20 @@ export function TenderViewDialog({
   readOnly: _readOnly = false,
 }: TenderViewDialogProps) {
   const t = useTranslations("TenderViewDialog");
+  const { currency } = useDeployment();
+  const tenderCurrency = resolveCurrencyConfig(tender?.currency, currency);
 
   if (!tender) return null;
 
   const formatBudget = (min?: number | null, max?: number | null) => {
     if (!min && !max) return t("budgetNotDisclosed");
     if (min && max)
-      return t("budgetRange", { min: min.toLocaleString(), max: max.toLocaleString() });
-    if (min) return t("budgetFrom", { amount: min.toLocaleString() });
-    if (max) return t("budgetUpTo", { amount: max.toLocaleString() });
+      return t("budgetRange", {
+        min: formatCurrency(min, tenderCurrency),
+        max: formatCurrency(max, tenderCurrency),
+      });
+    if (min) return t("budgetFrom", { amount: formatCurrency(min, tenderCurrency) });
+    if (max) return t("budgetUpTo", { amount: formatCurrency(max, tenderCurrency) });
     return t("budgetNotDisclosed");
   };
 
@@ -148,7 +155,7 @@ export function TenderViewDialog({
               </div>
             </div>
             <div className="flex items-center gap-2 col-span-2">
-              <PoundSterling className="w-4 h-4 text-muted-foreground" />
+              <Banknote className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">{t("budget")}</p>
                 <p className="font-medium">

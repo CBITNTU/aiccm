@@ -2,7 +2,11 @@ import { db } from "@/lib/db";
 import { tenders } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
+import { getActiveProfile } from "@/lib/deployment";
 import { getCapabilityCatalog } from "@/lib/services/capabilityCatalog";
+
+/** Deployment currency symbol, used in AI prompt budget strings. */
+const CUR = getActiveProfile().currency.symbol;
 import {
   tenderCapabilitiesSchema,
   tenderSummaryAndTaxonomySchema,
@@ -36,7 +40,7 @@ export async function generateTenderSummary(tenderId: string): Promise<string> {
 
   const budgetRange =
     tender.budgetMin || tender.budgetMax
-      ? `£${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - £${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
+      ? `${CUR}${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - ${CUR}${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
       : "Not specified";
 
   // Format requirements if available
@@ -137,7 +141,7 @@ export async function generateTenderCapabilityTaxonomy(
 Title: ${tender.title || "N/A"}
 Description: ${tender.description || "N/A"}
 Buyer: ${tender.buyer || "N/A"}
-Budget: ${tender.budgetMin || tender.budgetMax ? `£${tender.budgetMin?.toLocaleString() || "?"} - £${tender.budgetMax?.toLocaleString() || "?"}` : "Not specified"}
+Budget: ${tender.budgetMin || tender.budgetMax ? `${CUR}${tender.budgetMin?.toLocaleString() || "?"} - ${CUR}${tender.budgetMax?.toLocaleString() || "?"}` : "Not specified"}
 Deadline: ${tender.deadline || "N/A"}
 Location: ${tender.location || "N/A"}
 ${tender.cpvCodes && tender.cpvCodes.length > 0 ? `CPV Codes: ${tender.cpvCodes.join(", ")}` : ""}
@@ -225,7 +229,7 @@ export async function generateTenderSummaryAndTaxonomy(
 
   const budgetRange =
     tender.budgetMin || tender.budgetMax
-      ? `£${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - £${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
+      ? `${CUR}${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - ${CUR}${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
       : "Not specified";
   const requirementsText = tender.requirements
     ? typeof tender.requirements === "string"

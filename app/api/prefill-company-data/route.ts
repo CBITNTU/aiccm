@@ -12,10 +12,11 @@ import {
   fetchCompanySources,
   runPrefillAI,
 } from "@/lib/services/companyEnrichmentService";
+import { getRegistryAdapter } from "@/lib/companies/registry";
 
 const prefillInputSchema = z.object({
   companyName: z.string().min(1).max(200),
-  companyNumber: z.string().length(8).optional(),
+  companyNumber: z.string().min(1).max(64).optional(),
   websiteUrl: z.string().url().optional(),
 });
 
@@ -47,6 +48,17 @@ export async function POST(request: NextRequest) {
     // Validate websiteUrl if provided (SSRF protection)
     if (websiteUrl) {
       validateUrl(websiteUrl);
+    }
+
+    // Regions without an automated registry don't support public-source enrichment.
+    if (!getRegistryAdapter().supportsEnrichment) {
+      return apiResponse<PrefillResult>({
+        companiesHouse: null,
+        endole: null,
+        website: null,
+        normalized: null,
+        errors: ["Automated data prefill is not available for this region."],
+      });
     }
 
     const sources = await fetchCompanySources(companyName, companyNumber, websiteUrl);

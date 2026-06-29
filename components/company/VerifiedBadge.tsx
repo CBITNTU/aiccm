@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 
 interface VerifiedBadgeProps {
   /** Icon-only mode for tight spaces like table cells */
@@ -18,6 +19,7 @@ interface VerifiedBadgeProps {
 
 export function VerifiedBadge({ compact = false, className }: VerifiedBadgeProps) {
   const t = useTranslations("CompanyPage");
+  const { brand } = useDeployment();
   if (compact) {
     return (
       <TooltipProvider delayDuration={200}>
@@ -36,7 +38,7 @@ export function VerifiedBadge({ compact = false, className }: VerifiedBadgeProps
           >
             <div className="flex items-center gap-1.5 text-xs font-medium">
               <ShieldCheck className="h-3 w-3" />
-              {t("verifiedBadge.verifiedBy")}
+              {t("verifiedBadge.verifiedBy", { brand: brand.name })}
             </div>
           </TooltipContent>
         </Tooltip>
@@ -66,7 +68,7 @@ export function VerifiedBadge({ compact = false, className }: VerifiedBadgeProps
         >
           <div className="flex items-center gap-1.5 text-xs font-medium">
             <ShieldCheck className="h-3 w-3" />
-            {t("verifiedBadge.verifiedBy")}
+            {t("verifiedBadge.verifiedBy", { brand: brand.name })}
           </div>
         </TooltipContent>
       </Tooltip>

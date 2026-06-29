@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, PoundSterling, ChevronDown } from "lucide-react";
+import { Calendar, MapPin, Banknote, ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import {
@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/collapsible";
 import { useState } from "react";
 import type { TenderRecord } from "@/lib/api/types";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
 
 interface Taxonomy {
   id: string;
@@ -35,15 +37,17 @@ interface TenderCardProps {
 
 export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
   const t = useTranslations("TenderCard");
+  const { currency } = useDeployment();
+  const tenderCurrency = resolveCurrencyConfig(tender.currency, currency);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const sourceLabel = getTenderSourceLabel(tender.documents);
 
   const formatBudget = (min?: number, max?: number) => {
     if (!min && !max) return t("budgetNotDisclosed");
     if (min && max && min !== max)
-      return `${min.toLocaleString()} - ${max.toLocaleString()}`;
-    if (min) return `${min.toLocaleString()}`;
-    if (max) return `${max.toLocaleString()}`;
+      return `${formatCurrency(min, tenderCurrency)} - ${formatCurrency(max, tenderCurrency)}`;
+    if (min) return formatCurrency(min, tenderCurrency);
+    if (max) return formatCurrency(max, tenderCurrency);
     return t("budgetNotDisclosed");
   };
 
@@ -113,7 +117,7 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
           </span>
         )}
         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-muted rounded-md">
-          <PoundSterling className="h-3 w-3" />
+          <Banknote className="h-3 w-3" />
           {formatBudget(tender.budgetMin ?? undefined, tender.budgetMax ?? undefined)}
         </span>
         {tender.deadline && (

@@ -7,7 +7,7 @@ import {
   AlertCircle,
   Calendar,
   MapPin,
-  PoundSterling,
+  Banknote,
   Sparkles,
   Eye,
   Bookmark,
@@ -16,6 +16,8 @@ import {
   Target,
 } from "lucide-react";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
 
 interface TenderMatchCardProps {
   variant: "deep" | "basic";
@@ -28,6 +30,8 @@ interface TenderMatchCardProps {
   status: string | null;
   budgetMin: number | null;
   budgetMax: number | null;
+  /** ISO currency code of the tender; falls back to the profile currency when absent. */
+  currency?: string | null;
   /** Overall score (deep) or semantic similarity as a percentage (basic), 0-100. */
   score: number;
 
@@ -60,6 +64,7 @@ export function TenderMatchCard({
   status,
   budgetMin,
   budgetMax,
+  currency,
   score,
   capabilityScore = 0,
   experienceScore = 0,
@@ -77,6 +82,8 @@ export function TenderMatchCard({
   readOnly,
 }: TenderMatchCardProps) {
   const t = useTranslations("TenderMatchCard");
+  const { currency: profileCurrency } = useDeployment();
+  const tenderCurrency = resolveCurrencyConfig(currency, profileCurrency);
   const isDeep = variant === "deep";
 
   const getScoreColor = (value: number) => {
@@ -88,10 +95,10 @@ export function TenderMatchCard({
   const formatBudget = (min?: number | null, max?: number | null): string => {
     if (!min && !max) return t("notSpecified");
     if (min && max && min !== max) {
-      return `${min.toLocaleString()} - ${max.toLocaleString()}`;
+      return `${formatCurrency(min, tenderCurrency)} - ${formatCurrency(max, tenderCurrency)}`;
     }
-    if (min) return `${min.toLocaleString()}`;
-    if (max) return `${max.toLocaleString()}`;
+    if (min) return formatCurrency(min, tenderCurrency);
+    if (max) return formatCurrency(max, tenderCurrency);
     return t("notSpecified");
   };
 
@@ -252,7 +259,7 @@ export function TenderMatchCard({
       <div className="flex items-center justify-between pt-3 border-t">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded-md">
-            <PoundSterling className="h-3 w-3" />
+            <Banknote className="h-3 w-3" />
             {formatBudget(budgetMin, budgetMax)}
           </span>
           {deadline && (

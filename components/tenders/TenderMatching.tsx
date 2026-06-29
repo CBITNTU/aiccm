@@ -877,6 +877,7 @@ export function TenderMatching({
                     status={m.status}
                     budgetMin={m.budgetMin}
                     budgetMax={m.budgetMax}
+                    currency={m.currency}
                     score={m.score}
                     capabilityScore={m.capabilityScore}
                     experienceScore={m.experienceScore}
@@ -908,6 +909,7 @@ export function TenderMatching({
                   status={m.status}
                   budgetMin={m.budgetMin}
                   budgetMax={m.budgetMax}
+                  currency={m.currency}
                   score={m.score}
                   onViewDetails={viewDetails}
                   onDeepResearch={() => runDeepResearchForTender(m.tenderId)}

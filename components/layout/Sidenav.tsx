@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { VerificationStatusIndicator } from "@/components/layout/VerificationStatusIndicator";
@@ -294,6 +295,7 @@ function SidebarContent({
   userInitials,
 }: SidebarContentProps) {
   const t = useTranslations("Sidenav");
+  const { brand } = useDeployment();
   return (
     <div className="flex flex-col h-full">
       {/* Logo section */}
@@ -314,7 +316,7 @@ function SidebarContent({
           {(!isCollapsed || isMobile) && (
             <div className="overflow-hidden">
               <h1 className="text-lg font-bold text-primary leading-tight">
-                TNDRX
+                {brand.name}
               </h1>
             </div>
           )}

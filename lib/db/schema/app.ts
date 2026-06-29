@@ -96,6 +96,9 @@ export const companies = pgTable("companies", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   companyName: text("company_name").notNull(),
+  // Generic per-region company registry identifier — NOT UK-only despite the column name.
+  // The label and expected format come from the active deployment profile's `verification`
+  // config (e.g. Companies House Number for UK, Unified Social Credit Code for CN, Tax ID for TH).
   companiesHouseNumber: text("companies_house_number"),
   websiteUrl: text("website_url"),
   postcode: text("postcode"),
@@ -174,6 +177,13 @@ export const tenders = pgTable("tenders", {
   description: text("description"),
   budgetMin: bigint("budget_min", { mode: "number" }),
   budgetMax: bigint("budget_max", { mode: "number" }),
+  // ISO 4217 currency captured at ingest (e.g. GBP, EUR, CNY). NULL for legacy rows —
+  // consumers fall back to the active deployment profile's currency.
+  currency: text("currency"),
+  // Deployment region that ingested this tender ("uk" | "cn" | "th").
+  region: text("region"),
+  // Tender source adapter id that produced this row ("find_tender" | "ted" | ...).
+  source: text("source"),
   location: text("location"),
   deadline: timestamp("deadline", { withTimezone: true }),
   publicationDate: timestamp("publication_date", { withTimezone: true }).defaultNow(),

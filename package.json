@@ -30,6 +30,7 @@
     "bench:matching:summary": "tsx benchmarks/matching/summary.ts",
     "bench:matching:retrieval": "tsx benchmarks/matching/retrieval/run.ts",
     "embed:backfill": "tsx scripts/backfill-embeddings.ts",
+    "validate:locales": "tsx scripts/validate-locale.ts th",
     "inference:up": "docker compose -f infra/inference/docker-compose.yml up -d",
     "inference:down": "docker compose -f infra/inference/docker-compose.yml down",
     "inference:bootstrap": "docker compose -f infra/inference/docker-compose.yml --profile bootstrap run --rm bootstrap",

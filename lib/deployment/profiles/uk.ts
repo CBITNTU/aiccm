@@ -21,7 +21,7 @@ export const ukProfile: DeploymentProfile = {
   },
   i18n: {
     defaultLocale: "en",
-    allowedLocales: ["en", "zh-CN"],
+    allowedLocales: ["en", "zh-CN", "th"],
   },
   currency: { code: "GBP", symbol: "£", locale: "en-GB" },
   verification: {

@@ -1,0 +1,963 @@
+{
+  "AdminLayout": {
+    "loading": "กำลังโหลดสิทธิ์ superadmin…",
+    "accessDenied": "ต้องมีสิทธิ์ superadmin"
+  },
+  "AdminOverview": {
+    "title": "ภาพรวม",
+    "description": "สถิติแพลตฟอร์มและรายการที่ต้องดำเนินการ",
+    "stats": {
+      "totalCompanies": "บริษัททั้งหมด",
+      "totalUsers": "ผู้ใช้ทั้งหมด",
+      "activeTenders": "ประกวดราคาที่ใช้งาน",
+      "pendingActions": "รอดำเนินการ"
+    },
+    "attention": {
+      "title": "รายการที่ต้องดำเนินการ",
+      "review": "ตรวจสอบ"
+    },
+    "actionItems": {
+      "pendingUserApprovalsLabel": "ผู้ใช้รอการอนุมัติ",
+      "pendingUserApprovalsDescription": "ผู้ใช้ที่รอการอนุมัติบัญชี",
+      "pendingJoinRequestsLabel": "คำขอเข้าร่วมที่รอดำเนินการ",
+      "pendingJoinRequestsDescription": "คำขอเข้าร่วมบริษัทที่ต้องตรวจสอบ",
+      "verificationRequestsLabel": "คำขอตรวจสอบ",
+      "verificationRequestsDescription": "การส่งคำขอตรวจสอบบริษัท"
+    }
+  },
+  "AdminCompanyDetail": {
+    "srTitle": "รายละเอียดบริษัท",
+    "srDescription": "ดูรายละเอียดบริษัทและจัดการการตั้งค่า",
+    "verified": "ตรวจสอบแล้ว",
+    "unverified": "ยังไม่ตรวจสอบ",
+    "notProvided": "ไม่ได้ระบุ",
+    "notAssessed": "ยังไม่ประเมิน",
+    "none": "ไม่มี",
+    "tabs": {
+      "overview": "ภาพรวม",
+      "capabilities": "ความสามารถ",
+      "ai": "การวิเคราะห์ AI",
+      "settings": "การตั้งค่า"
+    },
+    "sections": {
+      "businessInformation": "ข้อมูลธุรกิจ",
+      "contactInformation": "ข้อมูลติดต่อ",
+      "status": "สถานะ",
+      "keyCapabilities": "ความสามารถหลัก",
+      "certifications": "ใบรับรอง",
+      "equipment": "อุปกรณ์",
+      "pastProjects": "โครงการที่ผ่านมา",
+      "aiSuggestedCompetencies": "สมรรถนะที่ AI แนะนำ",
+      "aiSummary": "สรุป AI",
+      "assessmentRatings": "คะแนนการประเมิน",
+      "aiCapabilities": "ความสามารถจาก AI",
+      "aiStrengths": "จุดแข็งจาก AI",
+      "performanceBenchmark": "เกณฑ์มาตรฐานประสิทธิภาพ",
+      "executiveSummary": "สรุปผู้บริหาร",
+      "usageOverrides": "การกำหนดโควต้าเฉพาะบริษัท"
+    },
+    "fields": {
+      "companyName": "ชื่อบริษัท",
+      "companiesHouse": "หมายเลข Companies House",
+      "description": "คำอธิบาย",
+      "address": "ที่อยู่",
+      "postcode": "รหัสไปรษณีย์",
+      "contactPerson": "ผู้ติดต่อ",
+      "email": "อีเมล",
+      "phone": "โทรศัพท์",
+      "website": "เว็บไซต์",
+      "verificationStatus": "สถานะการตรวจสอบ",
+      "verifiedAt": "ตรวจสอบเมื่อ",
+      "created": "สร้างเมื่อ",
+      "updated": "อัปเดตเมื่อ",
+      "digitalMaturity": "ความพร้อมด้านดิจิทัล",
+      "safetyRating": "คะแนนความปลอดภัย",
+      "marketPosition": "ตำแหน่งทางการตลาด"
+    },
+    "empty": {
+      "capabilities": "ยังไม่มีรายการความสามารถ",
+      "certifications": "ยังไม่มีใบรับรอง",
+      "equipment": "ยังไม่มีอุปกรณ์",
+      "aiSummary": "ยังไม่ได้สร้างการวิเคราะห์ AI"
+    },
+    "scoreOutOf": "{score}/100",
+    "usage": {
+      "description": "กำหนดขีดจำกัดเฉพาะสำหรับบริษัทนี้ ปล่อยว่างเพื่อใช้ค่าเริ่มต้นของแพลตฟอร์ม",
+      "matchingLabel": "จำนวนการจับคู่ประกวดราคา / เดือน",
+      "analysisLabel": "จำนวนการวิเคราะห์ AI / เดือน",
+      "currentlyUsed": "ใช้ไปแล้ว: {used}/{limit} ในเดือนนี้",
+      "resets": "รีเซ็ต {date}",
+      "defaultPlaceholder": "ค่าเริ่มต้น",
+      "saveButton": "บันทึกการกำหนดค่า"
+    },
+    "toasts": {
+      "matchingLimitInvalid": "ขีดจำกัดการจับคู่ต้องเป็นตัวเลขที่ไม่ติดลบ หรือปล่อยว่างเพื่อใช้ค่าเริ่มต้น",
+      "analysisLimitInvalid": "ขีดจำกัดการวิเคราะห์ต้องเป็นตัวเลขที่ไม่ติดลบ หรือปล่อยว่างเพื่อใช้ค่าเริ่มต้น",
+      "updateSuccess": "อัปเดตขีดจำกัดการใช้งานสำหรับ {name} แล้ว",
+      "updateFailed": "อัปเดตขีดจำกัดการใช้งานไม่สำเร็จ"
+    }
+  },
+  "AdminApprovals": {
+    "title": "การอนุมัติ",
+    "description": "ตรวจสอบและอนุมัติผู้ใช้และคำขอเข้าร่วมบริษัทที่รอดำเนินการ",
+    "unknownUser": "ไม่ทราบ",
+    "notProvided": "ไม่ได้ระบุ",
+    "cardTitle": "รายการรอการอนุมัติ",
+    "cardDescription": "ตรวจสอบและอนุมัติการลงทะเบียนผู้ใช้ใหม่และคำขอเข้าร่วมบริษัท",
+    "tabs": {
+      "users": "ผู้ใช้ที่รออนุมัติ",
+      "requests": "คำขอเข้าร่วม"
+    },
+    "emptyUsers": "ไม่มีผู้ใช้ที่รอการอนุมัติ",
+    "emptyRequests": "ไม่มีคำขอเข้าร่วมที่รอดำเนินการ",
+    "signupTypes": {
+      "individual": "บุคคล",
+      "newCompany": "บริษัทใหม่",
+      "joinCompany": "เข้าร่วมบริษัท"
+    },
+    "onboarding": {
+      "ready": "พร้อมอนุมัติ",
+      "incomplete": "การเริ่มต้นใช้งานยังไม่เสร็จ: {step}",
+      "incompleteHelper": "ผู้ใช้รายนี้ยังไม่เสร็จสิ้นการเริ่มต้นใช้งาน ขั้นตอนปัจจุบัน: {step}",
+      "unknownStep": "ขั้นตอนไม่ทราบ"
+    },
+    "hideCompanyDetails": "ซ่อนรายละเอียดบริษัท",
+    "viewCompanyDetails": "ดูรายละเอียดบริษัท",
+    "rejectButton": "ปฏิเสธ",
+    "approveButton": "อนุมัติ",
+    "companyDetailsHeading": "รายละเอียดบริษัท",
+    "editButton": "แก้ไข",
+    "aiAnalyzeButton": "วิเคราะห์ด้วย AI",
+    "cancelButton": "ยกเลิก",
+    "saveButton": "บันทึก",
+    "form": {
+      "companyName": "ชื่อบริษัท",
+      "companyNamePlaceholder": "ชื่อบริษัท",
+      "companiesHouse": "หมายเลข Companies House",
+      "companiesHousePlaceholder": "เช่น 12345678",
+      "website": "เว็บไซต์",
+      "websiteUrl": "URL เว็บไซต์",
+      "websitePlaceholder": "https://...",
+      "contactPerson": "ผู้ติดต่อ",
+      "contactPersonPlaceholder": "ชื่อผู้ติดต่อ",
+      "contactEmail": "อีเมลติดต่อ",
+      "contactEmailPlaceholder": "contact@company.com",
+      "contactPhone": "โทรศัพท์ติดต่อ",
+      "contactPhonePlaceholder": "+44..."
+    },
+    "messageLabel": "ข้อความ:",
+    "awaitingCompanyAdmin": "รอการอนุมัติจากผู้ดูแลบริษัท",
+    "waitingTooltip": "รอการอนุมัติจากผู้ดูแลบริษัท",
+    "companyApprovedBadge": "อนุมัติบริษัทแล้ว",
+    "rejectDialog": {
+      "title": "ปฏิเสธ {name}",
+      "descriptionUser": "กรุณาระบุเหตุผลในการปฏิเสธผู้ใช้รายนี้",
+      "descriptionRequest": "กรุณาระบุเหตุผลในการปฏิเสธคำขอเข้าร่วมนี้",
+      "reasonLabel": "เหตุผล (ไม่บังคับ)",
+      "reasonPlaceholder": "ระบุเหตุผลในการปฏิเสธ...",
+      "cancel": "ยกเลิก",
+      "confirm": "ปฏิเสธ"
+    },
+    "approvalDialog": {
+      "title": "อนุมัติผู้ใช้และบริษัท",
+      "description": "การดำเนินการนี้จะอนุมัติทั้งผู้ใช้และการลงทะเบียนบริษัท",
+      "userDetails": "รายละเอียดผู้ใช้",
+      "nameLabel": "ชื่อ:",
+      "emailLabel": "อีเมล:",
+      "jobTitleLabel": "ตำแหน่ง:",
+      "companyHeading": "บริษัทที่จะอนุมัติ",
+      "companyNameLabel": "ชื่อบริษัท:",
+      "companiesHouseLabel": "Companies House:",
+      "websiteLabel": "เว็บไซต์:",
+      "contactLabel": "ติดต่อ:",
+      "whatHappensTitle": "สิ่งที่จะเกิดขึ้น",
+      "whatHappens1": "บัญชีผู้ใช้จะได้รับการอนุมัติและสามารถเข้าสู่ระบบได้",
+      "whatHappens2": "สถานะบริษัทจะเปลี่ยนเป็น \"Active\"",
+      "whatHappens3": "ผู้ใช้จะกลายเป็นผู้ดูแลบริษัท",
+      "whatHappens4": "AI จะดึงและเสริมข้อมูลบริษัทโดยอัตโนมัติ",
+      "cancel": "ยกเลิก",
+      "confirm": "อนุมัติทั้งสอง"
+    },
+    "toasts": {
+      "fetchFailed": "โหลดรายการรอการอนุมัติไม่สำเร็จ",
+      "approveUserSuccess": "อนุมัติ {name} แล้ว",
+      "approveUserFailed": "อนุมัติผู้ใช้ไม่สำเร็จ",
+      "rejectUserSuccess": "ปฏิเสธ {name} แล้ว",
+      "rejectUserFailed": "ปฏิเสธผู้ใช้ไม่สำเร็จ",
+      "approveRequestSuccess": "อนุมัติคำขอเข้าร่วมของ {name} แล้ว",
+      "approveRequestFailed": "อนุมัติคำขอไม่สำเร็จ",
+      "rejectRequestSuccess": "ปฏิเสธคำขอเข้าร่วมแล้ว",
+      "rejectRequestFailed": "ปฏิเสธคำขอไม่สำเร็จ",
+      "updateCompanySuccess": "อัปเดตรายละเอียดบริษัทแล้ว",
+      "updateCompanyFailed": "อัปเดตบริษัทไม่สำเร็จ",
+      "analyzeCompanySuccess": "เริ่มวิเคราะห์บริษัทแล้ว ข้อมูลจะอัปเดตในไม่ช้า",
+      "analyzeCompanyFailed": "วิเคราะห์บริษัทไม่สำเร็จ"
+    }
+  },
+  "AdminUsers": {
+    "title": "ผู้ใช้",
+    "description": "จัดการผู้ใช้ บทบาท และสิทธิ์บนแพลตฟอร์ม",
+    "accessDeniedAlert": "คุณไม่มีสิทธิ์เข้าถึงหน้านี้ ต้องมีสิทธิ์ superadmin",
+    "loading": "กำลังโหลดผู้ใช้…",
+    "heading": "การจัดการผู้ใช้",
+    "subheading": "จัดการผู้ใช้และสิทธิ์บนแพลตฟอร์ม",
+    "totalUsersBadge": "ผู้ใช้ทั้งหมด {count} คน",
+    "cardTitle": "ผู้ใช้บนแพลตฟอร์ม",
+    "searchPlaceholder": "ค้นหาผู้ใช้...",
+    "table": {
+      "user": "ผู้ใช้",
+      "email": "อีเมล",
+      "role": "บทบาท",
+      "joined": "เข้าร่วมเมื่อ",
+      "actions": "การดำเนินการ"
+    },
+    "noName": "ไม่มีชื่อ",
+    "roles": {
+      "superadmin": "Superadmin",
+      "smeOwner": "เจ้าของ SME"
+    },
+    "buttons": {
+      "viewEvents": "ดูเหตุการณ์",
+      "removeSuperadmin": "ถอนสิทธิ์ Superadmin",
+      "makeSuperadmin": "ตั้งเป็น Superadmin"
+    },
+    "empty": "ไม่พบผู้ใช้ที่ตรงกับการค้นหา",
+    "instructions": {
+      "heading": "คำแนะนำสำหรับ Superadmin:",
+      "intro": "หากต้องการสร้างบัญชี superadmin ให้ทำดังนี้:",
+      "step1": "สร้างบัญชีปกติผ่านการสมัครสมาชิก",
+      "step2": "อัปเดต migration SQL เพื่อเพิ่มอีเมลของคุณเป็น superadmin",
+      "step3": "หรือใช้ปุ่ม \"ตั้งเป็น Superadmin\" กับผู้ใช้ที่มีอยู่"
+    },
+    "confirmDelete": "คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้รายนี้ การดำเนินการนี้ไม่สามารถยกเลิกได้",
+    "toasts": {
+      "deleteSuccess": "ลบผู้ใช้สำเร็จแล้ว",
+      "deleteError": "ลบผู้ใช้ไม่สำเร็จ",
+      "roleChanged": "เปลี่ยนบทบาทผู้ใช้เป็น {role} แล้ว",
+      "roleUpdateError": "อัปเดตบทบาทผู้ใช้ไม่สำเร็จ",
+      "fetchUsersError": "โหลดผู้ใช้ไม่สำเร็จ: {message}",
+      "fetchEventsError": "โหลดเหตุการณ์ไม่สำเร็จ: {message}"
+    },
+    "eventsDialog": {
+      "title": "เหตุการณ์ของผู้ใช้",
+      "description": "กิจกรรมและเหตุการณ์ล่าสุดของผู้ใช้รายนี้",
+      "loading": "กำลังโหลดเหตุการณ์…",
+      "empty": "ไม่พบเหตุการณ์สำหรับผู้ใช้รายนี้",
+      "table": {
+        "action": "การดำเนินการ",
+        "entity": "เอนทิตี",
+        "status": "สถานะ",
+        "date": "วันที่",
+        "details": "รายละเอียด"
+      },
+      "viewDetails": "ดูรายละเอียด",
+      "defaultStatus": "สำเร็จ"
+    }
+  },
+  "AdminCompanies": {
+    "title": "บริษัท",
+    "description": "จัดการบริษัท สถานะการตรวจสอบ และการนำเข้าข้อมูล",
+    "loading": "กำลังโหลดบริษัท…",
+    "heading": "การจัดการบริษัท",
+    "stats": {
+      "total": "ทั้งหมด",
+      "user": "ผู้ใช้",
+      "system": "ระบบ",
+      "verified": "ตรวจสอบแล้ว",
+      "pending": "รอดำเนินการ",
+      "unverified": "ยังไม่ตรวจสอบ"
+    },
+    "tabs": {
+      "userCompanies": "บริษัทของผู้ใช้",
+      "systemCompanies": "ระบบ / AI",
+      "importTools": "นำเข้าและเครื่องมือ"
+    },
+    "filters": {
+      "all": "ทั้งหมด",
+      "unverified": "ยังไม่ตรวจสอบ",
+      "pending": "รอดำเนินการ",
+      "verified": "ตรวจสอบแล้ว"
+    },
+    "search": {
+      "userPlaceholder": "ค้นหาบริษัทของผู้ใช้...",
+      "systemPlaceholder": "ค้นหาบริษัทระบบ..."
+    },
+    "empty": {
+      "noCompanies": "ไม่พบบริษัท",
+      "noCompaniesHint": "ลองปรับการค้นหาหรือตัวกรอง",
+      "noSystemCompanies": "ไม่พบบริษัทระบบ"
+    },
+    "pagination": {
+      "showingRange": "แสดง {start}-{end} จาก {total}",
+      "pageStatus": "หน้า {page} จาก {totalPages}",
+      "previous": "ก่อนหน้า",
+      "next": "ถัดไป"
+    },
+    "systemDescription": "บริษัทอ้างอิงที่สร้างโดย AI หรือนำเข้า ใช้สำหรับการจับคู่ประกวดราคาและการสาธิตแพลตฟอร์ม",
+    "systemWarning": "การลบบริษัทระบบต้องมีสิทธิ์ superadmin และไม่สามารถยกเลิกได้",
+    "importToolsDescription": "นำเข้าข้อมูลบริษัทหรือเริ่มการวิเคราะห์ AI ใหม่สำหรับบริษัททั้งหมด",
+    "badges": {
+      "verified": "ตรวจสอบแล้ว",
+      "pending": "รอดำเนินการ",
+      "unverified": "ยังไม่ตรวจสอบ"
+    },
+    "limits": {
+      "perMonth": "{count}/เดือน",
+      "default": "ค่าเริ่มต้น",
+      "matchingCustom": "ขีดจำกัดการจับคู่กำหนดเอง: {count}/เดือน",
+      "matchingDefault": "การจับคู่: ค่าเริ่มต้นของแพลตฟอร์ม",
+      "analysisCustom": "ขีดจำกัดการวิเคราะห์กำหนดเอง: {count}/เดือน",
+      "analysisDefault": "การวิเคราะห์: ค่าเริ่มต้นของแพลตฟอร์ม"
+    },
+    "deleteUser": {
+      "title": "ลบบริษัทของผู้ใช้",
+      "description": "คุณแน่ใจหรือไม่ว่าต้องการลบ <strong>{name}</strong> การดำเนินการนี้ไม่สามารถยกเลิกได้",
+      "cancel": "ยกเลิก",
+      "confirm": "ลบบริษัท"
+    },
+    "deleteSystem": {
+      "title": "ลบบริษัทระบบ",
+      "description": "คุณแน่ใจหรือไม่ว่าต้องการลบ <strong>{name}</strong> การดำเนินการนี้ไม่สามารถยกเลิกได้และจะลบข้อมูลที่เกี่ยวข้องทั้งหมด",
+      "cancel": "ยกเลิก",
+      "confirm": "ลบบริษัท"
+    },
+    "toasts": {
+      "loadError": "โหลดบริษัทไม่สำเร็จ",
+      "deleteSuccess": "ลบ {name} สำเร็จแล้ว",
+      "deleteError": "เกิดข้อผิดพลาดขณะลบ {name}"
+    }
+  },
+  "AdminTenders": {
+    "title": "ประกวดราคา",
+    "description": "จัดการการซิงค์ การนำเข้า และการสร้างการวิเคราะห์ AI ใหม่สำหรับประกวดราคา",
+    "sectionTitle": "การจัดการประกวดราคา",
+    "import": {
+      "cardTitle": "นำเข้าประกวดราคา",
+      "tabs": {
+        "findTender": "Find a Tender",
+        "ted": "TED (EU)"
+      },
+      "findTenderDescription": "นำเข้าประกวดราคาจากบริการ Find a Tender ของรัฐบาลสหราชอาณาจักร ระบบจะดึงประกวดราคาที่ใช้งานอยู่และบันทึกลงฐานข้อมูล",
+      "tedDescription": "นำเข้าประกวดราคาจาก TED (Tenders Electronic Daily) ซึ่งเป็นวารสารทางการของ EU สำหรับการจัดซื้อจัดจ้างสาธารณะ ต้องมี API key จาก ",
+      "tedDeveloperPortal": "TED Developer Portal",
+      "tedNotePrefix": "หมายเหตุ:",
+      "tedNote": " TED API ต้องใช้ API key กรุณาตั้งค่า ",
+      "tedNoteEnvVar": "TED_API_KEY",
+      "tedNoteSuffix": " ในตัวแปรสภาพแวดล้อม รับ API key ได้จาก ",
+      "fromDateLabel": "วันที่เริ่ม",
+      "toDateLabel": "วันที่สิ้นสุด",
+      "syncRunningNote": "ไม่สามารถนำเข้าได้ขณะที่การซิงค์ประกวดราคารายสัปดาห์กำลังทำงาน",
+      "findTenderButton": "นำเข้าจาก Find a Tender",
+      "tedButton": "นำเข้าจาก TED",
+      "importingFindTender": "กำลังนำเข้าจาก Find a Tender... เสร็จแล้ว {progress}% (นำเข้า {imported} รายการ ข้าม {skipped} รายการ)",
+      "importingTed": "กำลังนำเข้าจาก TED... เสร็จแล้ว {progress}% (นำเข้า {imported} รายการ ข้าม {skipped} รายการ)",
+      "summaryTitle": "สรุปการนำเข้า:",
+      "summaryTotal": "ดึงมาทั้งหมด: {count}",
+      "summaryImported": "นำเข้าสำเร็จ: {count}",
+      "summarySkipped": "ข้ามรายการซ้ำ: {count}",
+      "errorTitle": "ข้อผิดพลาดการนำเข้า:",
+      "toasts": {
+        "findTenderSuccess": "นำเข้าเสร็จสิ้น! นำเข้าประกวดราคา {imported} รายการจาก Find a Tender ข้ามรายการซ้ำ {skipped} รายการ",
+        "tedSuccess": "นำเข้าเสร็จสิ้น! นำเข้าประกวดราคา {imported} รายการจาก TED ข้ามรายการซ้ำ {skipped} รายการ",
+        "rateLimitedRetries": "ถูกจำกัดอัตรา ลองแล้ว {max} ครั้ง กรุณาลองใหม่ภายหลัง",
+        "rateLimitedWaiting": "ถูกจำกัดอัตรา รอ {seconds} วินาทีก่อนลองใหม่ {attempt}/{max}...",
+        "adminRequired": "ต้องมีสิทธิ์ superadmin เพื่อนำเข้าประกวดราคา",
+        "unknownError": "ข้อผิดพลาดที่ไม่ทราบสาเหตุ",
+        "importFailed": "นำเข้าไม่สำเร็จ: {message}",
+        "tedImportFailed": "นำเข้า TED ไม่สำเร็จ: {message}"
+      }
+    }
+  },
+  "AdminVerification": {
+    "title": "การตรวจสอบ",
+    "description": "ตรวจสอบคำขอตรวจสอบบริษัทและคำขอเปลี่ยนแปลงสมรรถนะ",
+    "statuses": {
+      "pending": "รอดำเนินการ",
+      "verified": "ตรวจสอบแล้ว",
+      "rejected": "ปฏิเสธแล้ว",
+      "changesRequested": "ขอให้แก้ไข"
+    },
+    "requests": {
+      "cardTitle": "คำขอตรวจสอบ",
+      "changeReviewBadge": "ตรวจสอบการเปลี่ยนแปลง",
+      "filters": {
+        "all": "คำขอทั้งหมด",
+        "pending": "รอตรวจสอบ",
+        "changesRequested": "ขอให้แก้ไข",
+        "reviewed": "ตรวจสอบแล้ว"
+      },
+      "emptyAll": "ไม่มีคำขอตรวจสอบ",
+      "emptyFiltered": "ไม่มีคำขอตรวจสอบในสถานะ {filter}",
+      "submitted": "ส่งเมื่อ: {date}",
+      "websiteLink": "เว็บไซต์",
+      "companiesHouse": "CH: {number}",
+      "reviewButton": "ตรวจสอบ"
+    },
+    "competency": {
+      "cardTitle": "คำขอเปลี่ยนแปลงสมรรถนะ",
+      "cardDescription": "การเปลี่ยนแปลงสมรรถนะจากบริษัทที่ตรวจสอบแล้วต้องได้รับการอนุมัติ",
+      "empty": "ไม่มีคำขอเปลี่ยนแปลงสมรรถนะที่รอดำเนินการ",
+      "addLabel": "เพิ่ม ({count}):",
+      "removeLabel": "ลบ ({count}):",
+      "submitted": "ส่งเมื่อ: {date}",
+      "approveButton": "อนุมัติ",
+      "rejectButton": "ปฏิเสธ",
+      "dialog": {
+        "approveTitle": "อนุมัติการเปลี่ยนแปลงสมรรถนะของ {name}",
+        "rejectTitle": "ปฏิเสธการเปลี่ยนแปลงสมรรถนะของ {name}",
+        "notesPlaceholder": "เพิ่มหมายเหตุการตรวจสอบ (ไม่บังคับ)...",
+        "cancel": "ยกเลิก",
+        "approveConfirm": "อนุมัติ",
+        "rejectConfirm": "ปฏิเสธ"
+      },
+      "toasts": {
+        "approved": "อนุมัติการเปลี่ยนแปลงสมรรถนะและนำไปใช้แล้ว",
+        "rejected": "ปฏิเสธคำขอเปลี่ยนแปลงสมรรถนะแล้ว",
+        "reviewError": "ตรวจสอบคำขอไม่สำเร็จ"
+      }
+    }
+  },
+  "AdminVerificationReview": {
+    "srTitle": "การตรวจสอบบริษัท",
+    "srDescription": "ตรวจสอบรายละเอียดคำขอตรวจสอบบริษัท",
+    "loadFailed": "โหลดข้อมูลการตรวจสอบไม่สำเร็จ",
+    "changeReviewBadge": "ตรวจสอบการเปลี่ยนแปลง",
+    "resubmissionBadge": "ส่งใหม่ครั้งที่ #{number}",
+    "submittedOn": "ส่งเมื่อ {date}",
+    "submittedBy": "โดย {firstName} {lastName}",
+    "submittedByWithTitle": "โดย {firstName} {lastName} ({jobTitle})",
+    "statuses": {
+      "pending": "รอตรวจสอบ",
+      "approved": "อนุมัติแล้ว",
+      "rejected": "ปฏิเสธแล้ว",
+      "changesRequested": "ขอให้แก้ไข"
+    },
+    "tabs": {
+      "changes": "การเปลี่ยนแปลง",
+      "overview": "ภาพรวม",
+      "details": "รายละเอียดบริษัท",
+      "competencies": "สมรรถนะ",
+      "ai": "การวิเคราะห์ AI",
+      "financial": "การเงินและการปฏิบัติตาม",
+      "history": "ประวัติ"
+    },
+    "footer": {
+      "allChecked": "ตรวจสอบรายการใน checklist ครบแล้ว",
+      "partial": "ตรวจสอบแล้ว {checked}/{total} รายการใน checklist",
+      "requestChanges": "ขอให้แก้ไข",
+      "reject": "ปฏิเสธ",
+      "approve": "อนุมัติ",
+      "approveDisabledTooltip": "กรุณาตรวจสอบรายการใน checklist ให้ครบก่อนอนุมัติ"
+    },
+    "approveDialog": {
+      "title": "อนุมัติการตรวจสอบ",
+      "description": "การดำเนินการนี้จะทำเครื่องหมาย {name} เป็นบริษัทที่ตรวจสอบแล้ว",
+      "cancel": "ยกเลิก",
+      "confirm": "ยืนยันการอนุมัติ"
+    },
+    "rejectDialog": {
+      "title": "ปฏิเสธการตรวจสอบ",
+      "description": "การดำเนินการนี้จะปฏิเสธคำขอตรวจสอบอย่างถาวร หากต้องการให้บริษัทแก้ไขและส่งใหม่ ให้ใช้ \"ขอให้แก้ไข\" แทน",
+      "placeholder": "เหตุผลในการปฏิเสธ...",
+      "cancel": "ยกเลิก",
+      "confirm": "ปฏิเสธ"
+    },
+    "dataField": {
+      "notProvided": "ไม่ได้ระบุ",
+      "changed": "เปลี่ยนแปลงแล้ว"
+    },
+    "checklist": {
+      "name": "ตรวจสอบชื่อบริษัทกับข้อมูลทางการแล้ว",
+      "website": "เว็บไซต์เข้าถึงได้และตรงกับบริษัท",
+      "contact": "ข้อมูลติดต่อดูถูกต้อง",
+      "description": "คำอธิบายถูกต้องและครบถ้วน",
+      "competencies": "สมรรถนะและความสามารถสมเหตุสมผล",
+      "compliance": "ไม่พบสัญญาณเตือนเรื่องการปฏิบัติตาม"
+    },
+    "changeReview": {
+      "title": "การเปลี่ยนแปลงที่เสนอ",
+      "empty": "ไม่พบการเปลี่ยนแปลงในสแนปช็อต",
+      "current": "ปัจจุบัน (อนุมัติแล้ว)",
+      "proposed": "ที่เสนอ",
+      "emptyValue": "ว่าง",
+      "competencies": "สมรรถนะ",
+      "markets": "ตลาด",
+      "standards": "มาตรฐาน",
+      "added": "เพิ่ม:",
+      "removed": "ลบ:",
+      "fields": {
+        "companyName": "ชื่อบริษัท",
+        "description": "คำอธิบาย",
+        "keyCapabilities": "ความสามารถหลัก",
+        "certifications": "ใบรับรอง",
+        "equipment": "อุปกรณ์",
+        "pastProjects": "โครงการที่ผ่านมา",
+        "companiesHouseNumber": "หมายเลข Companies House"
+      }
+    },
+    "overview": {
+      "submissionNotes": "หมายเหตุการส่ง",
+      "previousFeedback": "ข้อเสนอแนะจากการตรวจสอบครั้งก่อน",
+      "changedFields": "ฟิลด์ที่เปลี่ยนแปลงตั้งแต่การส่งครั้งล่าสุด:",
+      "quickSummary": "สรุปย่อ",
+      "checklist": "Checklist การตรวจสอบ",
+      "capabilitiesSelected": "เลือกแล้ว {count} รายการ"
+    },
+    "fields": {
+      "companyName": "ชื่อบริษัท",
+      "companiesHouse": "Companies House",
+      "companiesHouseNumber": "หมายเลข Companies House",
+      "website": "เว็บไซต์",
+      "contactEmail": "อีเมลติดต่อ",
+      "status": "สถานะ",
+      "capabilities": "ความสามารถ",
+      "description": "คำอธิบาย",
+      "address": "ที่อยู่",
+      "postcode": "รหัสไปรษณีย์",
+      "contactPerson": "ผู้ติดต่อ",
+      "email": "อีเมล",
+      "phone": "โทรศัพท์",
+      "keyCapabilities": "ความสามารถหลัก",
+      "certifications": "ใบรับรอง",
+      "equipment": "อุปกรณ์",
+      "pastProjects": "โครงการที่ผ่านมา"
+    },
+    "details": {
+      "businessInfo": "ข้อมูลธุรกิจ",
+      "contactInfo": "ข้อมูลติดต่อ",
+      "capabilitiesExperience": "ความสามารถและประสบการณ์"
+    },
+    "competencies": {
+      "capabilitiesTitle": "ความสามารถ ({count})",
+      "marketsTitle": "ตลาด ({count})",
+      "standardsTitle": "มาตรฐานและใบรับรอง ({count})",
+      "emptyCapabilities": "ยังไม่ได้เลือกความสามารถ",
+      "emptyMarkets": "ยังไม่ได้เลือกตลาด",
+      "emptyStandards": "ยังไม่ได้เลือกมาตรฐาน",
+      "uncategorized": "ไม่มีหมวดหมู่",
+      "other": "อื่นๆ",
+      "aiSuggested": "สมรรถนะที่ AI แนะนำ"
+    },
+    "ai": {
+      "summary": "สรุป AI",
+      "noSummary": "ยังไม่ได้สร้างการวิเคราะห์ AI",
+      "ratings": "คะแนนการประเมิน",
+      "digitalMaturity": "ความพร้อมด้านดิจิทัล",
+      "safetyRating": "คะแนนความปลอดภัย",
+      "marketPosition": "ตำแหน่งทางการตลาด",
+      "capabilities": "ความสามารถจาก AI",
+      "strengths": "จุดแข็งจาก AI",
+      "certifications": "ใบรับรองจาก AI",
+      "swot": "การวิเคราะห์ SWOT",
+      "swotStrengths": "จุดแข็ง",
+      "swotWeaknesses": "จุดอ่อน",
+      "swotOpportunities": "โอกาส",
+      "swotThreats": "ภัยคุกคาม",
+      "benchmark": "เกณฑ์มาตรฐานประสิทธิภาพ",
+      "overallScore": "คะแนนรวม",
+      "executiveSummary": "สรุปผู้บริหาร",
+      "notAvailable": "ไม่พร้อมใช้งาน",
+      "noneFound": "ไม่พบ",
+      "na": "ไม่ระบุ"
+    },
+    "financial": {
+      "financialData": "ข้อมูลการเงิน",
+      "noFinancial": "ไม่มีข้อมูลการเงิน",
+      "complianceData": "ข้อมูลการปฏิบัติตาม",
+      "noCompliance": "ไม่มีข้อมูลการปฏิบัติตาม",
+      "systemExtracted": "ข้อมูลที่ระบบดึงมา",
+      "noExtracted": "ไม่มีข้อมูลที่ระบบดึงมา",
+      "adminVerified": "ฟิลด์ที่ผู้ดูแลตรวจสอบแล้ว"
+    },
+    "history": {
+      "countOne": "คำขอตรวจสอบ {count} รายการ",
+      "countOther": "คำขอตรวจสอบ {count} รายการ",
+      "current": "ปัจจุบัน",
+      "submissionNotes": "หมายเหตุการส่ง",
+      "reviewNotes": "หมายเหตุการตรวจสอบ",
+      "structuredFeedback": "ข้อเสนอแนะเชิงโครงสร้าง",
+      "reviewedOn": "ตรวจสอบเมื่อ {date}"
+    },
+    "toasts": {
+      "approveSuccess": "ตรวจสอบบริษัทสำเร็จแล้ว",
+      "rejectSuccess": "ปฏิเสธคำขอตรวจสอบแล้ว",
+      "changesRequestedSuccess": "ขอให้แก้ไขแล้ว — แจ้งบริษัทแล้ว",
+      "submitFailed": "ส่งผลการตรวจสอบไม่สำเร็จ"
+    }
+  },
+  "AdminSettings": {
+    "title": "การตั้งค่า",
+    "description": "กำหนดค่าโมเดล AI กฎการตรวจสอบ และการตั้งค่าแพลตฟอร์ม",
+    "ai": {
+      "cardTitle": "การตั้งค่า AI เริ่มต้น",
+      "cardDescription": "ใช้กับคำขอ AI ทั้งหมดในแอป (การจับคู่ การวิเคราะห์บริษัท/ประกวดราคา แชท ฯลฯ) เมื่อไม่ได้กำหนดค่าเฉพาะ",
+      "defaultModelLabel": "โมเดลเริ่มต้น",
+      "reasoningEffortLabel": "ระดับการใช้เหตุผล",
+      "reasoningEffortPlaceholder": "ค่าเริ่มต้น",
+      "reasoningHint": "ยิ่งต่ำยิ่งเร็ว ใช้ token การใช้เหตุผลน้อยลง",
+      "saveButton": "บันทึกค่าเริ่มต้น",
+      "effort": {
+        "default": "ค่าเริ่มต้น",
+        "low": "ต่ำ",
+        "minimal": "ต่ำมาก",
+        "none": "ไม่มี",
+        "medium": "ปานกลาง",
+        "high": "สูง",
+        "xhigh": "สูงมาก"
+      },
+      "toasts": {
+        "loadError": "โหลดการตั้งค่าไม่สำเร็จ",
+        "saveError": "บันทึกไม่สำเร็จ",
+        "saveSuccess": "บันทึกการตั้งค่า AI เริ่มต้นแล้ว จะใช้กับคำขอ AI ทั้งหมด"
+      }
+    },
+    "verification": {
+      "cardTitle": "การตรวจสอบและขีดจำกัดการใช้งาน",
+      "cardDescription": "ควบคุมขีดจำกัดโครงการ สมรรถนะ และการจับคู่ประกวดราคาสำหรับบริษัทที่ตรวจสอบแล้วและยังไม่ตรวจสอบ",
+      "sections": {
+        "projectLimits": "ขีดจำกัดโครงการและสมรรถนะ",
+        "matchingRuns": "จำนวนการจับคู่ประกวดราคาต่อเดือน",
+        "matchingRunsHelper": "ควบคุมจำนวนครั้งที่บริษัทสามารถกด \"Run Analysis\" ได้ต่อเดือนปฏิทิน สามารถกำหนดค่าเฉพาะบริษัทได้ในแท็บบริษัท",
+        "analysisRuns": "จำนวนการวิเคราะห์ AI ต่อเดือน",
+        "analysisRunsHelper": "ควบคุมจำนวนครั้งที่บริษัทสามารถกด \"AI Analysis\" ได้ต่อเดือนปฏิทิน สามารถกำหนดค่าเฉพาะบริษัทได้ในแท็บบริษัท"
+      },
+      "fields": {
+        "verifiedProjectLimit": "ขีดจำกัดโครงการสำหรับบริษัทที่ตรวจสอบแล้ว",
+        "verifiedProjectLimitHelper": "จำนวนโครงการที่ใช้งานสูงสุดสำหรับบริษัทที่ตรวจสอบแล้ว",
+        "unverifiedProjectLimit": "ขีดจำกัดโครงการสำหรับบริษัทที่ยังไม่ตรวจสอบ",
+        "unverifiedProjectLimitHelper": "จำนวนโครงการที่ใช้งานสูงสุดสำหรับบริษัทที่ยังไม่ตรวจสอบ",
+        "unverifiedCompetencyLimit": "ขีดจำกัดสมรรถนะสำหรับบริษัทที่ยังไม่ตรวจสอบ",
+        "unverifiedCompetencyLimitHelper": "จำนวนสมรรถนะสูงสุดสำหรับบริษัทที่ยังไม่ตรวจสอบ (ไม่ต้องตรวจสอบ)",
+        "verifiedMatchingRuns": "การจับคู่ต่อเดือนสำหรับบริษัทที่ตรวจสอบแล้ว",
+        "verifiedMatchingRunsHelper": "ค่าเริ่มต้น: 10 ครั้งต่อเดือนสำหรับบริษัทที่ตรวจสอบแล้ว",
+        "unverifiedMatchingRuns": "การจับคู่ต่อเดือนสำหรับบริษัทที่ยังไม่ตรวจสอบ",
+        "unverifiedMatchingRunsHelper": "ค่าเริ่มต้น: 2 ครั้งต่อเดือนสำหรับบริษัทที่ยังไม่ตรวจสอบ",
+        "verifiedAnalysisRuns": "การวิเคราะห์ต่อเดือนสำหรับบริษัทที่ตรวจสอบแล้ว",
+        "verifiedAnalysisRunsHelper": "ค่าเริ่มต้น: 5 ครั้งต่อเดือนสำหรับบริษัทที่ตรวจสอบแล้ว",
+        "unverifiedAnalysisRuns": "การวิเคราะห์ต่อเดือนสำหรับบริษัทที่ยังไม่ตรวจสอบ",
+        "unverifiedAnalysisRunsHelper": "ค่าเริ่มต้น: 1 ครั้งต่อเดือนสำหรับบริษัทที่ยังไม่ตรวจสอบ"
+      },
+      "saveButton": "บันทึกขีดจำกัด",
+      "toasts": {
+        "loadError": "โหลดการตั้งค่าไม่สำเร็จ",
+        "saveError": "บันทึกไม่สำเร็จ",
+        "saveSuccess": "บันทึกการตั้งค่าแล้ว"
+      }
+    }
+  },
+  "AdminTaxonomy": {
+    "title": "อนุกรมวิธาน",
+    "description": "จัดการหมวดหมู่ความสามารถและโครงสร้างอนุกรมวิธาน",
+    "uncategorized": "ไม่มีหมวดหมู่",
+    "cardTitle": "ตัวแก้ไของอนุกรมวิธานความสามารถ",
+    "cardDescription": "จัดการความสามารถของบริษัทตามหมวดหมู่และชื่อ ใช้สำหรับจับคู่บริษัทกับโครงการ",
+    "resetButton": "รีเซ็ตรายการ",
+    "resetTitle": "ลบความสามารถและลิงก์ทั้งหมด ไม่สามารถยกเลิกได้",
+    "regenerateButton": "สร้างความสามารถบริษัทใหม่ทั้งหมด",
+    "refreshButton": "รีเฟรชรายการ",
+    "addButton": "เพิ่มความสามารถ",
+    "regenerating": "กำลังสร้างความสามารถบริษัทใหม่",
+    "progressPercent": "{progress}%",
+    "batchProgress": "เสร็จแล้ว {completed} / {total} บริษัท",
+    "batchFailed": "({count} ล้มเหลว)",
+    "regenerationDone": "✅ สร้างใหม่เสร็จสิ้น!",
+    "searchPlaceholder": "ค้นหาความสามารถหรือหมวดหมู่...",
+    "loading": "กำลังโหลดความสามารถ…",
+    "emptySearch": "ไม่พบความสามารถที่ตรงกับการค้นหา",
+    "empty": "ไม่พบความสามารถ สร้างรายการแรกของคุณ",
+    "total": "ทั้งหมด: {count} ความสามารถ ใน {categories} หมวดหมู่",
+    "resetConfirm": "⚠️ คำเตือน: การดำเนินการนี้จะลบความสามารถและลิงก์ความสามารถ-บริษัททั้งหมด!\n\nไม่สามารถยกเลิกได้ บริษัททุกแห่งจะสูญเสียสมรรถนะที่อนุมัติแล้ว และการเปลี่ยนแปลงที่รอดำเนินการ (ฉบับร่าง)\n\nอนุกรมวิธานที่แก้ไขได้จะถูกกู้คืนจากตาราง seed แบบอ่านอย่างเดียว (ที่ migration CSV เติมข้อมูล)\n\nคุณแน่ใจหรือไม่ว่าต้องการดำเนินการต่อ?",
+    "resetConfirmTypePrompt": "การดำเนินการนี้จะลบสมรรถนะและฉบับร่างของบริษัททุกแห่งอย่างถาวร พิมพ์ RESET (ตัวพิมพ์ใหญ่) เพื่อยืนยัน",
+    "deleteDialog": {
+      "title": "ลบความสามารถ",
+      "description": "คุณแน่ใจหรือไม่ว่าต้องการลบ \"{name}\" การดำเนินการนี้ไม่สามารถยกเลิกได้",
+      "cancel": "ยกเลิก",
+      "confirm": "ลบ"
+    },
+    "createDialog": {
+      "title": "สร้างความสามารถใหม่",
+      "description": "เพิ่มความสามารถใหม่ในอนุกรมวิธาน",
+      "cancel": "ยกเลิก",
+      "confirm": "สร้าง"
+    },
+    "editDialog": {
+      "title": "แก้ไขความสามารถ",
+      "description": "อัปเดตรายละเอียดความสามารถ",
+      "cancel": "ยกเลิก",
+      "confirm": "บันทึกการเปลี่ยนแปลง"
+    },
+    "form": {
+      "nameLabel": "ชื่อ *",
+      "namePlaceholder": "ชื่อความสามารถ",
+      "parentLabel": "หมวดหมู่แม่ (ไม่บังคับ)",
+      "parentPlaceholder": "ไม่มี",
+      "none": "ไม่มี",
+      "categoryLabel": "หมวดหมู่ (ไม่บังคับหากตั้งหมวดหมู่แม่แล้ว)",
+      "categoryPlaceholder": "เลือกหมวดหมู่"
+    },
+    "toasts": {
+      "loadFailed": "โหลดความสามารถไม่สำเร็จ: {error}",
+      "refreshed": "รีเฟรชรายการความสามารถแล้ว",
+      "deleteSuccess": "ลบความสามารถสำเร็จแล้ว",
+      "deleteFailed": "ลบความสามารถไม่สำเร็จ: {error}",
+      "nameRequired": "ต้องระบุชื่อ",
+      "categoryOrParentRequired": "ต้องระบุหมวดหมู่หรือหมวดหมู่แม่อย่างใดอย่างหนึ่ง",
+      "updateSuccess": "อัปเดตความสามารถสำเร็จแล้ว",
+      "createSuccess": "สร้างความสามารถสำเร็จแล้ว",
+      "saveFailed": "บันทึกความสามารถไม่สำเร็จ: {error}",
+      "resetSuccessSeeded": "✅ รีเซ็ตเสร็จสิ้น ลบความสามารถ {deleted} รายการและลิงก์ {links} รายการ เติมใหม่จากตาราง seed {reseeded} รายการ",
+      "resetSuccessEmpty": "✅ รีเซ็ตเสร็จสิ้น ลบความสามารถ {deleted} รายการและลิงก์ {links} รายการ ตาราง seed ว่าง — รัน migration อนุกรมวิธานเพื่อเติมข้อมูล",
+      "resetFailed": "รีเซ็ตความสามารถไม่สำเร็จ",
+      "resetCancelled": "ยกเลิกการรีเซ็ตแล้ว",
+      "regenerateQueued": "จัดคิวงานประมวลผล AI {jobs} งาน สำหรับ {companies} บริษัท",
+      "regenerateFailed": "เริ่มการสร้างใหม่ไม่สำเร็จ"
+    }
+  },
+  "AdminOnboarding": {
+    "title": "การเริ่มต้นใช้งาน",
+    "description": "ติดตามความคืบหน้าและอัตราการเริ่มต้นใช้งานของผู้ใช้",
+    "loading": "กำลังโหลดข้อมูลการเริ่มต้นใช้งาน…",
+    "stats": {
+      "totalUsers": "ผู้ใช้ทั้งหมด",
+      "emailPending": "รอยืนยันอีเมล",
+      "profileStep": "ขั้นตอนโปรไฟล์",
+      "accountCompany": "บัญชี/บริษัท",
+      "completed": "เสร็จสิ้น"
+    },
+    "approval": {
+      "approved": "อนุมัติแล้ว",
+      "pending": "รอดำเนินการ",
+      "rejected": "ปฏิเสธแล้ว"
+    },
+    "cardTitle": "สถานะการเริ่มต้นใช้งานของผู้ใช้",
+    "refreshButton": "รีเฟรช",
+    "searchPlaceholder": "ค้นหาด้วยอีเมลหรือชื่อ...",
+    "table": {
+      "user": "ผู้ใช้",
+      "currentStep": "ขั้นตอนปัจจุบัน",
+      "accountType": "ประเภทบัญชี",
+      "approval": "การอนุมัติ",
+      "signedUp": "ลงทะเบียนเมื่อ"
+    },
+    "emptyState": "ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข",
+    "nameNotProvided": "ไม่ได้ระบุ",
+    "dateNA": "ไม่ระบุ",
+    "details": {
+      "heading": "ความคืบหน้าการเริ่มต้นใช้งาน",
+      "step1": "1. ยืนยันอีเมล",
+      "step2": "2. ข้อมูลโปรไฟล์",
+      "step3": "3. ประเภทบัญชี",
+      "step4": "4. ข้อมูลบริษัท",
+      "verifiedAt": "ยืนยันเมื่อ {date}",
+      "pendingVerification": "รอยืนยัน",
+      "nameLabel": "ชื่อ:",
+      "jobLabel": "ตำแหน่ง:",
+      "notCompleted": "ยังไม่เสร็จ",
+      "notSelected": "ยังไม่ได้เลือก",
+      "skippedIndividual": "ข้าม (บุคคล)",
+      "requestingToJoin": "ขอเข้าร่วม:",
+      "completedOn": "เริ่มต้นใช้งานเสร็จสิ้น:"
+    }
+  },
+  "AdminDemoSync": {
+    "title": "Demo Sync",
+    "description": "รันการจับคู่ประกวดราคาแบบสาธิตด้วยโมเดล AI ที่กำหนดได้",
+    "cardTitle": "โหมดทดสอบ: demo sync และการจับคู่",
+    "cardDescription": "รันการจับคู่สาธิต 50 ประกวดราคาและเปรียบเทียบโมเดล ผลลัพธ์เก็บในตารางแยกและถูกล้างทุกครั้งที่กด \"Run demo\" ใช้ \"Add user to queue\" เพื่อจำลองผู้ใช้คนที่สอง (รวม 100 การจับคู่)",
+    "runTimerLabel": "ตัวจับเวลาการรัน:",
+    "lastRunLabel": "รันล่าสุด:",
+    "queueProgress": "ความคืบหน้าคิว",
+    "modelLabel": "โมเดล:",
+    "thinkingLabel": "การใช้เหตุผล:",
+    "thinkingHint": "ยิ่งต่ำยิ่งเร็ว",
+    "effort": {
+      "default": "ค่าเริ่มต้น",
+      "low": "ต่ำ",
+      "minimal": "ต่ำมาก",
+      "none": "ไม่มี"
+    },
+    "runDemoButton": "รัน demo (50 ประกวดราคา)",
+    "addUserButton": "เพิ่มผู้ใช้ในคิว (+50 การจับคู่)",
+    "resultsTitle": "ผลลัพธ์ demo",
+    "resultsDescription": "ผลการจับคู่ โมเดลที่ใช้ และสรุป AI แถวจะปรากฏเมื่องานเสร็จ (poll ทุก 5 วินาที)",
+    "loadingResults": "กำลังโหลดผลลัพธ์…",
+    "emptyResults": "ยังไม่มีผล demo กรุณารัน demo เพื่อดูการจับคู่",
+    "table": {
+      "batch": "Batch",
+      "tender": "ประกวดราคา",
+      "company": "บริษัท",
+      "score": "คะแนน",
+      "model": "โมเดล",
+      "summary": "สรุป"
+    },
+    "rawAiOutput": "ผลลัพธ์ AI ดิบ (batch: {batch}, model: {model})",
+    "toasts": {
+      "fetchError": "โหลดผลลัพธ์ไม่สำเร็จ",
+      "demoStarted": "เริ่ม demo แล้ว: จัดคิว {count} งาน (User A) ผลลัพธ์จะแสดงด้านล่าง",
+      "demoFinished": "demo เสร็จใน {duration} ({model})",
+      "runFailed": "รันไม่สำเร็จ",
+      "addUserSuccess": "เพิ่ม User B แล้ว: จัดคิว {count} งาน คิวรวมมีงานเพิ่มเติม",
+      "addUserFailed": "เพิ่มผู้ใช้ไม่สำเร็จ"
+    }
+  },
+  "AdminTenderSync": {
+    "cardTitle": "ซิงค์ประกวดราคารายสัปดาห์",
+    "lastSyncLabel": "ซิงค์ครั้งล่าสุดเสร็จ:",
+    "nextSyncLabel": "ซิงค์ตามกำหนดครั้งถัดไป:",
+    "never": "ไม่เคย",
+    "notScheduled": "ยังไม่ได้กำหนด",
+    "loading": "กำลังโหลด…",
+    "loadError": "โหลดสถานะไม่สำเร็จ",
+    "triggerButton": "เริ่มซิงค์ทันที",
+    "syncingButton": "กำลังซิงค์…",
+    "stopButton": "หยุดซิงค์",
+    "ariaStatus": "สถานะกำหนดการซิงค์ประกวดราคา",
+    "ariaTriggering": "กำลังซิงค์ประกวดราคา",
+    "ariaTrigger": "เริ่มซิงค์ประกวดราคาทันที",
+    "ariaStop": "หยุดซิงค์ประกวดราคา",
+    "toasts": {
+      "completed": "ซิงค์เสร็จสิ้น ครั้งถัดไปใน 7 วัน",
+      "failed": "ซิงค์ไม่สำเร็จ (ดู server logs) กำหนดครั้งถัดไปใน 7 วัน",
+      "notRun": "ยังไม่ได้ซิงค์",
+      "stopped": "หยุดซิงค์แล้ว",
+      "triggerError": "เริ่มซิงค์ไม่สำเร็จ"
+    }
+  },
+  "AdminTenderAIRegen": {
+    "inProgressTitle": "กำลังสร้าง AI ใหม่",
+    "inProgressSubtitle": "เสร็จแล้ว {completed}/{total} ({progress}%)",
+    "viewDetails": "ดูรายละเอียด",
+    "openButton": "สร้าง AI ประกวดราคาใหม่ทั้งหมด",
+    "dialogTitle": "สร้างสรุป AI และอนุกรมวิธานประกวดราคาใหม่",
+    "dialogDescription": "การดำเนินการนี้จะสร้างสรุป AI และอนุกรมวิธานความสามารถใหม่สำหรับประกวดราคาทั้งหมด อาจใช้เวลาหลายนาที",
+    "startDescription": "กดปุ่มด้านล่างเพื่อจัดคิวงานสร้าง AI ใหม่สำหรับประกวดราคาทั้งหมด",
+    "queuing": "กำลังจัดคิวงาน…",
+    "startButton": "เริ่มสร้างใหม่",
+    "progressLabel": "ความคืบหน้า",
+    "completed": "เสร็จแล้ว",
+    "remaining": "คงเหลือ",
+    "totalLabel": "ทั้งหมด:",
+    "totalValue": "{count} ประกวดราคา",
+    "failedLabel": "ล้มเหลว:",
+    "startProcessingButton": "เริ่มประมวลผลงาน",
+    "completedMessage": "สร้างใหม่เสร็จสิ้น!",
+    "failedMessage": "สร้างใหม่ไม่สำเร็จ",
+    "closeButton": "ปิด",
+    "backgroundHint": "คุณสามารถปิดหน้าต่างนี้ได้ — การประมวลผลจะดำเนินต่อในพื้นหลัง กลับมาที่นี่เพื่อดูความคืบหน้า",
+    "toasts": {
+      "queued": "จัดคิวงานประมวลผล AI {jobCount} งาน สำหรับ {tenderCount} ประกวดราคา",
+      "startError": "เริ่มการสร้างใหม่ไม่สำเร็จ",
+      "workerError": "เริ่ม worker ไม่สำเร็จ งานอยู่ในคิวแต่ยังไม่ประมวลผล",
+      "workerRetryError": "เริ่ม worker ไม่สำเร็จ กรุณาลองใหม่"
+    }
+  },
+  "AdminDataImport": {
+    "cardTitle": "นำเข้าข้อมูลบริษัทก่อสร้าง",
+    "description": "จะนำเข้าบริษัทก่อสร้าง {count} แห่งจากไฟล์ Excel Bolsover ลงฐานข้อมูล",
+    "importButton": "นำเข้าข้อมูลบริษัท",
+    "importing": "กำลังนำเข้า... เสร็จแล้ว {progress}% ({imported} จาก {total})",
+    "errorsTitle": "ข้อผิดพลาดการนำเข้า:",
+    "moreErrors": "...และอีก {count} ข้อผิดพลาด",
+    "toasts": {
+      "importError": "เกิดข้อผิดพลาดขณะนำเข้า {name}: {error}",
+      "importSuccess": "นำเข้าเสร็จสิ้น! ประมวลผลบริษัทสำเร็จ {count} แห่ง",
+      "importFailed": "นำเข้าไม่สำเร็จ: {error}"
+    }
+  },
+  "AdminCSVImport": {
+    "cardTitle": "นำเข้าบริษัทจาก CSV",
+    "cardDescription": "อัปโหลดไฟล์ CSV เพื่อนำเข้าบริษัท บริษัทที่นำเข้าจะถูกทำเครื่องหมายเป็นบริษัทระบบ",
+    "format": {
+      "title": "รูปแบบ CSV ที่ต้องการ:",
+      "requiredIntro": "คอลัมน์ที่จำเป็น: ",
+      "requiredOr": " (หรือ ",
+      "requiredOrEnd": ")",
+      "supportedIntro": "คอลัมน์ที่รองรับ: ",
+      "supportedSuffix": " (และ 2, 3, 4)",
+      "note": "หมายเหตุ: ค่าแบบอาร์เรย์ เช่น "
+    },
+    "noteSuffix": " จะถูกแยกวิเคราะห์โดยอัตโนมัติ หากระบุที่อยู่เต็ม ระบบจะดึงรหัสไปรษณีย์จากที่อยู่นั้น",
+    "fileLabel": "ไฟล์ CSV",
+    "updateExistingLabel": "อัปเดตความสามารถของบริษัทที่มีอยู่ (แมปความสามารถจาก CSV ใหม่)",
+    "queueAiJobsLabel": "จัดคิวงานสรุป/อนุกรมวิธาน AI หลังนำเข้า (ไม่บังคับ)",
+    "previewLabel": "ตัวอย่าง (5 แถวแรก)",
+    "previewHeader": {
+      "companyName": "ชื่อบริษัท",
+      "contact": "ผู้ติดต่อ",
+      "location": "ที่ตั้ง"
+    },
+    "importButton": "นำเข้าบริษัท",
+    "progressLabel": "เสร็จแล้ว {progress}%",
+    "progressCounts": "นำเข้า {imported} อัปเดต {updated} ข้าม {skipped} ข้อผิดพลาด {errors} จัดคิว {queued}",
+    "errorsTitle": "ข้อผิดพลาดการนำเข้า ({count}):",
+    "moreErrors": "...และอีก {count} ข้อผิดพลาด",
+    "errors": {
+      "unknownImportError": "ข้อผิดพลาดการนำเข้าที่ไม่ทราบสาเหตุ"
+    },
+    "summaryTitle": "สรุปการนำเข้า:",
+    "summaryImported": "นำเข้าบริษัทสำเร็จ {count} แห่ง",
+    "summaryUpdated": "อัปเดตบริษัท {count} แห่ง",
+    "summarySkipped": "ข้ามบริษัท {count} แห่ง (มีอยู่แล้ว)",
+    "summaryFailed": "นำเข้าบริษัทไม่สำเร็จ {count} แห่ง",
+    "summaryQueued": "จัดคิวงาน AI {count} งาน",
+    "downloadFailureReport": "ดาวน์โหลดรายงานความล้มเหลว",
+    "toasts": {
+      "invalidFile": "กรุณาเลือกไฟล์ CSV",
+      "noData": "ไม่พบข้อมูลที่ใช้ได้ในไฟล์ CSV",
+      "loaded": "โหลดไฟล์ CSV แล้ว พบบริษัท {count} แห่ง",
+      "parseError": "แยกวิเคราะห์ไฟล์ CSV ไม่สำเร็จ",
+      "capabilityMatchingDisabled": "ปิดการจับคู่ความสามารถ — โหลดรายการอ้างอิงไม่สำเร็จ",
+      "importSuccess": "นำเข้าเสร็จสิ้น! นำเข้า {imported} อัปเดต {updated} ข้าม {skipped} ข้อผิดพลาด {errors} จัดคิว {queued} งาน {note}",
+      "importSuccessNote": "กำลังสร้างอนุกรมวิธานความสามารถในพื้นหลัง",
+      "importFailed": "นำเข้าไม่สำเร็จ: {message}"
+    }
+  },
+  "AdminReviewFeedback": {
+    "dialogTitle": "ขอให้แก้ไข — {name}",
+    "dialogDescription": "เลือกส่วนที่ต้องดำเนินการและให้ข้อเสนอแนะเฉพาะในแต่ละส่วน บริษัทจะเห็นข้อเสนอแนะนี้และสามารถแก้ไขก่อนส่งใหม่",
+    "sections": {
+      "companyInfo": "ข้อมูลบริษัท",
+      "contact": "รายละเอียดติดต่อ",
+      "website": "เว็บไซต์",
+      "competencies": "สมรรถนะและความสามารถ",
+      "certifications": "ใบรับรองและมาตรฐาน",
+      "description": "คำอธิบายบริษัท",
+      "financial": "ข้อมูลการเงิน",
+      "compliance": "การปฏิบัติตาม"
+    },
+    "needsChanges": "ต้องแก้ไข",
+    "ok": "ปกติ",
+    "sectionPlaceholder": "ส่วน \"{label}\" ต้องแก้ไขอย่างไร?",
+    "overallLabel": "หมายเหตุรวม (ไม่บังคับ)",
+    "overallPlaceholder": "บริบทหรือคำแนะนำเพิ่มเติม...",
+    "flaggedCount": "ระบุ {count, plural, one {# ส่วน} other {# ส่วน}} ที่ต้องแก้ไข",
+    "cancel": "ยกเลิก",
+    "submit": "ส่งข้อเสนอแนะ"
+  },
+  "AdminCompanyAIRegen": {
+    "inProgressTitle": "กำลังสร้าง AI บริษัทใหม่",
+    "inProgressSubtitle": "เสร็จแล้ว {completed}/{total} ({progress}%)",
+    "viewDetails": "ดูรายละเอียด",
+    "openButton": "สร้าง AI บริษัทใหม่ทั้งหมด",
+    "dialogTitle": "สร้างสรุป AI และอนุกรมวิธานบริษัทใหม่",
+    "dialogDescription": "การดำเนินการนี้จะสร้างสรุป AI และอนุกรมวิธานความสามารถใหม่สำหรับบริษัททั้งหมด อาจสร้างความสามารถใหม่จากข้อมูลบริษัท อาจใช้เวลาหลายนาที",
+    "startButton": "เริ่มสร้างใหม่",
+    "progressLabel": "ความคืบหน้า",
+    "totalJobs": "งานทั้งหมด",
+    "completed": "เสร็จแล้ว",
+    "failed": "ล้มเหลว",
+    "statusCompleted": "สร้างใหม่เสร็จสิ้น",
+    "statusFailed": "สร้างใหม่ไม่สำเร็จ",
+    "statusProcessing": "กำลังประมวลผล…",
+    "jobsQueuedTitle": "จัดคิวงานแล้ว",
+    "jobsQueuedBody": "งานอยู่ในคิวแต่ยังไม่ประมวลผล กดปุ่มด้านล่างเพื่อเริ่มประมวลผล",
+    "startProcessingButton": "เริ่มประมวลผลงาน",
+    "failedMessage": "งานบางส่วนล้มเหลว ตรวจสอบ logs สำหรับรายละเอียด",
+    "toasts": {
+      "queued": "จัดคิวงานประมวลผล AI {jobCount} งาน สำหรับ {companyCount} บริษัท",
+      "startError": "เริ่มการสร้างใหม่ไม่สำเร็จ",
+      "workerError": "เริ่ม worker ไม่สำเร็จ งานอยู่ในคิวแต่ยังไม่ประมวลผล",
+      "workerRetryError": "เริ่ม worker ไม่สำเร็จ กรุณาลองใหม่"
+    }
+  }
+}

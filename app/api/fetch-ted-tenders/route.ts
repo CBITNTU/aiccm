@@ -16,6 +16,13 @@ function isTenderSyncRequest(request: NextRequest): boolean {
   return !!TENDER_SYNC_SECRET && secret === TENDER_SYNC_SECRET;
 }
 
+/** Coerce an untrusted value to an integer in [min, max], falling back to `fallback`. */
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(Math.max(n, min), max);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const syncBySecret = isTenderSyncRequest(request);
@@ -40,12 +47,21 @@ export async function POST(request: NextRequest) {
     const {
       dateFrom,
       dateTo,
-      page = 1,
-      limit = 100,
+      page: rawPage,
+      limit: rawLimit,
       iterationNextToken,
       adminImport = false,
-      languages,
+      languages: rawLanguages,
     } = await request.json();
+
+    // Coerce/clamp numeric inputs so a malformed body can't propagate NaN/negatives.
+    const limit = clampInt(rawLimit, 100, 1, 250);
+    const page = clampInt(rawPage, 1, 1, 100000);
+    // Only forward language codes that look like codes (letters), to avoid injecting
+    // arbitrary text into the TED query DSL.
+    const languages = Array.isArray(rawLanguages)
+      ? rawLanguages.filter((l): l is string => typeof l === "string" && /^[A-Za-z]{2,3}$/.test(l))
+      : undefined;
 
     const { tenders: notices, hasMore, nextToken, nextPage } =
       await tedAdapter.fetch({

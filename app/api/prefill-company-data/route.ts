@@ -16,7 +16,13 @@ import { getRegistryAdapter } from "@/lib/companies/registry";
 
 const prefillInputSchema = z.object({
   companyName: z.string().min(1).max(200),
-  companyNumber: z.string().min(1).max(64).optional(),
+  // Alphanumeric only: the value is interpolated into upstream registry/Endole URL
+  // *paths* (lib/services/companyEnrichmentService), so disallow "/", "." and spaces
+  // to prevent path manipulation. Covers UK (8 digits / SC123456), CN (USCC) and TH.
+  companyNumber: z
+    .string()
+    .regex(/^[A-Za-z0-9]{1,32}$/, "Invalid company number format")
+    .optional(),
   websiteUrl: z.string().url().optional(),
 });
 

@@ -32,7 +32,20 @@ interface LookupCompanyResponse {
 export async function POST(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser(request);
-    const userId = user?.id;
+    // Require authentication: this endpoint discloses whether a company is already
+    // registered (name + whether it has an admin) and proxies an external registry
+    // lookup, so it must not be callable anonymously.
+    if (!user) {
+      return apiResponse<LookupCompanyResponse>(
+        {
+          success: false,
+          error: "Authentication required",
+          errorCode: "FETCH_ERROR",
+        },
+        401,
+      );
+    }
+    const userId = user.id;
 
     const body: LookupCompanyRequest = await request.json();
     const { companyNumber } = body;

@@ -29,18 +29,30 @@ export type TenderSyncSourceStats = {
 export type TenderSyncRunStats = Record<string, TenderSyncSourceStats>;
 
 const PAGE_LIMIT = 250;
+/** Hard cap on pages fetched per adapter, so a never-ending upstream cursor can't loop forever. */
+const MAX_PAGES_PER_ADAPTER = 100;
+/** Wall-clock budget for the whole run; bounds execution under serverless time limits. */
+const MAX_RUN_MS = 4 * 60 * 1000;
 
 /**
  * Run a full sync over every tender source enabled for the active deployment profile.
  * Each adapter is paginated in-process (cursor / token / page, whichever it returns)
- * and persisted through the shared ingest tail.
+ * and persisted through the shared ingest tail. Pagination is bounded by a per-adapter
+ * page cap and an overall wall-clock deadline so a slow/endless upstream can't hang the
+ * request or spawn unbounded embedding/AI jobs.
  */
 async function runTenderSync(request: NextRequest): Promise<TenderSyncRunStats> {
-  const dateFromISO = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const dateToISO = new Date().toISOString();
+  const startedAt = Date.now();
+  const deadline = startedAt + MAX_RUN_MS;
+  const dateFromISO = new Date(startedAt - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const dateToISO = new Date(startedAt).toISOString();
   const stats: TenderSyncRunStats = {};
 
   for (const adapter of getAdaptersForProfile()) {
+    if (Date.now() >= deadline) {
+      console.warn(`[Tender sync] Run deadline reached; skipping remaining adapters.`);
+      break;
+    }
     const sourceStats: TenderSyncSourceStats = {
       imported: 0,
       fetched: 0,
@@ -57,14 +69,29 @@ async function runTenderSync(request: NextRequest): Promise<TenderSyncRunStats> 
     let iterationNextToken: string | undefined;
     let page = 1;
     let hasMore = true;
+    let pagesFetched = 0;
 
     while (hasMore) {
+      if (pagesFetched >= MAX_PAGES_PER_ADAPTER) {
+        console.warn(
+          `[Tender sync] ${adapter.label}: hit MAX_PAGES_PER_ADAPTER (${MAX_PAGES_PER_ADAPTER}); stopping pagination early.`,
+        );
+        break;
+      }
+      if (Date.now() >= deadline) {
+        console.warn(
+          `[Tender sync] ${adapter.label}: run deadline reached; stopping pagination early.`,
+        );
+        break;
+      }
+
       const result = await adapter.fetch({
         ...baseParams,
         cursor,
         iterationNextToken,
         page,
       });
+      pagesFetched++;
 
       if (result.tenders.length > 0) {
         const ingested = await ingestTenders(result.tenders, adapter, { request });

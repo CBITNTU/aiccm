@@ -36,6 +36,7 @@ interface MatchingResult {
     deadline: string;
     budgetMin: number;
     budgetMax: number;
+    currency: string | null;
     status: string;
   };
 }
@@ -176,6 +177,7 @@ export function SavedTenders({
               status={result.tenders.status ?? null}
               budgetMin={result.tenders.budgetMin ?? null}
               budgetMax={result.tenders.budgetMax ?? null}
+              currency={result.tenders.currency ?? null}
               score={result.overallScore}
               capabilityScore={result.capabilityScore}
               experienceScore={result.experienceScore}

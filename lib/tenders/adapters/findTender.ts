@@ -26,7 +26,7 @@ function transformOCDSToTender(
     if (!value || value === 0) return null;
     const numValue = Number(value);
     if (isNaN(numValue)) return null;
-    return Math.floor(numValue * 100);
+    return Math.floor(numValue);
   };
 
   const cpvSet = new Set<string>();
@@ -178,6 +178,8 @@ async function fetchFromFindTenderAPI(
       Accept: "application/json",
       "User-Agent": "TenderMatchingService/1.0",
     },
+    // Bound the request so a hanging upstream can't stall the sync.
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!response.ok) {

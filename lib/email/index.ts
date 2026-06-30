@@ -10,7 +10,14 @@ function platformName(): string {
   return process.env.PLATFORM_NAME || getActiveProfile().brand.name;
 }
 function platformEmailFrom(): string {
-  return process.env.PLATFORM_EMAIL_FROM || "noreply@contact.tndrx.com";
+  // Fall back to the active deployment's support email so a whitelabel/region deploy
+  // that omits PLATFORM_EMAIL_FROM still sends from its own (Resend-verified) domain
+  // instead of the hardcoded tndrx.com sender. PLATFORM_EMAIL_FROM keeps precedence.
+  return (
+    process.env.PLATFORM_EMAIL_FROM ||
+    getActiveProfile().brand.supportEmail ||
+    "noreply@contact.tndrx.com"
+  );
 }
 function platformUrl(): string {
   return (

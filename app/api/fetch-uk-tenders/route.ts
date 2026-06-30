@@ -16,6 +16,13 @@ function isTenderSyncRequest(request: NextRequest): boolean {
   return !!TENDER_SYNC_SECRET && secret === TENDER_SYNC_SECRET;
 }
 
+/** Coerce an untrusted value to an integer in [min, max], falling back to `fallback`. */
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(Math.max(n, min), max);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const syncBySecret = isTenderSyncRequest(request);
@@ -36,11 +43,14 @@ export async function POST(request: NextRequest) {
 
     const {
       searchTerm,
-      limit = 100,
+      limit: rawLimit,
       cursor,
       adminImport = false,
       filters,
     } = await request.json();
+
+    // Coerce/clamp numeric input so a malformed body can't propagate NaN/negatives.
+    const limit = clampInt(rawLimit, 100, 1, 100);
 
     if (adminImport && !isAdmin) {
       return apiError("Superadmin access required to import tenders", 403);

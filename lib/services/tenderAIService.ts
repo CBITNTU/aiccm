@@ -3,14 +3,21 @@ import { tenders } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
 import { getActiveProfile } from "@/lib/deployment";
+import { resolveCurrencyConfig } from "@/lib/format/currency";
 import { getCapabilityCatalog } from "@/lib/services/capabilityCatalog";
-
-/** Deployment currency symbol, used in AI prompt budget strings. */
-const CUR = getActiveProfile().currency.symbol;
 import {
   tenderCapabilitiesSchema,
   tenderSummaryAndTaxonomySchema,
 } from "@/lib/schemas/capabilitySuggestion";
+
+/**
+ * Currency symbol for a tender's AI prompt budget string. Resolves the tender's own
+ * currency (e.g. EUR for TED notices in a UK deploy), falling back to the active
+ * deployment currency for legacy/null rows.
+ */
+function curSymbol(currencyCode?: string | null): string {
+  return resolveCurrencyConfig(currencyCode, getActiveProfile().currency).symbol;
+}
 
 /**
  * Generate AI summary for a tender
@@ -23,6 +30,7 @@ export async function generateTenderSummary(tenderId: string): Promise<string> {
       buyer: tenders.buyer,
       budgetMin: tenders.budgetMin,
       budgetMax: tenders.budgetMax,
+      currency: tenders.currency,
       deadline: tenders.deadline,
       location: tenders.location,
       cpvCodes: tenders.cpvCodes,
@@ -40,7 +48,7 @@ export async function generateTenderSummary(tenderId: string): Promise<string> {
 
   const budgetRange =
     tender.budgetMin || tender.budgetMax
-      ? `${CUR}${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - ${CUR}${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
+      ? `${curSymbol(tender.currency)}${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - ${curSymbol(tender.currency)}${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
       : "Not specified";
 
   // Format requirements if available
@@ -98,6 +106,7 @@ export async function generateTenderCapabilityTaxonomy(
       buyer: tenders.buyer,
       budgetMin: tenders.budgetMin,
       budgetMax: tenders.budgetMax,
+      currency: tenders.currency,
       deadline: tenders.deadline,
       location: tenders.location,
       cpvCodes: tenders.cpvCodes,
@@ -141,7 +150,7 @@ export async function generateTenderCapabilityTaxonomy(
 Title: ${tender.title || "N/A"}
 Description: ${tender.description || "N/A"}
 Buyer: ${tender.buyer || "N/A"}
-Budget: ${tender.budgetMin || tender.budgetMax ? `${CUR}${tender.budgetMin?.toLocaleString() || "?"} - ${CUR}${tender.budgetMax?.toLocaleString() || "?"}` : "Not specified"}
+Budget: ${tender.budgetMin || tender.budgetMax ? `${curSymbol(tender.currency)}${tender.budgetMin?.toLocaleString() || "?"} - ${curSymbol(tender.currency)}${tender.budgetMax?.toLocaleString() || "?"}` : "Not specified"}
 Deadline: ${tender.deadline || "N/A"}
 Location: ${tender.location || "N/A"}
 ${tender.cpvCodes && tender.cpvCodes.length > 0 ? `CPV Codes: ${tender.cpvCodes.join(", ")}` : ""}
@@ -193,6 +202,7 @@ export async function generateTenderSummaryAndTaxonomy(
       buyer: tenders.buyer,
       budgetMin: tenders.budgetMin,
       budgetMax: tenders.budgetMax,
+      currency: tenders.currency,
       deadline: tenders.deadline,
       location: tenders.location,
       cpvCodes: tenders.cpvCodes,
@@ -229,7 +239,7 @@ export async function generateTenderSummaryAndTaxonomy(
 
   const budgetRange =
     tender.budgetMin || tender.budgetMax
-      ? `${CUR}${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - ${CUR}${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
+      ? `${curSymbol(tender.currency)}${tender.budgetMin ? tender.budgetMin.toLocaleString() : "?"} - ${curSymbol(tender.currency)}${tender.budgetMax ? tender.budgetMax.toLocaleString() : "?"}`
       : "Not specified";
   const requirementsText = tender.requirements
     ? typeof tender.requirements === "string"

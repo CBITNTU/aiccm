@@ -23,6 +23,8 @@ async function lookup(companyNumber: string): Promise<CompanyLookupResult> {
         "User-Agent": UA,
         "Accept-Language": "en-GB,en;q=0.9",
       },
+      // Bound the lookup so a hanging upstream can't stall the request.
+      signal: AbortSignal.timeout(15000),
     });
 
     if (response.status === 404) {

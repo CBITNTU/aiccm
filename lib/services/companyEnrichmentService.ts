@@ -16,12 +16,17 @@ const UA =
 // Shared fetch / HTML utilities (also used by prefill-company-data route)
 // ---------------------------------------------------------------------------
 
+/** Per-request timeout (ms) for outbound scrapes, so a hanging upstream can't stall a request. */
+const FETCH_TIMEOUT_MS = 15000;
+
 export async function safeFetch(
   url: string,
   opts: RequestInit = {},
 ): Promise<Response> {
   return fetch(url, {
     ...opts,
+    // Abort if no response within FETCH_TIMEOUT_MS (caller's signal still honored if provided).
+    signal: opts.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
     headers: {
       "User-Agent": UA,
       "Accept-Language": "en-GB,en;q=0.9",
@@ -84,8 +89,10 @@ export async function fetchCompanySources(
     }
   }
 
-  // 2) Endole
-  if (companyNumber && companyName) {
+  // 2) Endole. companyNumber is interpolated into the URL path, so require a strict
+  // alphanumeric value here too (defense-in-depth alongside the route-level schema)
+  // to prevent path manipulation against the endole hosts.
+  if (companyNumber && /^[A-Za-z0-9]{1,32}$/.test(companyNumber) && companyName) {
     const slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const candidates = [
       `https://open.endole.co.uk/insight/company/${companyNumber}-${slug}`,

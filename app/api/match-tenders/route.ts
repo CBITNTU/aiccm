@@ -8,6 +8,7 @@ import { enqueueBatch } from "@/lib/services/queueService";
 import { getPlatformMatchingSettings } from "@/lib/platformMatchingSettings";
 import { getMatchingRunsThisMonth, getEffectiveMatchingLimit, getNextMonthStart } from "@/lib/matchingUsage";
 import { getActiveProfile } from "@/lib/deployment";
+import { resolveCurrencyConfig } from "@/lib/format/currency";
 import type { TenderMatchResult } from "@/lib/api/types";
 import { db } from "@/lib/db";
 import { companies, companyMembers, companyCapabilities, companyCapabilitiesRef, tenders, batchJobs } from "@/lib/db/schema/app";
@@ -68,6 +69,7 @@ type TenderData = {
   location: string | null;
   budgetMin: number | null;
   budgetMax: number | null;
+  currency?: string | null;
   deadline: string | null;
   cpvCodes: string[] | null;
   requirements: unknown;
@@ -98,7 +100,10 @@ async function analyzeTenderMatch(
     hasLocation ? `Location: ${company.postcode || company.location}` : "Location: NOT PROVIDED",
   ].filter(Boolean).join("\n");
 
-  const curSym = getActiveProfile().currency.symbol;
+  const curSym = resolveCurrencyConfig(
+    tender.currency,
+    getActiveProfile().currency,
+  ).symbol;
   const tenderInfo = [
     `Title: ${tender.title}`,
     tender.description ? `Description: ${tender.description}` : "",

@@ -4,6 +4,7 @@ import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { ensureTenderResearchCached } from "@/lib/services/tenderResearchCache";
 import { getPlatformAISettings } from "@/lib/platformSettings";
 import { getActiveProfile } from "@/lib/deployment";
+import { resolveCurrencyConfig } from "@/lib/format/currency";
 import { db } from "@/lib/db";
 import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers, companyTaxonomies, taxonomies, companyStandards, standardsRef, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { eq, inArray, and, or } from "drizzle-orm";
@@ -240,6 +241,7 @@ export async function scoreTenderMatch(
       buyer: tenders.buyer,
       budgetMin: tenders.budgetMin,
       budgetMax: tenders.budgetMax,
+      currency: tenders.currency,
       deadline: tenders.deadline,
       location: tenders.location,
       cpvCodes: tenders.cpvCodes,
@@ -254,8 +256,12 @@ export async function scoreTenderMatch(
     throw new Error("Failed to fetch tender: Tender not found");
   }
 
-  // Format budget range
-  const cur = getActiveProfile().currency.symbol;
+  // Format budget range using the tender's own currency (e.g. EUR for TED notices
+  // in a UK deploy), falling back to the active deployment currency for legacy rows.
+  const cur = resolveCurrencyConfig(
+    tenderData.currency,
+    getActiveProfile().currency,
+  ).symbol;
   const budgetRange =
     tenderData.budgetMin || tenderData.budgetMax
       ? `${cur}${tenderData.budgetMin ? tenderData.budgetMin.toLocaleString() : "?"} - ${cur}${tenderData.budgetMax ? tenderData.budgetMax.toLocaleString() : "?"}`

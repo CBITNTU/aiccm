@@ -124,8 +124,8 @@ function transformTEDToTender(notice: Record<string, unknown>): TenderData {
   ];
 
   const estimatedValue = notice["estimated-value-lot"] as number[] | undefined;
-  const budgetMin = estimatedValue?.[0] ? Math.floor(estimatedValue[0] * 100) : null;
-  const budgetMax = estimatedValue?.[1] ? Math.floor(estimatedValue[1] * 100) : null;
+  const budgetMin = estimatedValue?.[0] ? Math.floor(estimatedValue[0]) : null;
+  const budgetMax = estimatedValue?.[1] ? Math.floor(estimatedValue[1]) : null;
 
   const publicationDate =
     parseTEDDate(notice["publication-date"]) || new Date().toISOString();
@@ -278,6 +278,8 @@ async function fetchFromTEDAPI(
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
+      // Bound each attempt so a hanging upstream can't stall the sync request.
+      signal: AbortSignal.timeout(30000),
     });
 
     if (response.status === 429) {

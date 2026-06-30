@@ -71,6 +71,13 @@
       "when": 1782000000000,
       "tag": "0009_tender_region_source_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783000000000,
+      "tag": "0010_tender_budget_major_units",
+      "breakpoints": true
     }
   ]
 }

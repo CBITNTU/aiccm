@@ -28,10 +28,8 @@ export function resolveCurrencyConfig(
 /**
  * Format an amount as a currency string for the given deployment currency.
  *
- * IMPORTANT: this does NOT rescale the input — pass the same number the previous
- * `£${n.toLocaleString()}` call sites used, so displayed figures are unchanged
- * except for the currency symbol. (Tender budgets are stored in minor units in the
- * DB; the existing UI displayed them without dividing, and that behavior is preserved.)
+ * Tender budgets are stored in MAJOR units (whole currency amount) in the DB, so this
+ * formats the value as-is — no rescaling — using 0 fraction digits.
  */
 export function formatCurrency(amount: number, currency: CurrencyConfig): string {
   try {
@@ -48,6 +46,7 @@ export function formatCurrency(amount: number, currency: CurrencyConfig): string
 
 /** Compact "12k" style amount with the currency symbol, e.g. "£120k". */
 export function formatCurrencyCompact(amount: number, currency: CurrencyConfig): string {
+  if (!Number.isFinite(amount)) return "";
   return `${currency.symbol}${(amount / 1000).toFixed(0)}k`;
 }
 

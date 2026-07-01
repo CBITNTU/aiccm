@@ -4,6 +4,7 @@ import {
   companyCapabilities,
   companyCapabilitiesRef,
   markets,
+  companyMarkets,
 } from "@/lib/db/schema/app";
 import { eq, asc, isNull } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
@@ -216,28 +217,22 @@ export async function generateCompanyCapabilityTaxonomy(
     })
     .where(eq(companies.id, companyId));
 
-  // The company_capabilities junction table is a REVIEWABLE_RELATION. For
-  // verified companies, changes require human approval and must not be
-  // overwritten by AI analysis directly.
-  const [row] = await db
-    .select({ verificationStatus: companies.verificationStatus })
-    .from(companies)
-    .where(eq(companies.id, companyId))
+  // The company_capabilities junction table is a REVIEWABLE_RELATION: once a
+  // company has selections (human-verified or manually edited), AI analysis must
+  // not overwrite them. But when it is empty, populate it as a first-time pickup
+  // — regardless of verification status.
+  const [existing] = await db
+    .select({ capabilityId: companyCapabilities.capabilityId })
+    .from(companyCapabilities)
+    .where(eq(companyCapabilities.companyId, companyId))
     .limit(1);
 
-  if (row?.verificationStatus !== "verified") {
-    await db.transaction(async (tx) => {
-      await tx
-        .delete(companyCapabilities)
-        .where(eq(companyCapabilities.companyId, companyId));
-      if (uniqueIds.length > 0) {
-        await tx.insert(companyCapabilities).values(
-          uniqueIds.map((capabilityId) => ({ companyId, capabilityId })),
-        );
-      }
-    });
-  } else {
-    console.log("[CompanyAI:taxonomy] Skipping junction table update — company is verified");
+  if (!existing && uniqueIds.length > 0) {
+    await db.insert(companyCapabilities).values(
+      uniqueIds.map((capabilityId) => ({ companyId, capabilityId })),
+    );
+  } else if (existing) {
+    console.log("[CompanyAI:taxonomy] Skipping junction table update — company already has competencies");
   }
 
   console.log("[CompanyAI:taxonomy] DB save confirmed for company", companyId);
@@ -311,6 +306,23 @@ export async function generateCompanyMarketSuggestions(companyId: string): Promi
       updatedAt: new Date(),
     })
     .where(eq(companies.id, companyId));
+
+  // company_markets is a REVIEWABLE_RELATION: only populate it as a first-time
+  // pickup when the company has no markets yet. Never overwrite existing
+  // selections (human-verified or manually edited), regardless of verification.
+  const [existingMarket] = await db
+    .select({ marketId: companyMarkets.marketId })
+    .from(companyMarkets)
+    .where(eq(companyMarkets.companyId, companyId))
+    .limit(1);
+
+  if (!existingMarket && suggestedIds.length > 0) {
+    await db.insert(companyMarkets).values(
+      suggestedIds.map((marketId) => ({ companyId, marketId })),
+    );
+  } else if (existingMarket) {
+    console.log("[CompanyAI:markets] Skipping junction table update — company already has markets");
+  }
 
   return suggestedIds;
 }

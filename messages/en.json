@@ -662,8 +662,12 @@
       "cardTitle": "Import Tenders",
       "tabs": {
         "findTender": "Find a Tender",
-        "ted": "TED (EU)"
+        "ted": "TED (EU)",
+        "shanghai": "Shanghai"
       },
+      "shanghaiDescription": "Import Shanghai tenders from 招标与采购网 (zbycg.com). This fetches recent public notices for Shanghai and saves them to the database.",
+      "shanghaiButton": "Import Shanghai tenders",
+      "importingShanghai": "Importing Shanghai tenders... {progress}% complete ({imported} imported, {skipped} skipped)",
       "findTenderDescription": "Import tenders from the UK government's Find a Tender service. This will fetch active tenders and save them to the database.",
       "tedDescription": "Import tenders from TED (Tenders Electronic Daily) - the EU's official journal for public procurement. Requires API key from ",
       "tedDeveloperPortal": "TED Developer Portal",
@@ -691,7 +695,9 @@
         "adminRequired": "Superadmin access required to import tenders",
         "unknownError": "Unknown error",
         "importFailed": "Import failed: {message}",
-        "tedImportFailed": "TED Import failed: {message}"
+        "tedImportFailed": "TED Import failed: {message}",
+        "shanghaiSuccess": "Import completed! {imported} tenders imported from Shanghai. {skipped} duplicates skipped.",
+        "shanghaiImportFailed": "Shanghai import failed: {message}"
       }
     }
   },

@@ -31,6 +31,12 @@ versions. The active region is selected at deploy time:
 DEPLOYMENT_PROFILE=uk   # uk (default) | cn | th
 ```
 
+**One region per deployment** — this is intentional. Branding, locale, currency,
+geocoding, AI defaults and enabled tender sources all switch together, so a single
+instance serves exactly one region. Run a separate deployment per region (each with
+its own `DEPLOYMENT_PROFILE`); the nightly tender-sync cron on each instance fetches
+only that region's sources via `getAdaptersForProfile()`.
+
 This is resolved once at process start (`lib/deployment/`) and drives:
 
 | Concern | Where | UK | CN (stub) | TH (stub) |
@@ -39,7 +45,7 @@ This is resolved once at process start (`lib/deployment/`) and drives:
 | Theme palette | `theme` (overrides `globals.css`) | blue (default) | red | teal |
 | Default + allowed locales | `i18n` | en | zh-CN | th |
 | Currency | `currency` | GBP £ | CNY ¥ | THB ฿ |
-| Tender sources | `tenderSources` → `lib/tenders/registry` | Find a Tender + TED | manual | manual |
+| Tender sources | `tenderSources` → `lib/tenders/registry` | Find a Tender + TED | Shanghai (zbycg.com) + manual | manual |
 | Company verification | `verificationProvider` → `lib/companies/registry` | Companies House + Endole | manual | manual |
 | Taxonomy | `taxonomy` → `lib/taxonomy` | CPV/EIC | stub (neutral) | stub (neutral) |
 | Geocoding | `geocodingProvider` | Google | none (blocked in CN) | Google |
@@ -50,6 +56,16 @@ This is resolved once at process start (`lib/deployment/`) and drives:
 (`lib/companies/registry/adapters/`), register it, and reference its id from the
 profile in `lib/deployment/profiles/`. No core code changes required. `PLATFORM_NAME`
 / `PLATFORM_URL` env vars still override the profile brand when set.
+
+**China / Shanghai source (reference implementation):** the `cn` profile now enables
+`shanghai_zbycg` — an adapter (`lib/tenders/adapters/shanghai.ts`) that scrapes the
+public Shanghai listing on 招标与采购网 (zbycg.com) and enriches each notice from its
+detail page (project number, budget, buyer, requirement text; no login required). It
+is wired into the CN profile only, so it never runs for UK/EU. The daily
+`/api/admin/tender-sync` picks it up automatically via `getAdaptersForProfile()`, and
+the admin import UI (`components/admin/AdminTenderImport.tsx`) shows a Shanghai import
+tab on CN deployments (Find a Tender + TED elsewhere) using `DEPLOYMENT_PROFILE`.
+`cn_manual` remains registered for admin-entered notices from other Chinese regions.
 
 ## Environment variables (app / Vercel)
 

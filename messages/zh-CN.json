@@ -662,8 +662,12 @@
       "cardTitle": "导入招标",
       "tabs": {
         "findTender": "Find a Tender",
-        "ted": "TED（欧盟）"
+        "ted": "TED（欧盟）",
+        "shanghai": "上海"
       },
+      "shanghaiDescription": "从招标与采购网（zbycg.com）导入上海招标，抓取上海地区最新公开招标公告并保存到数据库。",
+      "shanghaiButton": "导入上海招标",
+      "importingShanghai": "正在导入上海招标… 已完成 {progress}%（已导入 {imported}，跳过 {skipped}）",
       "findTenderDescription": "从英国政府 Find a Tender 服务导入招标，将活跃招标抓取并保存到数据库。",
       "tedDescription": "从 TED（欧盟官方电子招标日报）导入招标。需要 API 密钥，请前往 ",
       "tedDeveloperPortal": "TED 开发者门户",
@@ -691,7 +695,9 @@
         "adminRequired": "导入招标需要超级管理员权限",
         "unknownError": "未知错误",
         "importFailed": "导入失败：{message}",
-        "tedImportFailed": "TED 导入失败：{message}"
+        "tedImportFailed": "TED 导入失败：{message}",
+        "shanghaiSuccess": "导入完成！已从上海导入 {imported} 条招标，跳过 {skipped} 条重复。",
+        "shanghaiImportFailed": "上海招标导入失败：{message}"
       }
     }
   },

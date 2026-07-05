@@ -392,13 +392,22 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   if (allProjects.length > 0) {
     companyLines.push(`Projects:\n${allProjects}`);
   }
+  const operationLocations = companyData.operationLocations as unknown[] | null;
+  const hasOperationLocations =
+    Array.isArray(operationLocations) && operationLocations.length > 0;
   if (companyData.postcode) {
     companyLines.push(`Location: ${companyData.postcode}`);
   } else if (companyData.address) {
     companyLines.push(`Location: ${companyData.address}`);
+  } else if (hasOperationLocations) {
+    // Fall back to operating locations so a company that only recorded operation
+    // locations isn't described as having an undefined/"not defined" location.
+    companyLines.push(
+      `Location: ${(operationLocations as unknown[]).map(String).join(", ")}`,
+    );
   }
-  if (companyData.operationLocations && (companyData.operationLocations as unknown[]).length > 0) {
-    companyLines.push(`Operation Locations: ${JSON.stringify(companyData.operationLocations)}`);
+  if (hasOperationLocations) {
+    companyLines.push(`Operation Locations: ${JSON.stringify(operationLocations)}`);
   }
 
   const userPrompt = `${companyLines.join("\n")}

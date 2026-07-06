@@ -662,8 +662,12 @@
       "cardTitle": "นำเข้าประกวดราคา",
       "tabs": {
         "findTender": "Find a Tender",
-        "ted": "TED (EU)"
+        "ted": "TED (EU)",
+        "shanghai": "เซี่ยงไฮ้"
       },
+      "shanghaiDescription": "นำเข้าประกวดราคาเซี่ยงไฮ้จาก 招标与采购网 (zbycg.com) ระบบจะดึงประกาศสาธารณะล่าสุดของเซี่ยงไฮ้และบันทึกลงฐานข้อมูล",
+      "shanghaiButton": "นำเข้าประกวดราคาเซี่ยงไฮ้",
+      "importingShanghai": "กำลังนำเข้าประกวดราคาเซี่ยงไฮ้... เสร็จแล้ว {progress}% (นำเข้า {imported} รายการ ข้าม {skipped} รายการ)",
       "findTenderDescription": "นำเข้าประกวดราคาจากบริการ Find a Tender ของรัฐบาลสหราชอาณาจักร ระบบจะดึงประกวดราคาที่ใช้งานอยู่และบันทึกลงฐานข้อมูล",
       "tedDescription": "นำเข้าประกวดราคาจาก TED (Tenders Electronic Daily) ซึ่งเป็นวารสารทางการของ EU สำหรับการจัดซื้อจัดจ้างสาธารณะ ต้องมี API key จาก ",
       "tedDeveloperPortal": "TED Developer Portal",
@@ -691,7 +695,9 @@
         "adminRequired": "ต้องมีสิทธิ์ superadmin เพื่อนำเข้าประกวดราคา",
         "unknownError": "ข้อผิดพลาดที่ไม่ทราบสาเหตุ",
         "importFailed": "นำเข้าไม่สำเร็จ: {message}",
-        "tedImportFailed": "นำเข้า TED ไม่สำเร็จ: {message}"
+        "tedImportFailed": "นำเข้า TED ไม่สำเร็จ: {message}",
+        "shanghaiSuccess": "นำเข้าเสร็จสิ้น! นำเข้าประกวดราคา {imported} รายการจากเซี่ยงไฮ้ ข้ามรายการซ้ำ {skipped} รายการ",
+        "shanghaiImportFailed": "นำเข้าเซี่ยงไฮ้ไม่สำเร็จ: {message}"
       }
     }
   },

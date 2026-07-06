@@ -9,6 +9,10 @@ import { shanghaiZbycgAdapter } from "@/lib/tenders/adapters/shanghai";
 import { ingestTenders } from "@/lib/tenders/ingest";
 import { toFeedRecord } from "@/lib/tenders/mapTenderToInsert";
 
+// The scrape fans out to per-notice detail pages (throttled), so it can run long.
+// Backs the internal pacing; Fluid Compute allows 300s on every plan.
+export const maxDuration = 300;
+
 const TENDER_SYNC_SECRET = process.env.TENDER_SYNC_SECRET || process.env.CRON_SECRET;
 
 function isTenderSyncRequest(request: NextRequest): boolean {

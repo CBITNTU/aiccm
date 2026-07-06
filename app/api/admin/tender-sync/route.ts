@@ -17,6 +17,10 @@ import {
   type PlatformTenderLimits,
 } from "@/lib/platformTenderSyncSettings";
 
+// Back the 4-minute MAX_RUN_MS budget below with an actual function timeout.
+// Fluid Compute allows 300s on every plan.
+export const maxDuration = 300;
+
 const CRON_SECRET = process.env.CRON_SECRET;
 
 function isCronRequest(request: NextRequest): boolean {

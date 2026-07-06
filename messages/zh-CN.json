@@ -687,6 +687,7 @@
       "summaryImported": "成功导入：{count}",
       "summarySkipped": "跳过重复：{count}",
       "errorTitle": "导入错误：",
+      "limitReached": "已达到该来源的抓取上限，导入提前停止。如需抓取更多，请在上方的“招标抓取上限”中调整。",
       "toasts": {
         "findTenderSuccess": "导入完成！从 Find a Tender 导入 {imported} 条招标，跳过 {skipped} 条重复。",
         "tedSuccess": "导入完成！从 TED 导入 {imported} 条招标，跳过 {skipped} 条重复。",
@@ -698,6 +699,21 @@
         "tedImportFailed": "TED 导入失败：{message}",
         "shanghaiSuccess": "导入完成！已从上海导入 {imported} 条招标，跳过 {skipped} 条重复。",
         "shanghaiImportFailed": "上海招标导入失败：{message}"
+      }
+    },
+    "limits": {
+      "cardTitle": "招标抓取上限",
+      "cardDescription": "每次运行从各来源抓取招标的最大数量。同时适用于每周同步和手动导入，避免过度抓取。",
+      "fields": {
+        "shanghai": "上海（zbycg.com）",
+        "findTender": "Find a Tender（英国）",
+        "ted": "TED（欧盟）"
+      },
+      "saveButton": "保存上限",
+      "toasts": {
+        "loadError": "加载招标上限失败",
+        "saveSuccess": "招标上限已保存",
+        "saveError": "保存招标上限失败"
       }
     }
   },
@@ -2442,6 +2458,19 @@
       "added": "已添加：",
       "removed": "已删除：",
       "changesRequested": "已请求修改"
+    },
+    "aiProposedChanges": {
+      "title": "查看 AI 建议的更改",
+      "description": "AI 从贵公司的数据中提取了以下更新。请选择要应用的项目。",
+      "descriptionVerified": "AI 建议进行以下更新。由于贵公司已通过验证，接受的更改将先提交审核，然后再生效。",
+      "selectedCount": "已选择 {count} / {total} 项",
+      "selectAll": "全选",
+      "deselectAll": "取消全选",
+      "reject": "拒绝",
+      "accept": "接受 {count, plural, one {# 项更改} other {# 项更改}}",
+      "acceptedToast": "已应用 AI 建议的更改。",
+      "acceptedForReviewToast": "更改已提交审核。",
+      "acceptError": "应用更改失败。"
     },
     "pendingChangesBar": {
       "changesUnderReview": "变更审核中",

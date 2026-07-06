@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -38,6 +38,29 @@ export function AdminTenderImport() {
   );
   const [error, setError] = useState<string | null>(null);
   const [tedZeroMessage, setTedZeroMessage] = useState<string | null>(null);
+  // Per-source fetch caps (max tenders per run), loaded from admin settings so
+  // manual imports respect the same limits as the scheduled sync.
+  const [limits, setLimits] = useState({
+    shanghai_zbycg: 300,
+    find_tender: 1000,
+    ted: 1000,
+  });
+  const [limitReached, setLimitReached] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.adminGetTenderLimits();
+        if (!cancelled) setLimits(data);
+      } catch {
+        // Keep defaults if settings can't be loaded.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFindTenderImport = async () => {
     setIsImporting(true);
@@ -46,6 +69,7 @@ export function AdminTenderImport() {
     setTotalFetched(0);
     setDuplicatesSkipped(0);
     setError(null);
+    setLimitReached(false);
 
     try {
       let cursor: string | undefined = undefined;
@@ -158,6 +182,12 @@ export function AdminTenderImport() {
           hasMore = false;
         }
 
+        // Stop once we reach the configured per-source cap.
+        if (totalFetched >= limits.find_tender) {
+          hasMore = false;
+          setLimitReached(true);
+        }
+
         batchCount++;
 
         // Small delay between batches to avoid rate limiting (even if not 429 yet)
@@ -200,6 +230,7 @@ export function AdminTenderImport() {
     setTotalFetched(0);
     setDuplicatesSkipped(0);
     setError(null);
+    setLimitReached(false);
 
     try {
       let page = 1;
@@ -233,6 +264,13 @@ export function AdminTenderImport() {
 
         hasMore = data.hasMore === true && !!data.nextPage;
         page = data.nextPage || page + 1;
+
+        // Stop once we reach the configured per-source cap.
+        if (runningFetched >= limits.shanghai_zbycg) {
+          hasMore = false;
+          setLimitReached(true);
+        }
+
         batchCount++;
 
         // Be polite to the scraped site between pages.
@@ -268,6 +306,7 @@ export function AdminTenderImport() {
     setDuplicatesSkipped(0);
     setError(null);
     setTedZeroMessage(null);
+    setLimitReached(false);
 
     try {
       let currentPage = 1;
@@ -378,6 +417,12 @@ export function AdminTenderImport() {
         } else if (data.nextPage) {
           currentPage = data.nextPage;
           nextToken = undefined; // Reset token when using page numbers
+        }
+
+        // Stop once we reach the configured per-source cap.
+        if (totalFetched >= limits.ted) {
+          hasMore = false;
+          setLimitReached(true);
         }
 
         console.log(
@@ -633,6 +678,14 @@ export function AdminTenderImport() {
                   {t("summarySkipped", { count: duplicatesSkipped })}
                 </p>
               </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {limitReached && !isImporting && (
+          <Alert>
+            <AlertDescription>
+              <p className="text-sm">{t("limitReached")}</p>
             </AlertDescription>
           </Alert>
         )}

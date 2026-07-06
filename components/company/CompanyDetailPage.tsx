@@ -16,6 +16,7 @@ import { useCompanyPageData } from "@/hooks/useCompanyPageData";
 import { VerificationBanner } from "@/components/company/VerificationBanner";
 import { CompanyHeroHeader } from "@/components/company/CompanyHeroHeader";
 import { PendingChangesBar } from "@/components/company/PendingChangesBar";
+import { AIProposedChangesModal } from "@/components/company/AIProposedChangesModal";
 import { EditBasicInfoSheet } from "@/components/company/EditBasicInfoSheet";
 import { OverviewTab } from "@/components/company/OverviewTab";
 import { CapabilitiesTab } from "@/components/company/CapabilitiesTab";
@@ -211,6 +212,16 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
           onSuccess={data.refreshCompanyData}
         />
       )}
+
+      {/* AI-proposed changes review modal */}
+      <AIProposedChangesModal
+        open={data.aiModalOpen}
+        onOpenChange={data.setAiModalOpen}
+        companyId={companyId}
+        proposals={data.aiProposals}
+        isVerified={data.isVerified}
+        onApplied={data.refreshCompanyData}
+      />
     </div>
   );
 }

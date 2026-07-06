@@ -253,34 +253,11 @@ export async function POST(request: NextRequest) {
 
     const companyInfo = analysis.companyInfo || {};
 
-    // For verified companies, reviewable text fields are human-approved and must
-    // not be overwritten by AI. Only fill sparse data for unverified companies.
-    if (company.verificationStatus !== "verified") {
-      if (
-        companyInfo.key_capabilities &&
-        (!company.keyCapabilities || company.keyCapabilities.length < 50)
-      ) {
-        updateData.keyCapabilities = companyInfo.key_capabilities as string;
-      }
-      if (
-        companyInfo.equipment &&
-        (!company.equipment || company.equipment.length < 20)
-      ) {
-        updateData.equipment = companyInfo.equipment as string;
-      }
-      if (
-        companyInfo.certifications &&
-        (!company.certifications || company.certifications.length < 20)
-      ) {
-        updateData.certifications = companyInfo.certifications as string;
-      }
-      if (
-        companyInfo.past_projects &&
-        (!company.pastProjects || company.pastProjects.length < 50)
-      ) {
-        updateData.pastProjects = companyInfo.past_projects as string;
-      }
-    }
+    // Reviewable text fields (description, keyCapabilities, certifications,
+    // equipment, pastProjects) are NOT written here. They are surfaced to the
+    // user as proposed changes in the AI-review modal, which applies accepted
+    // fields via the normal company update path (respecting verification rules).
+    // Only non-reviewable contact/postcode fields are auto-filled when empty.
     if (companyInfo.contact_person && !company.contactPerson) {
       updateData.contactPerson = companyInfo.contact_person as string;
     }

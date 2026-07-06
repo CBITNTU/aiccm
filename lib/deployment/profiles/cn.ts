@@ -18,18 +18,8 @@ export const cnProfile: DeploymentProfile = {
   },
   theme: {
     // Distinct red-leaning primary; overrides the blue defaults in globals.css.
-    light: {
-      primary: "0 72% 45%",
-      ring: "0 72% 45%",
-      accent: "0 72% 55%",
-      "sidebar-primary": "0 72% 55%",
-    },
-    dark: {
-      primary: "0 72% 60%",
-      ring: "0 72% 60%",
-      accent: "0 72% 65%",
-      "sidebar-primary": "0 72% 60%",
-    },
+    light: {},
+    dark: {},
   },
   i18n: {
     defaultLocale: "zh-CN",

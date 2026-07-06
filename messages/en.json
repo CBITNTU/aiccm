@@ -687,6 +687,7 @@
       "summaryImported": "Successfully imported: {count}",
       "summarySkipped": "Duplicates skipped: {count}",
       "errorTitle": "Import Error:",
+      "limitReached": "Reached the configured per-source fetch limit. Import stopped early. Adjust the limit in Tender fetch limits above to pull more.",
       "toasts": {
         "findTenderSuccess": "Import completed! {imported} tenders imported from Find a Tender. {skipped} duplicates skipped.",
         "tedSuccess": "Import completed! {imported} tenders imported from TED. {skipped} duplicates skipped.",
@@ -698,6 +699,21 @@
         "tedImportFailed": "TED Import failed: {message}",
         "shanghaiSuccess": "Import completed! {imported} tenders imported from Shanghai. {skipped} duplicates skipped.",
         "shanghaiImportFailed": "Shanghai import failed: {message}"
+      }
+    },
+    "limits": {
+      "cardTitle": "Tender fetch limits",
+      "cardDescription": "Maximum number of tenders pulled from each source per run. Applies to both the weekly sync and manual imports, so we don't overfetch.",
+      "fields": {
+        "shanghai": "Shanghai (zbycg.com)",
+        "findTender": "Find a Tender (UK)",
+        "ted": "TED (EU)"
+      },
+      "saveButton": "Save limits",
+      "toasts": {
+        "loadError": "Failed to load tender limits",
+        "saveSuccess": "Tender limits saved",
+        "saveError": "Failed to save tender limits"
       }
     }
   },
@@ -2442,6 +2458,19 @@
       "added": "Added:",
       "removed": "Removed:",
       "changesRequested": "Changes Requested"
+    },
+    "aiProposedChanges": {
+      "title": "Review AI-suggested changes",
+      "description": "The AI extracted the following updates from your company data. Select the ones you want to apply.",
+      "descriptionVerified": "The AI suggested the following updates. Because your company is verified, accepted changes will be submitted for review before they go live.",
+      "selectedCount": "{count} of {total} selected",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "reject": "Reject",
+      "accept": "Accept {count, plural, one {# change} other {# changes}}",
+      "acceptedToast": "AI-suggested changes applied.",
+      "acceptedForReviewToast": "Changes submitted for review.",
+      "acceptError": "Failed to apply changes."
     },
     "pendingChangesBar": {
       "changesUnderReview": "Changes under review",

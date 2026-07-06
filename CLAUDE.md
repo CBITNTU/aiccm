@@ -242,9 +242,9 @@ Schema is defined in Drizzle format under `lib/db/schema/`. Tables use snake_cas
 
 The app uses **`next-intl`** for all user-facing strings. Configuration lives in `i18n/request.ts`, the locale list in `i18n/locales.ts`, and translations in `messages/<locale>.json`.
 
-- **Two locales are supported: English (`en`, default) and Simplified Chinese (`zh-CN`).** They are declared in `i18n/locales.ts` (`locales = ["en", "zh-CN"]`). Do not add further locales unless explicitly asked.
-- **Always keep both locale files in sync.** Every user-facing key you add, rename, or remove must be applied to **both** `messages/en.json` **and** `messages/zh-CN.json` — add the Simplified Chinese translation, never leave a key English-only or present in just one file. The two files must always have the same set of keys.
-- **Any new feature must use `next-intl` for user-facing strings** — no hardcoded UI text. Add the key to both locale files and read it via `useTranslations("Namespace")` in client components or `getTranslations("Namespace")` in server components.
+- **Three locales are supported: English (`en`, default), Simplified Chinese (`zh-CN`), and Thai (`th`).** They are declared in `i18n/locales.ts` (`locales = ["en", "zh-CN", "th"]`). Do not add further locales unless explicitly asked.
+- **Always keep all three locale files in sync.** Every user-facing key you add, rename, or remove must be applied to **all of** `messages/en.json`, `messages/zh-CN.json`, **and** `messages/th.json` — add the Simplified Chinese and Thai translations, never leave a key English-only or present in only some files. The three files must always have the exact same set of keys.
+- **Any new feature must use `next-intl` for user-facing strings** — no hardcoded UI text. Add the key to all three locale files and read it via `useTranslations("Namespace")` in client components or `getTranslations("Namespace")` in server components. Whenever you develop a feature, translate every new string into Chinese (`zh-CN`) and Thai (`th`), not just English.
 - **Namespacing**: group keys by component or feature name, matching the existing style in `en.json` (e.g. `Header`, `HeroSection`, `Onboarding`, `Auth`). Use the same namespace and key in every locale file.
 - **Migration status** — only these areas have been migrated so far:
   - Landing page (`app/page.tsx`, `components/layout/HeroSection.tsx`, `components/layout/Header.tsx`)
@@ -265,7 +265,7 @@ export function SaveButton() {
 }
 ```
 
-And add the key to **both** locale files:
+And add the key to **all three** locale files:
 
 ```json
 // messages/en.json
@@ -281,6 +281,15 @@ And add the key to **both** locale files:
 {
   "TenderActions": {
     "save": "保存招标"
+  }
+}
+```
+
+```json
+// messages/th.json
+{
+  "TenderActions": {
+    "save": "บันทึกประกวดราคา"
   }
 }
 ```

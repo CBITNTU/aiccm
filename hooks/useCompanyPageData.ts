@@ -52,6 +52,11 @@ export interface CompanyPageData {
   isSaving: boolean;
   isAnalyzing: boolean;
 
+  // AI-proposed changes review
+  aiProposals: PendingChanges | null;
+  aiModalOpen: boolean;
+  setAiModalOpen: (open: boolean) => void;
+
   // Actions
   refreshCompanyData: () => Promise<void>;
   setCompanyData: (data: CompanyRecord) => void;
@@ -87,6 +92,44 @@ export interface SectionPendingStatus {
   standards: boolean;
 }
 
+// Maps AI companyInfo keys (snake_case) to company column names (camelCase)
+// for the reviewable text fields surfaced in the AI-proposed-changes modal.
+const AI_PROPOSAL_FIELD_MAP: Record<string, string> = {
+  description: "description",
+  key_capabilities: "keyCapabilities",
+  certifications: "certifications",
+  equipment: "equipment",
+  past_projects: "pastProjects",
+};
+
+/**
+ * Build a PendingChanges-shaped diff from the AI-extracted companyInfo vs the
+ * current company columns. Only includes fields where the AI proposed a
+ * non-empty value that differs from what the company already has. Returns null
+ * when there is nothing meaningful to propose.
+ */
+function buildAIProposals(
+  companyInfo: Record<string, unknown> | null | undefined,
+  company: CompanyRecord | null,
+): PendingChanges | null {
+  if (!companyInfo || !company) return null;
+  const companyRecord = company as unknown as Record<string, unknown>;
+  const scalarFields: PendingChanges["scalarFields"] = {};
+
+  for (const [aiKey, columnKey] of Object.entries(AI_PROPOSAL_FIELD_MAP)) {
+    const proposedRaw = companyInfo[aiKey];
+    const proposed = typeof proposedRaw === "string" ? proposedRaw.trim() : "";
+    if (!proposed) continue;
+    const currentRaw = companyRecord[columnKey];
+    const current = typeof currentRaw === "string" ? currentRaw : null;
+    if ((current ?? "").trim() === proposed) continue;
+    scalarFields[columnKey] = { current, proposed };
+  }
+
+  if (Object.keys(scalarFields).length === 0) return null;
+  return { scalarFields, lastSavedAt: new Date().toISOString() };
+}
+
 function getSectionPendingStatus(pc: PendingChanges | null): SectionPendingStatus {
   return {
     companyName: !!pc?.scalarFields?.companyName,
@@ -115,6 +158,8 @@ export function useCompanyPageData(
   const [latestResolvedRequest, setLatestResolvedRequest] = useState<ResolvedReviewRequest | null>(null);
   const [capabilities, setCapabilities] = useState<{ id: string; name: string; category: string }[]>([]);
   const [analysisUsage, setAnalysisUsage] = useState<AnalysisUsage | null>(null);
+  const [aiProposals, setAiProposals] = useState<PendingChanges | null>(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const updateCompanyMutation = useUpdateCompany();
   const analyzeCompanyMutation = useAnalyzeCompany();
@@ -171,7 +216,18 @@ export function useCompanyPageData(
         const refreshed = await api.getCompany(companyData.id);
         setCompanyData(refreshed.company);
         setCapabilities(refreshed.capabilities);
-        toast.success("Company profile analysis has been refreshed.");
+
+        // Surface AI-extracted text fields as proposed changes for the user to
+        // accept or reject, rather than silently writing them.
+        const companyInfo = (data.analysis as { companyInfo?: Record<string, unknown> })
+          .companyInfo;
+        const proposals = buildAIProposals(companyInfo, refreshed.company);
+        if (proposals) {
+          setAiProposals(proposals);
+          setAiModalOpen(true);
+        } else {
+          toast.success("Company profile analysis has been refreshed.");
+        }
       }
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 429) {
@@ -234,6 +290,9 @@ export function useCompanyPageData(
     analyzeCompanyMutation,
     isSaving: updateCompanyMutation.isPending,
     isAnalyzing: analyzeCompanyMutation.isPending,
+    aiProposals,
+    aiModalOpen,
+    setAiModalOpen,
     refreshCompanyData,
     setCompanyData,
     handleRefreshAnalysis,

@@ -1259,6 +1259,25 @@ export const api = {
       unverifiedAnalysisRunsPerMonth: number;
     }>("admin/settings/verification", { method: "PATCH", body: updates }),
 
+  // Admin - Per-source tender fetch limits (max tenders pulled per source per run)
+  adminGetTenderLimits: () =>
+    apiCall<{
+      shanghai_zbycg: number;
+      find_tender: number;
+      ted: number;
+    }>("admin/settings/tender-limits", { method: "GET" }),
+
+  adminUpdateTenderLimits: (updates: {
+    shanghai_zbycg?: number;
+    find_tender?: number;
+    ted?: number;
+  }) =>
+    apiCall<{
+      shanghai_zbycg: number;
+      find_tender: number;
+      ted: number;
+    }>("admin/settings/tender-limits", { method: "PATCH", body: updates }),
+
   /** Superadmin: probe embedding provider + LLM inference reachability. */
   adminGetInferenceHealth: () =>
     apiCall<{

@@ -33,6 +33,8 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency } from "@/lib/format/currency";
 
 // Database filters interface
 interface TenderFiltersState {
@@ -86,6 +88,7 @@ export function TenderSearchBar({
   placeholder = "Search tenders...",
 }: TenderSearchBarProps) {
   const t = useTranslations("TenderSearchBar");
+  const { currency } = useDeployment();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const DATABASE_SORT_OPTIONS = [
@@ -189,13 +192,13 @@ export function TenderSearchBar({
         pills.push({
           key: "budgetMin",
           label: t("pillMinBudget"),
-          value: `£${databaseFilters.budgetMin.toLocaleString()}`,
+          value: formatCurrency(databaseFilters.budgetMin, currency),
         });
       if (databaseFilters.budgetMax)
         pills.push({
           key: "budgetMax",
           label: t("pillMaxBudget"),
-          value: `£${databaseFilters.budgetMax.toLocaleString()}`,
+          value: formatCurrency(databaseFilters.budgetMax, currency),
         });
       if (databaseFilters.dateFrom)
         pills.push({

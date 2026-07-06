@@ -78,6 +78,12 @@ export function useAnalyzeCompany() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.company(companyId),
       });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.companyCapabilities(companyId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.companyMarkets(companyId),
+      });
       queryClient.invalidateQueries({ queryKey: ["myCompanies"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },

@@ -22,6 +22,51 @@ for the whole team.
 
 ---
 
+## Region / whitelabel profile (`DEPLOYMENT_PROFILE`)
+
+The app ships one codebase that deploys as differently-branded, region-specific
+versions. The active region is selected at deploy time:
+
+```bash
+DEPLOYMENT_PROFILE=uk   # uk (default) | cn | th
+```
+
+**One region per deployment** — this is intentional. Branding, locale, currency,
+geocoding, AI defaults and enabled tender sources all switch together, so a single
+instance serves exactly one region. Run a separate deployment per region (each with
+its own `DEPLOYMENT_PROFILE`); the nightly tender-sync cron on each instance fetches
+only that region's sources via `getAdaptersForProfile()`.
+
+This is resolved once at process start (`lib/deployment/`) and drives:
+
+| Concern | Where | UK | CN (stub) | TH (stub) |
+|---|---|---|---|---|
+| Brand name / support / logo / favicon | `brand` | TNDRX | TNDRX 中国 | TNDRX Thailand |
+| Theme palette | `theme` (overrides `globals.css`) | blue (default) | red | teal |
+| Default + allowed locales | `i18n` | en | zh-CN | th |
+| Currency | `currency` | GBP £ | CNY ¥ | THB ฿ |
+| Tender sources | `tenderSources` → `lib/tenders/registry` | Find a Tender + TED | Shanghai (zbycg.com) + manual | manual |
+| Company verification | `verificationProvider` → `lib/companies/registry` | Companies House + Endole | manual | manual |
+| Taxonomy | `taxonomy` → `lib/taxonomy` | CPV/EIC | stub (neutral) | stub (neutral) |
+| Geocoding | `geocodingProvider` | Google | none (blocked in CN) | Google |
+| AI default model | `ai.defaultModel` (seed for `platform_settings`) | gpt-5-nano | deepseek-chat | gpt-5-nano |
+
+**Adding a region's source/verification later:** implement a `TenderSourceAdapter`
+(`lib/tenders/adapters/`) and/or `CompanyRegistryAdapter`
+(`lib/companies/registry/adapters/`), register it, and reference its id from the
+profile in `lib/deployment/profiles/`. No core code changes required. `PLATFORM_NAME`
+/ `PLATFORM_URL` env vars still override the profile brand when set.
+
+**China / Shanghai source (reference implementation):** the `cn` profile now enables
+`shanghai_zbycg` — an adapter (`lib/tenders/adapters/shanghai.ts`) that scrapes the
+public Shanghai listing on 招标与采购网 (zbycg.com) and enriches each notice from its
+detail page (project number, budget, buyer, requirement text; no login required). It
+is wired into the CN profile only, so it never runs for UK/EU. The daily
+`/api/admin/tender-sync` picks it up automatically via `getAdaptersForProfile()`, and
+the admin import UI (`components/admin/AdminTenderImport.tsx`) shows a Shanghai import
+tab on CN deployments (Find a Tender + TED elsewhere) using `DEPLOYMENT_PROFILE`.
+`cn_manual` remains registered for admin-entered notices from other Chinese regions.
+
 ## Environment variables (app / Vercel)
 
 | Variable | Purpose | Example |

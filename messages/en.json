@@ -1,10 +1,10 @@
 {
   "Metadata": {
-    "title": "TNDRX - Collaborative Commerce Marketplace",
-    "description": "Discover your company's strengths, match with tenders, and form winning consortiums with AI. Build consulting teams and grow your business with TNDRX."
+    "title": "{brand} - Collaborative Commerce Marketplace",
+    "description": "Discover your company's strengths, match with tenders, and form winning consortiums with AI. Build consulting teams and grow your business with {brand}."
   },
   "Header": {
-    "brand": "TNDRX",
+    "brand": "{brand}",
     "tagline": "Collaborative Commerce Marketplace",
     "dashboard": "Dashboard",
     "signOut": "Sign Out",
@@ -16,7 +16,7 @@
     "label": "Language"
   },
   "HeroSection": {
-    "headlineBrand": "TNDRX",
+    "headlineBrand": "{brand}",
     "headlineAccent": "Empowering Collaboration through Competence",
     "subheadline": "Discover your company's strengths, match with tenders, and form winning consortiums with AI.",
     "ctaAddCompany": "Add Your Company",
@@ -41,7 +41,7 @@
     },
     "impact": {
       "title": "Platform Impact",
-      "subtitle": "Real results driving regional growth across the East Midlands"
+      "subtitle": "Real results driving regional growth"
     },
     "platformFeatures": {
       "title": "Platform Features",
@@ -49,7 +49,7 @@
     },
     "contact": {
       "title": "Get In Touch",
-      "subtitle": "Ready to join the East Midlands business network?",
+      "subtitle": "Ready to join our regional business network?",
       "emailUs": "Email Us",
       "officeHours": "Office Hours",
       "weekdays": "Monday - Friday: 9 am - 5 pm",
@@ -57,12 +57,12 @@
     },
     "footer": {
       "logoAlt": "Centre for Business and Industry Transformation",
-      "poweredBy": "Powered by TNDRX"
+      "poweredBy": "Powered by {brand}"
     }
   },
   "Auth": {
     "main": {
-      "welcome": "Welcome to TNDRX",
+      "welcome": "Welcome to {brand}",
       "subheading": "Access your tender dashboard",
       "cardTitle": "Account Access",
       "tabSignIn": "Sign In",
@@ -193,7 +193,7 @@
       "errorFallback": "Failed to save profile"
     },
     "accountType": {
-      "title": "How would you like to use TNDRX?",
+      "title": "How would you like to use {brand}?",
       "subtitle": "Choose the option that best describes your needs",
       "individualTitle": "Individual",
       "individualDescription": "Browse and explore tenders without company affiliation",
@@ -662,8 +662,12 @@
       "cardTitle": "Import Tenders",
       "tabs": {
         "findTender": "Find a Tender",
-        "ted": "TED (EU)"
+        "ted": "TED (EU)",
+        "shanghai": "Shanghai"
       },
+      "shanghaiDescription": "Import Shanghai tenders from 招标与采购网 (zbycg.com). This fetches recent public notices for Shanghai and saves them to the database.",
+      "shanghaiButton": "Import Shanghai tenders",
+      "importingShanghai": "Importing Shanghai tenders... {progress}% complete ({imported} imported, {skipped} skipped)",
       "findTenderDescription": "Import tenders from the UK government's Find a Tender service. This will fetch active tenders and save them to the database.",
       "tedDescription": "Import tenders from TED (Tenders Electronic Daily) - the EU's official journal for public procurement. Requires API key from ",
       "tedDeveloperPortal": "TED Developer Portal",
@@ -691,7 +695,9 @@
         "adminRequired": "Superadmin access required to import tenders",
         "unknownError": "Unknown error",
         "importFailed": "Import failed: {message}",
-        "tedImportFailed": "TED Import failed: {message}"
+        "tedImportFailed": "TED Import failed: {message}",
+        "shanghaiSuccess": "Import completed! {imported} tenders imported from Shanghai. {skipped} duplicates skipped.",
+        "shanghaiImportFailed": "Shanghai import failed: {message}"
       }
     }
   },
@@ -1410,9 +1416,9 @@
     "budget": "Budget",
     "notSpecified": "Not specified",
     "budgetNotDisclosed": "Budget not disclosed",
-    "budgetFrom": "From £{amount}",
-    "budgetUpTo": "Up to £{amount}",
-    "budgetRange": "£{min} - £{max}",
+    "budgetFrom": "From {amount}",
+    "budgetUpTo": "Up to {amount}",
+    "budgetRange": "{min} - {max}",
     "matchPercent": "{score}% Match",
     "viewOnFindATender": "View on Find a Tender",
     "viewOnTed": "View on TED",
@@ -1688,9 +1694,9 @@
     "budget": "Budget",
     "notSpecified": "Not specified",
     "budgetNotDisclosed": "Budget not disclosed",
-    "budgetFrom": "From £{amount}",
-    "budgetUpTo": "Up to £{amount}",
-    "budgetRange": "£{min} - £{max}",
+    "budgetFrom": "From {amount}",
+    "budgetUpTo": "Up to {amount}",
+    "budgetRange": "{min} - {max}",
     "aiSummary": "AI Summary",
     "description": "Description",
     "noDescription": "No description available",
@@ -2022,7 +2028,7 @@
       "addProjectHistory": "Add your project history to improve tender matching scores.",
       "proposedPastProjects": "Proposed past projects",
       "platformProjects": "Platform Projects",
-      "platformProjectsDescription": "Virtual Organization projects on TNDRX",
+      "platformProjectsDescription": "Virtual Organization projects on {brand}",
       "noPlatformProjects": "No platform projects yet. Create a Virtual Organization project to collaborate with other companies."
     },
     "intelligence": {
@@ -2124,7 +2130,7 @@
       },
       "verifiedCompany": {
         "title": "Verified Company",
-        "description": "This company has been verified by TNDRX."
+        "description": "This company has been verified by {brand}."
       },
       "verifiedOn": "Verified on {date}.",
       "pendingVerification": {
@@ -2158,7 +2164,7 @@
       }
     },
     "verifiedBadge": {
-      "verifiedBy": "Verified by TNDRX",
+      "verifiedBy": "Verified by {brand}",
       "verified": "Verified"
     },
     "draftIndicator": {

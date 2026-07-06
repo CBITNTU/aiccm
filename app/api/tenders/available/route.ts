@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
         location: tenders.location,
         budgetMin: tenders.budgetMin,
         budgetMax: tenders.budgetMax,
+        currency: tenders.currency,
         description: tenders.description,
         referenceNumber: tenders.referenceNumber,
       })

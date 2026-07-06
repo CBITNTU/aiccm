@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { aiGenerateObject } from "@/lib/ai";
 import { companyPrefillSchema, type CompanyPrefillData } from "@/lib/schemas/companyPrefill";
 import { validateUrl } from "@/lib/api/validation";
+import { getRegistryAdapter } from "@/lib/companies/registry";
 
 const LOG = "[CompanyAI:enrich]";
 
@@ -15,12 +16,17 @@ const UA =
 // Shared fetch / HTML utilities (also used by prefill-company-data route)
 // ---------------------------------------------------------------------------
 
+/** Per-request timeout (ms) for outbound scrapes, so a hanging upstream can't stall a request. */
+const FETCH_TIMEOUT_MS = 15000;
+
 export async function safeFetch(
   url: string,
   opts: RequestInit = {},
 ): Promise<Response> {
   return fetch(url, {
     ...opts,
+    // Abort if no response within FETCH_TIMEOUT_MS (caller's signal still honored if provided).
+    signal: opts.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
     headers: {
       "User-Agent": UA,
       "Accept-Language": "en-GB,en;q=0.9",
@@ -83,8 +89,10 @@ export async function fetchCompanySources(
     }
   }
 
-  // 2) Endole
-  if (companyNumber && companyName) {
+  // 2) Endole. companyNumber is interpolated into the URL path, so require a strict
+  // alphanumeric value here too (defense-in-depth alongside the route-level schema)
+  // to prevent path manipulation against the endole hosts.
+  if (companyNumber && /^[A-Za-z0-9]{1,32}$/.test(companyNumber) && companyName) {
     const slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const candidates = [
       `https://open.endole.co.uk/insight/company/${companyNumber}-${slug}`,
@@ -278,6 +286,23 @@ export async function enrichCompanyData(companyId: string): Promise<boolean> {
   // 2. Check if enrichment is needed
   if (!companyNeedsEnrichment(company)) {
     console.log(`${LOG} Company "${company.companyName}" already has data or was enriched, skipping`);
+    return false;
+  }
+
+  // 2b. Regions without an automated registry don't support public-source enrichment.
+  if (!getRegistryAdapter().supportsEnrichment) {
+    console.log(`${LOG} Region has no automated enrichment; marking manual for "${company.companyName}"`);
+    await db
+      .update(companies)
+      .set({
+        systemExtracted: {
+          ...((company.systemExtracted as Record<string, unknown>) || {}),
+          enrichedAt: new Date().toISOString(),
+          enrichmentResult: "manual_region",
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(companies.id, companyId));
     return false;
   }
 

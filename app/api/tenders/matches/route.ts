@@ -209,6 +209,7 @@ export async function GET(request: NextRequest) {
               deadline: tenders.deadline,
               budgetMin: tenders.budgetMin,
               budgetMax: tenders.budgetMax,
+              currency: tenders.currency,
               status: tenders.status,
             },
           })
@@ -249,6 +250,7 @@ export async function GET(request: NextRequest) {
             status: t.status ?? null,
             budgetMin: t.budgetMin ?? null,
             budgetMax: t.budgetMax ?? null,
+            currency: t.currency ?? null,
             score: m.overallScore ?? 0,
             capabilityScore: m.capabilityScore ?? 0,
             experienceScore: m.experienceScore ?? 0,
@@ -330,6 +332,7 @@ export async function GET(request: NextRequest) {
             description: tenders.description,
             budgetMin: tenders.budgetMin,
             budgetMax: tenders.budgetMax,
+            currency: tenders.currency,
           })
           .from(tenders)
           .where(inArray(tenders.id, survivingIds))
@@ -349,6 +352,7 @@ export async function GET(request: NextRequest) {
         status: b.status ?? null,
         budgetMin: h?.budgetMin ?? null,
         budgetMax: h?.budgetMax ?? null,
+        currency: h?.currency ?? null,
         score,
       };
     });

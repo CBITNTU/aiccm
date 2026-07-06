@@ -6,11 +6,13 @@ import {
   ExternalLink,
   MapPin,
   Calendar,
-  PoundSterling,
+  Banknote,
   Building2,
 } from "lucide-react";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
 
 interface ProjectSummaryProps {
   tender: {
@@ -21,6 +23,7 @@ interface ProjectSummaryProps {
     deadline?: string;
     budgetMin?: number;
     budgetMax?: number;
+    currency?: string | null;
     externalId?: string;
     referenceNumber?: string;
     status?: string | null;
@@ -37,6 +40,8 @@ export function ProjectSummary({
   onCardClick,
 }: ProjectSummaryProps) {
   const t = useTranslations("ProjectSummary");
+  const { currency } = useDeployment();
+  const tenderCurrency = resolveCurrencyConfig(tender.currency, currency);
   // Generate external URL using the same pattern as TenderViewDialog
   const externalUrl = tender.externalId
     ? `https://www.find-tender.service.gov.uk/Notice/${tender.externalId}?origin=SearchResults&p=1`
@@ -88,10 +93,10 @@ export function ProjectSummary({
                 {t("budgetLabel")}
               </div>
               <div className="flex items-center gap-2">
-                <PoundSterling className="h-4 w-4" />
+                <Banknote className="h-4 w-4" />
                 <span className="font-medium">
-                  £{tender.budgetMin.toLocaleString()} - £
-                  {tender.budgetMax.toLocaleString()}
+                  {formatCurrency(tender.budgetMin, tenderCurrency)} -{" "}
+                  {formatCurrency(tender.budgetMax, tenderCurrency)}
                 </span>
               </div>
             </div>

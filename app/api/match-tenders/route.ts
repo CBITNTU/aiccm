@@ -7,6 +7,8 @@ import { logApiEvent } from "@/lib/services/eventLogger";
 import { enqueueBatch } from "@/lib/services/queueService";
 import { getPlatformMatchingSettings } from "@/lib/platformMatchingSettings";
 import { getMatchingRunsThisMonth, getEffectiveMatchingLimit, getNextMonthStart } from "@/lib/matchingUsage";
+import { getActiveProfile } from "@/lib/deployment";
+import { resolveCurrencyConfig } from "@/lib/format/currency";
 import type { TenderMatchResult } from "@/lib/api/types";
 import { db } from "@/lib/db";
 import { companies, companyMembers, companyCapabilities, companyCapabilitiesRef, tenders, batchJobs } from "@/lib/db/schema/app";
@@ -67,6 +69,7 @@ type TenderData = {
   location: string | null;
   budgetMin: number | null;
   budgetMax: number | null;
+  currency?: string | null;
   deadline: string | null;
   cpvCodes: string[] | null;
   requirements: unknown;
@@ -97,15 +100,19 @@ async function analyzeTenderMatch(
     hasLocation ? `Location: ${company.postcode || company.location}` : "Location: NOT PROVIDED",
   ].filter(Boolean).join("\n");
 
+  const curSym = resolveCurrencyConfig(
+    tender.currency,
+    getActiveProfile().currency,
+  ).symbol;
   const tenderInfo = [
     `Title: ${tender.title}`,
     tender.description ? `Description: ${tender.description}` : "",
     `Buyer: ${tender.buyer}`,
     tender.location ? `Location: ${tender.location}` : "",
     tender.budgetMin && tender.budgetMax
-      ? `Budget: £${tender.budgetMin.toLocaleString()} - £${tender.budgetMax.toLocaleString()}`
-      : tender.budgetMin ? `Budget: £${tender.budgetMin.toLocaleString()}+`
-      : tender.budgetMax ? `Budget: Up to £${tender.budgetMax.toLocaleString()}` : "",
+      ? `Budget: ${curSym}${tender.budgetMin.toLocaleString()} - ${curSym}${tender.budgetMax.toLocaleString()}`
+      : tender.budgetMin ? `Budget: ${curSym}${tender.budgetMin.toLocaleString()}+`
+      : tender.budgetMax ? `Budget: Up to ${curSym}${tender.budgetMax.toLocaleString()}` : "",
     tender.deadline ? `Deadline: ${new Date(tender.deadline).toLocaleDateString()}` : "",
     tender.cpvCodes && tender.cpvCodes.length > 0 ? `CPV Codes: ${tender.cpvCodes.join(", ")}` : "",
     tender.requirements ? `Requirements: ${JSON.stringify(tender.requirements)}` : "",

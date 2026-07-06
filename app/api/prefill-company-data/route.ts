@@ -12,10 +12,17 @@ import {
   fetchCompanySources,
   runPrefillAI,
 } from "@/lib/services/companyEnrichmentService";
+import { getRegistryAdapter } from "@/lib/companies/registry";
 
 const prefillInputSchema = z.object({
   companyName: z.string().min(1).max(200),
-  companyNumber: z.string().length(8).optional(),
+  // Alphanumeric only: the value is interpolated into upstream registry/Endole URL
+  // *paths* (lib/services/companyEnrichmentService), so disallow "/", "." and spaces
+  // to prevent path manipulation. Covers UK (8 digits / SC123456), CN (USCC) and TH.
+  companyNumber: z
+    .string()
+    .regex(/^[A-Za-z0-9]{1,32}$/, "Invalid company number format")
+    .optional(),
   websiteUrl: z.string().url().optional(),
 });
 
@@ -47,6 +54,17 @@ export async function POST(request: NextRequest) {
     // Validate websiteUrl if provided (SSRF protection)
     if (websiteUrl) {
       validateUrl(websiteUrl);
+    }
+
+    // Regions without an automated registry don't support public-source enrichment.
+    if (!getRegistryAdapter().supportsEnrichment) {
+      return apiResponse<PrefillResult>({
+        companiesHouse: null,
+        endole: null,
+        website: null,
+        normalized: null,
+        errors: ["Automated data prefill is not available for this region."],
+      });
     }
 
     const sources = await fetchCompanySources(companyName, companyNumber, websiteUrl);

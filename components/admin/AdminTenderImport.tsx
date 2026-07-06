@@ -10,15 +10,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Calendar, Globe, Building2 } from "lucide-react";
+import { Calendar, Globe, Building2, MapPin } from "lucide-react";
 import { api, ApiError } from "@/lib/api/client";
 import { useAdminTenderSyncOptional } from "@/components/admin/AdminTenderSyncContext";
+import { useDeployment } from "@/lib/deployment/client";
 
 type TenderSource = "find-tender" | "ted";
 
 export function AdminTenderImport() {
   const t = useTranslations("AdminTenders.import");
   const { isSyncInProgress } = useAdminTenderSyncOptional();
+  // China deployments use the Shanghai (zbycg.com) source; UK/EU use Find a Tender + TED.
+  const isChina = useDeployment().id === "cn";
   const [source, setSource] = useState<TenderSource>("find-tender");
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -190,6 +193,73 @@ export function AdminTenderImport() {
     }
   };
 
+  const handleShanghaiImport = async () => {
+    setIsImporting(true);
+    setProgress(0);
+    setImportedCount(0);
+    setTotalFetched(0);
+    setDuplicatesSkipped(0);
+    setError(null);
+
+    try {
+      let page = 1;
+      let hasMore = true;
+      let batchCount = 0;
+      let totalImported = 0;
+      let runningFetched = 0;
+      let totalDuplicates = 0;
+
+      while (hasMore) {
+        setProgress(Math.min(10 + batchCount * 5, 95));
+
+        const data = await api.fetchShanghaiTenders({ adminImport: true, page });
+
+        if (!data.isAdmin) {
+          throw new Error(t("toasts.adminRequired"));
+        }
+
+        const batchFetched = data.totalFetched || 0;
+        const batchImported =
+          data.actuallyImported ?? (data.tenders?.length || 0);
+        const batchDuplicates = data.duplicatesSkipped || 0;
+
+        totalImported += batchImported;
+        runningFetched += batchFetched;
+        totalDuplicates += batchDuplicates;
+
+        setTotalFetched(runningFetched);
+        setImportedCount(totalImported);
+        setDuplicatesSkipped(totalDuplicates);
+
+        hasMore = data.hasMore === true && !!data.nextPage;
+        page = data.nextPage || page + 1;
+        batchCount++;
+
+        // Be polite to the scraped site between pages.
+        if (hasMore) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+
+      setProgress(100);
+
+      toast.success(
+        t("toasts.shanghaiSuccess", {
+          imported: totalImported,
+          skipped: totalDuplicates,
+        }),
+      );
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : t("toasts.unknownError");
+      console.error("Shanghai import error:", err);
+      setError(errorMessage);
+      toast.error(t("toasts.shanghaiImportFailed", { message: errorMessage }));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleTEDImport = async () => {
     setIsImporting(true);
     setProgress(0);
@@ -346,6 +416,30 @@ export function AdminTenderImport() {
         <CardTitle>{t("cardTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {isChina && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t("shanghaiDescription")}
+            </p>
+            {isSyncInProgress && (
+              <p className="text-sm text-muted-foreground">
+                {t("syncRunningNote")}
+              </p>
+            )}
+            {!isImporting && (
+              <Button
+                onClick={handleShanghaiImport}
+                className="w-full"
+                disabled={isSyncInProgress}
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                {t("shanghaiButton")}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {!isChina && (
         <Tabs
           value={source}
           onValueChange={(v) => setSource(v as TenderSource)}
@@ -499,22 +593,29 @@ export function AdminTenderImport() {
           </TabsContent>
 
         </Tabs>
+        )}
 
         {isImporting && (
           <div className="space-y-2">
             <Progress value={progress} className="w-full" />
             <p className="text-sm text-center">
-              {source === "find-tender"
-                ? t("importingFindTender", {
+              {isChina
+                ? t("importingShanghai", {
                     progress: Math.round(progress),
                     imported: importedCount,
                     skipped: duplicatesSkipped,
                   })
-                : t("importingTed", {
-                    progress: Math.round(progress),
-                    imported: importedCount,
-                    skipped: duplicatesSkipped,
-                  })}
+                : source === "find-tender"
+                  ? t("importingFindTender", {
+                      progress: Math.round(progress),
+                      imported: importedCount,
+                      skipped: duplicatesSkipped,
+                    })
+                  : t("importingTed", {
+                      progress: Math.round(progress),
+                      imported: importedCount,
+                      skipped: duplicatesSkipped,
+                    })}
             </p>
           </div>
         )}

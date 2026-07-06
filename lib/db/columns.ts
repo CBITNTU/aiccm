@@ -54,6 +54,7 @@ export const tenderListColumns = {
   publicationDate: tenders.publicationDate,
   budgetMin: tenders.budgetMin,
   budgetMax: tenders.budgetMax,
+  currency: tenders.currency,
   aiSummary: tenders.aiSummary,
   documents: tenders.documents,
 };

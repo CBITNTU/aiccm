@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Clock, Building2 } from "lucide-react";
 import { CompanyDetailPage } from "@/components/company/CompanyDetailPage";
+import { useDeployment } from "@/lib/deployment/client";
 
 export default function MyCompanyPage() {
   const { selectedOrg, pendingCompanies, isLoading, hasNoOrgs } = useOrg();
+  const { brand } = useDeployment();
   const router = useRouter();
 
   if (isLoading) {
@@ -35,7 +37,7 @@ export default function MyCompanyPage() {
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <p className="text-muted-foreground">
-                Create or join a company to get started with TNDRX.
+                Create or join a company to get started with {brand.name}.
               </p>
               <Button
                 onClick={() => router.push("/my-company/new")}

@@ -11,6 +11,8 @@ import { useTranslations } from "next-intl";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency } from "@/lib/format/currency";
 
 interface IntelligenceTabProps {
   companyId: string;
@@ -40,6 +42,7 @@ export function IntelligenceTab({
   analysisLimitReached,
 }: IntelligenceTabProps) {
   const t = useTranslations("CompanyPage");
+  const { currency } = useDeployment();
   const queryClient = useQueryClient();
   const [isApplyingMarkets, setIsApplyingMarkets] = useState(false);
   const [marketsApplied, setMarketsApplied] = useState(false);
@@ -107,7 +110,7 @@ export function IntelligenceTab({
                   </div>
                   <div className="text-lg font-bold mt-0.5">
                     {typeof field.value === "number"
-                      ? `£${field.value.toLocaleString()}`
+                      ? formatCurrency(field.value, currency)
                       : "N/A"}
                   </div>
                   <div className="text-xs text-muted-foreground">

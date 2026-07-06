@@ -14,10 +14,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Building2 } from "lucide-react";
 import { VerifiedBadge } from "@/components/company/VerifiedBadge";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency } from "@/lib/format/currency";
 import type { Company } from "./types";
 
 export function CompanyOverviewCard({ company }: { company: Company }) {
   const t = useTranslations("Dashboard");
+  const { currency } = useDeployment();
   const router = useRouter();
 
   return (
@@ -68,7 +71,7 @@ export function CompanyOverviewCard({ company }: { company: Company }) {
                         </span>
                         <span className="text-sm font-semibold text-right min-w-0 break-words">
                           {typeof field.value === "number"
-                            ? `£${field.value.toLocaleString()}`
+                            ? formatCurrency(field.value, currency)
                             : field.value || t("companyOverview.notAvailable")}
                         </span>
                       </div>

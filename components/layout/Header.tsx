@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
+import { useDeployment } from "@/lib/deployment/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Menu, LogOut } from "lucide-react";
@@ -17,6 +18,7 @@ export function Header({
   onMobileMenuToggle,
 }: HeaderProps) {
   const t = useTranslations("Header");
+  const { brand } = useDeployment();
   const { user, loading, signOut, hasReadyUiInSession, isUiReadyHydrated } =
     useAuth();
   const canUseReadyBranch = isUiReadyHydrated && hasReadyUiInSession;
@@ -40,7 +42,7 @@ export function Header({
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-primary">{t("brand")}</h1>
+              <h1 className="text-xl font-bold text-primary">{t("brand", { brand: brand.name })}</h1>
               <p className="text-xs text-muted-foreground leading-none">
                 {t("tagline")}
               </p>

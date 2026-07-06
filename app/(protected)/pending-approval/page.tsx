@@ -24,6 +24,7 @@ import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api/client";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 
 interface PendingInfo {
   signupType: "individual" | "new-company" | "join-company" | "invited" | null;
@@ -34,6 +35,7 @@ interface PendingInfo {
 export default function PendingApprovalPage() {
   const router = useRouter();
   const t = useTranslations("PendingApprovalPage");
+  const { brand } = useDeployment();
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [pendingInfo, setPendingInfo] = useState<PendingInfo>({
@@ -268,10 +270,10 @@ export default function PendingApprovalPage() {
               <p>
                 {t("footer.contactPrefix")}{" "}
                 <a
-                  href="mailto:support@tndrx.com"
+                  href={`mailto:${brand.supportEmail}`}
                   className="text-primary hover:underline"
                 >
-                  support@tndrx.com
+                  {brand.supportEmail}
                 </a>
               </p>
             </div>

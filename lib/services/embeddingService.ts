@@ -14,22 +14,29 @@ import {
   taxonomies,
 } from "@/lib/db/schema/app";
 import { embedText, vectorToLiteral } from "@/lib/ai/embeddings";
-import { getCpvCodeName } from "@/lib/cpvCodes";
+import { getActiveProfile } from "@/lib/deployment";
+import { resolveCurrencyConfig } from "@/lib/format/currency";
+import { getTaxonomyProvider } from "@/lib/taxonomy";
 
 function formatBudgetLine(
   budgetMin: number | null | undefined,
   budgetMax: number | null | undefined,
+  currencyCode?: string | null,
 ): string {
-  const min = budgetMin != null && budgetMin > 0 ? budgetMin / 100 : null;
-  const max = budgetMax != null && budgetMax > 0 ? budgetMax / 100 : null;
+  // Resolve the tender's own currency (e.g. EUR for TED notices in a UK deploy),
+  // falling back to the active deployment currency for legacy/null rows.
+  const cur = resolveCurrencyConfig(currencyCode, getActiveProfile().currency);
+  const fmt = (n: number) => n.toLocaleString(cur.locale);
+  const min = budgetMin != null && budgetMin > 0 ? budgetMin : null;
+  const max = budgetMax != null && budgetMax > 0 ? budgetMax : null;
   if (min != null && max != null) {
-    return `Contract value: £${min.toLocaleString("en-GB")} – £${max.toLocaleString("en-GB")}`;
+    return `Contract value: ${cur.symbol}${fmt(min)} – ${cur.symbol}${fmt(max)}`;
   }
   if (max != null) {
-    return `Contract value: up to £${max.toLocaleString("en-GB")}`;
+    return `Contract value: up to ${cur.symbol}${fmt(max)}`;
   }
   if (min != null) {
-    return `Contract value: from £${min.toLocaleString("en-GB")}`;
+    return `Contract value: from ${cur.symbol}${fmt(min)}`;
   }
   return "";
 }
@@ -65,8 +72,9 @@ function jsonbToString(value: unknown): string {
 
 function cpvNames(codes: string[] | null | undefined): string {
   if (!codes || codes.length === 0) return "";
+  const taxonomy = getTaxonomyProvider();
   return codes
-    .map((c) => `${c} ${getCpvCodeName(c)}`)
+    .map((c) => `${c} ${taxonomy.getName(c)}`)
     .join("; ");
 }
 
@@ -259,6 +267,7 @@ export function buildTenderSource(tender: {
   deadline: Date | null;
   budgetMin: number | null;
   budgetMax: number | null;
+  currency?: string | null;
   aiSummary: string | null;
   aiCapabilityTaxonomy: unknown;
   requirements: unknown;
@@ -279,7 +288,7 @@ export function buildTenderSource(tender: {
     tender.aiSummary ? `Summary: ${tender.aiSummary}` : tender.description,
     capabilityLine,
     cpvNames(tender.cpvCodes) ? `CPV: ${cpvNames(tender.cpvCodes)}` : "",
-    formatBudgetLine(tender.budgetMin, tender.budgetMax),
+    formatBudgetLine(tender.budgetMin, tender.budgetMax, tender.currency),
     deadlineLine,
     jsonbToString(tender.requirements) ? `Requirements: ${jsonbToString(tender.requirements)}` : "",
     tender.location ? `Location: ${tender.location}` : "",
@@ -304,6 +313,7 @@ export async function embedTender(
       deadline: tenders.deadline,
       budgetMin: tenders.budgetMin,
       budgetMax: tenders.budgetMax,
+      currency: tenders.currency,
       aiSummary: tenders.aiSummary,
       aiCapabilityTaxonomy: tenders.aiCapabilityTaxonomy,
       requirements: tenders.requirements,

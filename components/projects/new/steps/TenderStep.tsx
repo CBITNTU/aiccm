@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 
 interface Tender {
   id: string;
@@ -45,6 +46,7 @@ export function TenderStep({
   onSkip,
 }: TenderStepProps) {
   const t = useTranslations("TenderSelectionStep");
+  const { currency } = useDeployment();
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -88,11 +90,12 @@ export function TenderStep({
 
   const formatBudget = (min?: number | null, max?: number | null): string => {
     if (!min && !max) return t("notSpecified");
+    const sym = currency.symbol;
     if (min && max && min !== max) {
-      return `£${(min / 1000).toFixed(0)}k - £${(max / 1000).toFixed(0)}k`;
+      return `${sym}${(min / 1000).toFixed(0)}k - ${sym}${(max / 1000).toFixed(0)}k`;
     }
-    if (min) return `£${(min / 1000).toFixed(0)}k+`;
-    if (max) return `Up to £${(max / 1000).toFixed(0)}k`;
+    if (min) return `${sym}${(min / 1000).toFixed(0)}k+`;
+    if (max) return `Up to ${sym}${(max / 1000).toFixed(0)}k`;
     return "Not specified";
   };
 

@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { locales as LOCALES, localeMeta, type Locale } from "@/i18n/locales";
+import { localeMeta, type Locale } from "@/i18n/locales";
+import { useDeployment } from "@/lib/deployment/client";
 import { cn } from "@/lib/utils";
 
 interface LocaleSwitcherProps {
@@ -23,6 +24,8 @@ export function LocaleSwitcher({ size = "default" }: LocaleSwitcherProps) {
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // Only offer the locales this deployment allows.
+  const LOCALES = useDeployment().i18n.allowedLocales;
 
   if (LOCALES.length < 2) {
     return null;

@@ -7,7 +7,8 @@ import {
   taxonomies,
   tenderTaxonomies,
 } from "@/lib/db/schema/app";
-import { cpvDivision, inferCpvDivisionsFromText } from "@/lib/cpvCodes";
+import { getActiveProfile } from "@/lib/deployment";
+import { getTaxonomyProvider } from "@/lib/taxonomy";
 import {
   fetchCompanyCapabilityLabels,
   resolveCapabilityNamesByIds,
@@ -89,7 +90,7 @@ export async function fetchCompanyMatchContext(
     .filter(Boolean)
     .join("\n");
 
-  const cpvDivisions = inferCpvDivisionsFromText(profileText);
+  const cpvDivisions = getTaxonomyProvider().inferDivisionsFromText(profileText);
 
   return {
     companyId,
@@ -130,19 +131,18 @@ export function cpvOverlapScore(
   companyDivisions: string[],
   tenderCpvCodes: string[] | null,
 ): number {
-  if (!tenderCpvCodes?.length) return 0.5;
-  if (companyDivisions.length === 0) return 0.5;
-  const tenderDivisions = new Set(
-    tenderCpvCodes.map((c) => cpvDivision(c)).filter((d) => d.length >= 2),
-  );
-  for (const d of companyDivisions) {
-    if (tenderDivisions.has(d)) return 1;
-  }
-  return 0.15;
+  return getTaxonomyProvider().overlapScore(companyDivisions, tenderCpvCodes);
 }
 
-const LOCATION_TERMS =
-  /\b(london|manchester|birmingham|leeds|glasgow|edinburgh|scotland|wales|northern ireland|england|uk|united kingdom|yorkshire|merseyside|cornwall|devon|kent|surrey|essex|lancashire)\b/gi;
+// Region-specific place/region names used to detect location overlap, sourced from
+// the active deployment profile. Stub regions (CN/TH) start minimal; matching then
+// degrades gracefully to the neutral/containment fallback below + embedding similarity.
+function locationTermsRegex(): RegExp {
+  const terms = getActiveProfile().locationTerms;
+  if (terms.length === 0) return /(?!)/gi; // never matches → falls through to fallback
+  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
+}
 
 export function locationOverlapScore(
   companyLocationText: string,
@@ -152,11 +152,12 @@ export function locationOverlapScore(
   const companyHay = companyLocationText.toLowerCase();
   const tenderHay = tenderLocation.toLowerCase();
 
+  const termsRegex = locationTermsRegex();
   const companyTerms = new Set(
-    [...companyHay.matchAll(LOCATION_TERMS)].map((m) => m[0].toLowerCase()),
+    [...companyHay.matchAll(termsRegex)].map((m) => m[0].toLowerCase()),
   );
   const tenderTerms = new Set(
-    [...tenderHay.matchAll(LOCATION_TERMS)].map((m) => m[0].toLowerCase()),
+    [...tenderHay.matchAll(termsRegex)].map((m) => m[0].toLowerCase()),
   );
 
   if (companyTerms.size === 0 || tenderTerms.size === 0) {

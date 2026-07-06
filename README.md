@@ -355,6 +355,39 @@ User-facing strings go through [`next-intl`](https://next-intl.dev). Translation
 
 ---
 
+## Deployment regions (whitelabel)
+
+The app ships as **one codebase deployed once per region** — each deployment is a
+self-contained whitelabel instance. The active region is selected at deploy time by a
+single env var:
+
+```bash
+DEPLOYMENT_PROFILE=uk   # uk (default) | cn | th
+```
+
+Resolved once at process start in `lib/deployment/`, it drives branding, locale,
+currency, geocoding, AI defaults **and which tender sources are ingested**:
+
+| `DEPLOYMENT_PROFILE` | Locale / currency | Tender sources (cron + admin import) |
+| --- | --- | --- |
+| `uk` (default) | en / £ | Find a Tender + TED (EU) |
+| `cn` | zh-CN / ¥ | Shanghai (`zbycg.com`) + manual |
+| `th` | th / ฿ | manual |
+
+**This is intentionally one region per deployment, not one instance serving many.**
+The nightly tender-sync cron (`/api/admin/tender-sync`) is region-aware: it iterates
+`getAdaptersForProfile()`, so a UK deployment pulls Find a Tender + TED and a China
+deployment pulls the Shanghai source — no per-region cron config needed. The whole
+identity (brand, locale, currency, sources) switches together with `DEPLOYMENT_PROFILE`,
+so a single instance can't serve UK **and** China at once; run one deployment per region.
+
+To add a new source for a region, implement a `TenderSourceAdapter`
+(`lib/tenders/adapters/`), register it in `lib/tenders/registry.ts`, and list its id in
+the region's profile (`lib/deployment/profiles/`). See
+[`docs/deployment-profiles.md`](docs/deployment-profiles.md).
+
+---
+
 ## Project structure
 
 ```

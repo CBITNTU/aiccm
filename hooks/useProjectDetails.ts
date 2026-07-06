@@ -20,6 +20,7 @@ export interface Tender {
   deadline?: string;
   budgetMin?: number;
   budgetMax?: number;
+  currency?: string | null;
   value?: number;
   description?: string;
   externalId?: string;

@@ -3,6 +3,8 @@ import { aiGenerateObject, getMatchingModelFromEnv, isOllamaModelId } from "@/li
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { ensureTenderResearchCached } from "@/lib/services/tenderResearchCache";
 import { getPlatformAISettings } from "@/lib/platformSettings";
+import { getActiveProfile } from "@/lib/deployment";
+import { resolveCurrencyConfig } from "@/lib/format/currency";
 import { db } from "@/lib/db";
 import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers, companyTaxonomies, taxonomies, companyStandards, standardsRef, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { eq, inArray, and, or } from "drizzle-orm";
@@ -239,6 +241,7 @@ export async function scoreTenderMatch(
       buyer: tenders.buyer,
       budgetMin: tenders.budgetMin,
       budgetMax: tenders.budgetMax,
+      currency: tenders.currency,
       deadline: tenders.deadline,
       location: tenders.location,
       cpvCodes: tenders.cpvCodes,
@@ -253,10 +256,15 @@ export async function scoreTenderMatch(
     throw new Error("Failed to fetch tender: Tender not found");
   }
 
-  // Format budget range
+  // Format budget range using the tender's own currency (e.g. EUR for TED notices
+  // in a UK deploy), falling back to the active deployment currency for legacy rows.
+  const cur = resolveCurrencyConfig(
+    tenderData.currency,
+    getActiveProfile().currency,
+  ).symbol;
   const budgetRange =
     tenderData.budgetMin || tenderData.budgetMax
-      ? `£${tenderData.budgetMin ? tenderData.budgetMin.toLocaleString() : "?"} - £${tenderData.budgetMax ? tenderData.budgetMax.toLocaleString() : "?"}`
+      ? `${cur}${tenderData.budgetMin ? tenderData.budgetMin.toLocaleString() : "?"} - ${cur}${tenderData.budgetMax ? tenderData.budgetMax.toLocaleString() : "?"}`
       : "Not specified";
 
   // Check data completeness for company
@@ -384,13 +392,22 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   if (allProjects.length > 0) {
     companyLines.push(`Projects:\n${allProjects}`);
   }
+  const operationLocations = companyData.operationLocations as unknown[] | null;
+  const hasOperationLocations =
+    Array.isArray(operationLocations) && operationLocations.length > 0;
   if (companyData.postcode) {
     companyLines.push(`Location: ${companyData.postcode}`);
   } else if (companyData.address) {
     companyLines.push(`Location: ${companyData.address}`);
+  } else if (hasOperationLocations) {
+    // Fall back to operating locations so a company that only recorded operation
+    // locations isn't described as having an undefined/"not defined" location.
+    companyLines.push(
+      `Location: ${(operationLocations as unknown[]).map(String).join(", ")}`,
+    );
   }
-  if (companyData.operationLocations && (companyData.operationLocations as unknown[]).length > 0) {
-    companyLines.push(`Operation Locations: ${JSON.stringify(companyData.operationLocations)}`);
+  if (hasOperationLocations) {
+    companyLines.push(`Operation Locations: ${JSON.stringify(operationLocations)}`);
   }
 
   const userPrompt = `${companyLines.join("\n")}

@@ -20,9 +20,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
+import { useDeployment } from "@/lib/deployment/client";
 
 export function HeroSection() {
   const t = useTranslations("HeroSection");
+  const { brand } = useDeployment();
   const [realStats, setRealStats] = useState({
     companies: 0,
     tenders: 0,
@@ -128,7 +130,7 @@ export function HeroSection() {
           {/* Main Heading */}
           <div className="max-w-5xl mx-auto space-y-6">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-              {t("headlineBrand")}{" "}
+              {t("headlineBrand", { brand: brand.name })}{" "}
               <span className="relative">
                 <span className="gradient-hero bg-clip-text text-transparent">
                   {t("headlineAccent")}
@@ -315,7 +317,7 @@ export function HeroSection() {
                 className="h-12 w-auto"
               />
               <p className="text-sm text-muted-foreground mt-2">
-                {t("footer.poweredBy")}
+                {t("footer.poweredBy", { brand: brand.name })}
               </p>
             </div>
           </div>

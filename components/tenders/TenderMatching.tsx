@@ -174,6 +174,23 @@ export function TenderMatching({
     staleTime: 5 * 60 * 1000,
   });
 
+  // The `companyData` prop comes from the lean company list projection, which
+  // omits heavy JSON fields — including `operationLocations`, `aiCapabilityTaxonomy`
+  // and `pendingChanges` (see lib/db/columns.ts). Relying on it made the pre-flight
+  // readiness check report Location as "not defined" even when operating locations
+  // were set. Fetch the full company record so readiness reflects the real profile.
+  const { data: fullCompanyData } = useQuery({
+    queryKey: queryKeys.company(companyId!),
+    queryFn: () => api.getCompany(companyId!),
+    enabled: !!companyId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const readinessCompany = useMemo<CompanyRecord | undefined>(
+    () => (fullCompanyData?.company as CompanyRecord | undefined) ?? companyData,
+    [fullCompanyData?.company, companyData],
+  );
+
   const [deepResearchTenderId, setDeepResearchTenderId] = useState<
     string | null
   >(null);
@@ -607,8 +624,8 @@ export function TenderMatching({
     }
 
     // Pre-flight readiness check
-    if (companyData) {
-      const readiness = checkMatchingReadiness(companyData, {
+    if (readinessCompany) {
+      const readiness = checkMatchingReadiness(readinessCompany, {
         taxonomyCount: companyTaxonomyData?.taxonomies?.length ?? 0,
         standardsCount: companyStandardsData?.standards?.length ?? 0,
         capabilitiesCount: companyCapabilitiesData?.capabilities?.length ?? 0,
@@ -627,7 +644,7 @@ export function TenderMatching({
     }
 
     startAnalysis({ force: false });
-  }, [companyId, companyData, analyzing, matchingProgress, startAnalysis, companyTaxonomyData?.taxonomies?.length, companyStandardsData?.standards?.length, companyCapabilitiesData?.capabilities?.length, t]);
+  }, [companyId, readinessCompany, analyzing, matchingProgress, startAnalysis, companyTaxonomyData?.taxonomies?.length, companyStandardsData?.standards?.length, companyCapabilitiesData?.capabilities?.length, t]);
 
   const runAnalysisFresh = useCallback(() => {
     if (!companyId) {
@@ -877,6 +894,7 @@ export function TenderMatching({
                     status={m.status}
                     budgetMin={m.budgetMin}
                     budgetMax={m.budgetMax}
+                    currency={m.currency}
                     score={m.score}
                     capabilityScore={m.capabilityScore}
                     experienceScore={m.experienceScore}
@@ -908,6 +926,7 @@ export function TenderMatching({
                   status={m.status}
                   budgetMin={m.budgetMin}
                   budgetMax={m.budgetMax}
+                  currency={m.currency}
                   score={m.score}
                   onViewDetails={viewDetails}
                   onDeepResearch={() => runDeepResearchForTender(m.tenderId)}

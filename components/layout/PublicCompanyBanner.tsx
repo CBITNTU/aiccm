@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useDeployment } from "@/lib/deployment/client";
 
 export function PublicCompanyBanner() {
+  const { brand } = useDeployment();
   return (
     <header className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -17,7 +19,7 @@ export function PublicCompanyBanner() {
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-primary">TNDRX</h1>
+              <h1 className="text-xl font-bold text-primary">{brand.name}</h1>
               <p className="text-xs text-muted-foreground leading-none">
                 Find tenders, form teams, win work.
               </p>

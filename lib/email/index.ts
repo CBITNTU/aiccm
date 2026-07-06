@@ -1,15 +1,31 @@
 import { Resend } from "resend";
+import { getActiveProfile } from "@/lib/deployment";
 
 // Initialize Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Platform configuration
-const PLATFORM_NAME = process.env.PLATFORM_NAME || "TNDRX Platform";
-const PLATFORM_EMAIL_FROM =
-  process.env.PLATFORM_EMAIL_FROM || "noreply@contact.tndrx.com";
-const PLATFORM_URL = process.env.PLATFORM_URL
-  ? process.env.PLATFORM_URL
-  : "http://localhost:3000";
+// Platform configuration. Read lazily so the active deployment profile is available
+// as a fallback. Env vars keep precedence so existing deployments are unaffected.
+function platformName(): string {
+  return process.env.PLATFORM_NAME || getActiveProfile().brand.name;
+}
+function platformEmailFrom(): string {
+  // Fall back to the active deployment's support email so a whitelabel/region deploy
+  // that omits PLATFORM_EMAIL_FROM still sends from its own (Resend-verified) domain
+  // instead of the hardcoded tndrx.com sender. PLATFORM_EMAIL_FROM keeps precedence.
+  return (
+    process.env.PLATFORM_EMAIL_FROM ||
+    getActiveProfile().brand.supportEmail ||
+    "noreply@contact.tndrx.com"
+  );
+}
+function platformUrl(): string {
+  return (
+    process.env.PLATFORM_URL ||
+    getActiveProfile().brand.supportUrl ||
+    "http://localhost:3000"
+  );
+}
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -62,7 +78,7 @@ export async function sendEmail(
 
   try {
     const result = await resend.emails.send({
-      from: `${PLATFORM_NAME} <${PLATFORM_EMAIL_FROM}>`,
+      from: `${platformName()} <${platformEmailFrom()}>`,
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
@@ -100,14 +116,14 @@ function stripHtml(html: string): string {
  * Get platform URL for email links
  */
 export function getPlatformUrl(path: string = ""): string {
-  return `${PLATFORM_URL}${path}`;
+  return `${platformUrl()}${path}`;
 }
 
 /**
  * Get platform name for email content
  */
 export function getPlatformName(): string {
-  return PLATFORM_NAME;
+  return platformName();
 }
 
 // Re-export templates

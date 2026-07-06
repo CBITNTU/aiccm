@@ -24,6 +24,7 @@
     "docker:down": "docker compose down",
     "test:ollama": "node scripts/test-ollama-matching.mjs",
     "test:ollama:zod": "tsx scripts/test-ollama-zod.ts",
+    "test:tenders": "tsx scripts/test-tender-fetch.ts",
     "bench:matching": "tsx benchmarks/matching/run.ts",
     "bench:matching:bundled": "tsx benchmarks/matching/bundled.ts",
     "bench:matching:compare": "tsx benchmarks/matching/compare.ts",

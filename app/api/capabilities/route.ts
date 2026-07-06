@@ -3,6 +3,7 @@ import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyCapabilitiesRef } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import { inArray } from "drizzle-orm";
 import { getCapabilityCatalog } from "@/lib/services/capabilityCatalog";
 
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       const data = await db
         .select({
           id: companyCapabilitiesRef.id,
-          name: companyCapabilitiesRef.name,
+          name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
         })
         .from(companyCapabilitiesRef)
         .where(inArray(companyCapabilitiesRef.id, ids));

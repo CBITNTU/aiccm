@@ -50,5 +50,6 @@ export const cnProfile: DeploymentProfile = {
   verificationProvider: "cn_manual",
   geocodingProvider: "none",
   taxonomy: "stub",
-  ai: { defaultModel: "deepseek-chat", matchingModel: "deepseek-chat" },
+  taxonomyLanguage: "zh-CN",
+  ai: { defaultModel: "deepseek-v4-flash", matchingModel: "deepseek-v4-flash" },
 };

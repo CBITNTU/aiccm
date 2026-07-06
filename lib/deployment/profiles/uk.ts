@@ -58,5 +58,6 @@ export const ukProfile: DeploymentProfile = {
   verificationProvider: "uk_companies_house",
   geocodingProvider: "google",
   taxonomy: "cpv_eic",
+  taxonomyLanguage: "en",
   ai: { defaultModel: "gpt-5-nano" },
 };

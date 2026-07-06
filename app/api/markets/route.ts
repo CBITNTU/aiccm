@@ -3,6 +3,7 @@ import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { markets } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import { asc, inArray } from "drizzle-orm";
 
 export interface MarketNode {
@@ -22,7 +23,7 @@ async function getAllMarkets(now: number): Promise<MarketNode[]> {
   const data = (await db
     .select({
       id: markets.id,
-      name: markets.name,
+      name: localizedName(markets.name, markets.nameZh),
       parentId: markets.parentId,
       sortOrder: markets.sortOrder,
     })
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
         return apiResponse({ markets: [] });
       }
       const data = await db
-        .select({ id: markets.id, name: markets.name })
+        .select({ id: markets.id, name: localizedName(markets.name, markets.nameZh) })
         .from(markets)
         .where(inArray(markets.id, ids));
       return apiResponse({ markets: data });

@@ -97,15 +97,15 @@ export async function POST(request: NextRequest) {
       // in DB). Self-referential parent_id: insert L1, then L2, then L3 so each
       // parent row exists before its children.
       await tx.execute(sql`
-        INSERT INTO company_capabilities_ref (id, name, category, parent_id, is_active, created_at, updated_at)
-        SELECT id, name, category, parent_id, is_active, now(), now()
+        INSERT INTO company_capabilities_ref (id, name, name_zh, category, category_zh, parent_id, is_active, created_at, updated_at)
+        SELECT id, name, name_zh, category, category_zh, parent_id, is_active, now(), now()
         FROM competency_taxonomy_seed
         WHERE parent_id IS NULL
       `);
 
       await tx.execute(sql`
-        INSERT INTO company_capabilities_ref (id, name, category, parent_id, is_active, created_at, updated_at)
-        SELECT s.id, s.name, s.category, s.parent_id, s.is_active, now(), now()
+        INSERT INTO company_capabilities_ref (id, name, name_zh, category, category_zh, parent_id, is_active, created_at, updated_at)
+        SELECT s.id, s.name, s.name_zh, s.category, s.category_zh, s.parent_id, s.is_active, now(), now()
         FROM competency_taxonomy_seed s
         WHERE s.parent_id IS NOT NULL
           AND EXISTS (
@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
       `);
 
       await tx.execute(sql`
-        INSERT INTO company_capabilities_ref (id, name, category, parent_id, is_active, created_at, updated_at)
-        SELECT s.id, s.name, s.category, s.parent_id, s.is_active, now(), now()
+        INSERT INTO company_capabilities_ref (id, name, name_zh, category, category_zh, parent_id, is_active, created_at, updated_at)
+        SELECT s.id, s.name, s.name_zh, s.category, s.category_zh, s.parent_id, s.is_active, now(), now()
         FROM competency_taxonomy_seed s
         WHERE s.parent_id IS NOT NULL
           AND EXISTS (

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { asc } from "drizzle-orm";
+import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 
 export type CapabilityCatalogRow = {
   id: string;
@@ -31,8 +32,8 @@ export async function getCapabilityCatalog(): Promise<CapabilityCatalogRow[]> {
   const data = await db
     .select({
       id: companyCapabilitiesRef.id,
-      name: companyCapabilitiesRef.name,
-      category: companyCapabilitiesRef.category,
+      name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
+      category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh),
       isActive: companyCapabilitiesRef.isActive,
     })
     .from(companyCapabilitiesRef)

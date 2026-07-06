@@ -12,6 +12,7 @@ import { resolveCurrencyConfig } from "@/lib/format/currency";
 import type { TenderMatchResult } from "@/lib/api/types";
 import { db } from "@/lib/db";
 import { companies, companyMembers, companyCapabilities, companyCapabilitiesRef, tenders, batchJobs } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import { eq, and, inArray, gte, desc } from "drizzle-orm";
 
 type CompanyData = Pick<
@@ -297,7 +298,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch company capabilities from junction table
     const capResults = await db
-      .select({ name: companyCapabilitiesRef.name })
+      .select({ name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh) })
       .from(companyCapabilities)
       .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
       .where(eq(companyCapabilities.companyId, companyData.id));

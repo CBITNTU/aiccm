@@ -358,7 +358,9 @@ export const tenderTaxonomies = pgTable(
 export const companyCapabilitiesRef = pgTable("company_capabilities_ref", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  nameZh: text("name_zh"),
   category: text("category"),
+  categoryZh: text("category_zh"),
   parentId: uuid("parent_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -370,7 +372,9 @@ export const companyCapabilitiesRef = pgTable("company_capabilities_ref", {
 export const competencyTaxonomySeed = pgTable("competency_taxonomy_seed", {
   id: uuid("id").primaryKey(),
   name: text("name").notNull(),
+  nameZh: text("name_zh"),
   category: text("category"),
+  categoryZh: text("category_zh"),
   parentId: uuid("parent_id"),
   isActive: boolean("is_active").notNull().default(true),
 }, (table) => [index("idx_competency_taxonomy_seed_parent_id").on(table.parentId)]);
@@ -396,6 +400,7 @@ export const companyCapabilities = pgTable(
 export const markets = pgTable("markets", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  nameZh: text("name_zh"),
   parentId: uuid("parent_id"),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -421,6 +426,7 @@ export const companyMarkets = pgTable(
 export const standardsRef = pgTable("standards_ref", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  nameZh: text("name_zh"),
   parentId: uuid("parent_id"),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

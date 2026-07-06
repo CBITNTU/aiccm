@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies, companyTaxonomies, taxonomies, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import { eq, and, or, ilike, inArray, asc, count, sql } from "drizzle-orm";
 import { nearbyCompanies } from "@/lib/db/raw";
 
@@ -182,7 +183,7 @@ export async function GET(request: NextRequest) {
         .select({
           companyId: companyMarkets.companyId,
           marketId: markets.id,
-          marketName: markets.name,
+          marketName: localizedName(markets.name, markets.nameZh),
         })
         .from(companyMarkets)
         .innerJoin(markets, eq(companyMarkets.marketId, markets.id))
@@ -202,7 +203,7 @@ export async function GET(request: NextRequest) {
         .select({
           companyId: companyStandards.companyId,
           standardId: standardsRef.id,
-          standardName: standardsRef.name,
+          standardName: localizedName(standardsRef.name, standardsRef.nameZh),
         })
         .from(companyStandards)
         .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))

@@ -8,6 +8,7 @@ import { resolveCurrencyConfig } from "@/lib/format/currency";
 import { db } from "@/lib/db";
 import { companies, tenders, matchingResults, demoMatchingResults, virtualOrganizations, voMembers, companyTaxonomies, taxonomies, companyStandards, standardsRef, companyCapabilities, companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { eq, inArray, and, or } from "drizzle-orm";
+import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 
 /** Reasoning effort for GPT-5 models: lower = faster, fewer reasoning tokens. */
 export type ReasoningEffort =
@@ -177,7 +178,7 @@ export async function scoreTenderMatch(
 
   // Fetch structured standards selected via Capabilities → Standards & Certifications
   const companyStandardRows = await db
-    .select({ name: standardsRef.name })
+    .select({ name: localizedName(standardsRef.name, standardsRef.nameZh) })
     .from(companyStandards)
     .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
     .where(eq(companyStandards.companyId, companyId));
@@ -186,7 +187,7 @@ export async function scoreTenderMatch(
 
   // Fetch structured competencies selected via Capabilities → Competencies tab
   const companyCapabilityRows = await db
-    .select({ name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+    .select({ name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh), category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh) })
     .from(companyCapabilities)
     .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
     .where(eq(companyCapabilities.companyId, companyId));
@@ -344,7 +345,7 @@ FIRST: Check if company and tender industries/sectors match (e.g., construction,
 
 For matchReasons: Provide 2-4 SHORT, CLEAR bullet points explaining why this is a good match. Each reason should be:
 - 10-15 words maximum
-- Written in plain English
+- Written in plain, simple language
 - Focus on specific capabilities, experience, or qualifications
 - Example: "Company has 5+ years experience in similar healthcare projects"
 - Example: "Strong capability match in construction and project management"

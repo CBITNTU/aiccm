@@ -14,6 +14,7 @@ import {
   companyCapabilities,
   companyCapabilitiesRef,
 } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import {
   enqueueBatch,
   type EnqueueJobOptions,
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
     const capabilityRows = await db
       .select({
         id: companyCapabilitiesRef.id,
-        name: companyCapabilitiesRef.name,
+        name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
       })
       .from(companyCapabilitiesRef)
       .where(eq(companyCapabilitiesRef.isActive, true));

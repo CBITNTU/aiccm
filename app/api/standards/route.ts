@@ -3,6 +3,7 @@ import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError, isCompanyMember } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyMarkets, markets, standardsRef } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import { asc, eq, inArray } from "drizzle-orm";
 
 export interface StandardNode {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       if (marketIds.length > 0) {
         // Fetch those markets
         const marketRows = await db
-          .select({ id: markets.id, name: markets.name, parentId: markets.parentId })
+          .select({ id: markets.id, name: localizedName(markets.name, markets.nameZh), parentId: markets.parentId })
           .from(markets)
           .where(inArray(markets.id, marketIds));
 
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
         const allIds = [...new Set([...marketIds, ...parentIds])];
 
         const allMarketRows = await db
-          .select({ id: markets.id, name: markets.name, parentId: markets.parentId })
+          .select({ id: markets.id, name: localizedName(markets.name, markets.nameZh), parentId: markets.parentId })
           .from(markets)
           .where(inArray(markets.id, allIds));
 
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     const allStandards = await db
       .select({
         id: standardsRef.id,
-        name: standardsRef.name,
+        name: localizedName(standardsRef.name, standardsRef.nameZh),
         parentId: standardsRef.parentId,
         sortOrder: standardsRef.sortOrder,
       })

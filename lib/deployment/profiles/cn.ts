@@ -1,10 +1,11 @@
 import type { DeploymentProfile } from "../types";
 
 /**
- * China deployment (stub). No UK/EU tender sources or Companies House — tenders and
- * companies are entered/verified manually until a concrete CN source/registry is wired.
- * Google Maps is blocked in China, so geocoding is disabled. AI defaults to DeepSeek
- * (OpenAI is not reachable); `resolveModel()` routes `deepseek-*` automatically.
+ * China deployment. Tenders come from the Shanghai (zbycg.com) source adapter; other
+ * regions can still be entered manually (`cn_manual`). No Companies House — companies
+ * are verified manually. Google Maps is blocked in China, so geocoding is disabled.
+ * AI defaults to DeepSeek (OpenAI is not reachable); `resolveModel()` routes
+ * `deepseek-*` automatically.
  */
 export const cnProfile: DeploymentProfile = {
   id: "cn",
@@ -43,7 +44,9 @@ export const cnProfile: DeploymentProfile = {
     supportsLookup: false,
   },
   locationTerms: ["china", "中国", "beijing", "北京", "shanghai", "上海"],
-  tenderSources: ["cn_manual"],
+  // Shanghai (zbycg.com) is the first automated China feed; `cn_manual` stays as a
+  // fallback for admin-entered notices from regions without an automated source.
+  tenderSources: ["shanghai_zbycg", "cn_manual"],
   verificationProvider: "cn_manual",
   geocodingProvider: "none",
   taxonomy: "stub",

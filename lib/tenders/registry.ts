@@ -2,11 +2,13 @@ import { getActiveProfile } from "@/lib/deployment";
 import type { TenderSourceAdapter } from "./types";
 import { findTenderAdapter } from "./adapters/findTender";
 import { tedAdapter } from "./adapters/ted";
+import { shanghaiZbycgAdapter } from "./adapters/shanghai";
 import { cnManualAdapter, thManualAdapter } from "./adapters/manualStub";
 
 const REGISTRY: Record<string, TenderSourceAdapter> = {
   [findTenderAdapter.id]: findTenderAdapter,
   [tedAdapter.id]: tedAdapter,
+  [shanghaiZbycgAdapter.id]: shanghaiZbycgAdapter,
   [cnManualAdapter.id]: cnManualAdapter,
   [thManualAdapter.id]: thManualAdapter,
 };

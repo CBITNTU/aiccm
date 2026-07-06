@@ -279,6 +279,26 @@ export const api = {
       body: options || {},
     }),
 
+  // China-only source (Shanghai / zbycg.com). Paginates by page number.
+  fetchShanghaiTenders: (options?: {
+    page?: number;
+    searchTerm?: string;
+    adminImport?: boolean;
+  }) =>
+    apiCall<{
+      tenders: TenderFeedRecord[];
+      total: number;
+      totalFetched: number;
+      actuallyImported?: number;
+      hasMore: boolean;
+      nextPage?: number | null;
+      isAdmin?: boolean;
+      source: string;
+      duplicatesSkipped?: number;
+    }>("fetch-shanghai-tenders", {
+      body: options || {},
+    }),
+
   // Prefill company data
   prefillCompanyData: (data: {
     companyName: string;

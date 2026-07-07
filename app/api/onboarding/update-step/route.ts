@@ -12,6 +12,7 @@ import {
   getCompanyJoinRequestEmailSubject,
   getCompanyJoinRequestEmailHtml,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 import { ONBOARDING_STEPS, isValidStep } from "@/lib/onboarding";
 import {
   geocodeLocation,
@@ -462,6 +463,7 @@ export async function POST(request: NextRequest) {
             for (const admin of adminProfiles) {
               if (admin.email) {
                 const emailData = {
+                  locale: await getEmailLocale(),
                   companyAdminName:
                     `${admin.firstName || ""} ${admin.lastName || ""}`.trim() ||
                     "Admin",
@@ -543,6 +545,7 @@ export async function POST(request: NextRequest) {
             }
 
             const adminNotificationData = {
+              locale: await getEmailLocale(),
               userName,
               userEmail: user.email || "",
               signupType: (profile.signupType || "individual") as "individual" | "new-company" | "join-company" | "invited",

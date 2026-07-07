@@ -15,6 +15,7 @@ import {
   getProjectInvitationEmailHtml,
   type ProjectInvitationEmailData,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 import { db } from "@/lib/db";
 import {
   virtualOrganizations,
@@ -183,6 +184,7 @@ export async function POST(request: NextRequest) {
       );
 
       const emailData: ProjectInvitationEmailData = {
+        locale: await getEmailLocale(),
         recipientName: partner.companyName || "Team",
         invitingCompanyName: leadCompany?.companyName || "Unknown",
         invitingCompanyContact:

@@ -251,7 +251,6 @@
         "contactEmailPlaceholderDefault": "contact@company.com",
         "contactEmailHelper": "Defaults to your email if left empty",
         "contactPhoneLabel": "Contact Phone",
-        "contactPhonePlaceholder": "+44 ...",
         "afterApprovalHelper": "After approval, you'll be able to add more company details including certifications, capabilities, and team members.",
         "errorNameRequired": "Company name is required",
         "errorWebsiteRequired": "Website URL is required. Please provide at least a website for your company.",
@@ -469,8 +468,7 @@
       "contactPersonPlaceholder": "Contact name",
       "contactEmail": "Contact Email",
       "contactEmailPlaceholder": "contact@company.com",
-      "contactPhone": "Contact Phone",
-      "contactPhonePlaceholder": "+44..."
+      "contactPhone": "Contact Phone"
     },
     "messageLabel": "Message:",
     "awaitingCompanyAdmin": "Awaiting company admin approval",
@@ -2387,7 +2385,6 @@
         "emailPlaceholderFallback": "contact@company.com",
         "emailHint": "Defaults to your email if left empty",
         "phoneLabel": "Contact Phone",
-        "phonePlaceholder": "+44 ...",
         "afterApprovalNote": "After admin approval, you'll be able to add more company details including certifications, capabilities, and team members.",
         "creating": "Creating...",
         "submitCreate": "Create Company"
@@ -2842,7 +2839,6 @@
     "jobTitleLabel": "Job Title / Role",
     "jobTitlePlaceholder": "e.g. CEO, Project Manager, Engineer",
     "phoneLabel": "Phone Number",
-    "phonePlaceholder": "Your phone number",
     "errorRequired": "Please fill in all required fields",
     "saving": "Saving...",
     "save": "Save Changes",
@@ -3123,6 +3119,184 @@
     },
     "footer": {
       "contactPrefix": "Have questions? Contact us at"
+    }
+  },
+  "Emails": {
+    "hello": "Hello <b>{name}</b>,",
+    "helloPlain": "Hello {name},",
+    "helloThere": "Hello,",
+    "footer": "This email was sent by {platformName}.",
+    "goToDashboard": "Go to Dashboard",
+    "contactSupport": "Contact Support",
+    "reconsider": "If you believe this decision was made in error, or if you have additional information that might help us reconsider, please contact our support team.",
+    "labels": {
+      "name": "Name:",
+      "email": "Email:",
+      "jobTitle": "Job Title:",
+      "company": "Company:",
+      "type": "Type:",
+      "title": "Title:",
+      "buyer": "Buyer:",
+      "deadline": "Deadline:",
+      "estValue": "Est. Value:",
+      "reason": "Reason:",
+      "reviewerNotes": "Reviewer Notes:"
+    },
+    "verification": {
+      "subject": "Verify your email - {platformName}",
+      "heading": "Welcome to {platformName}",
+      "instruction": "Please verify your email address by clicking the link below:",
+      "button": "Verify Email",
+      "ignore": "If you didn't create a {platformName} account, you can safely ignore this email."
+    },
+    "teamInvitation": {
+      "subject": "You've been invited to join {companyName} on {platformName}",
+      "heading": "You're Invited!",
+      "invitedBy": "<b>{inviterName}</b> has invited you to join <b>{companyName}</b> on {platformName}.",
+      "whatIsHeading": "What is {platformName}?",
+      "whatIsBody": "{platformName} is a construction and consulting tender matching platform that helps companies find and win relevant contracts. As a team member, you'll be able to:",
+      "benefits": [
+        "View and match with tender opportunities",
+        "Access company profile and capabilities",
+        "Collaborate with your team on bids"
+      ],
+      "button": "Accept Invitation",
+      "expiresOn": "This invitation expires on {expiryDate}",
+      "expiryNote": "Please accept the invitation before it expires. If you need a new invitation, please contact {inviterName}.",
+      "ignore": "If you didn't expect this invitation or don't want to join, you can safely ignore this email.",
+      "footer": "This email was sent by {platformName}. If the button above doesn't work, copy and paste this link into your browser:"
+    },
+    "projectInvitation": {
+      "subject": "Project Collaboration Invitation: {projectName} — {platformName}",
+      "heading": "Project Collaboration Invitation",
+      "invitedBy": "<b>{invitingCompanyName}</b> has invited your company to collaborate on the project <b>{projectName}</b> via {platformName}.",
+      "tenderHeading": "Tender Details",
+      "contactLabel": "Contact:",
+      "button": "View Invitation",
+      "disclaimer": "Click the button above to review the invitation details and accept or decline. If you didn't expect this invitation, you can safely ignore this email.",
+      "footer": "This email was sent by {platformName}. If the button above doesn't work, copy and paste this link into your browser:"
+    },
+    "companyJoinRequest": {
+      "subject": "[Action Required] {requesterName} wants to join {companyName}",
+      "heading": "New Team Member Request",
+      "intro": "Someone has requested to join your company on {platformName}.",
+      "detailsHeading": "Requestor Details",
+      "messageFrom": "Message from {requesterName}:",
+      "whatNextHeading": "What happens next?",
+      "whatNextBody": "If you approve this request, the platform administrator will also need to approve before the user gains access to your company.",
+      "button": "Review Request",
+      "footer": "This email was sent by {platformName}. You're receiving this because you're an administrator of {companyName}."
+    },
+    "adminNotification": {
+      "subject": "[Action Required] New {typeLabel} Signup: {userName}",
+      "heading": "New Signup Requires Approval",
+      "intro": "A new user has signed up for {platformName} and requires your approval.",
+      "subjectType": {
+        "individual": "Individual",
+        "new-company": "Company",
+        "join-company": "Company Join Request",
+        "invited": "Team Invitation"
+      },
+      "badge": {
+        "individual": "Individual User",
+        "new-company": "New Company Registration",
+        "join-company": "Company Join Request",
+        "invited": "Team Invitation"
+      },
+      "actionRequired": "Action Required",
+      "actionBody": "Please review this signup request and approve or reject it from the admin panel.",
+      "button": "Review in Admin Panel",
+      "directLink": "Direct link:",
+      "footer": "This is an automated notification from {platformName}. You're receiving this because you're a platform administrator."
+    },
+    "approval": {
+      "subjectApproved": "Your {platformName} Account Has Been Approved!",
+      "subjectRejected": "Update on Your {platformName} Account Application",
+      "approvedHeading": "Account Approved!",
+      "approvedIntro": "Great news! Your {platformName} account has been approved.",
+      "welcome": {
+        "individual": {
+          "intro": "You now have full access to {platformName} as an individual user. You can:",
+          "items": [
+            "Browse available tenders",
+            "Explore the company directory",
+            "Connect with potential partners",
+            "Join a company at any time from your profile"
+          ]
+        },
+        "new-company": {
+          "intro": "Your company <b>{companyName}</b> has been approved! As the company administrator, you can:",
+          "items": [
+            "Complete your company profile",
+            "Invite team members",
+            "View matching tenders",
+            "Participate in virtual organizations",
+            "Manage company settings"
+          ]
+        },
+        "join-company": {
+          "intro": "You've been approved to join <b>{companyName}</b>! You now have access to:",
+          "items": [
+            "Your company's profile and details",
+            "Company tender matches",
+            "Team collaboration features",
+            "Virtual organization projects"
+          ]
+        },
+        "invited": {
+          "intro": "You've been approved to join <b>{companyName}</b> as a team member! You now have access to:",
+          "items": [
+            "Your company's profile and details",
+            "Company tender matches",
+            "Team collaboration features",
+            "Virtual organization projects"
+          ]
+        }
+      },
+      "helpHeading": "Need Help Getting Started?",
+      "helpBody": "Check out our platform guide or reach out to our support team if you have any questions.",
+      "footerApproved": "This email was sent by {platformName}. Welcome aboard!",
+      "rejectedHeading": "Account Application Update",
+      "rejectedIntro": "Thank you for your interest in {platformName}. After reviewing your application, we're unable to approve your account at this time."
+    },
+    "companyAdminApproval": {
+      "subjectApproved": "{companyName} has approved your join request - Pending platform approval",
+      "subjectRejected": "Your request to join {companyName} was not approved",
+      "approvedHeading": "Company Approval Received!",
+      "approvedIntro": "Good news! <b>{companyName}</b> has approved your request to join their team.",
+      "nextStepHeading": "Next Step",
+      "nextStepBody": "Your request is now pending final approval from the {platformName} team. You'll receive another email once this is complete.",
+      "thanks": "Thank you for your patience!",
+      "rejectedHeading": "Join Request Update",
+      "rejectedIntro": "Unfortunately, your request to join <b>{companyName}</b> was not approved by their administrator.",
+      "stillCan": "This doesn't affect your {platformName} account. You can still:",
+      "stillCanItems": [
+        "Browse the platform as an individual user",
+        "Request to join a different company",
+        "Register your own company"
+      ],
+      "questions": "If you have questions, please contact our support team."
+    },
+    "verificationReview": {
+      "subjectApproved": "Your company {companyName} has been verified! - {platformName}",
+      "subjectRejected": "Verification update for {companyName} - {platformName}",
+      "subjectChanges": "Action required: Changes needed for {companyName} verification - {platformName}",
+      "approvedHeading": "Company Verified!",
+      "approvedIntro": "Great news! Your company <b>{companyName}</b> has been verified on {platformName}.",
+      "verifiedMeans": "Your verified status means:",
+      "verifiedItems": [
+        "A verified badge is displayed on your company profile",
+        "Enhanced trust and visibility across the platform",
+        "Access to verified-only features and higher limits"
+      ],
+      "rejectedHeading": "Verification Request Update",
+      "rejectedIntro": "Thank you for submitting a verification request for <b>{companyName}</b>. After reviewing your submission, we're unable to verify your company at this time.",
+      "changesHeading": "Changes Needed for Verification",
+      "changesIntro": "We've reviewed the verification request for <b>{companyName}</b> and found some items that need to be updated before we can verify your company.",
+      "itemsRequiring": "Items requiring changes:",
+      "additionalNotes": "Additional Notes:",
+      "resubmit": "Please update the requested items and resubmit your verification request.",
+      "button": "Update Your Submission"
     }
   }
 }

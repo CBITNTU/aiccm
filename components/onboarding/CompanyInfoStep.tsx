@@ -45,7 +45,8 @@ export function CompanyInfoStep({
   const tShared = useTranslations("Onboarding.companyInfo.shared");
   const tCreate = useTranslations("Onboarding.companyInfo.create");
   const tJoin = useTranslations("Onboarding.companyInfo.join");
-  const isUk = useDeployment().id === "uk";
+  const deployment = useDeployment();
+  const isUk = deployment.id === "uk";
   const [activeTab, setActiveTab] = useState<"create" | "join">("create");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -729,7 +730,7 @@ export function CompanyInfoStep({
                       <Input
                         id="contactPhone"
                         type="tel"
-                        placeholder={tCreate("contactPhonePlaceholder")}
+                        placeholder={deployment.verification.phonePlaceholder}
                         value={createForm.contactPhone}
                         onChange={(e) =>
                           setCreateForm({

@@ -8,6 +8,7 @@ import {
   getCompanyJoinRequestEmailSubject,
   getCompanyJoinRequestEmailHtml,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import {
   geocodeLocation,
@@ -178,6 +179,7 @@ export async function POST(request: NextRequest) {
         if (adminEmails.length > 0) {
           const userName = `${profile.firstName} ${profile.lastName}`;
           const adminNotificationData = {
+            locale: await getEmailLocale(),
             userName,
             userEmail: user.email || "",
             signupType: "new-company" as const,
@@ -315,6 +317,7 @@ export async function POST(request: NextRequest) {
         for (const admin of adminProfiles) {
           if (admin.email) {
             const emailData = {
+              locale: await getEmailLocale(),
               companyAdminName:
                 `${admin.firstName || ""} ${admin.lastName || ""}`.trim() ||
                 "Admin",

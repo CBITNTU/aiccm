@@ -29,7 +29,7 @@ export const cnProfile: DeploymentProfile = {
   verification: {
     fieldLabel: "统一社会信用代码 (Unified Social Credit Code)",
     fieldHint: "optional",
-    phonePlaceholder: "138 0000 0000",
+    phonePlaceholder: "+86 ...",
     consentSources: [],
     supportsLookup: false,
   },

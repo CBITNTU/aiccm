@@ -19,6 +19,7 @@ import {
   getVerificationReviewEmailHtml,
   type VerificationReviewEmailData,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 
 const VALID_ACTIONS = ["approve", "reject", "request_changes"] as const;
 type ReviewAction = (typeof VALID_ACTIONS)[number];
@@ -255,15 +256,18 @@ export async function PUT(
     let emailSent = false;
     if (submitter?.email && company) {
       const emailAction = statusMap[action] as "approved" | "rejected" | "changes_requested";
+      const emailLocale = await getEmailLocale();
       try {
         await sendEmail({
           to: submitter.email,
           subject: getVerificationReviewEmailSubject({
+            locale: emailLocale,
             userName: submitter.name,
             companyName: company.companyName,
             action: emailAction,
           }),
           html: getVerificationReviewEmailHtml({
+            locale: emailLocale,
             userName: submitter.name,
             companyName: company.companyName,
             action: emailAction,

@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import bcrypt from "bcryptjs";
 import { sendEmail, getPlatformName } from "@/lib/email";
+import { getEmailLocale, getEmailTranslator } from "@/lib/email/i18n";
 import { getProfileByUserId, getUserRolesByUserId } from "@/lib/db/queries";
 import { randomUUID } from "crypto";
 
@@ -40,14 +41,20 @@ export const auth = betterAuth({
         /callbackURL=[^&]*/,
         `callbackURL=${encodeURIComponent("/auth/callback")}`,
       );
+      // Localize to the signing-up user's chosen language (NEXT_LOCALE cookie,
+      // clamped to the deployment's allowed locales). Runs in the signup/resend
+      // request context, so the cookie is available.
+      const locale = await getEmailLocale();
+      const t = getEmailTranslator(locale);
+      const platformName = getPlatformName();
       await sendEmail({
         to: user.email,
-        subject: `Verify your email - ${getPlatformName()}`,
+        subject: t("verification.subject", { platformName }),
         html: `
-          <h2>Welcome to ${getPlatformName()}</h2>
-          <p>Please verify your email address by clicking the link below:</p>
-          <p><a href="${verifyUrl}">Verify Email</a></p>
-          <p>If you didn't create an account, you can safely ignore this email.</p>
+          <h2>${t("verification.heading", { platformName })}</h2>
+          <p>${t("verification.instruction")}</p>
+          <p><a href="${verifyUrl}">${t("verification.button")}</a></p>
+          <p>${t("verification.ignore", { platformName })}</p>
         `,
       });
     },

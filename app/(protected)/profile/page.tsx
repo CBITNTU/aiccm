@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ interface ProfileData {
 
 export default function ProfilePage() {
   const t = useTranslations("Profile");
+  const deployment = useDeployment();
   const { user } = useAuth();
   const { data: profileData, isLoading } = useProfile(user?.id);
   const updateProfile = useUpdateProfile(user?.id);
@@ -192,7 +194,7 @@ export default function ProfilePage() {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder={t("phonePlaceholder")}
+                    placeholder={deployment.verification.phonePlaceholder}
                     value={formData.phone}
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })

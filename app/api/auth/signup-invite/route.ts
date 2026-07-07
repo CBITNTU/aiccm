@@ -17,6 +17,7 @@ import {
   getAdminNotificationEmailSubject,
   getAdminNotificationEmailHtml,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 import { sanitizeHexToken, hashToken, isExpired } from "@/lib/utils/invite-token";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
@@ -191,6 +192,7 @@ export async function POST(request: NextRequest) {
 
       if (adminEmails.length > 0) {
         const adminNotificationData = {
+          locale: await getEmailLocale(),
           userName: invitation.email,
           userEmail: invitation.email,
           signupType: "invited" as const,
@@ -389,6 +391,7 @@ export async function PUT(request: NextRequest) {
 
       if (adminEmails.length > 0) {
         const adminNotificationData = {
+          locale: await getEmailLocale(),
           userName,
           userEmail: invitation.email,
           signupType: "invited" as const,

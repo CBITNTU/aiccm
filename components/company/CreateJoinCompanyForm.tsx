@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
+import { useDeployment } from "@/lib/deployment/client";
 
 interface CompanySearchResult {
   id: string;
@@ -51,6 +52,7 @@ export function CreateJoinCompanyForm({
   preselectedCompanyId,
 }: CreateJoinCompanyFormProps) {
   const t = useTranslations("CompanyPage");
+  const deployment = useDeployment();
   const _router = useRouter();
   void _router;
   const queryClient = useQueryClient();
@@ -746,7 +748,7 @@ export function CreateJoinCompanyForm({
                       <Input
                         id="contactPhone"
                         type="tel"
-                        placeholder={t("createJoin.create.phonePlaceholder")}
+                        placeholder={deployment.verification.phonePlaceholder}
                         value={createForm.contactPhone}
                         onChange={(e) =>
                           setCreateForm({

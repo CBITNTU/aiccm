@@ -1,5 +1,7 @@
 import { getPlatformName, getPlatformUrl } from "../index";
 import { escapeHtml } from "../utils";
+import { type Locale } from "@/i18n/locales";
+import { getEmailTranslator } from "../i18n";
 
 export interface AdminNotificationEmailData {
   userName: string;
@@ -7,26 +9,25 @@ export interface AdminNotificationEmailData {
   signupType: "individual" | "new-company" | "join-company" | "invited";
   companyName?: string;
   jobTitle?: string;
+  locale: Locale;
 }
 
 export function getAdminNotificationEmailSubject(
   data: AdminNotificationEmailData,
 ): string {
-  const typeLabel =
-    data.signupType === "individual"
-      ? "Individual"
-      : data.signupType === "new-company"
-        ? "Company"
-        : data.signupType === "invited"
-          ? "Team Invitation"
-          : "Company Join Request";
-  return `[Action Required] New ${typeLabel} Signup: ${data.userName}`;
+  const t = getEmailTranslator(data.locale);
+  const typeLabel = t(`adminNotification.subjectType.${data.signupType}`);
+  return t("adminNotification.subject", {
+    typeLabel,
+    userName: data.userName,
+  });
 }
 
 export function getAdminNotificationEmailHtml(
   data: AdminNotificationEmailData,
 ): string {
   const { signupType } = data;
+  const t = getEmailTranslator(data.locale);
   const userName = escapeHtml(data.userName);
   const userEmail = escapeHtml(data.userEmail);
   const companyName = data.companyName ? escapeHtml(data.companyName) : undefined;
@@ -39,14 +40,7 @@ export function getAdminNotificationEmailHtml(
       ? getPlatformUrl("/admin?tab=approvals")
       : adminUrl;
 
-  const signupTypeLabel =
-    signupType === "individual"
-      ? "Individual User"
-      : signupType === "new-company"
-        ? "New Company Registration"
-        : signupType === "invited"
-          ? "Team Invitation"
-          : "Company Join Request";
+  const signupTypeLabel = t(`adminNotification.badge.${signupType}`);
 
   const signupTypeBadgeColor =
     signupType === "individual"
@@ -67,33 +61,33 @@ export function getAdminNotificationEmailHtml(
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: #dc2626; padding: 30px; border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">New Signup Requires Approval</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">${t("adminNotification.heading")}</h1>
   </div>
 
   <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
-    <p>A new user has signed up for ${platformName} and requires your approval.</p>
+    <p>${t("adminNotification.intro", { platformName })}</p>
 
     <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td style="padding: 8px 0; font-weight: bold; width: 140px;">Type:</td>
+          <td style="padding: 8px 0; font-weight: bold; width: 140px;">${t("labels.type")}</td>
           <td style="padding: 8px 0;">
             <span style="background: ${signupTypeBadgeColor}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">${signupTypeLabel}</span>
           </td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Name:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t("labels.name")}</td>
           <td style="padding: 8px 0;">${userName}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Email:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t("labels.email")}</td>
           <td style="padding: 8px 0;"><a href="mailto:${userEmail}" style="color: #2563EB;">${userEmail}</a></td>
         </tr>
         ${
           jobTitle
             ? `
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Job Title:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t("labels.jobTitle")}</td>
           <td style="padding: 8px 0;">${jobTitle}</td>
         </tr>
         `
@@ -103,7 +97,7 @@ export function getAdminNotificationEmailHtml(
           companyName
             ? `
         <tr>
-          <td style="padding: 8px 0; font-weight: bold;">Company:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${t("labels.company")}</td>
           <td style="padding: 8px 0;">${companyName}</td>
         </tr>
         `
@@ -113,23 +107,23 @@ export function getAdminNotificationEmailHtml(
     </div>
 
     <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0;"><strong>Action Required</strong></p>
-      <p style="margin: 10px 0 0 0;">Please review this signup request and approve or reject it from the admin panel.</p>
+      <p style="margin: 0;"><strong>${t("adminNotification.actionRequired")}</strong></p>
+      <p style="margin: 10px 0 0 0;">${t("adminNotification.actionBody")}</p>
     </div>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${approvalsUrl}" style="display: inline-block; background: #dc2626; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold;">Review in Admin Panel</a>
+      <a href="${approvalsUrl}" style="display: inline-block; background: #dc2626; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold;">${t("adminNotification.button")}</a>
     </div>
     ${
       signupType === "new-company"
-        ? `<p style="text-align: center; color: #666; font-size: 14px; margin-top: 10px;">Direct link: <a href="${approvalsUrl}" style="color: #2563EB;">${approvalsUrl}</a></p>`
+        ? `<p style="text-align: center; color: #666; font-size: 14px; margin-top: 10px;">${t("adminNotification.directLink")} <a href="${approvalsUrl}" style="color: #2563EB;">${approvalsUrl}</a></p>`
         : ""
     }
 
     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
 
     <p style="color: #999; font-size: 12px; margin: 0;">
-      This is an automated notification from ${platformName}. You're receiving this because you're a platform administrator.
+      ${t("adminNotification.footer", { platformName })}
     </p>
   </div>
 </body>

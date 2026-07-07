@@ -27,7 +27,7 @@ export const ukProfile: DeploymentProfile = {
   verification: {
     fieldLabel: "Companies House Number",
     fieldHint: "optional, 8 digits if UK",
-    phonePlaceholder: "01234 567890",
+    phonePlaceholder: "+44 ...",
     numberMaxLength: 8,
     consentSources: ["Companies House", "Endole"],
     supportsLookup: true,

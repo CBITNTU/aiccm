@@ -1,7 +1,7 @@
 {
   "Metadata": {
     "title": "{brand} - 协同商务市场",
-    "description": "借助 AI 发现企业优势、匹配招标并组建联合体。构建咨询团队，在 {brand} 上拓展业务。"
+    "description": "借助人工智能技术，深入挖掘企业产能优势，精准匹配招标机会，并助力企业组建更具竞争力的合作联合体，共同把握更高价值的商业机遇。"
   },
   "Header": {
     "brand": "{brand}",
@@ -17,39 +17,39 @@
   },
   "HeroSection": {
     "headlineBrand": "{brand}",
-    "headlineAccent": "以能力赋能协作",
-    "subheadline": "借助 AI 发现企业优势、匹配招标并组建联合体。",
-    "ctaAddCompany": "添加企业",
-    "ctaExploreTenders": "浏览招标",
+    "headlineAccent": "以产能赋能创新",
+    "subheadline": "借助人工智能技术，深入挖掘企业产能优势，精准匹配招标机会，并助力企业组建更具竞 争力的合作联合体，共同把握更高价值的商 业机遇。",
+    "ctaAddCompany": "添加企业信息",
+    "ctaExploreTenders": "探索招标机会",
     "stats": {
       "networkCompanies": "网络企业",
-      "networkCompaniesDescription": "我们网络中的活跃企业",
-      "availableOpportunities": "可用机会",
+      "networkCompaniesDescription": "已加入平台网络的活跃企业",
+      "availableOpportunities": "可参与机会",
       "availableOpportunitiesDescription": "当前招标机会",
       "smartMatches": "智能匹配",
-      "smartMatchesDescription": "由 AI 促成的连接",
+      "smartMatchesDescription": "基于人工智能完成 的企业产能与市场 机会精准连接",
       "activeProjects": "进行中项目",
       "activeProjectsDescription": "已组建的协作联合体"
     },
     "features": {
-      "profilingTitle": "智能企业画像",
-      "profilingDescription": "AI 分析业务数据，自动生成全面的能力画像，识别优势与机会。",
+      "profilingTitle": "智能企业产能画像",
+      "profilingDescription": "平台可基于企业数据自动分析企业 产能、技术专长与服务能力，构建 全面的企业产能画像，帮助企业清 晰识别自身优势、核心资源及潜在 发展机会。",
       "matchingTitle": "智能机会匹配",
-      "matchingDescription": "通过可解释的 AI 评分与详细能力分析，匹配相关机会，支持明智决策。",
-      "networkTitle": "区域合作网络",
-      "networkDescription": "与区域内互补企业建立战略合作，共同竞标更大机会。"
+      "matchingDescription": "平台通过可解释的人工智能评分机制，将企业产能与相关招标及商业机会进行精准匹配，并提供详细的产能分析与匹配依据，帮助企业做出更高效、更有依据的决策。",
+      "networkTitle": "企业协作网络",
+      "networkDescription": "平台帮助企业寻找产能互补、资源 互补的合作伙伴，推动企业建立战 略合作关系，共同参与更大规模、 更高价值的项目机会。"
     },
     "impact": {
-      "title": "平台影响力",
-      "subtitle": "真实成果推动区域增长"
+      "title": "平台成效",
+      "subtitle": "以真实数据见证平台价值，推动企业产 能协同、资源共享与创新合作，助力构 建更具活力的企业创新协作生态。"
     },
     "platformFeatures": {
       "title": "平台功能",
-      "subtitle": "了解 AI 匹配与区域合作如何改变您的商业机会"
+      "subtitle": "通过人工智能驱动的智能匹配机 制与企业合作网络，帮助企业释 放产能价值、发现合作机会、提 升市场竞争力。"
     },
     "contact": {
       "title": "联系我们",
-      "subtitle": "准备加入我们的区域商业网络？",
+      "subtitle": "准备加入企业创新协作生态，释放企业产能价值，发现更 多商业机会？",
       "emailUs": "发邮件",
       "officeHours": "办公时间",
       "weekdays": "周一至周五：9:00 - 17:00",
@@ -251,7 +251,6 @@
         "contactEmailPlaceholderDefault": "contact@company.com",
         "contactEmailHelper": "留空则默认使用您的邮箱",
         "contactPhoneLabel": "联系电话",
-        "contactPhonePlaceholder": "+44 …",
         "afterApprovalHelper": "通过审核后，您可补充认证、能力与团队成员等信息。",
         "errorNameRequired": "公司名称为必填项",
         "errorWebsiteRequired": "网站 URL 为必填项，请至少提供公司网站。",
@@ -469,8 +468,7 @@
       "contactPersonPlaceholder": "联系人姓名",
       "contactEmail": "联系邮箱",
       "contactEmailPlaceholder": "contact@company.com",
-      "contactPhone": "联系电话",
-      "contactPhonePlaceholder": "+44…"
+      "contactPhone": "联系电话"
     },
     "messageLabel": "留言：",
     "awaitingCompanyAdmin": "等待公司管理员审批",
@@ -1882,7 +1880,7 @@
   },
   "Directory": {
     "title": "公司目录",
-    "subtitle": "发现建筑公司及其能力",
+    "subtitle": "发现公司及其能力",
     "loading": "正在加载公司...",
     "noResults": {
       "heading": "未找到公司",
@@ -2387,7 +2385,6 @@
         "emailPlaceholderFallback": "contact@company.com",
         "emailHint": "留空则默认使用您的邮箱",
         "phoneLabel": "联系电话",
-        "phonePlaceholder": "+44 ...",
         "afterApprovalNote": "管理员批准后，您可继续完善认证、能力与团队成员等信息。",
         "creating": "创建中…",
         "submitCreate": "创建公司"
@@ -2842,7 +2839,6 @@
     "jobTitleLabel": "职位 / 角色",
     "jobTitlePlaceholder": "例如：CEO、项目经理、工程师",
     "phoneLabel": "电话号码",
-    "phonePlaceholder": "您的电话号码",
     "errorRequired": "请填写所有必填项",
     "saving": "保存中…",
     "save": "保存更改",
@@ -3123,6 +3119,184 @@
     },
     "footer": {
       "contactPrefix": "有问题吗？请联系"
+    }
+  },
+  "Emails": {
+    "hello": "尊敬的 <b>{name}</b>：",
+    "helloPlain": "尊敬的 {name}：",
+    "helloThere": "您好：",
+    "footer": "本邮件由 {platformName} 发送。",
+    "goToDashboard": "前往仪表盘",
+    "contactSupport": "联系客服",
+    "reconsider": "如果您认为此决定有误，或有其他信息有助于我们重新考虑，请联系我们的客服团队。",
+    "labels": {
+      "name": "姓名：",
+      "email": "电子邮箱：",
+      "jobTitle": "职位：",
+      "company": "公司：",
+      "type": "类型：",
+      "title": "标题：",
+      "buyer": "采购方：",
+      "deadline": "截止日期：",
+      "estValue": "预估金额：",
+      "reason": "原因：",
+      "reviewerNotes": "审核备注："
+    },
+    "verification": {
+      "subject": "验证您的电子邮箱 - {platformName}",
+      "heading": "欢迎使用 {platformName}",
+      "instruction": "请点击下方链接验证您的电子邮箱地址：",
+      "button": "验证邮箱",
+      "ignore": "如果您并未创建 {platformName} 账户，请忽略此邮件。您的邮箱不会被用于注册。"
+    },
+    "teamInvitation": {
+      "subject": "您已被邀请加入 {platformName} 上的 {companyName}",
+      "heading": "您受到邀请！",
+      "invitedBy": "<b>{inviterName}</b> 邀请您加入 {platformName} 上的 <b>{companyName}</b>。",
+      "whatIsHeading": "{platformName} 是什么？",
+      "whatIsBody": "{platformName} 是一个建筑与咨询招标匹配平台，帮助企业发现并赢得相关合同。作为团队成员，您将能够：",
+      "benefits": [
+        "查看并匹配招标机会",
+        "访问公司资料与能力信息",
+        "与团队协作投标"
+      ],
+      "button": "接受邀请",
+      "expiresOn": "此邀请将于 {expiryDate} 过期",
+      "expiryNote": "请在邀请过期前接受。如需新的邀请，请联系 {inviterName}。",
+      "ignore": "如果您并未预期收到此邀请，或不希望加入，请忽略此邮件。",
+      "footer": "本邮件由 {platformName} 发送。如果上方按钮无法使用，请将以下链接复制并粘贴到您的浏览器中："
+    },
+    "projectInvitation": {
+      "subject": "项目协作邀请：{projectName} — {platformName}",
+      "heading": "项目协作邀请",
+      "invitedBy": "<b>{invitingCompanyName}</b> 邀请您的公司通过 {platformName} 参与项目 <b>{projectName}</b> 的协作。",
+      "tenderHeading": "招标详情",
+      "contactLabel": "联系人：",
+      "button": "查看邀请",
+      "disclaimer": "点击上方按钮查看邀请详情并接受或拒绝。如果您并未预期收到此邀请，请忽略此邮件。",
+      "footer": "本邮件由 {platformName} 发送。如果上方按钮无法使用，请将以下链接复制并粘贴到您的浏览器中："
+    },
+    "companyJoinRequest": {
+      "subject": "[需要处理] {requesterName} 申请加入 {companyName}",
+      "heading": "新的团队成员申请",
+      "intro": "有人申请加入您在 {platformName} 上的公司。",
+      "detailsHeading": "申请人详情",
+      "messageFrom": "来自 {requesterName} 的留言：",
+      "whatNextHeading": "接下来会怎样？",
+      "whatNextBody": "如果您批准此申请，平台管理员还需进一步批准，用户方可获得访问您公司的权限。",
+      "button": "查看申请",
+      "footer": "本邮件由 {platformName} 发送。您收到此邮件是因为您是 {companyName} 的管理员。"
+    },
+    "adminNotification": {
+      "subject": "[需要处理] 新的{typeLabel}注册：{userName}",
+      "heading": "新注册需要审批",
+      "intro": "有新用户注册了 {platformName}，需要您的审批。",
+      "subjectType": {
+        "individual": "个人",
+        "new-company": "公司",
+        "join-company": "加入公司申请",
+        "invited": "团队邀请"
+      },
+      "badge": {
+        "individual": "个人用户",
+        "new-company": "新公司注册",
+        "join-company": "加入公司申请",
+        "invited": "团队邀请"
+      },
+      "actionRequired": "需要处理",
+      "actionBody": "请在管理面板中审核此注册申请并批准或拒绝。",
+      "button": "在管理面板中审核",
+      "directLink": "直接链接：",
+      "footer": "这是来自 {platformName} 的自动通知。您收到此邮件是因为您是平台管理员。"
+    },
+    "approval": {
+      "subjectApproved": "您的 {platformName} 账户已获批准！",
+      "subjectRejected": "关于您的 {platformName} 账户申请的更新",
+      "approvedHeading": "账户已批准！",
+      "approvedIntro": "好消息！您的 {platformName} 账户已获批准。",
+      "welcome": {
+        "individual": {
+          "intro": "您现在可以作为个人用户完全访问 {platformName}。您可以：",
+          "items": [
+            "浏览可用招标",
+            "浏览公司目录",
+            "与潜在合作伙伴建立联系",
+            "随时从您的个人资料加入公司"
+          ]
+        },
+        "new-company": {
+          "intro": "您的公司 <b>{companyName}</b> 已获批准！作为公司管理员，您可以：",
+          "items": [
+            "完善您的公司资料",
+            "邀请团队成员",
+            "查看匹配的招标",
+            "参与虚拟组织",
+            "管理公司设置"
+          ]
+        },
+        "join-company": {
+          "intro": "您已获批准加入 <b>{companyName}</b>！您现在可以访问：",
+          "items": [
+            "您公司的资料与详情",
+            "公司招标匹配",
+            "团队协作功能",
+            "虚拟组织项目"
+          ]
+        },
+        "invited": {
+          "intro": "您已获批准以团队成员身份加入 <b>{companyName}</b>！您现在可以访问：",
+          "items": [
+            "您公司的资料与详情",
+            "公司招标匹配",
+            "团队协作功能",
+            "虚拟组织项目"
+          ]
+        }
+      },
+      "helpHeading": "需要帮助以开始使用吗？",
+      "helpBody": "如有任何疑问，请查阅我们的平台指南或联系我们的客服团队。",
+      "footerApproved": "本邮件由 {platformName} 发送。欢迎加入！",
+      "rejectedHeading": "账户申请更新",
+      "rejectedIntro": "感谢您对 {platformName} 的关注。在审核您的申请后，我们目前无法批准您的账户。"
+    },
+    "companyAdminApproval": {
+      "subjectApproved": "{companyName} 已批准您的加入申请 - 等待平台审批",
+      "subjectRejected": "您加入 {companyName} 的申请未获批准",
+      "approvedHeading": "已收到公司批准！",
+      "approvedIntro": "好消息！<b>{companyName}</b> 已批准您加入其团队的申请。",
+      "nextStepHeading": "下一步",
+      "nextStepBody": "您的申请现正等待 {platformName} 团队的最终批准。完成后您将收到另一封邮件。",
+      "thanks": "感谢您的耐心等待！",
+      "rejectedHeading": "加入申请更新",
+      "rejectedIntro": "很遗憾，您加入 <b>{companyName}</b> 的申请未获其管理员批准。",
+      "stillCan": "这不会影响您的 {platformName} 账户。您仍然可以：",
+      "stillCanItems": [
+        "以个人用户身份浏览平台",
+        "申请加入其他公司",
+        "注册您自己的公司"
+      ],
+      "questions": "如有疑问，请联系我们的客服团队。"
+    },
+    "verificationReview": {
+      "subjectApproved": "您的公司 {companyName} 已通过认证！- {platformName}",
+      "subjectRejected": "关于 {companyName} 的认证更新 - {platformName}",
+      "subjectChanges": "需要处理：{companyName} 的认证需要修改 - {platformName}",
+      "approvedHeading": "公司已认证！",
+      "approvedIntro": "好消息！您的公司 <b>{companyName}</b> 已在 {platformName} 上通过认证。",
+      "verifiedMeans": "您的认证状态意味着：",
+      "verifiedItems": [
+        "您的公司资料上将显示认证徽章",
+        "在平台上获得更高的信任度与曝光度",
+        "可使用仅限认证用户的功能与更高额度"
+      ],
+      "rejectedHeading": "认证申请更新",
+      "rejectedIntro": "感谢您为 <b>{companyName}</b> 提交认证申请。在审核您的提交后，我们目前无法为您的公司认证。",
+      "changesHeading": "认证需要修改",
+      "changesIntro": "我们已审核 <b>{companyName}</b> 的认证申请，发现有一些项目需要更新后我们才能为您的公司认证。",
+      "itemsRequiring": "需要修改的项目：",
+      "additionalNotes": "补充说明：",
+      "resubmit": "请更新所需项目并重新提交您的认证申请。",
+      "button": "更新您的提交"
     }
   }
 }

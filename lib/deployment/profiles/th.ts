@@ -36,7 +36,7 @@ export const thProfile: DeploymentProfile = {
   verification: {
     fieldLabel: "Tax ID / Registration Number",
     fieldHint: "optional",
-    phonePlaceholder: "02 123 4567",
+    phonePlaceholder: "+66 ...",
     consentSources: [],
     supportsLookup: false,
   },

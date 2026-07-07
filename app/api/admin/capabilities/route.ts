@@ -5,6 +5,11 @@ import { db } from "@/lib/db";
 import { companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { asc } from "drizzle-orm";
 import { invalidateCapabilityCatalog } from "@/lib/services/capabilityCatalog";
+import {
+  localizedName,
+  localizedCategory,
+  localizeCapabilityWrite,
+} from "@/lib/taxonomy/localizedName";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,9 +17,21 @@ export async function GET(request: NextRequest) {
     const isAdmin = await checkSuperadminRole(user.id);
     if (!isAdmin) throw new AuthError("Admin access required");
 
-    // Fetch all capabilities ordered by category then name
+    // Fetch all capabilities ordered by category then name, surfacing the
+    // locale-appropriate name/category for the active deployment profile.
     const allCapabilities = await db
-      .select()
+      .select({
+        id: companyCapabilitiesRef.id,
+        name: localizedName(
+          companyCapabilitiesRef.name,
+          companyCapabilitiesRef.nameZh,
+        ),
+        category: localizedCategory(
+          companyCapabilitiesRef.category,
+          companyCapabilitiesRef.categoryZh,
+        ),
+        parentId: companyCapabilitiesRef.parentId,
+      })
       .from(companyCapabilitiesRef)
       .orderBy(asc(companyCapabilitiesRef.category), asc(companyCapabilitiesRef.name));
 
@@ -34,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     const result = await db
       .insert(companyCapabilitiesRef)
-      .values(body)
+      .values(localizeCapabilityWrite(body, { create: true }))
       .returning();
 
     invalidateCapabilityCatalog();

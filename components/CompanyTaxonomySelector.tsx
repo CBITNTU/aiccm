@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { api } from "@/lib/api/client";
+import { translateTaxonomyName } from "@/lib/taxonomyTranslations";
 import { toast } from "sonner";
 import { useTaxonomies } from "@/hooks/useTaxonomies";
 import {
@@ -45,6 +46,7 @@ export function CompanyTaxonomySelector({
   companyId,
 }: CompanyTaxonomySelectorProps) {
   const t = useTranslations("CompanyTaxonomySelector");
+  const locale = useLocale();
 
   const [selected, setSelected] = useState<SelectedTaxonomy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +184,7 @@ export function CompanyTaxonomySelector({
             <div className="flex flex-wrap gap-2">
               {selected.map((tax) => (
                 <Badge key={tax.id} variant="secondary" className="gap-1">
-                  {tax.name}
+                  {translateTaxonomyName(tax.name, locale)}
                   <button
                     onClick={() => removeTaxonomy(tax.id)}
                     disabled={saving}
@@ -210,7 +212,10 @@ export function CompanyTaxonomySelector({
                   className="w-full justify-between font-normal"
                 >
                   {level1
-                    ? getTaxonomyById(level1)?.name
+                    ? translateTaxonomyName(
+                        getTaxonomyById(level1)?.name ?? "",
+                        locale,
+                      )
                     : t("selectPrimary")}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -230,7 +235,7 @@ export function CompanyTaxonomySelector({
                           {level1Options.map((tax) => (
                             <CommandItem
                               key={tax.id}
-                              value={tax.name}
+                              value={`${translateTaxonomyName(tax.name, locale)} ${tax.name}`}
                               onSelect={() => {
                                 setLevel1(tax.id);
                                 setLevel2(null);
@@ -238,7 +243,7 @@ export function CompanyTaxonomySelector({
                                 setOpen1(false);
                               }}
                             >
-                              {tax.name}
+                              {translateTaxonomyName(tax.name, locale)}
                               <Check
                                 className={cn(
                                   "ml-auto h-4 w-4",
@@ -265,7 +270,10 @@ export function CompanyTaxonomySelector({
                     className="w-full justify-between font-normal"
                   >
                     {level2
-                      ? getTaxonomyById(level2)?.name
+                      ? translateTaxonomyName(
+                          getTaxonomyById(level2)?.name ?? "",
+                          locale,
+                        )
                       : t("selectSubCategory")}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -279,14 +287,14 @@ export function CompanyTaxonomySelector({
                         {level2Options.map((tax) => (
                           <CommandItem
                             key={tax.id}
-                            value={tax.name}
+                            value={`${translateTaxonomyName(tax.name, locale)} ${tax.name}`}
                             onSelect={() => {
                               setLevel2(tax.id);
                               setLevel3(null);
                               setOpen2(false);
                             }}
                           >
-                            {tax.name}
+                            {translateTaxonomyName(tax.name, locale)}
                             <Check
                               className={cn(
                                 "ml-auto h-4 w-4",
@@ -312,7 +320,10 @@ export function CompanyTaxonomySelector({
                     className="w-full justify-between font-normal"
                   >
                     {level3
-                      ? getTaxonomyById(level3)?.name
+                      ? translateTaxonomyName(
+                          getTaxonomyById(level3)?.name ?? "",
+                          locale,
+                        )
                       : t("selectSpecificArea")}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -326,13 +337,13 @@ export function CompanyTaxonomySelector({
                         {level3Options.map((tax) => (
                           <CommandItem
                             key={tax.id}
-                            value={tax.name}
+                            value={`${translateTaxonomyName(tax.name, locale)} ${tax.name}`}
                             onSelect={() => {
                               setLevel3(tax.id);
                               setOpen3(false);
                             }}
                           >
-                            {tax.name}
+                            {translateTaxonomyName(tax.name, locale)}
                             <Check
                               className={cn(
                                 "ml-auto h-4 w-4",

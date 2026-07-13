@@ -36,6 +36,7 @@ import {
   Clock,
   Zap,
   Brain,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -448,8 +449,22 @@ function SettingsTab({
     company.analysisRunsLimit != null ? String(company.analysisRunsLimit) : "",
   );
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [matchingUsage, setMatchingUsage] = useState<UsageData | null>(null);
   const [analysisUsage, setAnalysisUsage] = useState<UsageData | null>(null);
+
+  const refreshUsage = async () => {
+    const [matching, analysis] = await Promise.all([
+      fetch(`/api/companies/${company.id}/matching-usage`).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+      fetch(`/api/companies/${company.id}/analysis-usage`).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+    ]);
+    setMatchingUsage(matching);
+    setAnalysisUsage(analysis);
+  };
 
   useEffect(() => {
     setMatchingLimit(company.matchingRunsLimit != null ? String(company.matchingRunsLimit) : "");
@@ -492,6 +507,23 @@ function SettingsTab({
       toast.error(t("toasts.updateFailed"));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetUsage = async () => {
+    setResetting(true);
+    try {
+      await api.adminResetCompanyUsage(company.id);
+      await refreshUsage();
+      onCompanyUpdated();
+      toast.success(
+        t("toasts.usageResetSuccess", { name: company.companyName }),
+      );
+    } catch (error) {
+      console.error("Error resetting usage:", error);
+      toast.error(t("toasts.usageResetFailed"));
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -560,14 +592,33 @@ function SettingsTab({
 
         <Separator className="my-4" />
 
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {t("usage.saveButton")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {t("usage.saveButton")}
+          </Button>
+
+          <Button
+            onClick={handleResetUsage}
+            disabled={resetting}
+            variant="outline"
+            className="gap-2"
+          >
+            {resetting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            {t("usage.resetButton")}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          {t("usage.resetHint")}
+        </p>
       </SectionCard>
     </div>
   );

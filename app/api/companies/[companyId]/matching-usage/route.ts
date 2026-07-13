@@ -24,6 +24,7 @@ export async function GET(
       .select({
         verificationStatus: companies.verificationStatus,
         matchingRunsLimit: companies.matchingRunsLimit,
+        usageResetAt: companies.usageResetAt,
       })
       .from(companies)
       .where(eq(companies.id, companyId))
@@ -36,7 +37,7 @@ export async function GET(
     const company = companyResult[0];
     const [settings, used] = await Promise.all([
       getPlatformMatchingSettings(),
-      getMatchingRunsThisMonth(companyId),
+      getMatchingRunsThisMonth(companyId, company.usageResetAt),
     ]);
 
     const limit = getEffectiveMatchingLimit(company, settings);

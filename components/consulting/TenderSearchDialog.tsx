@@ -25,6 +25,8 @@ import {
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import type { TenderRecord } from "@/lib/api/types";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
 
 type Tender = TenderRecord;
 
@@ -49,6 +51,7 @@ export function TenderSearchDialog({
   excludeTenderId,
 }: TenderSearchDialogProps) {
   const t = useTranslations("TenderSearchDialog");
+  const { currency } = useDeployment();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -88,13 +91,12 @@ export function TenderSearchDialog({
     });
   };
 
-  const formatCurrency = (value: number | null | undefined) => {
+  const formatTenderValue = (
+    value: number | null | undefined,
+    tenderCurrency: string | null | undefined,
+  ) => {
     if (!value) return null;
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-      maximumFractionDigits: 0,
-    }).format(value);
+    return formatCurrency(value, resolveCurrencyConfig(tenderCurrency, currency));
   };
 
   const handleSelect = (tender: Tender) => {
@@ -174,7 +176,7 @@ export function TenderSearchDialog({
                         {tender.budgetMax && (
                           <span className="flex items-center gap-1">
                             <Banknote className="h-3.5 w-3.5" />
-                            {formatCurrency(tender.budgetMax)}
+                            {formatTenderValue(tender.budgetMax, tender.currency)}
                           </span>
                         )}
                       </div>

@@ -12,7 +12,8 @@ import { MapPin, Mail, Award, Tag } from "lucide-react";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { translateTaxonomyName } from "@/lib/taxonomyTranslations";
 type PublicCompany = Pick<
   Company,
   | "id"
@@ -40,6 +41,7 @@ interface CompanyCardProps {
 
 export function CompanyCard({ company, onClick }: CompanyCardProps) {
   const t = useTranslations("Directory");
+  const locale = useLocale();
   const [taxonomies, setTaxonomies] = useState<
     Array<{ id: string; name: string }>
   >([]);
@@ -195,7 +197,7 @@ export function CompanyCard({ company, onClick }: CompanyCardProps) {
                   variant="secondary"
                   className="text-xs"
                 >
-                  {taxonomy.name}
+                  {translateTaxonomyName(taxonomy.name, locale)}
                 </Badge>
               ))}
               {taxonomies.length > 3 && (

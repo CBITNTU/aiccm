@@ -57,6 +57,7 @@ export function CompanyInfoStep({
     companiesHouseNumber: "",
     websiteUrl: "",
     address: "",
+    postcode: "",
     contactEmail: "",
     contactPhone: "",
   });
@@ -229,6 +230,7 @@ export function CompanyInfoStep({
       companyName: "",
       companiesHouseNumber: "",
       address: "",
+      postcode: "",
     }));
   };
 
@@ -321,6 +323,7 @@ export function CompanyInfoStep({
               createForm.companiesHouseNumber.trim() || undefined,
             websiteUrl: createForm.websiteUrl.trim() || undefined,
             address: createForm.address.trim() || undefined,
+            postcode: createForm.postcode.trim() || undefined,
             contactEmail: createForm.contactEmail.trim() || undefined,
             contactPhone: createForm.contactPhone.trim() || undefined,
           },
@@ -691,6 +694,24 @@ export function CompanyInfoStep({
                       </div>
                     </div>
                   )}
+
+                  {/* Postcode — always editable; lookup rarely returns one and
+                      it materially improves location-based tender matching. */}
+                  <div className="space-y-2">
+                    <Label htmlFor="postcode">{tCreate("postcodeLabel")}</Label>
+                    <Input
+                      id="postcode"
+                      type="text"
+                      placeholder={tCreate("postcodePlaceholder")}
+                      value={createForm.postcode}
+                      onChange={(e) =>
+                        setCreateForm({
+                          ...createForm,
+                          postcode: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
 
                   {/* Contact Email */}
                   <div className="space-y-2">

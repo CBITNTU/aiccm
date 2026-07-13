@@ -19,6 +19,35 @@ const UA =
 /** Per-request timeout (ms) for outbound scrapes, so a hanging upstream can't stall a request. */
 const FETCH_TIMEOUT_MS = 15000;
 
+// --- Website crawl tuning ---------------------------------------------------
+/** Max total pages fetched per website (homepage + subpages). */
+const CRAWL_MAX_PAGES = 6;
+/** How many subpages to fetch at once. */
+const CRAWL_CONCURRENCY = 3;
+/** Per-page character cap after tidying. */
+const CRAWL_PAGE_CHAR_CAP = 6000;
+/** Overall character cap for the combined website text fed to the AI. */
+const CRAWL_TOTAL_CHAR_CAP = 24000;
+/** URL path/anchor keywords that tend to hold capabilities, services and past work. */
+const CRAWL_LINK_KEYWORDS = [
+  "about",
+  "service",
+  "product",
+  "project",
+  "capabilit",
+  "portfolio",
+  "work",
+  "expertise",
+  "solution",
+  "sector",
+  "industr",
+  "case-stud",
+  "case_stud",
+  "casestud",
+  "experience",
+  "what-we-do",
+];
+
 export async function safeFetch(
   url: string,
   opts: RequestInit = {},
@@ -57,7 +86,132 @@ interface FetchedSources {
   companiesHouseHtml: string;
   endoleHtml: string;
   websiteHtml: string;
+  /** Number of website pages successfully fetched (0 = website could not be read at all). */
+  websitePagesFetched: number;
   errors: string[];
+}
+
+/**
+ * Extracts same-host, absolute HTTP(S) links from an HTML page, excluding the
+ * page itself and non-navigational schemes.
+ */
+function extractInternalLinks(html: string, baseUrl: string): string[] {
+  let base: URL;
+  try {
+    base = new URL(baseUrl);
+  } catch {
+    return [];
+  }
+  const found = new Set<string>();
+  const re = /<a\b[^>]*\bhref=["']([^"']+)["']/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html)) !== null) {
+    const raw = match[1].trim();
+    if (
+      !raw ||
+      raw.startsWith("#") ||
+      raw.startsWith("mailto:") ||
+      raw.startsWith("tel:") ||
+      raw.toLowerCase().startsWith("javascript:")
+    ) {
+      continue;
+    }
+    try {
+      const abs = new URL(raw, base);
+      if (abs.protocol !== "https:" && abs.protocol !== "http:") continue;
+      if (abs.hostname !== base.hostname) continue;
+      abs.hash = "";
+      const normalized = abs.toString();
+      if (normalized === base.toString()) continue;
+      found.add(normalized);
+    } catch {
+      // skip malformed URLs
+    }
+  }
+  return Array.from(found);
+}
+
+interface CrawlResult {
+  /** Combined, tidied text from the homepage and prioritized subpages. */
+  html: string;
+  pagesFetched: number;
+  errors: string[];
+}
+
+/**
+ * Fetches a company website: the homepage plus a handful of prioritized internal
+ * pages (about / services / projects / capabilities, etc.). Same-host only, with
+ * SSRF validation per link, bounded page count/concurrency, and a total size cap.
+ * Never throws — failures are collected in `errors`.
+ */
+export async function crawlWebsite(websiteUrl: string): Promise<CrawlResult> {
+  const errors: string[] = [];
+  const collected: string[] = [];
+  let pagesFetched = 0;
+
+  let homeHtml = "";
+  try {
+    validateUrl(websiteUrl);
+    const res = await safeFetch(websiteUrl);
+    if (res.ok) {
+      homeHtml = await res.text();
+      collected.push(tidyHtml(homeHtml, CRAWL_PAGE_CHAR_CAP));
+      pagesFetched++;
+    } else {
+      errors.push(`Website HTTP ${res.status}`);
+    }
+  } catch (e) {
+    errors.push(
+      `Website fetch error: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+
+  // Without a homepage we can't discover subpages; return what (little) we have.
+  if (!homeHtml) {
+    return { html: collected.join("\n\n"), pagesFetched, errors };
+  }
+
+  const links = extractInternalLinks(homeHtml, websiteUrl);
+  const prioritized = links
+    .filter((link) => {
+      const lower = link.toLowerCase();
+      return CRAWL_LINK_KEYWORDS.some((kw) => lower.includes(kw));
+    })
+    .slice(0, CRAWL_MAX_PAGES - 1);
+
+  for (let i = 0; i < prioritized.length; i += CRAWL_CONCURRENCY) {
+    const chunk = prioritized.slice(i, i + CRAWL_CONCURRENCY);
+    const results = await Promise.all(
+      chunk.map(async (link) => {
+        try {
+          validateUrl(link);
+          const res = await safeFetch(link);
+          if (res.ok) {
+            return tidyHtml(await res.text(), CRAWL_PAGE_CHAR_CAP);
+          }
+          errors.push(`Page HTTP ${res.status}: ${link}`);
+        } catch (e) {
+          errors.push(
+            `Page fetch error (${link}): ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+        return "";
+      }),
+    );
+    for (const text of results) {
+      if (text) {
+        collected.push(text);
+        pagesFetched++;
+      }
+    }
+  }
+
+  let combined = collected.join("\n\n--- page ---\n\n");
+  if (combined.length > CRAWL_TOTAL_CHAR_CAP) {
+    combined = combined.slice(0, CRAWL_TOTAL_CHAR_CAP);
+  }
+
+  return { html: combined, pagesFetched, errors };
 }
 
 export async function fetchCompanySources(
@@ -69,6 +223,7 @@ export async function fetchCompanySources(
     companiesHouseHtml: "",
     endoleHtml: "",
     websiteHtml: "",
+    websitePagesFetched: 0,
     errors: [],
   };
 
@@ -117,20 +272,13 @@ export async function fetchCompanySources(
     }
   }
 
-  // 3) Website
+  // 3) Website — multi-page crawl (homepage + key internal pages)
   if (websiteUrl) {
-    try {
-      validateUrl(websiteUrl);
-      const websiteResponse = await safeFetch(websiteUrl);
-      if (websiteResponse.ok) {
-        result.websiteHtml = tidyHtml(await websiteResponse.text(), 8000);
-      } else {
-        result.errors.push(`Website HTTP ${websiteResponse.status}`);
-      }
-    } catch (e) {
-      result.errors.push(
-        `Website fetch error: ${e instanceof Error ? e.message : String(e)}`,
-      );
+    const crawl = await crawlWebsite(websiteUrl);
+    result.websiteHtml = crawl.html;
+    result.websitePagesFetched = crawl.pagesFetched;
+    if (crawl.errors.length > 0) {
+      result.errors.push(...crawl.errors);
     }
   }
 

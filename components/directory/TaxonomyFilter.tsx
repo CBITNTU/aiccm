@@ -17,7 +17,8 @@ import { useTaxonomies } from "@/hooks/useTaxonomies";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Filter, X, ChevronDown, ChevronRight } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { translateTaxonomyName } from "@/lib/taxonomyTranslations";
 
 interface TaxonomyFilterProps {
   selectedTaxonomies: string[];
@@ -39,6 +40,7 @@ export function TaxonomyFilter({
   );
 
   const t = useTranslations("Directory");
+  const locale = useLocale();
   const { getLevel1, getLevel2, getLevel3, loading } = useTaxonomies();
 
   const handleTaxonomyToggle = (taxonomyId: string, checked: boolean) => {
@@ -152,7 +154,7 @@ export function TaxonomyFilter({
                         htmlFor={level1Tax.id}
                         className="text-base font-semibold cursor-pointer flex-1"
                       >
-                        {level1Tax.name}
+                        {translateTaxonomyName(level1Tax.name, locale)}
                       </Label>
                       {level2Options.length > 0 && (
                         <Button
@@ -196,7 +198,7 @@ export function TaxonomyFilter({
                                   htmlFor={level2Tax.id}
                                   className="text-sm font-medium cursor-pointer flex-1"
                                 >
-                                  {level2Tax.name}
+                                  {translateTaxonomyName(level2Tax.name, locale)}
                                 </Label>
                                 {level3Options.length > 0 && (
                                   <Button
@@ -237,7 +239,7 @@ export function TaxonomyFilter({
                                         htmlFor={level3Tax.id}
                                         className="text-sm cursor-pointer text-muted-foreground"
                                       >
-                                        {level3Tax.name}
+                                        {translateTaxonomyName(level3Tax.name, locale)}
                                       </Label>
                                     </div>
                                   ))}

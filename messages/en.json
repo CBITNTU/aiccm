@@ -247,6 +247,8 @@
         "websitePlaceholder": "https://yourcompany.com",
         "addressLabel": "Address",
         "addressPlaceholder": "Company address",
+        "postcodeLabel": "Postcode",
+        "postcodePlaceholder": "e.g. SW1A 1AA",
         "contactEmailLabel": "Contact Email",
         "contactEmailPlaceholderDefault": "contact@company.com",
         "contactEmailHelper": "Defaults to your email if left empty",
@@ -414,13 +416,17 @@
       "currentlyUsed": "Currently used: {used}/{limit} this month",
       "resets": "Resets {date}",
       "defaultPlaceholder": "Default",
-      "saveButton": "Save Overrides"
+      "saveButton": "Save Overrides",
+      "resetButton": "Reset usage now",
+      "resetHint": "Clears this month's used analysis and matching runs so the company can run again immediately. Does not change the limits above."
     },
     "toasts": {
       "matchingLimitInvalid": "Matching limit must be a non-negative number or blank for default.",
       "analysisLimitInvalid": "Analysis limit must be a non-negative number or blank for default.",
       "updateSuccess": "Usage limits updated for {name}",
-      "updateFailed": "Failed to update usage limits"
+      "updateFailed": "Failed to update usage limits",
+      "usageResetSuccess": "Usage reset for {name}",
+      "usageResetFailed": "Failed to reset usage"
     }
   },
   "AdminApprovals": {
@@ -1482,9 +1488,11 @@
     "deepResearchAll": "Deep research (all)",
     "deepResearchQueued": "Deep research queued — results appear when analysis finishes.",
     "deepResearchError": "Could not queue deep research",
-    "deepAnalyzedCount": "{count} deep-analyzed",
+    "deepAnalyzedCount": "{count} tenders deep-analyzed",
     "refreshBasicMatches": "Refresh matches",
     "deepResearchCached": "Already analyzed — loaded from saved results.",
+    "deepResearchDone": "Deep analysis complete for this tender.",
+    "viewDetails": "View details",
     "reRunDeepResearchAll": "Re-run all deep research",
     "allTendersAlreadyAnalyzed": "All tenders already have deep analysis ({count} skipped).",
     "matchingSkippedCached": "Skipped {count} tenders already analyzed.",
@@ -1517,7 +1525,7 @@
     "limitReachedResetsOn": "Monthly limit reached. Resets on {date}.",
     "runsRemaining": "{remaining} matching {runs} remaining this month.",
     "limitReachedShort": "Limit reached ({used}/{limit}). Resets {date}.",
-    "usedThisMonth": "{used}/{limit} this month",
+    "usedThisMonth": "{used}/{limit} runs this month",
     "usedMatchingRuns": "{used}/{limit} matching runs used this month",
     "cancelledInfo": "Matching cancelled — pending jobs removed.",
     "stuckInfo": "Previous matching was stuck. Click 'Run Analysis' to restart.",
@@ -2194,13 +2202,16 @@
       "placeholders": {
         "email": "contact@company.com",
         "phone": "+44 ...",
-        "address": "Address or postcode",
+        "address": "Street address",
+        "postcode": "e.g. SW1A 1AA",
         "website": "https://...",
         "companyName": "Company Name"
       },
       "contactEmail": "Contact Email",
       "phoneNumber": "Phone Number",
       "address": "Address / Location",
+      "postcode": "Postcode",
+      "postcodeHint": "Used to score how close tenders are to you — improves match accuracy.",
       "website": "Website",
       "nameReviewRequired": "Company name changes require admin review",
       "companyName": "Company Name",

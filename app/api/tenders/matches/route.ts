@@ -23,6 +23,7 @@ import {
   desc,
   count,
   inArray,
+  sql,
   SQL,
 } from "drizzle-orm";
 import type {
@@ -170,7 +171,13 @@ export async function GET(request: NextRequest) {
         orderByClause = sortFn(tenders.deadline);
         break;
       case "budget":
-        orderByClause = sortFn(tenders.budgetMax);
+        // Undisclosed budgets (NULL) always sort to the bottom, regardless of
+        // direction. Must mirror the JS merge below so the deep window remains a
+        // correct superset of the paginated result.
+        orderByClause =
+          sortDirection === "asc"
+            ? sql`${tenders.budgetMax} asc nulls last`
+            : sql`${tenders.budgetMax} desc nulls last`;
         break;
       case "overall_score":
       default:
@@ -383,7 +390,12 @@ export async function GET(request: NextRequest) {
               ? Number.POSITIVE_INFINITY
               : Number.NEGATIVE_INFINITY;
         case "budget":
-          return item.budgetMax ?? 0;
+          // Undisclosed budgets always sort last (mirror the SQL "nulls last").
+          return item.budgetMax != null
+            ? item.budgetMax
+            : dir > 0
+              ? Number.POSITIVE_INFINITY
+              : Number.NEGATIVE_INFINITY;
         case "created_at":
           return createdAt ? createdAt.getTime() : 0;
         case "overall_score":

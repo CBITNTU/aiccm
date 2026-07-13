@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { batchJobs } from "@/lib/db/schema/app";
-import { and, eq, gte, count } from "drizzle-orm";
+import { and, eq, gte, count, notInArray } from "drizzle-orm";
 import type { PlatformMatchingSettings } from "@/lib/platformMatchingSettings";
 
 type CompanyForLimit = {
@@ -25,11 +25,29 @@ export function getNextMonthStart(): Date {
 }
 
 /**
- * Counts how many matching batches the company has started in the current calendar month.
- * Uses the batch_jobs table as the audit trail — no separate counter needed.
+ * Returns the instant from which usage should be counted: the later of the
+ * calendar month start and an optional superadmin reset marker.
  */
-export async function getMatchingRunsThisMonth(companyId: string): Promise<number> {
+export function getUsageWindowStart(usageResetAt?: Date | null): Date {
   const monthStart = getMonthStart();
+  if (usageResetAt && usageResetAt > monthStart) return usageResetAt;
+  return monthStart;
+}
+
+/**
+ * Counts how many matching batches the company has started in the current usage
+ * window. Uses the batch_jobs table as the audit trail — no separate counter needed.
+ * A superadmin reset (usageResetAt) narrows the window without deleting rows.
+ *
+ * Failed and cancelled runs are NOT counted: a run the user didn't actually get
+ * value from (e.g. every job errored, or the user cancelled) should not burn the
+ * monthly quota. Only in-progress and completed runs count.
+ */
+export async function getMatchingRunsThisMonth(
+  companyId: string,
+  usageResetAt?: Date | null,
+): Promise<number> {
+  const windowStart = getUsageWindowStart(usageResetAt);
   const result = await db
     .select({ count: count() })
     .from(batchJobs)
@@ -37,7 +55,8 @@ export async function getMatchingRunsThisMonth(companyId: string): Promise<numbe
       and(
         eq(batchJobs.companyId, companyId),
         eq(batchJobs.batchType, "tender_matching"),
-        gte(batchJobs.createdAt, monthStart),
+        gte(batchJobs.createdAt, windowStart),
+        notInArray(batchJobs.status, ["failed", "cancelled"]),
       ),
     );
   return result[0]?.count ?? 0;

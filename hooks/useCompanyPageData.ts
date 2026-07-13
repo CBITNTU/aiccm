@@ -217,6 +217,14 @@ export function useCompanyPageData(
         setCompanyData(refreshed.company);
         setCapabilities(refreshed.capabilities);
 
+        // The website couldn't be read — analysis still ran on existing data, so
+        // warn the user rather than blocking the result.
+        if (data.websiteFetchError) {
+          toast.warning(
+            `Website could not be read: ${data.websiteFetchError} Analysis used your existing profile data.`,
+          );
+        }
+
         // Surface AI-extracted text fields as proposed changes for the user to
         // accept or reject, rather than silently writing them.
         const companyInfo = (data.analysis as { companyInfo?: Record<string, unknown> })

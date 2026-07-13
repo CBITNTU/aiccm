@@ -183,14 +183,32 @@ interface DetailFields {
   budget?: number | null;
 }
 
+/** Chinese amount unit multipliers. 万 = 10^4, 亿 = 10^8. */
+const CN_AMOUNT_MULTIPLIER: Record<string, number> = {
+  万: 10_000,
+  亿: 100_000_000,
+};
+
+/**
+ * Extract a budget amount from Chinese notice text. The 万/亿 multiplier can appear
+ * either inside the label parentheses (e.g. "预算金额（万元）：15") OR as a suffix on
+ * the number itself (e.g. "预算金额：15万元", "预算15万元", "预算1.5亿元"), so we detect
+ * it in both positions. Without this, "15万元" was previously parsed as 15 instead of
+ * 150,000.
+ */
 function extractBudget(text: string): number | null {
-  // e.g. "预算金额（元）：330000元" or "预算金额(万元)：33万元"
-  const m = text.match(/预算金额\s*[（(]?\s*(万?元)?\s*[）)]?\s*[：:]\s*([\d,]+(?:\.\d+)?)/);
+  // Group 1: optional unit inside the label parentheses, e.g. （万元）.
+  // Group 2: the numeric amount.
+  // Group 3: optional unit suffix directly after the amount, e.g. 15万元.
+  const m = text.match(
+    /预算(?:金额)?\s*[（(]?\s*(万|亿)?\s*元?\s*[）)]?\s*[：:]?\s*(?:¥|￥|人民币)?\s*([\d,]+(?:\.\d+)?)\s*(万|亿)?/,
+  );
   if (!m) return null;
   const raw = Number(m[2].replace(/,/g, ""));
   if (!Number.isFinite(raw)) return null;
-  const isTenThousand = m[1]?.includes("万") ?? false;
-  return Math.floor(isTenThousand ? raw * 10000 : raw);
+  const unit = m[1] || m[3];
+  const multiplier = unit ? (CN_AMOUNT_MULTIPLIER[unit] ?? 1) : 1;
+  return Math.floor(raw * multiplier);
 }
 
 function parseDetail(html: string): DetailFields {

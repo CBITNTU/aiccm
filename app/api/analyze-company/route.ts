@@ -53,6 +53,8 @@ function buildPerformanceBenchmarkPrompt(
 
   let prompt = `Score these 8 dimensions (0-100) with a short explanation. Also extract or infer company information (description, key_capabilities, certifications, past_projects, equipment, postcode, contact details) from any available data. Return JSON with performanceBenchmark and companyInfo.
 
+For "description", write a detailed, informative company overview (roughly 120-200 words, 2-3 short paragraphs) that gives a clear picture of the company. Cover, using only evidence in the available data: (1) core activities and what the company does; (2) key capabilities and processes; (3) main products and services; (4) areas of expertise and specialisms; (5) sectors/markets and typical customers; and (6) key strengths or differentiators. Do NOT invent facts — omit anything not supported by the data rather than guessing. Write the description in the same language as the company's source information.
+
 Company: ${company.companyName}
 Website: ${company.websiteUrl || "N/A"}
 Key Capabilities: ${company.keyCapabilities || "N/A"}
@@ -117,7 +119,7 @@ export async function POST(request: NextRequest) {
     // Check monthly analysis run limit
     const [analysisSettings, analysisRunsThisMonth] = await Promise.all([
       getPlatformAnalysisSettings(),
-      getAnalysisRunsThisMonth(companyId),
+      getAnalysisRunsThisMonth(companyId, company.usageResetAt),
     ]);
     const analysisLimit = getEffectiveAnalysisLimit(company, analysisSettings);
     if (analysisRunsThisMonth >= analysisLimit) {
@@ -159,18 +161,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch raw HTML from external sources to inject directly into the benchmark prompt
+    // Crawl the company website (and, where applicable, public registries) on
+    // EVERY analysis so we pull fresh capabilities, services and past projects.
+    // Region-agnostic: registries need a Companies House number (UK only), while
+    // the website crawl runs for any region that has a website URL.
     let scrapedContent: {
       websiteHtml: string;
       companiesHouseHtml: string;
       endoleHtml: string;
     } | undefined;
+    // Set when a website URL exists but could not be read at all — surfaced to the
+    // user as a warning (analysis still proceeds on existing data).
+    let websiteFetchError: string | null = null;
 
-    if (
-      companyHasSparseData(company) &&
-      (company.companiesHouseNumber || company.websiteUrl)
-    ) {
-      console.log("[CompanyAI:analyze] Company data is sparse, fetching external sources...");
+    if (company.companiesHouseNumber || company.websiteUrl) {
+      console.log("[CompanyAI:analyze] Crawling external sources for analysis...");
       try {
         const sources = await fetchCompanySources(
           company.companyName,
@@ -181,14 +186,28 @@ export async function POST(request: NextRequest) {
           scrapedContent = sources;
           console.log("[CompanyAI:analyze] Scraped content available —", {
             websiteChars: sources.websiteHtml.length,
+            websitePages: sources.websitePagesFetched,
             companiesHouseChars: sources.companiesHouseHtml.length,
             endoleChars: sources.endoleHtml.length,
           });
         } else {
           console.log("[CompanyAI:analyze] No external data fetched. Errors:", sources.errors);
         }
+        // If a website was configured but nothing came back, flag it for the user.
+        if (company.websiteUrl && sources.websitePagesFetched === 0) {
+          const websiteErr = sources.errors.find((e) => /website|page/i.test(e));
+          websiteFetchError =
+            websiteErr || "Could not read the company website.";
+          console.warn("[CompanyAI:analyze] Website crawl failed:", websiteFetchError);
+        }
       } catch (fetchError) {
         console.error("[CompanyAI:analyze] Source fetching failed:", fetchError);
+        if (company.websiteUrl) {
+          websiteFetchError =
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Could not read the company website.";
+        }
       }
     }
 
@@ -358,6 +377,7 @@ export async function POST(request: NextRequest) {
       success: true,
       analysis,
       suggestedMarketIds,
+      websiteFetchError,
     });
   } catch (error) {
     return handleApiError(error);

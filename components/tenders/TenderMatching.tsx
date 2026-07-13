@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -194,6 +194,11 @@ export function TenderMatching({
   const [deepResearchTenderId, setDeepResearchTenderId] = useState<
     string | null
   >(null);
+  // Tracks the single tender behind an in-flight deep-research batch so we can
+  // offer a "jump to details" action when it finishes. `deepResearchTenderId` is
+  // cleared as soon as the request is queued (before the batch completes), so it
+  // can't be used at completion time. Null for bulk "deep research (all)" runs.
+  const pendingDeepTenderRef = useRef<string | null>(null);
   const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [readinessDialogOpen, setReadinessDialogOpen] = useState(false);
@@ -360,8 +365,26 @@ export function TenderMatching({
           }
           setMatchingProgress(null);
           invalidateMatchingResults();
+          // Consume the single-tender marker (if any) for this batch so we can
+          // route the user straight to the result instead of making them scroll.
+          const singleTenderId = pendingDeepTenderRef.current;
+          pendingDeepTenderRef.current = null;
           if (data.status === "completed") {
-            toast.success(t("matchingCompleted", { count: data.completedJobs }));
+            if (singleTenderId) {
+              toast.success(t("deepResearchDone"), {
+                action: {
+                  label: t("viewDetails"),
+                  onClick: () =>
+                    router.push(
+                      `/tenders/${singleTenderId}?companyId=${companyId}`,
+                    ),
+                },
+              });
+            } else {
+              toast.success(
+                t("matchingCompleted", { count: data.completedJobs }),
+              );
+            }
           } else if (data.status === "cancelled") {
             toast.info(t("cancelledInfo"));
           } else {
@@ -372,7 +395,7 @@ export function TenderMatching({
         console.error("Error checking matching progress:", error);
       }
     },
-    [companyId, invalidateMatchingResults, t],
+    [companyId, invalidateMatchingResults, router, t],
   );
 
   const runDeepResearchForTender = useCallback(
@@ -382,11 +405,20 @@ export function TenderMatching({
       try {
         const data = await api.triggerDeepMatch(companyId, [tenderId]);
         if (data.status === "all_cached") {
-          toast.info(t("deepResearchCached"));
+          toast.info(t("deepResearchCached"), {
+            action: {
+              label: t("viewDetails"),
+              onClick: () =>
+                router.push(`/tenders/${tenderId}?companyId=${companyId}`),
+            },
+          });
           invalidateMatchingResults();
           return;
         }
         if (data.batchId && companyId) {
+          // Remember which tender this batch is for so the completion handler can
+          // surface a "view details" action (see checkMatchingProgress).
+          pendingDeepTenderRef.current = tenderId;
           localStorage.setItem(`matching_batch_${companyId}`, data.batchId);
           setMatchingProgress({
             batchId: data.batchId,
@@ -407,7 +439,7 @@ export function TenderMatching({
         setDeepResearchTenderId(null);
       }
     },
-    [companyId, checkMatchingProgress, invalidateMatchingResults, t],
+    [companyId, checkMatchingProgress, invalidateMatchingResults, router, t],
   );
 
   const refreshAll = useCallback(() => {
@@ -764,7 +796,11 @@ export function TenderMatching({
                 </>
               )}
             </Button>
-            {deepAnalyzedCount > 0 && !readOnly ? (
+            {/* Force re-scoring of ALL tenders — always available (not gated on prior
+                analysis) so users can refresh every match after updating their company
+                profile. The primary "deep research all" button skips already-analysed
+                tenders, so this is the way to pick up profile changes. */}
+            {!readOnly ? (
               <Button
                 onClick={runAnalysisFresh}
                 disabled={analyzing || loading || limitReached}

@@ -24,9 +24,11 @@ import {
   Plus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { api } from "@/lib/api/client";
 import { useDeployment } from "@/lib/deployment/client";
 import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
+import { translateTaxonomyName } from "@/lib/taxonomyTranslations";
 import type { MatchingResultRecord, TenderRecord } from "@/lib/api/types";
 
 interface TenderDetailDialogProps {
@@ -47,6 +49,7 @@ export function TenderDetailDialog({
   readOnly = false,
 }: TenderDetailDialogProps) {
   const router = useRouter();
+  const locale = useLocale();
   const { currency } = useDeployment();
   const tenderCurrency = resolveCurrencyConfig(result?.tenders?.currency, currency);
   const [tenderDetails, setTenderDetails] = useState<TenderRecord | null>(null);
@@ -175,7 +178,7 @@ export function TenderDetailDialog({
               <div className="flex flex-wrap gap-2">
                 {taxonomies.map((taxonomy) => (
                   <Badge key={taxonomy.id} variant="secondary">
-                    {taxonomy.name}
+                    {translateTaxonomyName(taxonomy.name, locale)}
                   </Badge>
                 ))}
               </div>

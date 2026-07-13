@@ -145,6 +145,10 @@ export const companies = pgTable("companies", {
   pendingChanges: jsonb("pending_changes"),
   matchingRunsLimit: integer("matching_runs_limit"),
   analysisRunsLimit: integer("analysis_runs_limit"),
+  // When set, monthly matching/analysis usage is counted only from this instant
+  // (or the calendar month start, whichever is later). Lets a superadmin reset
+  // an account's usage without deleting audit rows.
+  usageResetAt: timestamp("usage_reset_at", { withTimezone: true }),
 });
 
 // ============================================================================

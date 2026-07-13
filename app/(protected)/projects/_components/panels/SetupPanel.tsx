@@ -34,6 +34,8 @@ import type { Project } from "@/hooks/useProjects";
 import type { Tender } from "@/hooks/useProjectDetails";
 import { TenderViewDialog } from "@/components/tenders/TenderViewDialog";
 import { TenderSearchDialog } from "@/components/consulting/TenderSearchDialog";
+import { useDeployment } from "@/lib/deployment/client";
+import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
 
 interface SetupPanelProps {
   project: Project;
@@ -42,6 +44,10 @@ interface SetupPanelProps {
 
 export function SetupPanel({ project, tender }: SetupPanelProps) {
   const t = useTranslations("SetupPanel");
+  const { currency } = useDeployment();
+  // Respect the tender's own currency (e.g. CNY for Shanghai notices), falling back
+  // to the active deployment currency for legacy rows without a currency set.
+  const tenderCurrency = resolveCurrencyConfig(tender?.currency, currency);
   const [tenderDialogOpen, setTenderDialogOpen] = useState(false);
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
@@ -57,13 +63,9 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
     });
   };
 
-  const formatCurrency = (value: number | null | undefined) => {
+  const formatTenderValue = (value: number | null | undefined) => {
     if (!value) return t("notSpecified");
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-      maximumFractionDigits: 0,
-    }).format(value);
+    return formatCurrency(value, tenderCurrency);
   };
 
   const handleSelectTender = async (selectedTender: {
@@ -189,10 +191,10 @@ export function SetupPanel({ project, tender }: SetupPanelProps) {
                     <Banknote className="h-4 w-4 text-muted-foreground" />
                     <span>
                       {tender.value
-                        ? formatCurrency(tender.value)
+                        ? formatTenderValue(tender.value)
                         : tender.budgetMax
-                          ? formatCurrency(tender.budgetMax)
-                          : "Not specified"}
+                          ? formatTenderValue(tender.budgetMax)
+                          : t("notSpecified")}
                     </span>
                   </div>
                 </div>

@@ -12,7 +12,8 @@ import { VerifiedBadge } from "@/components/company/VerifiedBadge";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { translateTaxonomyName } from "@/lib/taxonomyTranslations";
 type PublicCompany = Pick<
   Company,
   | "id"
@@ -48,6 +49,7 @@ export function CompanyCardNew({
   distanceMiles,
 }: CompanyCardNewProps) {
   const t = useTranslations("Directory");
+  const locale = useLocale();
   const [showAllCategories, setShowAllCategories] = useState(false);
   const taxonomies = propTaxonomies || [];
 
@@ -193,7 +195,7 @@ export function CompanyCardNew({
                 variant="secondary"
                 className="text-xs font-normal"
               >
-                {taxonomy.name}
+                {translateTaxonomyName(taxonomy.name, locale)}
               </Badge>
             ))}
           </div>

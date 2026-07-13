@@ -14,6 +14,7 @@ import {
   competencyChangeRequests,
   companyVerificationRequests,
 } from "@/lib/db/schema/app";
+import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { getPlatformVerificationSettings } from "@/lib/platformVerificationSettings";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
@@ -35,8 +36,8 @@ export async function GET(
     const capData = await db
       .select({
         id: companyCapabilitiesRef.id,
-        name: companyCapabilitiesRef.name,
-        category: companyCapabilitiesRef.category,
+        name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
+        category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh),
       })
       .from(companyCapabilities)
       .innerJoin(
@@ -230,8 +231,8 @@ export async function PUT(
       const updatedCaps = await db
         .select({
           id: companyCapabilitiesRef.id,
-          name: companyCapabilitiesRef.name,
-          category: companyCapabilitiesRef.category,
+          name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
+          category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh),
         })
         .from(companyCapabilities)
         .innerJoin(

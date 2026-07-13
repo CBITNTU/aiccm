@@ -103,6 +103,14 @@ export interface DeploymentProfile extends PublicDeploymentProfile {
   /** Registered taxonomy provider id. */
   taxonomy: string;
   /**
+   * Language the reference taxonomies (markets, standards, competencies) are
+   * surfaced in — both for UI display and AI analysis. Region-static: resolved
+   * once from the deployment profile. The ref tables carry English `name` plus a
+   * Chinese `name_zh`; `"zh-CN"` surfaces the Chinese column (falling back to
+   * English when a translation is blank). See `lib/taxonomy/localizedName.ts`.
+   */
+  taxonomyLanguage: "en" | "zh-CN";
+  /**
    * AI fallbacks. Runtime authority remains the DB `platform_settings`; these only
    * seed the default when no DB row exists.
    */

@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,12 +19,6 @@ import type {
   DashboardStats,
   CompanyAnalysis,
 } from "./_components/types";
-
-const BusinessChatbot = dynamic(
-  () =>
-    import("@/components/BusinessChatbot").then((m) => ({ default: m.BusinessChatbot })),
-  { ssr: false },
-);
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
@@ -154,23 +147,6 @@ export default function DashboardPage() {
       )}
 
       <QuickActionsSection />
-
-      <BusinessChatbot
-        companyData={
-          selectedOrg
-            ? {
-                companyName: selectedOrg.companyName || undefined,
-                description: selectedOrg.description || undefined,
-                keyCapabilities: Array.isArray(selectedOrg.keyCapabilities)
-                  ? (selectedOrg.keyCapabilities as unknown as string[]).join(", ")
-                  : undefined,
-                certifications: Array.isArray(selectedOrg.certifications)
-                  ? selectedOrg.certifications.join(", ")
-                  : undefined,
-              }
-            : undefined
-        }
-      />
     </div>
   );
 }

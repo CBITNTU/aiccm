@@ -9,6 +9,7 @@ import {
   getCompanyAdminApprovalEmailHtml,
   getAdminNotificationEmailHtml,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 import { db } from "@/lib/db";
 import { companyJoinRequests, companyMembers, profiles, userRoles } from "@/lib/db/schema/app";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
       // Send email to requester about partial approval
       if (requesterProfile?.email) {
         const emailData = {
+          locale: await getEmailLocale(),
           userName: requesterName,
           companyName: joinRequest.companyNameRequested,
           approvedByCompanyAdmin: true,
@@ -146,6 +148,7 @@ export async function POST(request: NextRequest) {
 
         if (adminEmails.length > 0) {
           const adminNotificationData = {
+            locale: await getEmailLocale(),
             userName: requesterName,
             userEmail: requesterProfile?.email || "",
             signupType: "join-company" as const,
@@ -191,6 +194,7 @@ export async function POST(request: NextRequest) {
 
       if (requesterProfile?.email) {
         const emailData = {
+          locale: await getEmailLocale(),
           userName: requesterName,
           companyName: joinRequest.companyNameRequested,
           approvedByCompanyAdmin: false,

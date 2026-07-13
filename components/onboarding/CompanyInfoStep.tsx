@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ONBOARDING_STEPS } from "@/lib/onboarding";
+import { useDeployment } from "@/lib/deployment/client";
 
 interface CompanySearchResult {
   id: string;
@@ -44,6 +45,8 @@ export function CompanyInfoStep({
   const tShared = useTranslations("Onboarding.companyInfo.shared");
   const tCreate = useTranslations("Onboarding.companyInfo.create");
   const tJoin = useTranslations("Onboarding.companyInfo.join");
+  const deployment = useDeployment();
+  const isUk = deployment.id === "uk";
   const [activeTab, setActiveTab] = useState<"create" | "join">("create");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -491,6 +494,8 @@ export function CompanyInfoStep({
                 </div>
               ) : (
                 <form onSubmit={handleCreateCompany} className="space-y-4">
+                  {isUk && (
+                    <>
                   {/* Companies House Lookup Section */}
                   <div className="space-y-2">
                     <Label htmlFor="companiesHouseNumber">
@@ -600,9 +605,11 @@ export function CompanyInfoStep({
                       </div>
                     </div>
                   )}
+                    </>
+                  )}
 
                   {/* Divider */}
-                  {lookupState.status !== "success" && (
+                  {isUk && lookupState.status !== "success" && (
                     <div className="relative">
                       <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t" />
@@ -723,7 +730,7 @@ export function CompanyInfoStep({
                       <Input
                         id="contactPhone"
                         type="tel"
-                        placeholder={tCreate("contactPhonePlaceholder")}
+                        placeholder={deployment.verification.phonePlaceholder}
                         value={createForm.contactPhone}
                         onChange={(e) =>
                           setCreateForm({

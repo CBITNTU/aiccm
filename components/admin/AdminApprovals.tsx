@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useDeployment } from "@/lib/deployment/client";
 import {
   Card,
   CardContent,
@@ -209,6 +210,7 @@ function toJoinRequest(input: unknown): JoinRequest | null {
 
 export default function AdminApprovals() {
   const t = useTranslations("AdminApprovals");
+  const deployment = useDeployment();
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -875,7 +877,7 @@ export default function AdminApprovals() {
                                         contactPhone: e.target.value || null,
                                       })
                                     }
-                                    placeholder={t("form.contactPhonePlaceholder")}
+                                    placeholder={deployment.verification.phonePlaceholder}
                                     type="tel"
                                   />
                                 </div>

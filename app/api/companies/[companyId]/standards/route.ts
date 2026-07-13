@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyStandards, standardsRef, companies, companyVerificationRequests } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import { eq, and, inArray } from "drizzle-orm";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 
@@ -15,7 +16,7 @@ async function getCompanyStandardsData(companyId: string) {
   return db
     .select({
       id: standardsRef.id,
-      name: standardsRef.name,
+      name: localizedName(standardsRef.name, standardsRef.nameZh),
       parent_id: standardsRef.parentId,
       sort_order: standardsRef.sortOrder,
     })

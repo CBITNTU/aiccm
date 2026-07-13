@@ -11,6 +11,7 @@ import {
   getApprovalNotificationEmailSubject,
   getApprovalNotificationEmailHtml,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 import {
   updateProfileByUserId,
   updateCompanyMemberStatus,
@@ -474,6 +475,7 @@ export async function POST(request: NextRequest) {
       // Send approval email
       if (profile.email) {
         const emailData = {
+          locale: await getEmailLocale(),
           userName,
           approved: true,
           signupType,
@@ -521,6 +523,7 @@ export async function POST(request: NextRequest) {
       // Send rejection email
       if (profile.email) {
         const emailData = {
+          locale: await getEmailLocale(),
           userName,
           approved: false,
           rejectionReason,

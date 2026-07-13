@@ -12,6 +12,7 @@ import {
   companyCapabilities,
   companyCapabilitiesRef,
 } from "@/lib/db/schema/app";
+import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 import { eq, and, inArray, ilike, or } from "drizzle-orm";
 import { nearbyCompanies } from "@/lib/db/raw";
 
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     // Get capability info for fallback text search
     const capabilityCheck = await db
-      .select({ id: companyCapabilitiesRef.id, name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+      .select({ id: companyCapabilitiesRef.id, name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh), category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh) })
       .from(companyCapabilitiesRef)
       .where(inArray(companyCapabilitiesRef.id, capabilityIds));
 
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
                 const capabilities = await db
                   .select({
                     id: companyCapabilitiesRef.id,
-                    name: companyCapabilitiesRef.name,
+                    name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
                   })
                   .from(companyCapabilities)
                   .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
@@ -227,7 +228,7 @@ export async function POST(request: NextRequest) {
         const capabilities = await db
           .select({
             id: companyCapabilitiesRef.id,
-            name: companyCapabilitiesRef.name,
+            name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
           })
           .from(companyCapabilities)
           .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))

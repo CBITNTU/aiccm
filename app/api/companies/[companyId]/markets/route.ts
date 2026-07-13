@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companyMarkets, markets, companies, companyVerificationRequests } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import { eq, and, inArray } from "drizzle-orm";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 
@@ -15,7 +16,7 @@ async function getCompanyMarketsData(companyId: string) {
   return db
     .select({
       id: markets.id,
-      name: markets.name,
+      name: localizedName(markets.name, markets.nameZh),
       parent_id: markets.parentId,
       sort_order: markets.sortOrder,
     })

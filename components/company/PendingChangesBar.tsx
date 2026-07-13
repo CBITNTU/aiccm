@@ -59,7 +59,7 @@ interface PendingChangesBarProps {
   onSuccess?: () => void;
 }
 
-function ScalarFieldDiff({
+export function ScalarFieldDiff({
   field,
   current,
   proposed,

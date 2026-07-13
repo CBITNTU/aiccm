@@ -7,6 +7,7 @@ import {
   companies,
   companyCapabilitiesRef,
 } from "@/lib/db/schema/app";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import { eq, desc, inArray } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     let capabilityMap: Record<string, string> = {};
     if (allCapIds.size > 0) {
       const caps = await db
-        .select({ id: companyCapabilitiesRef.id, name: companyCapabilitiesRef.name })
+        .select({ id: companyCapabilitiesRef.id, name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh) })
         .from(companyCapabilitiesRef)
         .where(inArray(companyCapabilitiesRef.id, Array.from(allCapIds)));
       capabilityMap = Object.fromEntries(caps.map((c) => [c.id, c.name]));

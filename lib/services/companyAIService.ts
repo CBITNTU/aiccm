@@ -10,6 +10,7 @@ import { eq, asc, isNull } from "drizzle-orm";
 import { aiGenerateText, aiGenerateObject } from "@/lib/ai";
 import { companySummaryAndTaxonomySchema } from "@/lib/schemas/capabilitySuggestion";
 import { getCapabilityCatalog } from "@/lib/services/capabilityCatalog";
+import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 
 // ---------------------------------------------------------------------------
 // Local taxonomy helpers (keyword scoring, no AI)
@@ -80,7 +81,7 @@ async function assignCapabilitiesLocally(companyId: string): Promise<string[]> {
 
   // Only L1 capabilities (parent_id IS NULL)
   const l1Caps = await db
-    .select({ id: companyCapabilitiesRef.id, name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+    .select({ id: companyCapabilitiesRef.id, name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh), category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh) })
     .from(companyCapabilitiesRef)
     .where(isNull(companyCapabilitiesRef.parentId))
     .orderBy(asc(companyCapabilitiesRef.name));
@@ -140,7 +141,7 @@ export async function generateCompanySummary(
 
   // Fetch company capabilities from junction table
   const capabilityRows = await db
-    .select({ name: companyCapabilitiesRef.name })
+    .select({ name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh) })
     .from(companyCapabilities)
     .innerJoin(
       companyCapabilitiesRef,
@@ -280,7 +281,7 @@ export async function generateCompanyMarketSuggestions(companyId: string): Promi
   if (companyWords.length === 0) return [];
 
   const l1Markets = await db
-    .select({ id: markets.id, name: markets.name })
+    .select({ id: markets.id, name: localizedName(markets.name, markets.nameZh) })
     .from(markets)
     .where(isNull(markets.parentId))
     .orderBy(asc(markets.sortOrder), asc(markets.name));

@@ -11,6 +11,7 @@ import {
   getApprovalNotificationEmailSubject,
   getApprovalNotificationEmailHtml,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 import {
   updateCompanyJoinRequest,
   upsertCompanyMember,
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest) {
       // Send approval email
       if (profile?.email) {
         const emailData = {
+          locale: await getEmailLocale(),
           userName,
           approved: true,
           signupType: "join-company" as const,
@@ -175,6 +177,7 @@ export async function POST(request: NextRequest) {
       // Send rejection email
       if (profile?.email) {
         const emailData = {
+          locale: await getEmailLocale(),
           userName,
           approved: false,
           rejectionReason,

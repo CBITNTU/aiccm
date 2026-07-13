@@ -47,9 +47,10 @@ This is resolved once at process start (`lib/deployment/`) and drives:
 | Currency | `currency` | GBP £ | CNY ¥ | THB ฿ |
 | Tender sources | `tenderSources` → `lib/tenders/registry` | Find a Tender + TED | Shanghai (zbycg.com) + manual | manual |
 | Company verification | `verificationProvider` → `lib/companies/registry` | Companies House + Endole | manual | manual |
-| Taxonomy | `taxonomy` → `lib/taxonomy` | CPV/EIC | stub (neutral) | stub (neutral) |
+| Taxonomy (CPV/EIC provider) | `taxonomy` → `lib/taxonomy` | CPV/EIC | stub (neutral) | stub (neutral) |
+| Taxonomy language (markets/standards/competencies) | `taxonomyLanguage` → `lib/taxonomy/localizedName` | en | zh-CN | en |
 | Geocoding | `geocodingProvider` | Google | none (blocked in CN) | Google |
-| AI default model | `ai.defaultModel` (seed for `platform_settings`) | gpt-5-nano | deepseek-chat | gpt-5-nano |
+| AI default model | `ai.defaultModel` (seed for `platform_settings`) | gpt-5-nano | deepseek-v4-flash | gpt-5-nano |
 
 **Adding a region's source/verification later:** implement a `TenderSourceAdapter`
 (`lib/tenders/adapters/`) and/or `CompanyRegistryAdapter`
@@ -66,6 +67,19 @@ is wired into the CN profile only, so it never runs for UK/EU. The daily
 the admin import UI (`components/admin/AdminTenderImport.tsx`) shows a Shanghai import
 tab on CN deployments (Find a Tender + TED elsewhere) using `DEPLOYMENT_PROFILE`.
 `cn_manual` remains registered for admin-entered notices from other Chinese regions.
+
+**Bilingual reference taxonomies (markets / standards / competencies):** these three
+reference trees are seeded from the bilingual CSVs in `docs/taxonomy_cn/`, storing both
+`name` (English) and `name_zh` (Simplified Chinese) per row. The active deployment's
+`taxonomyLanguage` decides which is surfaced — everywhere, both in the web UI and in the
+AI prompts/embeddings — via `localizedName()` in `lib/taxonomy/localizedName.ts` (a
+`zh-CN` deployment falls back to English when a translation is blank). To regenerate the
+seed SQL after editing the CSVs, run `node scripts/generate-taxonomy-seeds.mjs` (row IDs
+are deterministic UUIDv5 keyed on the English path, so unchanged rows keep stable IDs).
+Apply with `npm run db:seed-ref` on a fresh DB, or
+`node scripts/reseed-taxonomy-with-remap.mjs` on a live DB to preserve existing company
+selections across the reseed. The EIC/CPV `taxonomy` provider above is a separate system
+and stays English.
 
 ## Environment variables (app / Vercel)
 

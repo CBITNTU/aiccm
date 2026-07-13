@@ -7,6 +7,7 @@ import {
   getTeamInvitationEmailHtml,
   getPlatformUrl,
 } from "@/lib/email";
+import { getEmailLocale } from "@/lib/email/i18n";
 import {
   generateInviteToken,
   hashToken,
@@ -172,6 +173,7 @@ export async function POST(request: NextRequest) {
 
     // Send invitation email
     const emailData = {
+      locale: await getEmailLocale(),
       inviteeEmail: normalizedEmail,
       inviterName,
       companyName: company.companyName,

@@ -14,6 +14,7 @@ import {
   profiles,
 } from "@/lib/db/schema/app";
 import { companyColumnsNoEmbedding } from "@/lib/db/columns";
+import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 import { eq, desc, and, ne, inArray } from "drizzle-orm";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 
@@ -61,8 +62,8 @@ export async function GET(
       db
         .select({
           id: companyCapabilitiesRef.id,
-          name: companyCapabilitiesRef.name,
-          category: companyCapabilitiesRef.category,
+          name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
+          category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh),
         })
         .from(companyCapabilities)
         .innerJoin(
@@ -75,7 +76,7 @@ export async function GET(
       db
         .select({
           id: markets.id,
-          name: markets.name,
+          name: localizedName(markets.name, markets.nameZh),
           parentId: markets.parentId,
           sortOrder: markets.sortOrder,
         })
@@ -87,7 +88,7 @@ export async function GET(
       db
         .select({
           id: standardsRef.id,
-          name: standardsRef.name,
+          name: localizedName(standardsRef.name, standardsRef.nameZh),
           parentId: standardsRef.parentId,
           sortOrder: standardsRef.sortOrder,
         })
@@ -135,7 +136,7 @@ export async function GET(
         const allCapIds = [...new Set([...snapshot.capabilities.current, ...snapshot.capabilities.proposed])];
         if (allCapIds.length > 0) {
           const capNames = await db
-            .select({ id: companyCapabilitiesRef.id, name: companyCapabilitiesRef.name, category: companyCapabilitiesRef.category })
+            .select({ id: companyCapabilitiesRef.id, name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh), category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh) })
             .from(companyCapabilitiesRef)
             .where(inArray(companyCapabilitiesRef.id, allCapIds));
           const capMap = Object.fromEntries(capNames.map((c) => [c.id, { name: c.name, category: c.category }]));
@@ -154,7 +155,7 @@ export async function GET(
         const allMarketIds = [...new Set([...snapshot.markets.current, ...snapshot.markets.proposed])];
         if (allMarketIds.length > 0) {
           const marketNames = await db
-            .select({ id: markets.id, name: markets.name })
+            .select({ id: markets.id, name: localizedName(markets.name, markets.nameZh) })
             .from(markets)
             .where(inArray(markets.id, allMarketIds));
           const marketMap = Object.fromEntries(marketNames.map((m) => [m.id, m.name]));
@@ -173,7 +174,7 @@ export async function GET(
         const allStdIds = [...new Set([...snapshot.standards.current, ...snapshot.standards.proposed])];
         if (allStdIds.length > 0) {
           const stdNames = await db
-            .select({ id: standardsRef.id, name: standardsRef.name })
+            .select({ id: standardsRef.id, name: localizedName(standardsRef.name, standardsRef.nameZh) })
             .from(standardsRef)
             .where(inArray(standardsRef.id, allStdIds));
           const stdMap = Object.fromEntries(stdNames.map((s) => [s.id, s.name]));

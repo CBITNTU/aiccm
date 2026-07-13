@@ -5,6 +5,7 @@ import type { ZodType } from "zod";
 import { resolveModel, getProviderName } from "./models";
 import { isOllamaModelId } from "./ollama";
 import { getPlatformModel } from "./provider";
+import { getResponseLanguageInstruction } from "./responseLanguage";
 import { runLLM } from "@/lib/services/llmLimiter";
 
 interface BaseOptions {
@@ -70,19 +71,16 @@ const GEMINI_THINKING_BUDGET: Record<string, number> = {
 /**
  * Build provider-specific options for the AI SDK call.
  * - OpenAI: passes reasoningEffort.
- * - DeepSeek: deepseek-reasoner has built-in thinking; deepseek-chat can
- *   have thinking enabled via provider options when reasoning effort is set.
+ * - DeepSeek: the V4 models are hybrid thinkers — enable thinking mode via
+ *   provider options when a non-trivial reasoning effort is set.
  * - Google: maps reasoning effort to a thinkingBudget token count.
  */
 function buildProviderOptions(
   reasoningEffort: string | undefined,
   provider: string,
-  modelId: string,
 ): Record<string, any> | undefined {
   if (provider === "deepseek") {
-    // deepseek-reasoner always uses thinking mode; no extra options needed
-    if (modelId === "deepseek-reasoner") return undefined;
-    // For deepseek-chat, enable thinking mode when reasoning effort is non-trivial
+    // Enable thinking mode when reasoning effort is non-trivial
     if (reasoningEffort && reasoningEffort !== "none") {
       return { deepseek: { thinking: { type: "enabled" } } };
     }
@@ -114,8 +112,11 @@ function buildProviderOptions(
 export async function aiGenerateObject<T>(
   options: GenerateObjectOptions<T>,
 ): Promise<T> {
-  const { schema, system, prompt, maxTokens, temperature, modelId, estTokens } =
+  const { schema, prompt, maxTokens, temperature, modelId, estTokens } =
     options;
+  const system = [options.system, getResponseLanguageInstruction()]
+    .filter(Boolean)
+    .join("\n\n");
 
   return runLLM(async () => {
     let model: LanguageModel;
@@ -154,11 +155,7 @@ export async function aiGenerateObject<T>(
         prompt,
         maxOutputTokens: maxTokens,
         temperature,
-        providerOptions: buildProviderOptions(
-          normalisedEffort,
-          provider,
-          resolvedModelId,
-        ),
+        providerOptions: buildProviderOptions(normalisedEffort, provider),
       });
     } catch (err) {
       console.error("[DEBUG] aiGenerateObject FAILED:", err);
@@ -182,8 +179,10 @@ export async function aiGenerateObject<T>(
  * Uses the platform default model unless `modelId` is provided.
  */
 export async function aiGenerateText(options: BaseOptions): Promise<string> {
-  const { system, prompt, maxTokens, temperature, modelId, estTokens } =
-    options;
+  const { prompt, maxTokens, temperature, modelId, estTokens } = options;
+  const system = [options.system, getResponseLanguageInstruction()]
+    .filter(Boolean)
+    .join("\n\n");
 
   return runLLM(async () => {
     let model: LanguageModel;
@@ -214,11 +213,7 @@ export async function aiGenerateText(options: BaseOptions): Promise<string> {
       prompt,
       maxOutputTokens: maxTokens,
       temperature,
-      providerOptions: buildProviderOptions(
-        normalisedEffort,
-        provider,
-        resolvedModelId,
-      ),
+      providerOptions: buildProviderOptions(normalisedEffort, provider),
     });
 
     return result.text;

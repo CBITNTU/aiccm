@@ -36,7 +36,7 @@ export const thProfile: DeploymentProfile = {
   verification: {
     fieldLabel: "Tax ID / Registration Number",
     fieldHint: "optional",
-    phonePlaceholder: "02 123 4567",
+    phonePlaceholder: "+66 ...",
     consentSources: [],
     supportsLookup: false,
   },
@@ -45,5 +45,6 @@ export const thProfile: DeploymentProfile = {
   verificationProvider: "th_manual",
   geocodingProvider: "google",
   taxonomy: "stub",
+  taxonomyLanguage: "en",
   ai: { defaultModel: "gpt-5-nano" },
 };

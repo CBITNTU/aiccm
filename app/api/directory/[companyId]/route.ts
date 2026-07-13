@@ -3,6 +3,7 @@ import { apiResponse } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies, companyTaxonomies, taxonomies, companyCapabilities, companyCapabilitiesRef, companyMarkets, markets, companyStandards, standardsRef } from "@/lib/db/schema/app";
+import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq, and, or } from "drizzle-orm";
 
@@ -76,8 +77,8 @@ export async function GET(
     const capData = await db
       .select({
         id: companyCapabilitiesRef.id,
-        name: companyCapabilitiesRef.name,
-        category: companyCapabilitiesRef.category,
+        name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
+        category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh),
       })
       .from(companyCapabilities)
       .innerJoin(companyCapabilitiesRef, eq(companyCapabilities.capabilityId, companyCapabilitiesRef.id))
@@ -87,7 +88,7 @@ export async function GET(
     const marketsData = await db
       .select({
         id: markets.id,
-        name: markets.name,
+        name: localizedName(markets.name, markets.nameZh),
         parentId: markets.parentId,
       })
       .from(companyMarkets)
@@ -98,7 +99,7 @@ export async function GET(
     const standardsData = await db
       .select({
         id: standardsRef.id,
-        name: standardsRef.name,
+        name: localizedName(standardsRef.name, standardsRef.nameZh),
         parentId: standardsRef.parentId,
       })
       .from(companyStandards)

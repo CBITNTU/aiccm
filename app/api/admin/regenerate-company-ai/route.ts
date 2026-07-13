@@ -12,6 +12,7 @@ import {
   companyCapabilitiesRef,
   companies,
 } from "@/lib/db/schema/app";
+import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 import { inArray } from "drizzle-orm";
 
 // Helper to get base URL
@@ -124,8 +125,8 @@ export async function POST(request: NextRequest) {
     const allCaps = await db
       .select({
         id: companyCapabilitiesRef.id,
-        name: companyCapabilitiesRef.name,
-        category: companyCapabilitiesRef.category,
+        name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh),
+        category: localizedCategory(companyCapabilitiesRef.category, companyCapabilitiesRef.categoryZh),
       })
       .from(companyCapabilitiesRef)
       .orderBy(companyCapabilitiesRef.category, companyCapabilitiesRef.name);

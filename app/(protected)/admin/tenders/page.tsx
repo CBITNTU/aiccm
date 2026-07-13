@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { AdminTenderImport } from "@/components/admin/AdminTenderImport";
 import { AdminTenderSyncSchedule } from "@/components/admin/AdminTenderSyncSchedule";
+import { AdminTenderSyncLimits } from "@/components/admin/AdminTenderSyncLimits";
 import { AdminTenderSyncProvider } from "@/components/admin/AdminTenderSyncContext";
 import { TenderAIRegeneration } from "@/components/admin/TenderAIRegeneration";
 
@@ -22,6 +23,7 @@ export default function AdminTendersPage() {
               <TenderAIRegeneration />
             </div>
             <AdminTenderSyncSchedule />
+            <AdminTenderSyncLimits />
             <AdminTenderImport />
           </div>
         </div>

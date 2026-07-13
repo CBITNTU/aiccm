@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { companyCapabilitiesRef } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
 import { invalidateCapabilityCatalog } from "@/lib/services/capabilityCatalog";
+import { localizeCapabilityWrite } from "@/lib/taxonomy/localizedName";
 
 export async function PUT(
   request: NextRequest,
@@ -20,7 +21,7 @@ export async function PUT(
 
     const result = await db
       .update(companyCapabilitiesRef)
-      .set(body)
+      .set(localizeCapabilityWrite(body, { create: false }))
       .where(eq(companyCapabilitiesRef.id, capabilityId))
       .returning();
 

@@ -18,18 +18,8 @@ export const cnProfile: DeploymentProfile = {
   },
   theme: {
     // Distinct red-leaning primary; overrides the blue defaults in globals.css.
-    light: {
-      primary: "0 72% 45%",
-      ring: "0 72% 45%",
-      accent: "0 72% 55%",
-      "sidebar-primary": "0 72% 55%",
-    },
-    dark: {
-      primary: "0 72% 60%",
-      ring: "0 72% 60%",
-      accent: "0 72% 65%",
-      "sidebar-primary": "0 72% 60%",
-    },
+    light: {},
+    dark: {},
   },
   i18n: {
     defaultLocale: "zh-CN",
@@ -39,7 +29,7 @@ export const cnProfile: DeploymentProfile = {
   verification: {
     fieldLabel: "统一社会信用代码 (Unified Social Credit Code)",
     fieldHint: "optional",
-    phonePlaceholder: "138 0000 0000",
+    phonePlaceholder: "+86 ...",
     consentSources: [],
     supportsLookup: false,
   },
@@ -50,5 +40,6 @@ export const cnProfile: DeploymentProfile = {
   verificationProvider: "cn_manual",
   geocodingProvider: "none",
   taxonomy: "stub",
-  ai: { defaultModel: "deepseek-chat", matchingModel: "deepseek-chat" },
+  taxonomyLanguage: "zh-CN",
+  ai: { defaultModel: "deepseek-v4-flash", matchingModel: "deepseek-v4-flash" },
 };

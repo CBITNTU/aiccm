@@ -12,6 +12,14 @@ import {
 import { getAdaptersForProfile } from "@/lib/tenders/registry";
 import { ingestTenders } from "@/lib/tenders/ingest";
 import type { TenderFetchParams } from "@/lib/tenders/types";
+import {
+  getPlatformTenderLimits,
+  type PlatformTenderLimits,
+} from "@/lib/platformTenderSyncSettings";
+
+// Back the 4-minute MAX_RUN_MS budget below with an actual function timeout.
+// Fluid Compute allows 300s on every plan.
+export const maxDuration = 300;
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -48,6 +56,11 @@ async function runTenderSync(request: NextRequest): Promise<TenderSyncRunStats> 
   const dateToISO = new Date(startedAt).toISOString();
   const stats: TenderSyncRunStats = {};
 
+  // Per-source record caps so a single source can't overfetch (and rack up
+  // embedding/AI cost). Sources without a configured limit are unbounded here
+  // and still bounded by the page/time backstops below.
+  const limits = await getPlatformTenderLimits();
+
   for (const adapter of getAdaptersForProfile()) {
     if (Date.now() >= deadline) {
       console.warn(`[Tender sync] Run deadline reached; skipping remaining adapters.`);
@@ -59,6 +72,10 @@ async function runTenderSync(request: NextRequest): Promise<TenderSyncRunStats> 
       duplicatesSkipped: 0,
     };
     stats[adapter.id] = sourceStats;
+
+    const sourceLimit =
+      limits[adapter.id as keyof PlatformTenderLimits] ?? Number.MAX_SAFE_INTEGER;
+    let fetchedForSource = 0;
 
     const baseParams: TenderFetchParams = {
       isAdmin: true,
@@ -93,11 +110,25 @@ async function runTenderSync(request: NextRequest): Promise<TenderSyncRunStats> 
       });
       pagesFetched++;
 
-      if (result.tenders.length > 0) {
-        const ingested = await ingestTenders(result.tenders, adapter, { request });
+      // Trim the page so we never fetch past the source's configured record cap.
+      let pageTenders = result.tenders;
+      if (fetchedForSource + pageTenders.length > sourceLimit) {
+        pageTenders = pageTenders.slice(0, sourceLimit - fetchedForSource);
+      }
+      fetchedForSource += pageTenders.length;
+
+      if (pageTenders.length > 0) {
+        const ingested = await ingestTenders(pageTenders, adapter, { request });
         sourceStats.imported += ingested.newCount;
         sourceStats.fetched += ingested.totalFetched;
         sourceStats.duplicatesSkipped += ingested.duplicatesCount;
+      }
+
+      if (fetchedForSource >= sourceLimit) {
+        console.warn(
+          `[Tender sync] ${adapter.label}: hit per-source limit (${sourceLimit} tenders); stopping pagination early.`,
+        );
+        break;
       }
 
       // Advance pagination using whichever cursor the adapter returned.

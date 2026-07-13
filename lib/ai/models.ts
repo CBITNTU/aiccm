@@ -42,12 +42,8 @@ export const SUPPORTED_MODELS = [
   { id: "gpt-5-nano", name: "GPT-5 Nano", provider: "openai" },
   { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
   { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "openai" },
-  { id: "deepseek-chat", name: "DeepSeek Chat (V3)", provider: "deepseek" },
-  {
-    id: "deepseek-reasoner",
-    name: "DeepSeek Reasoner (R1)",
-    provider: "deepseek",
-  },
+  { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", provider: "deepseek" },
+  { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", provider: "deepseek" },
   { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "google" },
   { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "google" },
   {

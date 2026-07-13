@@ -1,5 +1,7 @@
 import { getPlatformName, getPlatformUrl } from "../index";
 import { escapeHtml } from "../utils";
+import { type Locale } from "@/i18n/locales";
+import { getEmailTranslator, strongTag } from "../i18n";
 
 export interface ApprovalNotificationEmailData {
   userName: string;
@@ -7,94 +9,65 @@ export interface ApprovalNotificationEmailData {
   rejectionReason?: string;
   signupType: "individual" | "new-company" | "join-company" | "invited";
   companyName?: string;
+  locale: Locale;
 }
 
 export function getApprovalNotificationEmailSubject(
   data: ApprovalNotificationEmailData,
 ): string {
+  const t = getEmailTranslator(data.locale);
   const platformName = getPlatformName();
-  if (data.approved) {
-    return `Your ${platformName} Account Has Been Approved!`;
-  }
-  return `Update on Your ${platformName} Account Application`;
+  return data.approved
+    ? t("approval.subjectApproved", { platformName })
+    : t("approval.subjectRejected", { platformName });
 }
 
 export function getApprovalNotificationEmailHtml(
   data: ApprovalNotificationEmailData,
 ): string {
   const { userName, approved, rejectionReason, signupType, companyName } = data;
-  const _platformName = getPlatformName();
-  const _dashboardUrl = getPlatformUrl("/dashboard");
 
   if (approved) {
     return getApprovedEmailHtml(
+      data.locale,
       escapeHtml(userName),
       signupType,
       companyName != null ? escapeHtml(companyName) : undefined,
     );
   }
   return getRejectedEmailHtml(
+    data.locale,
     escapeHtml(userName),
     rejectionReason != null ? escapeHtml(rejectionReason) : undefined,
   );
 }
 
 function getApprovedEmailHtml(
+  locale: Locale,
   userName: string,
   signupType: string,
   companyName?: string,
 ): string {
+  const t = getEmailTranslator(locale);
   const platformName = getPlatformName();
   const dashboardUrl = getPlatformUrl("/dashboard");
 
-  let welcomeMessage = "";
-  switch (signupType) {
-    case "individual":
-      welcomeMessage = `
-        <p>You now have full access to ${platformName} as an individual user. You can:</p>
+  const intro =
+    signupType === "individual"
+      ? t("approval.welcome.individual.intro", { platformName })
+      : t.rich(`approval.welcome.${signupType}.intro`, {
+          b: strongTag,
+          companyName,
+        });
+  const items = (t.raw(`approval.welcome.${signupType}.items`) as string[])
+    .map((item) => `          <li>${item}</li>`)
+    .join("\n");
+  const welcomeMessage = `
+        <p>${intro}</p>
         <ul>
-          <li>Browse available tenders</li>
-          <li>Explore the company directory</li>
-          <li>Connect with potential partners</li>
-          <li>Join a company at any time from your profile</li>
+${items}
         </ul>
       `;
-      break;
-    case "new-company":
-      welcomeMessage = `
-        <p>Your company <strong>${companyName}</strong> has been approved! As the company administrator, you can:</p>
-        <ul>
-          <li>Complete your company profile</li>
-          <li>Invite team members</li>
-          <li>View matching tenders</li>
-          <li>Participate in virtual organizations</li>
-          <li>Manage company settings</li>
-        </ul>
-      `;
-      break;
-    case "join-company":
-      welcomeMessage = `
-        <p>You've been approved to join <strong>${companyName}</strong>! You now have access to:</p>
-        <ul>
-          <li>Your company's profile and details</li>
-          <li>Company tender matches</li>
-          <li>Team collaboration features</li>
-          <li>Virtual organization projects</li>
-        </ul>
-      `;
-      break;
-    case "invited":
-      welcomeMessage = `
-        <p>You've been approved to join <strong>${companyName}</strong> as a team member! You now have access to:</p>
-        <ul>
-          <li>Your company's profile and details</li>
-          <li>Company tender matches</li>
-          <li>Team collaboration features</li>
-          <li>Virtual organization projects</li>
-        </ul>
-      `;
-      break;
-  }
 
   return `
 <!DOCTYPE html>
@@ -106,29 +79,29 @@ function getApprovedEmailHtml(
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Account Approved!</h1>
+    <h1 style="color: white; margin: 0; font-size: 28px;">${t("approval.approvedHeading")}</h1>
   </div>
 
   <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
-    <p style="font-size: 18px;">Hello <strong>${userName}</strong>,</p>
+    <p style="font-size: 18px;">${t.rich("hello", { b: strongTag, name: userName })}</p>
 
-    <p>Great news! Your ${platformName} account has been approved.</p>
+    <p>${t("approval.approvedIntro", { platformName })}</p>
 
     ${welcomeMessage}
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 35px; border-radius: 5px; font-weight: bold; font-size: 16px;">Go to Dashboard</a>
+      <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 35px; border-radius: 5px; font-weight: bold; font-size: 16px;">${t("goToDashboard")}</a>
     </div>
 
     <div style="background: #EFF6FF; border-left: 4px solid #2563EB; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0;"><strong>Need Help Getting Started?</strong></p>
-      <p style="margin: 10px 0 0 0;">Check out our platform guide or reach out to our support team if you have any questions.</p>
+      <p style="margin: 0;"><strong>${t("approval.helpHeading")}</strong></p>
+      <p style="margin: 10px 0 0 0;">${t("approval.helpBody")}</p>
     </div>
 
     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
 
     <p style="color: #999; font-size: 12px; margin: 0;">
-      This email was sent by ${platformName}. Welcome aboard!
+      ${t("approval.footerApproved", { platformName })}
     </p>
   </div>
 </body>
@@ -137,9 +110,11 @@ function getApprovedEmailHtml(
 }
 
 function getRejectedEmailHtml(
+  locale: Locale,
   userName: string,
   rejectionReason?: string,
 ): string {
+  const t = getEmailTranslator(locale);
   const platformName = getPlatformName();
   const platformUrl = getPlatformUrl();
 
@@ -153,35 +128,35 @@ function getRejectedEmailHtml(
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: #6b7280; padding: 30px; border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">Account Application Update</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">${t("approval.rejectedHeading")}</h1>
   </div>
 
   <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
-    <p style="font-size: 18px;">Hello <strong>${userName}</strong>,</p>
+    <p style="font-size: 18px;">${t.rich("hello", { b: strongTag, name: userName })}</p>
 
-    <p>Thank you for your interest in ${platformName}. After reviewing your application, we're unable to approve your account at this time.</p>
+    <p>${t("approval.rejectedIntro", { platformName })}</p>
 
     ${
       rejectionReason
         ? `
     <div style="background: #f3f4f6; border-left: 4px solid #6b7280; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0; font-weight: bold;">Reason:</p>
+      <p style="margin: 0; font-weight: bold;">${t("labels.reason")}</p>
       <p style="margin: 10px 0 0 0;">${rejectionReason}</p>
     </div>
     `
         : ""
     }
 
-    <p>If you believe this decision was made in error, or if you have additional information that might help us reconsider, please contact our support team.</p>
+    <p>${t("reconsider")}</p>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${platformUrl}" style="display: inline-block; background: #6b7280; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold;">Contact Support</a>
+      <a href="${platformUrl}" style="display: inline-block; background: #6b7280; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold;">${t("contactSupport")}</a>
     </div>
 
     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
 
     <p style="color: #999; font-size: 12px; margin: 0;">
-      This email was sent by ${platformName}.
+      ${t("footer", { platformName })}
     </p>
   </div>
 </body>
@@ -195,23 +170,26 @@ export interface CompanyAdminApprovalEmailData {
   companyName: string;
   approvedByCompanyAdmin: boolean;
   companyAdminName?: string;
+  locale: Locale;
 }
 
 export function getCompanyAdminApprovalEmailSubject(
   data: CompanyAdminApprovalEmailData,
 ): string {
-  if (data.approvedByCompanyAdmin) {
-    return `${data.companyName} has approved your join request - Pending platform approval`;
-  }
-  return `Your request to join ${data.companyName} was not approved`;
+  const t = getEmailTranslator(data.locale);
+  return data.approvedByCompanyAdmin
+    ? t("companyAdminApproval.subjectApproved", { companyName: data.companyName })
+    : t("companyAdminApproval.subjectRejected", { companyName: data.companyName });
 }
 
 export function getCompanyAdminApprovalEmailHtml(
   data: CompanyAdminApprovalEmailData,
 ): string {
-  const { userName, companyName, approvedByCompanyAdmin, companyAdminName: _companyAdminName } =
-    data;
+  const { approvedByCompanyAdmin, companyAdminName: _companyAdminName } = data;
   void _companyAdminName;
+  const t = getEmailTranslator(data.locale);
+  const userName = escapeHtml(data.userName);
+  const companyName = escapeHtml(data.companyName);
   const platformName = getPlatformName();
 
   if (approvedByCompanyAdmin) {
@@ -225,25 +203,25 @@ export function getCompanyAdminApprovalEmailHtml(
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: #2563EB; padding: 30px; border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">Company Approval Received!</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">${t("companyAdminApproval.approvedHeading")}</h1>
   </div>
 
   <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
-    <p style="font-size: 18px;">Hello <strong>${userName}</strong>,</p>
+    <p style="font-size: 18px;">${t.rich("hello", { b: strongTag, name: userName })}</p>
 
-    <p>Good news! <strong>${companyName}</strong> has approved your request to join their team.</p>
+    <p>${t.rich("companyAdminApproval.approvedIntro", { b: strongTag, companyName })}</p>
 
     <div style="background: #DBEAFE; border-left: 4px solid #2563EB; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0;"><strong>Next Step</strong></p>
-      <p style="margin: 10px 0 0 0;">Your request is now pending final approval from the ${platformName} team. You'll receive another email once this is complete.</p>
+      <p style="margin: 0;"><strong>${t("companyAdminApproval.nextStepHeading")}</strong></p>
+      <p style="margin: 10px 0 0 0;">${t("companyAdminApproval.nextStepBody", { platformName })}</p>
     </div>
 
-    <p>Thank you for your patience!</p>
+    <p>${t("companyAdminApproval.thanks")}</p>
 
     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
 
     <p style="color: #999; font-size: 12px; margin: 0;">
-      This email was sent by ${platformName}.
+      ${t("footer", { platformName })}
     </p>
   </div>
 </body>
@@ -261,27 +239,25 @@ export function getCompanyAdminApprovalEmailHtml(
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: #6b7280; padding: 30px; border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">Join Request Update</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">${t("companyAdminApproval.rejectedHeading")}</h1>
   </div>
 
   <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
-    <p style="font-size: 18px;">Hello <strong>${userName}</strong>,</p>
+    <p style="font-size: 18px;">${t.rich("hello", { b: strongTag, name: userName })}</p>
 
-    <p>Unfortunately, your request to join <strong>${companyName}</strong> was not approved by their administrator.</p>
+    <p>${t.rich("companyAdminApproval.rejectedIntro", { b: strongTag, companyName })}</p>
 
-    <p>This doesn't affect your ${platformName} account. You can still:</p>
+    <p>${t("companyAdminApproval.stillCan", { platformName })}</p>
     <ul>
-      <li>Browse the platform as an individual user</li>
-      <li>Request to join a different company</li>
-      <li>Register your own company</li>
+${(t.raw("companyAdminApproval.stillCanItems") as string[]).map((item) => `      <li>${item}</li>`).join("\n")}
     </ul>
 
-    <p>If you have questions, please contact our support team.</p>
+    <p>${t("companyAdminApproval.questions")}</p>
 
     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
 
     <p style="color: #999; font-size: 12px; margin: 0;">
-      This email was sent by ${platformName}.
+      ${t("footer", { platformName })}
     </p>
   </div>
 </body>

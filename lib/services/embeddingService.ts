@@ -17,6 +17,7 @@ import { embedText, vectorToLiteral } from "@/lib/ai/embeddings";
 import { getActiveProfile } from "@/lib/deployment";
 import { resolveCurrencyConfig } from "@/lib/format/currency";
 import { getTaxonomyProvider } from "@/lib/taxonomy";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 
 function formatBudgetLine(
   budgetMin: number | null | undefined,
@@ -102,11 +103,11 @@ export async function resolveCapabilityNamesByIds(
 
   const [fromRef, fromSeed] = await Promise.all([
     db
-      .select({ name: companyCapabilitiesRef.name })
+      .select({ name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh) })
       .from(companyCapabilitiesRef)
       .where(inArray(companyCapabilitiesRef.id, unique)),
     db
-      .select({ name: competencyTaxonomySeed.name })
+      .select({ name: localizedName(competencyTaxonomySeed.name, competencyTaxonomySeed.nameZh) })
       .from(competencyTaxonomySeed)
       .where(inArray(competencyTaxonomySeed.id, unique)),
   ]);
@@ -119,7 +120,7 @@ export async function fetchCompanyCapabilityLabels(
   companyId: string,
 ): Promise<string[]> {
   const rows = await db
-    .select({ name: companyCapabilitiesRef.name })
+    .select({ name: localizedName(companyCapabilitiesRef.name, companyCapabilitiesRef.nameZh) })
     .from(companyCapabilities)
     .innerJoin(
       companyCapabilitiesRef,

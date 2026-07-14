@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema/app";
 import { and, eq, gte, count, sql } from "drizzle-orm";
-import { getMonthStart } from "@/lib/matchingUsage";
+import { getUsageWindowStart } from "@/lib/matchingUsage";
 import type { PlatformAnalysisSettings } from "@/lib/platformAnalysisSettings";
 
 type CompanyForLimit = {
@@ -13,8 +13,11 @@ type CompanyForLimit = {
  * Counts how many AI analysis runs the company has used in the current calendar month.
  * Uses the events table where actionType='company_updated' and details->>'analysisType'='comprehensive'.
  */
-export async function getAnalysisRunsThisMonth(companyId: string): Promise<number> {
-  const monthStart = getMonthStart();
+export async function getAnalysisRunsThisMonth(
+  companyId: string,
+  usageResetAt?: Date | null,
+): Promise<number> {
+  const windowStart = getUsageWindowStart(usageResetAt);
   const result = await db
     .select({ count: count() })
     .from(events)
@@ -23,7 +26,7 @@ export async function getAnalysisRunsThisMonth(companyId: string): Promise<numbe
         eq(events.entityId, companyId),
         eq(events.actionType, "company_updated"),
         sql`${events.details}->>'analysisType' = 'comprehensive'`,
-        gte(events.createdAt, monthStart),
+        gte(events.createdAt, windowStart),
       ),
     );
   return result[0]?.count ?? 0;

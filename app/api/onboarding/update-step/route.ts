@@ -55,6 +55,7 @@ interface NewCompanyData {
   companiesHouseNumber?: string;
   websiteUrl?: string;
   address?: string;
+  postcode?: string;
   contactEmail?: string;
   contactPhone?: string;
 }
@@ -273,6 +274,7 @@ export async function POST(request: NextRequest) {
               companiesHouseNumber: createData.companiesHouseNumber || null,
               websiteUrl: createData.websiteUrl || null,
               address: createData.address || null,
+              postcode: createData.postcode || null,
             });
           } catch (err: unknown) {
             console.error("Company creation error:", err);
@@ -283,11 +285,14 @@ export async function POST(request: NextRequest) {
             return apiError("Failed to create company", 500);
           }
 
-          // Geocode new company if address present
-          if (isGeocodingEnabled() && createData.address?.trim()) {
+          // Geocode new company if address or postcode present
+          if (
+            isGeocodingEnabled() &&
+            (createData.address?.trim() || createData.postcode?.trim())
+          ) {
             const geoQuery = buildCompanyGeoQuery(
-              createData.address.trim(),
-              null,
+              createData.address?.trim() || null,
+              createData.postcode?.trim() || null,
             );
             if (geoQuery) {
               const coords = await geocodeLocation(geoQuery);

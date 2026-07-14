@@ -18,7 +18,7 @@ export const performanceBenchmarkSchema = z.object({
     overallScore: benchmarkDimension,
   }),
   companyInfo: z.object({
-    description: z.string().describe("Brief company description inferred from available data, or empty string if unknown"),
+    description: z.string().describe("Detailed, informative company overview (~120-200 words) covering core activities, key capabilities, products and services, areas of expertise, target sectors/markets, and key strengths/differentiators — based only on available data, in the same language as the source information. Empty string only if genuinely no information exists."),
     key_capabilities: z.string().describe("Key capabilities and services offered, or empty string if unknown"),
     certifications: z.string().describe("Known certifications and accreditations, or empty string if unknown"),
     past_projects: z.string().describe("Notable past projects, or empty string if unknown"),

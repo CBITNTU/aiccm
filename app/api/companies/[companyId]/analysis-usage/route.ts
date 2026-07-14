@@ -24,6 +24,7 @@ export async function GET(
       .select({
         verificationStatus: companies.verificationStatus,
         analysisRunsLimit: companies.analysisRunsLimit,
+        usageResetAt: companies.usageResetAt,
       })
       .from(companies)
       .where(eq(companies.id, companyId))
@@ -36,7 +37,7 @@ export async function GET(
     const company = companyResult[0];
     const [settings, used] = await Promise.all([
       getPlatformAnalysisSettings(),
-      getAnalysisRunsThisMonth(companyId),
+      getAnalysisRunsThisMonth(companyId, company.usageResetAt),
     ]);
 
     const limit = getEffectiveAnalysisLimit(company, settings);

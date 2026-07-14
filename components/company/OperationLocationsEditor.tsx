@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   getStatesOfCountry,
   getCitiesOfState,
   formatLocationLabel,
+  type ICountry,
 } from "@/lib/locationData";
 interface OperationLocationsEditorProps {
   value: string[];
@@ -34,6 +35,24 @@ export function OperationLocationsEditor({
   placeholder: placeholderProp,
 }: OperationLocationsEditorProps) {
   const t = useTranslations("CompanyPage");
+  const locale = useLocale();
+  // Localize COUNTRY names via the built-in Intl.DisplayNames (supports any locale, no
+  // extra dependency). The country-state-city library only ships English names, and it
+  // has no translations for states/cities, so those remain in English.
+  const regionNames = useMemo(() => {
+    try {
+      return new Intl.DisplayNames([locale], { type: "region" });
+    } catch {
+      return null;
+    }
+  }, [locale]);
+  const localizedCountryName = (c: ICountry): string => {
+    try {
+      return regionNames?.of(c.isoCode) ?? c.name;
+    } catch {
+      return c.name;
+    }
+  };
   const placeholder =
     placeholderProp ?? t("operationLocations.defaultPlaceholder");
   const [countryCode, setCountryCode] = useState<string>("");
@@ -58,8 +77,10 @@ export function OperationLocationsEditor({
 
   const addFromSelector = () => {
     if (!country) return;
+    // Save the localized country name (e.g. 中国) so the stored label matches the UI;
+    // state/city segments stay English (no multilingual source available for them).
     const label = formatLocationLabel(
-      country,
+      { ...country, name: localizedCountryName(country) },
       state ?? undefined,
       city ?? undefined,
     );
@@ -135,7 +156,7 @@ export function OperationLocationsEditor({
               <SelectContent>
                 {countries.map((c) => (
                   <SelectItem key={c.isoCode} value={c.isoCode}>
-                    {c.name}
+                    {localizedCountryName(c)}
                   </SelectItem>
                 ))}
               </SelectContent>

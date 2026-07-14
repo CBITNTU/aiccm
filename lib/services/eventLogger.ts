@@ -65,6 +65,7 @@ export type EventActionType =
   | "admin_edit_pending_company"
   | "admin_company_ai_regenerated"
   | "admin_capabilities_reset"
+  | "admin_usage_reset"
   // Queue/Processing
   | "queue_job_created"
   | "queue_job_completed"

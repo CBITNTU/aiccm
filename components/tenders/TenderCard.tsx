@@ -2,7 +2,8 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Banknote, ChevronDown } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { translateTaxonomyName } from "@/lib/taxonomyTranslations";
 import { TenderStatusBadge } from "@/components/tenders/TenderStatusBadge";
 import {
   Collapsible,
@@ -37,6 +38,7 @@ interface TenderCardProps {
 
 export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
   const t = useTranslations("TenderCard");
+  const locale = useLocale();
   const { currency } = useDeployment();
   const tenderCurrency = resolveCurrencyConfig(tender.currency, currency);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -154,9 +156,9 @@ export function TenderCard({ tender, taxonomies, onClick }: TenderCardProps) {
           </CollapsibleTrigger>
           <CollapsibleContent onClick={(e) => e.stopPropagation()}>
             <div className="flex flex-wrap gap-1 mt-2">
-              {taxonomies.map((t) => (
-                <Badge key={t.id} variant="outline" className="text-xs">
-                  {t.name}
+              {taxonomies.map((taxonomy) => (
+                <Badge key={taxonomy.id} variant="outline" className="text-xs">
+                  {translateTaxonomyName(taxonomy.name, locale)}
                 </Badge>
               ))}
             </div>

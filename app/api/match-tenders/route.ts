@@ -44,6 +44,7 @@ const companyMatchColumns = {
   digitalMaturity: companies.digitalMaturity,
   matchingRunsLimit: companies.matchingRunsLimit,
   verificationStatus: companies.verificationStatus,
+  usageResetAt: companies.usageResetAt,
 };
 
 type CompanyMatchRow = Pick<
@@ -60,6 +61,7 @@ type CompanyMatchRow = Pick<
   | "digitalMaturity"
   | "matchingRunsLimit"
   | "verificationStatus"
+  | "usageResetAt"
 >;
 
 type TenderData = {
@@ -416,7 +418,7 @@ export async function POST(request: NextRequest) {
     // Check monthly matching run limit
     const [matchingSettings, runsThisMonth] = await Promise.all([
       getPlatformMatchingSettings(),
-      getMatchingRunsThisMonth(companyData.id),
+      getMatchingRunsThisMonth(companyData.id, company.usageResetAt),
     ]);
     const effectiveLimit = getEffectiveMatchingLimit(company, matchingSettings);
     if (runsThisMonth >= effectiveLimit) {
@@ -446,9 +448,16 @@ export async function POST(request: NextRequest) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000);
       try {
+        // The worker route authorizes internal callers via the shared secret header.
+        // Without it, this server→server call is rejected (401) in production, leaving
+        // the batch stuck at 0% until the cron poller eventually picks it up.
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (process.env.CRON_SECRET) {
+          headers["x-queue-secret"] = process.env.CRON_SECRET;
+        }
         const res = await fetch(workerUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ batchSize: 10, maxDurationMs: 50000, selfTrigger: true, concurrency: 5 }),
           signal: controller.signal,
         });

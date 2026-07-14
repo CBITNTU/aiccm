@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { translateTaxonomyName } from "@/lib/taxonomyTranslations";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +47,7 @@ interface Taxonomy {
 
 export default function TenderDetailPage() {
   const t = useTranslations("TenderDetail");
+  const locale = useLocale();
   const { currency } = useDeployment();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -527,7 +529,7 @@ export default function TenderDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {taxonomies.map((taxonomy) => (
                   <Badge key={taxonomy.id} variant="secondary">
-                    {taxonomy.name}
+                    {translateTaxonomyName(taxonomy.name, locale)}
                   </Badge>
                 ))}
               </div>

@@ -127,10 +127,17 @@ export async function GET(request: NextRequest) {
         break;
       case "budget":
       case "budget_max":
-        orderByClause = sortFn(tenders.budgetMax);
+        // Undisclosed budgets (NULL) always sort to the bottom, regardless of direction.
+        orderByClause =
+          sortDirection === "asc"
+            ? sql`${tenders.budgetMax} asc nulls last`
+            : sql`${tenders.budgetMax} desc nulls last`;
         break;
       case "budget_min":
-        orderByClause = sortFn(tenders.budgetMin);
+        orderByClause =
+          sortDirection === "asc"
+            ? sql`${tenders.budgetMin} asc nulls last`
+            : sql`${tenders.budgetMin} desc nulls last`;
         break;
       case "publication_date":
         orderByClause = sortFn(tenders.publicationDate);

@@ -32,6 +32,7 @@ export function EditBasicInfoSheet({
   const [email, setEmail] = useState(companyData.contactEmail || "");
   const [phone, setPhone] = useState(companyData.contactPhone || "");
   const [address, setAddress] = useState(companyData.address || "");
+  const [postcode, setPostcode] = useState(companyData.postcode || "");
   const [website, setWebsite] = useState(companyData.websiteUrl || "");
 
   const t = useTranslations("CompanyPage");
@@ -46,6 +47,7 @@ export function EditBasicInfoSheet({
           contactEmail: email.trim(),
           contactPhone: phone.trim(),
           address: address.trim(),
+          postcode: postcode.trim(),
           websiteUrl: website.trim(),
         },
       });
@@ -113,6 +115,19 @@ export function EditBasicInfoSheet({
             onChange={(e) => setAddress(e.target.value)}
             placeholder={t("editInfo.placeholders.address")}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="postcode">{t("editInfo.postcode")}</Label>
+          <Input
+            id="postcode"
+            value={postcode}
+            onChange={(e) => setPostcode(e.target.value)}
+            placeholder={t("editInfo.placeholders.postcode")}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("editInfo.postcodeHint")}
+          </p>
         </div>
 
         <div className="space-y-2">

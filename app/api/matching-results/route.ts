@@ -9,7 +9,7 @@ import {
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { matchingResults, tenders } from "@/lib/db/schema/app";
-import { eq, and, or, ne, ilike, gte, lte, asc, desc, count, SQL } from "drizzle-orm";
+import { eq, and, or, ne, ilike, gte, lte, asc, desc, count, sql, SQL } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -127,7 +127,11 @@ export async function GET(request: NextRequest) {
         orderByClause = sortFn(tenders.deadline);
         break;
       case "budget":
-        orderByClause = sortFn(tenders.budgetMax);
+        // Undisclosed budgets (NULL) always sort to the bottom, regardless of direction.
+        orderByClause =
+          sortDirection === "asc"
+            ? sql`${tenders.budgetMax} asc nulls last`
+            : sql`${tenders.budgetMax} desc nulls last`;
         break;
       default:
         orderByClause = desc(matchingResults.overallScore);

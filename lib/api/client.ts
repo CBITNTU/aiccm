@@ -102,7 +102,12 @@ export const api = {
 
   // Company analysis
   analyzeCompany: (companyId: string) =>
-    apiCall<{ success: boolean; analysis: unknown }>("analyze-company", {
+    apiCall<{
+      success: boolean;
+      analysis: unknown;
+      suggestedMarketIds?: string[];
+      websiteFetchError?: string | null;
+    }>("analyze-company", {
       body: { companyId },
     }),
 
@@ -942,6 +947,12 @@ export const api = {
     apiCall<{ company: Record<string, unknown> }>(
       `admin/companies/${companyId}`,
       { method: "PUT", body: updates },
+    ),
+
+  adminResetCompanyUsage: (companyId: string) =>
+    apiCall<{ success: boolean; usageResetAt: string | null }>(
+      `admin/companies/${companyId}/reset-usage`,
+      { method: "POST", body: {} },
     ),
 
   adminImportCompany: (companyData: Record<string, unknown>) =>

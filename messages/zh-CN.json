@@ -247,6 +247,8 @@
         "websitePlaceholder": "https://yourcompany.com",
         "addressLabel": "地址",
         "addressPlaceholder": "公司地址",
+        "postcodeLabel": "邮政编码",
+        "postcodePlaceholder": "例如 200000",
         "contactEmailLabel": "联系邮箱",
         "contactEmailPlaceholderDefault": "contact@company.com",
         "contactEmailHelper": "留空则默认使用您的邮箱",
@@ -414,13 +416,17 @@
       "currentlyUsed": "本月已用：{used}/{limit}",
       "resets": "重置 {date}",
       "defaultPlaceholder": "默认",
-      "saveButton": "保存覆盖"
+      "saveButton": "保存覆盖",
+      "resetButton": "立即重置用量",
+      "resetHint": "清除本月已用的分析和匹配次数，使该公司可立即重新运行。不会更改上方的限额。"
     },
     "toasts": {
       "matchingLimitInvalid": "匹配限额须为非负数或留空以使用默认。",
       "analysisLimitInvalid": "分析限额须为非负数或留空以使用默认。",
       "updateSuccess": "已更新 {name} 的用量限制",
-      "updateFailed": "更新用量限制失败"
+      "updateFailed": "更新用量限制失败",
+      "usageResetSuccess": "已重置 {name} 的用量",
+      "usageResetFailed": "重置用量失败"
     }
   },
   "AdminApprovals": {
@@ -1482,9 +1488,11 @@
     "deepResearchAll": "深度分析（全部）",
     "deepResearchQueued": "深度分析已加入队列——分析完成后将显示结果。",
     "deepResearchError": "无法加入深度分析队列",
-    "deepAnalyzedCount": "已深度分析 {count} 条",
+    "deepAnalyzedCount": "已深度分析 {count} 个招标",
     "refreshBasicMatches": "刷新匹配",
     "deepResearchCached": "已分析——已从保存结果加载。",
+    "deepResearchDone": "该招标的深度分析已完成。",
+    "viewDetails": "查看详情",
     "reRunDeepResearchAll": "重新运行全部深度分析",
     "allTendersAlreadyAnalyzed": "所有招标均已有深度分析（跳过 {count} 条）。",
     "matchingSkippedCached": "已跳过 {count} 条已分析的招标。",
@@ -1517,7 +1525,7 @@
     "limitReachedResetsOn": "已达月度限额。重置于 {date}。",
     "runsRemaining": "本月剩余 {remaining} 次{runs}。",
     "limitReachedShort": "已达限额（{used}/{limit}）。重置日期：{date}。",
-    "usedThisMonth": "本月已用 {used}/{limit}",
+    "usedThisMonth": "本月运行 {used}/{limit} 次",
     "usedMatchingRuns": "本月已用 {used}/{limit} 次匹配",
     "cancelledInfo": "已取消 - 正在运行的任务将在后台完成",
     "stuckInfo": "上次匹配已卡住。点击\"运行分析\"重新开始。",
@@ -1879,7 +1887,7 @@
     "deselectAll": "取消全选"
   },
   "Directory": {
-    "title": "公司目录",
+    "title": "企业名录",
     "subtitle": "发现公司及其能力",
     "loading": "正在加载公司...",
     "noResults": {
@@ -2194,13 +2202,16 @@
       "placeholders": {
         "email": "contact@company.com",
         "phone": "+44 ...",
-        "address": "地址或邮编",
+        "address": "街道地址",
+        "postcode": "例如 200000",
         "website": "https://...",
         "companyName": "公司名称"
       },
       "contactEmail": "联系邮箱",
       "phoneNumber": "电话号码",
       "address": "地址/位置",
+      "postcode": "邮政编码",
+      "postcodeHint": "用于评估招标与您的距离，可提升匹配准确度。",
       "website": "网站",
       "nameReviewRequired": "公司名称变更需要管理员审核",
       "companyName": "公司名称",

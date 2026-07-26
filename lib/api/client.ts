@@ -735,11 +735,14 @@ export const api = {
     sortDirection?: string;
     page?: number;
     pageSize?: number;
+    /** "ruled_out" returns the deep analyses that scored 0%; omit for matches. */
+    view?: string;
   }) =>
     apiCall<TenderMatchesResponse>("tenders/matches", {
       method: "GET",
       params: {
         companyId: params.companyId,
+        ...(params.view === "ruled_out" && { view: params.view }),
         ...(params.tenderStatus && { tenderStatus: params.tenderStatus }),
         ...(params.keyword && { keyword: params.keyword }),
         ...(params.minScore != null &&

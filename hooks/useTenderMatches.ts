@@ -16,6 +16,8 @@ interface TenderMatchesParams {
   sortDirection?: string;
   page?: number;
   pageSize?: number;
+  /** "ruled_out" fetches deep analyses that scored 0%; omit for matches. */
+  view?: string;
 }
 
 export function useTenderMatches(params: TenderMatchesParams) {

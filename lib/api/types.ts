@@ -369,6 +369,12 @@ export interface TenderMatchesResponse {
   matchedCount: number;
   /** Total deep-researched tenders for this company+status, regardless of score/filters. */
   deepResearchedCount: number;
+  /**
+   * Deep-researched tenders that scored 0% (or NULL) for this company+status —
+   * the set the default view hides. Unfiltered, so it stays stable as the user
+   * narrows the matched list. Returned in both views.
+   */
+  ruledOutCount: number;
   page: number;
   pageSize: number;
 }

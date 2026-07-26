@@ -1420,7 +1420,8 @@
     "matchingFor": "匹配对象：",
     "noCompanySelected": "未选择公司。请从侧边栏选择一个组织。",
     "searchMatchesPlaceholder": "按标题、买方或地点搜索匹配结果...",
-    "searchAllPlaceholder": "按标题、买方、地点或描述搜索..."
+    "searchAllPlaceholder": "按标题、买方、地点或描述搜索...",
+    "searchRuledOutPlaceholder": "按标题、买方或地点搜索已排除的招标..."
   },
   "TenderDetail": {
     "loading": "加载招标详情...",
@@ -1537,7 +1538,16 @@
     "deleteError": "删除匹配结果失败",
     "bookmarkAdded": "已添加到已保存招标",
     "bookmarkRemoved": "已从已保存招标中移除",
-    "bookmarkError": "更新书签失败"
+    "bookmarkError": "更新书签失败",
+    "viewSwitchLabel": "匹配结果视图",
+    "viewMatches": "匹配结果",
+    "viewRuledOut": "已排除",
+    "ruledOutUnit": "条已排除",
+    "ruledOutBanner": "这些招标已完成深度分析，但与您的企业档案未达成匹配。点击查看分析理由以及可改进之处。",
+    "noRuledOutTitle": "暂无已排除的招标",
+    "noRuledOutDescription": "该公司已深度分析的招标得分均高于 0%。",
+    "viewRuledOutCta": "查看 {count} 条已排除",
+    "backToMatches": "返回匹配结果"
   },
   "SavedTenders": {
     "title": "已保存招标",
@@ -1581,7 +1591,9 @@
     "moreReasons": "（还有 +{count} 条）",
     "notSpecified": "未指定",
     "details": "详情",
-    "pendingAccountRestricted": "待审核账户无法执行此操作"
+    "pendingAccountRestricted": "待审核账户无法执行此操作",
+    "ruledOutBadge": "未匹配",
+    "ruledOutHint": "深度分析评分为 0% — 查看详情了解原因"
   },
   "TenderStatusBadge": {
     "open": "开放",

@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import type { CompanyRecord } from "@/lib/api/types";
 import { useUpdateCompany } from "@/hooks/useCompanyMutations";
+import type { CompanyUpdateResult } from "@/hooks/useCompanyPageData";
 
 interface EditOverviewSheetProps {
   open: boolean;
@@ -15,7 +16,7 @@ interface EditOverviewSheetProps {
   companyData: CompanyRecord;
   isVerified: boolean;
   isEditLocked: boolean;
-  onSaved: (updated: CompanyRecord) => void;
+  onSaved: (result: CompanyUpdateResult) => void;
 }
 
 export function EditOverviewSheet({
@@ -43,7 +44,7 @@ export function EditOverviewSheet({
           certifications: certifications,
         },
       });
-      onSaved(result.company);
+      onSaved(result);
       toast.success(
         isVerified ? t("editOverview.successDraft") : t("editOverview.success"),
       );

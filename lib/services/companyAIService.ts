@@ -19,6 +19,50 @@ import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 const LOCAL_TAXONOMY_MIN_SCORE = 1;
 const LOCAL_TAXONOMY_MAX_L1 = 5;
 
+/**
+ * Free-text company fields the keyword scorers read. During an interactive
+ * analysis these columns are deliberately *not* written yet — the AI's proposed
+ * text is waiting in the review modal — so callers can pass the proposed values
+ * as an override to score against fresh text instead of the stale row.
+ */
+export type CompanyTextOverride = Partial<
+  Record<
+    | "companyName"
+    | "description"
+    | "keyCapabilities"
+    | "certifications"
+    | "equipment"
+    | "pastProjects",
+    string | null
+  >
+>;
+
+export interface TaxonomyGenerationOptions {
+  /** Proposed text to score against, overriding the stored columns when non-empty. */
+  textOverride?: CompanyTextOverride;
+  /**
+   * When true (default) an empty junction table is populated as a first-time
+   * pickup. Interactive callers pass false and surface the ids for review
+   * instead, so the user accepts them explicitly.
+   */
+  applyWhenEmpty?: boolean;
+}
+
+/** Merge the override over the stored row, ignoring blank override values. */
+function mergeCompanyText<T extends CompanyTextOverride>(
+  stored: T,
+  override: CompanyTextOverride | undefined,
+): T {
+  if (!override) return stored;
+  const merged = { ...stored };
+  for (const [key, value] of Object.entries(override)) {
+    if (typeof value === "string" && value.trim()) {
+      (merged as Record<string, unknown>)[key] = value;
+    }
+  }
+  return merged;
+}
+
 function toSearchWords(text: string): string[] {
   if (!text || typeof text !== "string") return [];
   return text
@@ -48,7 +92,10 @@ function scoreCapabilityMatch(
   return score;
 }
 
-async function assignCapabilitiesLocally(companyId: string): Promise<string[]> {
+async function assignCapabilitiesLocally(
+  companyId: string,
+  textOverride?: CompanyTextOverride,
+): Promise<string[]> {
   const companyResult = await db
     .select({
       companyName: companies.companyName,
@@ -62,8 +109,9 @@ async function assignCapabilitiesLocally(companyId: string): Promise<string[]> {
     .where(eq(companies.id, companyId))
     .limit(1);
 
-  const company = companyResult[0];
-  if (!company) throw new Error(`Failed to fetch company: Company not found`);
+  const stored = companyResult[0];
+  if (!stored) throw new Error(`Failed to fetch company: Company not found`);
+  const company = mergeCompanyText(stored, textOverride);
 
   const parts = [
     company.companyName,
@@ -204,31 +252,46 @@ Summarize.`;
 export async function generateCompanyCapabilityTaxonomy(
   companyId: string,
   _fullRegeneration: boolean = false,
+  options: TaxonomyGenerationOptions = {},
 ): Promise<string[]> {
+  const { textOverride, applyWhenEmpty = true } = options;
   console.log("[CompanyAI:taxonomy] Running local keyword taxonomy for company", companyId);
-  const uniqueIds = await assignCapabilitiesLocally(companyId);
+  const uniqueIds = await assignCapabilitiesLocally(companyId, textOverride);
   console.log("[CompanyAI:taxonomy] Matched capability IDs:", uniqueIds);
 
-  // aiCapabilityTaxonomy is an AI-only field — always safe to update.
+  // aiCapabilityTaxonomy is an AI-only field — always safe to update. Mirror the
+  // same ids into aiAnalysis.aiSuggestedCapabilities so a dismissed review modal
+  // can be recovered from, matching how market suggestions are stored.
+  const [existingRow] = await db
+    .select({ aiAnalysis: companies.aiAnalysis })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  const existingAnalysis = (existingRow?.aiAnalysis as Record<string, unknown>) ?? {};
+
   await db
     .update(companies)
     .set({
       aiCapabilityTaxonomy: uniqueIds,
+      aiAnalysis: { ...existingAnalysis, aiSuggestedCapabilities: uniqueIds },
       taxonomyGeneratedAt: new Date(),
     })
     .where(eq(companies.id, companyId));
 
   // The company_capabilities junction table is a REVIEWABLE_RELATION: once a
   // company has selections (human-verified or manually edited), AI analysis must
-  // not overwrite them. But when it is empty, populate it as a first-time pickup
-  // — regardless of verification status.
+  // not overwrite them. When it is empty we populate it as a first-time pickup —
+  // but only for non-interactive callers (job queue). Interactive callers pass
+  // applyWhenEmpty: false and surface these ids in the review modal instead.
   const [existing] = await db
     .select({ capabilityId: companyCapabilities.capabilityId })
     .from(companyCapabilities)
     .where(eq(companyCapabilities.companyId, companyId))
     .limit(1);
 
-  if (!existing && uniqueIds.length > 0) {
+  if (!applyWhenEmpty) {
+    console.log("[CompanyAI:taxonomy] Suggestions returned for review — junction table untouched");
+  } else if (!existing && uniqueIds.length > 0) {
     await db.insert(companyCapabilities).values(
       uniqueIds.map((capabilityId) => ({ companyId, capabilityId })),
     );
@@ -248,7 +311,11 @@ const LOCAL_MARKETS_MAX = 5;
  * Only considers L1 parent markets to keep the candidate set manageable.
  * Stores suggestions in aiAnalysis.aiSuggestedMarkets (never auto-applies).
  */
-export async function generateCompanyMarketSuggestions(companyId: string): Promise<string[]> {
+export async function generateCompanyMarketSuggestions(
+  companyId: string,
+  options: TaxonomyGenerationOptions = {},
+): Promise<string[]> {
+  const { textOverride, applyWhenEmpty = true } = options;
   const companyResult = await db
     .select({
       companyName: companies.companyName,
@@ -263,8 +330,9 @@ export async function generateCompanyMarketSuggestions(companyId: string): Promi
     .where(eq(companies.id, companyId))
     .limit(1);
 
-  const company = companyResult[0];
-  if (!company) throw new Error("Company not found");
+  const stored = companyResult[0];
+  if (!stored) throw new Error("Company not found");
+  const company = mergeCompanyText(stored, textOverride);
 
   const parts = [
     company.companyName,
@@ -311,13 +379,16 @@ export async function generateCompanyMarketSuggestions(companyId: string): Promi
   // company_markets is a REVIEWABLE_RELATION: only populate it as a first-time
   // pickup when the company has no markets yet. Never overwrite existing
   // selections (human-verified or manually edited), regardless of verification.
+  // Interactive callers pass applyWhenEmpty: false and review the ids instead.
   const [existingMarket] = await db
     .select({ marketId: companyMarkets.marketId })
     .from(companyMarkets)
     .where(eq(companyMarkets.companyId, companyId))
     .limit(1);
 
-  if (!existingMarket && suggestedIds.length > 0) {
+  if (!applyWhenEmpty) {
+    console.log("[CompanyAI:markets] Suggestions returned for review — junction table untouched");
+  } else if (!existingMarket && suggestedIds.length > 0) {
     await db.insert(companyMarkets).values(
       suggestedIds.map((marketId) => ({ companyId, marketId })),
     );

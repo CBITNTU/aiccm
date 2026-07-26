@@ -16,7 +16,11 @@ import {
 import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 import { eq, desc, and, ne, inArray } from "drizzle-orm";
-import type { PendingChanges } from "@/lib/companyFieldCategories";
+import {
+  withResolvedScalarCurrents,
+  type PendingChanges,
+  type ReviewableScalarField,
+} from "@/lib/companyFieldCategories";
 
 export async function GET(
   request: NextRequest,
@@ -128,7 +132,14 @@ export async function GET(
     // For change_review requests, resolve capability/market/standard names in the snapshot
     let resolvedPendingChanges = null;
     if (verificationRequest.requestType === "change_review" && verificationRequest.pendingChangesSnapshot) {
-      const snapshot = verificationRequest.pendingChangesSnapshot as PendingChanges;
+      // Re-derive the `current` side of scalar drafts from the approved company
+      // snapshot — requests submitted before the fix stored `current: null`
+      const snapshot = withResolvedScalarCurrents(
+        verificationRequest.pendingChangesSnapshot as PendingChanges,
+        (verificationRequest.companySnapshot ?? {}) as Partial<
+          Record<ReviewableScalarField, string | null>
+        >,
+      );
       const resolved: Record<string, unknown> = { ...snapshot };
 
       // Resolve capability names

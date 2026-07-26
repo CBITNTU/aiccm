@@ -9,7 +9,7 @@ import { DraftBlock } from "@/components/company/DraftChangeIndicator";
 import { useCompanyProjects } from "@/hooks/useCompanyProjects";
 import type { PastProject } from "@/hooks/useCompanyProjects";
 import type { CompanyRecord } from "@/lib/api/types";
-import type { SectionPendingStatus } from "@/hooks/useCompanyPageData";
+import type { CompanyUpdateResult, SectionPendingStatus } from "@/hooks/useCompanyPageData";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import { useTranslations } from "next-intl";
 import { useDeployment } from "@/lib/deployment/client";
@@ -33,8 +33,7 @@ interface ExperienceTabProps {
   isEditLocked: boolean;
   sectionPendingStatus: SectionPendingStatus;
   pendingChanges?: PendingChanges | null;
-  onSaved: (updated: CompanyRecord) => void;
-  onDataRefresh: () => void;
+  onSaved: (result: CompanyUpdateResult) => void;
 }
 
 export function ExperienceTab({
@@ -46,7 +45,6 @@ export function ExperienceTab({
   sectionPendingStatus,
   pendingChanges,
   onSaved,
-  onDataRefresh,
 }: ExperienceTabProps) {
   const t = useTranslations("CompanyPage");
   const { brand } = useDeployment();
@@ -209,7 +207,6 @@ export function ExperienceTab({
         isEditLocked={isEditLocked}
         pendingChanges={pendingChanges}
         onSaved={onSaved}
-        onDataRefresh={onDataRefresh}
       />
     </>
   );

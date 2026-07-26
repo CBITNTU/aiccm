@@ -1420,7 +1420,8 @@
     "matchingFor": "Matching for:",
     "noCompanySelected": "No company selected. Select an organization from the sidebar.",
     "searchMatchesPlaceholder": "Search matches by title, buyer, or location...",
-    "searchAllPlaceholder": "Search by title, buyer, location, or description..."
+    "searchAllPlaceholder": "Search by title, buyer, location, or description...",
+    "searchRuledOutPlaceholder": "Search ruled out by title, buyer, or location..."
   },
   "TenderDetail": {
     "loading": "Loading tender details...",
@@ -1537,7 +1538,16 @@
     "deleteError": "Failed to delete match result",
     "bookmarkAdded": "Added to saved tenders",
     "bookmarkRemoved": "Removed from saved tenders",
-    "bookmarkError": "Failed to update bookmark"
+    "bookmarkError": "Failed to update bookmark",
+    "viewSwitchLabel": "Matching results view",
+    "viewMatches": "Matches",
+    "viewRuledOut": "Ruled out",
+    "ruledOutUnit": "ruled out",
+    "ruledOutBanner": "These tenders were deep-analysed but didn't score a match against your profile. Open one to see the reasoning and what to improve.",
+    "noRuledOutTitle": "Nothing ruled out",
+    "noRuledOutDescription": "Every tender deep-analysed for this company scored above 0%.",
+    "viewRuledOutCta": "View {count} ruled out",
+    "backToMatches": "Back to matches"
   },
   "SavedTenders": {
     "title": "Saved Tenders",
@@ -1581,7 +1591,9 @@
     "moreReasons": "(+{count} more)",
     "notSpecified": "Not specified",
     "details": "Details",
-    "pendingAccountRestricted": "Action restricted for pending accounts"
+    "pendingAccountRestricted": "Action restricted for pending accounts",
+    "ruledOutBadge": "No match",
+    "ruledOutHint": "Deep analysis scored this 0% — open the details for the reasoning"
   },
   "TenderStatusBadge": {
     "open": "Open",
@@ -2478,7 +2490,9 @@
       "accept": "Accept {count, plural, one {# change} other {# changes}}",
       "acceptedToast": "AI-suggested changes applied.",
       "acceptedForReviewToast": "Changes submitted for review.",
-      "acceptError": "Failed to apply changes."
+      "acceptError": "Failed to apply changes.",
+      "relationHint": "These will be added to your existing selections. Nothing is removed.",
+      "relationLimitHint": "Only the first {limit} will be kept — your plan allows {limit} competencies."
     },
     "pendingChangesBar": {
       "changesUnderReview": "Changes under review",

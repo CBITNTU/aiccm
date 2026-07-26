@@ -67,6 +67,18 @@ export default function TenderDetailPage() {
   const [deepResearching, setDeepResearching] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Step back through history so the user lands on the exact tab, sub-view and
+  // page of the list they came from. A hard push to /tenders would silently
+  // reset all of it. Falls back to the list when this page was opened cold
+  // (direct link, new tab) and there is nothing to go back to.
+  const goBackToTenders = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/tenders");
+    }
+  };
+
   const { data: matchingConfig } = useQuery({
     queryKey: ["matchingConfig"],
     queryFn: () => api.getMatchingConfig(),
@@ -316,7 +328,7 @@ export default function TenderDetailPage() {
       <div className="mb-6">
         <Button
           variant="ghost"
-          onClick={() => router.push("/tenders")}
+          onClick={goBackToTenders}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />

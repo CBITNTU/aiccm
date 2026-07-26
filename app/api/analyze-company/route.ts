@@ -8,7 +8,7 @@ import {
   generateCompanySummary,
   generateCompanyMarketSuggestions,
 } from "@/lib/services/companyAIService";
-import type { DeepCompanyAnalysis } from "@/lib/api/types";
+import type { DeepCompanyAnalysis, RelationSuggestion } from "@/lib/api/types";
 import { z } from "zod";
 import {
   requireAuth,
@@ -17,9 +17,16 @@ import {
   isCompanyMember,
 } from "@/lib/api/validation";
 import { db } from "@/lib/db";
-import { companies } from "@/lib/db/schema/app";
+import {
+  companies,
+  companyCapabilities,
+  companyCapabilitiesRef,
+  companyMarkets,
+  markets,
+} from "@/lib/db/schema/app";
 import { companyColumnsNoEmbedding } from "@/lib/db/columns";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
+import { localizedName } from "@/lib/taxonomy/localizedName";
 import {
   companyHasSparseData,
   enrichCompanyData,
@@ -32,6 +39,65 @@ import { getAnalysisRunsThisMonth, getEffectiveAnalysisLimit, getNextMonthStart 
 const analyzeCompanyInputSchema = z.object({
   companyId: z.string().uuid(),
 });
+
+/** Placeholder for benchmark dimensions this route does not actually assess. */
+const NOT_ASSESSED = "Not assessed yet";
+
+/**
+ * Resolve keyword-scored capability/market suggestions into named additions,
+ * excluding anything the company already has. Removals are never proposed: AI
+ * analysis must not suggest dropping a human selection.
+ */
+async function buildRelationSuggestions(
+  companyId: string,
+  suggestedCapabilityIds: string[],
+  suggestedMarketIds: string[],
+): Promise<{ capabilities: RelationSuggestion; markets: RelationSuggestion }> {
+  const [currentCaps, currentMkts] = await Promise.all([
+    db
+      .select({ id: companyCapabilities.capabilityId })
+      .from(companyCapabilities)
+      .where(eq(companyCapabilities.companyId, companyId)),
+    db
+      .select({ id: companyMarkets.marketId })
+      .from(companyMarkets)
+      .where(eq(companyMarkets.companyId, companyId)),
+  ]);
+
+  const currentCapIds = currentCaps.map((c) => c.id);
+  const currentMktIds = currentMkts.map((m) => m.id);
+
+  const newCapIds = suggestedCapabilityIds.filter(
+    (id) => !currentCapIds.includes(id),
+  );
+  const newMktIds = suggestedMarketIds.filter((id) => !currentMktIds.includes(id));
+
+  const [capRows, mktRows] = await Promise.all([
+    newCapIds.length
+      ? db
+          .select({
+            id: companyCapabilitiesRef.id,
+            name: localizedName(
+              companyCapabilitiesRef.name,
+              companyCapabilitiesRef.nameZh,
+            ),
+          })
+          .from(companyCapabilitiesRef)
+          .where(inArray(companyCapabilitiesRef.id, newCapIds))
+      : Promise.resolve([]),
+    newMktIds.length
+      ? db
+          .select({ id: markets.id, name: localizedName(markets.name, markets.nameZh) })
+          .from(markets)
+          .where(inArray(markets.id, newMktIds))
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    capabilities: { currentIds: currentCapIds, additions: capRows },
+    markets: { currentIds: currentMktIds, additions: mktRows },
+  };
+}
 
 function buildPerformanceBenchmarkPrompt(
   company: {
@@ -248,9 +314,9 @@ export async function POST(request: NextRequest) {
         overallScore: benchmark.overallScore.score,
       },
       coreCompetencies: [],
-      digitalMaturity: "Not assessed yet",
-      safetyRating: "Not assessed yet",
-      marketPosition: "Not assessed yet",
+      digitalMaturity: NOT_ASSESSED,
+      safetyRating: NOT_ASSESSED,
+      marketPosition: NOT_ASSESSED,
       businessInsights: [],
       competitivePositioning: "Developing",
       swotSummary: {
@@ -290,13 +356,16 @@ export async function POST(request: NextRequest) {
       updateData.postcode = companyInfo.postcode as string;
     }
 
-    if (analysis.digitalMaturity) {
+    // These three are seeded with the NOT_ASSESSED placeholder above, which is
+    // truthy — writing it through would clobber any real stored value on every
+    // run. Only persist genuinely assessed values.
+    if (analysis.digitalMaturity && analysis.digitalMaturity !== NOT_ASSESSED) {
       updateData.digitalMaturity = analysis.digitalMaturity;
     }
-    if (analysis.safetyRating) {
+    if (analysis.safetyRating && analysis.safetyRating !== NOT_ASSESSED) {
       updateData.safetyRating = analysis.safetyRating;
     }
-    if (analysis.marketPosition) {
+    if (analysis.marketPosition && analysis.marketPosition !== NOT_ASSESSED) {
       updateData.marketPosition = analysis.marketPosition;
     }
 
@@ -322,11 +391,32 @@ export async function POST(request: NextRequest) {
       console.error("[CompanyAI:analyze] DB update FAILED:", updateError);
     }
 
-    // Generate capabilities from the static list
+    // The reviewable text columns are intentionally still unwritten at this point
+    // (they are awaiting user acceptance in the review modal), so the keyword
+    // scorers below would otherwise match against a nearly empty company record.
+    // Feed them the AI's proposed text, falling back to the stored value.
+    const textOverride = {
+      description: (companyInfo.description as string) || company.description,
+      keyCapabilities:
+        (companyInfo.key_capabilities as string) || company.keyCapabilities,
+      certifications:
+        (companyInfo.certifications as string) || company.certifications,
+      equipment: (companyInfo.equipment as string) || company.equipment,
+      pastProjects: (companyInfo.past_projects as string) || company.pastProjects,
+    };
+
+    // Generate capabilities from the static list. applyWhenEmpty: false — this is
+    // the interactive path, so the ids are surfaced for review instead of being
+    // written straight into the junction table.
+    let suggestedCapabilityIds: string[] = [];
     try {
       console.log("[CompanyAI:analyze] Starting capability taxonomy generation...");
-      const taxonomyResult = await generateCompanyCapabilityTaxonomy(companyId, false);
-      console.log("[CompanyAI:analyze] Capability taxonomy result —", taxonomyResult);
+      suggestedCapabilityIds = await generateCompanyCapabilityTaxonomy(
+        companyId,
+        false,
+        { textOverride, applyWhenEmpty: false },
+      );
+      console.log("[CompanyAI:analyze] Capability taxonomy result —", suggestedCapabilityIds);
     } catch (capabilityError) {
       console.error("[CompanyAI:analyze] Capability taxonomy FAILED:", capabilityError);
     }
@@ -335,11 +425,22 @@ export async function POST(request: NextRequest) {
     let suggestedMarketIds: string[] = [];
     try {
       console.log("[CompanyAI:analyze] Starting market suggestions...");
-      suggestedMarketIds = await generateCompanyMarketSuggestions(companyId);
+      suggestedMarketIds = await generateCompanyMarketSuggestions(companyId, {
+        textOverride,
+        applyWhenEmpty: false,
+      });
       console.log("[CompanyAI:analyze] Market suggestions —", suggestedMarketIds);
     } catch (marketError) {
       console.error("[CompanyAI:analyze] Market suggestions FAILED:", marketError);
     }
+
+    // Resolve the suggestions against the company's current selections so the
+    // review modal can render named badges without another round-trip.
+    const relationSuggestions = await buildRelationSuggestions(
+      companyId,
+      suggestedCapabilityIds,
+      suggestedMarketIds,
+    );
 
     // Generate AI summary for matching and UI display
     try {
@@ -377,6 +478,7 @@ export async function POST(request: NextRequest) {
       success: true,
       analysis,
       suggestedMarketIds,
+      relationSuggestions,
       websiteFetchError,
     });
   } catch (error) {

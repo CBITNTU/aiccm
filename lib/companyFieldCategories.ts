@@ -94,3 +94,29 @@ export interface PendingChanges {
   standards?: PendingChangesRelationField;
   lastSavedAt: string;
 }
+
+/**
+ * Recompute the `current` side of scalar drafts from an authoritative source
+ * (the live company row, or a companySnapshot on a verification request).
+ *
+ * Reviewable columns on a verified company always hold the last *approved*
+ * value — proposed values only land on approval — so the source is the source
+ * of truth for "current". Used on read paths so drafts persisted with a stale
+ * or null `current` still render correctly. Relation drafts are untouched.
+ */
+export function withResolvedScalarCurrents(
+  pendingChanges: PendingChanges,
+  source: Partial<Record<ReviewableScalarField, string | null>>,
+): PendingChanges {
+  if (!pendingChanges.scalarFields) return pendingChanges;
+
+  const scalarFields: Record<string, PendingChangesScalarField> = {};
+  for (const [field, change] of Object.entries(pendingChanges.scalarFields)) {
+    scalarFields[field] = {
+      ...change,
+      current: source[field as ReviewableScalarField] ?? null,
+    };
+  }
+
+  return { ...pendingChanges, scalarFields };
+}

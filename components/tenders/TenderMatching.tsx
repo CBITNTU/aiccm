@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TenderMatchCard } from "./TenderMatchCard";
@@ -52,12 +53,24 @@ const DEFAULT_FILTERS: MatchingFiltersState = {
   tenderStatus: "active",
 };
 
+/** Which slice of this company's matching results is on screen. */
+export type MatchesView = "matched" | "ruledOut";
+
 interface TenderMatchingProps {
   companyId?: string;
   companyData?: CompanyRecord;
   filters?: MatchingFiltersState;
   onCreateProject?: (tenderId: string) => void;
   readOnly?: boolean;
+  /** Defaults to the scored matches; "ruledOut" shows the 0% deep analyses. */
+  view?: MatchesView;
+  onViewChange?: (view: MatchesView) => void;
+  /**
+   * Reports the ruled-out total upward so the view switch — which renders above
+   * the search bar, outside this component — can badge it. Must be stable
+   * (useCallback) at the call site.
+   */
+  onRuledOutCountChange?: (count: number) => void;
 }
 
 export function TenderMatching({
@@ -66,13 +79,35 @@ export function TenderMatching({
   filters: filtersProp,
   onCreateProject: _onCreateProject,
   readOnly = false,
+  view = "matched",
+  onViewChange,
+  onRuledOutCountChange,
 }: TenderMatchingProps) {
   const t = useTranslations("TenderMatching");
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const filters = filtersProp ?? DEFAULT_FILTERS;
+  const rawFilters = filtersProp ?? DEFAULT_FILTERS;
+  const isRuledOut = view === "ruledOut";
+
+  // Every ruled-out row scores 0, so the score-based controls have no meaning
+  // there. Neutralise them on the way to the query rather than teaching the
+  // server about the shared filter bar: the server only needs the `view` flag.
+  const filters = useMemo<MatchingFiltersState>(() => {
+    if (!isRuledOut) return rawFilters;
+    return {
+      ...rawFilters,
+      minScore: 0,
+      maxScore: 100,
+      quickFilter:
+        rawFilters.quickFilter === "high_score" ? null : rawFilters.quickFilter,
+      // Sorting by an all-zero column is arbitrary; most-recently-analysed is
+      // the useful default.
+      sortBy:
+        rawFilters.sortBy === "overall_score" ? "created_at" : rawFilters.sortBy,
+    };
+  }, [isRuledOut, rawFilters]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
@@ -81,6 +116,7 @@ export function TenderMatching({
   const filtersKey = useMemo(
     () =>
       JSON.stringify([
+        view,
         filters.keyword,
         filters.sortBy,
         filters.sortDirection,
@@ -91,6 +127,7 @@ export function TenderMatching({
         filters.tenderStatus,
       ]),
     [
+      view,
       filters.keyword,
       filters.sortBy,
       filters.sortDirection,
@@ -124,11 +161,17 @@ export function TenderMatching({
     sortDirection: filters.sortDirection,
     page: currentPage,
     pageSize: itemsPerPage,
+    view: isRuledOut ? "ruled_out" : undefined,
   });
 
   const results = useMemo(() => matchesData?.results ?? [], [matchesData]);
   const matchedCount = matchesData?.matchedCount ?? 0;
   const deepAnalyzedCount = matchesData?.deepResearchedCount ?? 0;
+  const ruledOutCount = matchesData?.ruledOutCount ?? 0;
+
+  useEffect(() => {
+    if (matchesData) onRuledOutCountChange?.(matchesData.ruledOutCount);
+  }, [matchesData, onRuledOutCountChange]);
 
   // Server-driven pagination — counts/pages reflect the matched set the server
   // returns, not a client slice of the full tender universe.
@@ -734,6 +777,15 @@ export function TenderMatching({
 
   return (
     <div className="space-y-4">
+      {/* Ruled-out explainer — these results are only reachable deliberately, so
+          say up front why they scored 0 and what to do about it. */}
+      {isRuledOut && (
+        <div className="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>{t("ruledOutBanner")}</span>
+        </div>
+      )}
+
       {/* Results summary */}
       {!loading && matchedCount > 0 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -745,8 +797,11 @@ export function TenderMatching({
             totalPages={totalPages}
             loading={loading}
             onRefresh={refreshAll}
-            unit={t("matchesUnit")}
+            unit={isRuledOut ? t("ruledOutUnit") : t("matchesUnit")}
           />
+          {/* Running/re-running analysis belongs to the matched view — the
+              ruled-out list is a read-only record of analyses already spent. */}
+          {!isRuledOut && (
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             {deepAnalyzedCount > 0 && (
               <span className="text-xs text-muted-foreground">
@@ -811,6 +866,7 @@ export function TenderMatching({
               </Button>
             ) : null}
           </div>
+          )}
         </div>
       )}
 
@@ -857,6 +913,23 @@ export function TenderMatching({
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">{t("loading")}</span>
         </div>
+      ) : matchedCount === 0 && isRuledOut ? (
+        <div className="text-center py-16">
+          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">
+            {filtersActive ? t("noResultsTitle") : t("noRuledOutTitle")}
+          </h3>
+          <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+            {filtersActive
+              ? t("noResultsFiltered")
+              : t("noRuledOutDescription")}
+          </p>
+          {onViewChange && (
+            <Button variant="outline" onClick={() => onViewChange("matched")}>
+              {t("backToMatches")}
+            </Button>
+          )}
+        </div>
       ) : matchedCount === 0 ? (
         <div className="text-center py-16">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -874,6 +947,19 @@ export function TenderMatching({
             <p className="text-xs text-muted-foreground mb-4">
               {t("deepAnalyzedCount", { count: deepAnalyzedCount })}
             </p>
+          )}
+          {/* Primary discovery path: a user whose whole run came back empty is
+              exactly who needs to know the ruled-out list exists. */}
+          {ruledOutCount > 0 && !filtersActive && onViewChange && (
+            <div className="mb-4">
+              <Button
+                variant="outline"
+                onClick={() => onViewChange("ruledOut")}
+              >
+                <EyeOff className="w-4 h-4 mr-2" />
+                {t("viewRuledOutCta", { count: ruledOutCount })}
+              </Button>
+            </div>
           )}
           {!filtersActive && !readOnly && (
             <div className="flex flex-col items-center gap-2">
@@ -939,6 +1025,7 @@ export function TenderMatching({
                     matchReasons={m.matchReasons}
                     isBookmarked={m.isBookmarked}
                     isApplied={m.isApplied}
+                    ruledOut={isRuledOut}
                     onViewDetails={viewDetails}
                     onBookmark={() =>
                       toggleBookmark(m.resultId, m.isBookmarked)

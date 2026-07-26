@@ -43,6 +43,11 @@ interface TenderMatchCardProps {
   matchReasons?: string[] | null;
   isBookmarked?: boolean;
   isApplied?: boolean;
+  /**
+   * Deep analysis that came back at 0%. Swaps the all-zero score breakdown for a
+   * pointer to the reasoning on the details page.
+   */
+  ruledOut?: boolean;
 
   // Handlers
   onViewDetails: () => void;
@@ -73,6 +78,7 @@ export function TenderMatchCard({
   matchReasons,
   isBookmarked,
   isApplied,
+  ruledOut = false,
   onViewDetails,
   onBookmark,
   onDelete,
@@ -138,6 +144,11 @@ export function TenderMatchCard({
                 {t("basicMatchBadge")}
               </Badge>
             )}
+            {ruledOut && (
+              <Badge variant="secondary" className="text-xs">
+                {t("ruledOutBadge")}
+              </Badge>
+            )}
             <TenderStatusBadge status={status} size="sm" />
             {isApplied && (
               <Badge variant="secondary" className="text-xs">
@@ -186,8 +197,16 @@ export function TenderMatchCard({
         </div>
       )}
 
-      {/* Detail section: score breakdown (deep) or hint (basic) */}
-      {isDeep ? (
+      {/* Detail section: score breakdown (deep) or hint (basic/ruled out) */}
+      {ruledOut ? (
+        <div
+          className="flex items-center gap-2 mb-3 text-xs text-muted-foreground cursor-pointer"
+          onClick={onViewDetails}
+        >
+          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+          <span>{t("ruledOutHint")}</span>
+        </div>
+      ) : isDeep ? (
         <div className="mb-3">
           <div
             className="flex flex-wrap gap-3 cursor-pointer hover:bg-muted/50 p-2 -mx-2 rounded-md transition-colors"

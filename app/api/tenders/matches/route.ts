@@ -23,6 +23,7 @@ import {
   desc,
   count,
   inArray,
+  isNull,
   sql,
   SQL,
 } from "drizzle-orm";
@@ -41,6 +42,12 @@ import type {
  * interleaves them by effective score, filters out 0% matches in the DB/server,
  * and paginates server-side. Returns the page plus counts so the client never
  * has to fetch the whole match universe to display or count it.
+ *
+ * `view=ruled_out` inverts the score rule and returns exactly the rows the
+ * default view hides: tenders we spent a deep analysis on that came back at 0%
+ * (or NULL). The semantic overlay is skipped entirely there — a basic 0% row was
+ * never analysed, so it isn't a "ruled out" result, and excluding it makes the
+ * ruled-out path a straight paginated SQL query.
  *
  * Scalability: the deep set can grow to thousands, the basic overlay is
  * structurally bounded (~250). We fetch at most `offset + pageSize` deep rows
@@ -77,6 +84,9 @@ export async function GET(request: NextRequest) {
       throw new ValidationError("companyId is required");
     }
 
+    const view =
+      url.searchParams.get("view") === "ruled_out" ? "ruled_out" : "matched";
+    const isRuledOut = view === "ruled_out";
     const tenderStatus = url.searchParams.get("tenderStatus") || "active";
     const keyword = url.searchParams.get("keyword") || "";
     const minScore = parseInt(url.searchParams.get("minScore") || "0") || 0;
@@ -101,6 +111,15 @@ export async function GET(request: NextRequest) {
     // minScore filter into a single lower bound so 0% rows never surface.
     const effectiveMin = Math.max(minScore, 1);
 
+    // The exact complement of `overallScore >= 1`: everything the matched view
+    // hides. NULL scores count as ruled out — the column is nullable and a NULL
+    // is excluded by the `gte` above, so without this they'd be invisible in
+    // both views.
+    const ruledOutScore = or(
+      isNull(matchingResults.overallScore),
+      lte(matchingResults.overallScore, 0),
+    )!;
+
     // ---- Deep side: filter conditions (mirrors /api/matching-results) -------
     const conditions: SQL[] = [eq(matchingResults.companyId, companyId)];
 
@@ -122,8 +141,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    conditions.push(gte(matchingResults.overallScore, effectiveMin));
-    conditions.push(lte(matchingResults.overallScore, maxScore));
+    if (isRuledOut) {
+      // The user's score range is meaningless when every row scores 0, so it is
+      // deliberately ignored here rather than intersected.
+      conditions.push(ruledOutScore);
+    } else {
+      conditions.push(gte(matchingResults.overallScore, effectiveMin));
+      conditions.push(lte(matchingResults.overallScore, maxScore));
+    }
 
     if (showApplied === "applied") {
       conditions.push(eq(matchingResults.isApplied, true));
@@ -133,7 +158,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(matchingResults.isBookmarked, true));
     }
 
-    if (quickFilter === "high_score") {
+    if (quickFilter === "high_score" && !isRuledOut) {
       conditions.push(gte(matchingResults.overallScore, 80));
     } else if (quickFilter === "urgent") {
       const sevenDaysFromNow = new Date();
@@ -193,7 +218,7 @@ export async function GET(request: NextRequest) {
       researchedConditions.push(eq(tenders.status, tenderStatus));
     }
 
-    const [deepCountRows, deepResearchedRows, deepWindow, basicRaw] =
+    const [deepCountRows, deepResearchedRows, ruledOutRows, deepWindow, basicRaw] =
       await Promise.all([
         db
           .select({ count: count() })
@@ -205,6 +230,15 @@ export async function GET(request: NextRequest) {
           .from(matchingResults)
           .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
           .where(and(...researchedConditions)),
+        // ruledOutCount is returned in BOTH views so the matched view can
+        // advertise how many results live behind the "Ruled out" toggle. It is
+        // deliberately unfiltered (company + tender status only) so the badge
+        // doesn't flicker as the user narrows the matched list.
+        db
+          .select({ count: count() })
+          .from(matchingResults)
+          .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+          .where(and(...researchedConditions, ruledOutScore)),
         db
           .select({
             match: matchingResults,
@@ -225,18 +259,25 @@ export async function GET(request: NextRequest) {
           .where(deepWhere)
           .orderBy(orderByClause)
           .limit(offset + pageSize),
-        basicMatchTendersForCompany(companyId, {
-          limit: 500,
-          minScore: 0,
-          requireSharedTaxonomy: false,
-          ...(tenderStatus !== "active" && tenderStatus !== "all"
-            ? { status: tenderStatus }
-            : {}),
-        }),
+        // The semantic overlay has no place in the ruled-out view (see the file
+        // header), so skip the work entirely rather than filtering it later.
+        isRuledOut
+          ? Promise.resolve(
+              [] as Awaited<ReturnType<typeof basicMatchTendersForCompany>>,
+            )
+          : basicMatchTendersForCompany(companyId, {
+              limit: 500,
+              minScore: 0,
+              requireSharedTaxonomy: false,
+              ...(tenderStatus !== "active" && tenderStatus !== "all"
+                ? { status: tenderStatus }
+                : {}),
+            }),
       ]);
 
     const deepMatchedCount = deepCountRows[0]?.count ?? 0;
     const deepResearchedCount = deepResearchedRows[0]?.count ?? 0;
+    const ruledOutCount = ruledOutRows[0]?.count ?? 0;
 
     // Track each deep item's createdAt so the JS merge can mirror the SQL sort
     // exactly for created_at ordering (required for the window-superset proof).
@@ -429,6 +470,7 @@ export async function GET(request: NextRequest) {
       results,
       matchedCount,
       deepResearchedCount,
+      ruledOutCount,
       page,
       pageSize,
     };

@@ -369,6 +369,12 @@ export interface TenderMatchesResponse {
   matchedCount: number;
   /** Total deep-researched tenders for this company+status, regardless of score/filters. */
   deepResearchedCount: number;
+  /**
+   * Deep-researched tenders that scored 0% (or NULL) for this company+status —
+   * the set the default view hides. Unfiltered, so it stays stable as the user
+   * narrows the matched list. Returned in both views.
+   */
+  ruledOutCount: number;
   page: number;
   pageSize: number;
 }
@@ -455,6 +461,16 @@ export interface CompanyAIAnalysisRequest {
     pastProjects?: string;
   };
   companyId?: string;
+}
+
+/**
+ * AI-suggested additions to a reviewable relation (competencies / markets),
+ * returned by /api/analyze-company for the review modal. Only additions are
+ * ever proposed — analysis must not suggest removing a human selection.
+ */
+export interface RelationSuggestion {
+  currentIds: string[];
+  additions: { id: string; name: string }[];
 }
 
 export interface DeepCompanyAnalysis {

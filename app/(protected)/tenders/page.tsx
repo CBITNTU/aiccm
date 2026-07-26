@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,8 +15,13 @@ import { TenderSearchBar } from "@/components/tenders/TenderSearchBar";
 import {
   TenderMatching,
   MatchingFiltersState,
+  MatchesView,
 } from "@/components/tenders/TenderMatching";
+import { MatchesViewSwitch } from "@/components/tenders/MatchesViewSwitch";
 import { SavedTenders } from "@/components/tenders/SavedTenders";
+
+const TABS = ["matches", "saved", "tenders"] as const;
+type TenderTab = (typeof TABS)[number];
 
 interface TenderFiltersState {
   keyword?: string;
@@ -50,9 +55,43 @@ export default function TendersPage() {
     tenderStatus: "active",
   });
 
-  // Get tab from URL query parameter, default to "matches"
-  const tabFromUrl = searchParams.get("tab") || "matches";
-  const [activeTab, setActiveTab] = useState(tabFromUrl);
+  // Tab and matches sub-view are derived from the URL rather than held in state,
+  // so browser back/forward (and returning from a tender detail page) restore
+  // exactly what the user was looking at.
+  const rawTab = searchParams.get("tab");
+  const activeTab: TenderTab = TABS.includes(rawTab as TenderTab)
+    ? (rawTab as TenderTab)
+    : "matches";
+  const matchesView: MatchesView =
+    searchParams.get("view") === "ruled-out" ? "ruledOut" : "matched";
+
+  const [ruledOutCount, setRuledOutCount] = useState(0);
+
+  // `push` (not `replace`) so Back also undoes a tab switch — the expectation
+  // once tabs are addressable. Defaults are omitted to keep URLs clean.
+  const navigate = useCallback(
+    (tab: TenderTab, view: MatchesView) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === "matches") params.delete("tab");
+      else params.set("tab", tab);
+      if (tab === "matches" && view === "ruledOut")
+        params.set("view", "ruled-out");
+      else params.delete("view");
+      const qs = params.toString();
+      router.push(qs ? `/tenders?${qs}` : "/tenders", { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const handleTabChange = useCallback(
+    (tab: string) => navigate(tab as TenderTab, matchesView),
+    [navigate, matchesView],
+  );
+
+  const handleViewChange = useCallback(
+    (view: MatchesView) => navigate("matches", view),
+    [navigate],
+  );
 
   const handleFiltersChange = (newFilters: TenderFiltersState) => {
     setFilters(newFilters);
@@ -112,7 +151,7 @@ export default function TendersPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="inline-flex h-10 items-center justify-start rounded-lg bg-muted p-1 mb-6">
             <TabsTrigger
               value="matches"
@@ -158,12 +197,24 @@ export default function TendersPage() {
               </div>
             )}
 
+            {selectedOrg && (
+              <MatchesViewSwitch
+                value={matchesView}
+                onChange={handleViewChange}
+                ruledOutCount={ruledOutCount}
+              />
+            )}
+
             <TenderSearchBar
               filterType="matching"
               matchingFilters={matchingFilters}
               onMatchingFiltersChange={handleMatchingFiltersChange}
               onReset={resetMatchingFilters}
-              placeholder={t("searchMatchesPlaceholder")}
+              placeholder={
+                matchesView === "ruledOut"
+                  ? t("searchRuledOutPlaceholder")
+                  : t("searchMatchesPlaceholder")
+              }
             />
 
             <TenderMatching
@@ -171,6 +222,9 @@ export default function TendersPage() {
               companyData={selectedOrg ?? undefined}
               filters={matchingFilters}
               readOnly={isRestrictedUser}
+              view={matchesView}
+              onViewChange={handleViewChange}
+              onRuledOutCountChange={setRuledOutCount}
               onCreateProject={
                 isRestrictedUser
                   ? undefined

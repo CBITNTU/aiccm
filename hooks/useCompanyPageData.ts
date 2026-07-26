@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api/client";
-import type { CompanyRecord } from "@/lib/api/types";
-import type { PendingChanges } from "@/lib/companyFieldCategories";
+import type { CompanyRecord, RelationSuggestion } from "@/lib/api/types";
+import type {
+  PendingChanges,
+  PendingChangesRelationField,
+} from "@/lib/companyFieldCategories";
 import {
   useUpdateCompany,
   useAnalyzeCompany,
@@ -23,6 +26,9 @@ export interface AnalysisUsage {
   remaining: number;
   resetsAt: string;
 }
+
+/** Shape returned by `PUT /api/companies/[companyId]` via `api.updateCompany`. */
+export type CompanyUpdateResult = Awaited<ReturnType<typeof api.updateCompany>>;
 
 export interface CompanyPageData {
   companyData: CompanyRecord | null;
@@ -54,12 +60,20 @@ export interface CompanyPageData {
 
   // AI-proposed changes review
   aiProposals: PendingChanges | null;
+  /** id -> display name for the competency/market ids inside `aiProposals`. */
+  aiRelationNames: Record<string, string>;
   aiModalOpen: boolean;
   setAiModalOpen: (open: boolean) => void;
 
   // Actions
   refreshCompanyData: () => Promise<void>;
-  setCompanyData: (data: CompanyRecord) => void;
+  /**
+   * Apply a save response from `api.updateCompany`. Takes the whole result
+   * rather than just the company row because, on a verified company, reviewable
+   * edits land in `pendingChanges` and never touch the company columns — so the
+   * draft is the only visible outcome of the save.
+   */
+  applyCompanyUpdate: (result: CompanyUpdateResult) => void;
   handleRefreshAnalysis: () => Promise<void>;
 }
 
@@ -102,22 +116,42 @@ const AI_PROPOSAL_FIELD_MAP: Record<string, string> = {
   past_projects: "pastProjects",
 };
 
+/** Turn a relation suggestion into a PendingChanges relation field (additions only). */
+function buildRelationField(
+  suggestion: RelationSuggestion | undefined,
+): PendingChangesRelationField | undefined {
+  if (!suggestion || suggestion.additions.length === 0) return undefined;
+  const added = suggestion.additions.map((a) => a.id);
+  return {
+    current: suggestion.currentIds,
+    proposed: [...suggestion.currentIds, ...added],
+    added,
+    // Analysis never proposes dropping a human selection.
+    removed: [],
+  };
+}
+
 /**
  * Build a PendingChanges-shaped diff from the AI-extracted companyInfo vs the
- * current company columns. Only includes fields where the AI proposed a
- * non-empty value that differs from what the company already has. Returns null
- * when there is nothing meaningful to propose.
+ * current company columns, plus any suggested competency/market additions.
+ * Only includes scalar fields where the AI proposed a non-empty value that
+ * differs from what the company already has. Returns null when there is nothing
+ * meaningful to propose.
  */
 function buildAIProposals(
   companyInfo: Record<string, unknown> | null | undefined,
   company: CompanyRecord | null,
+  relationSuggestions?: {
+    capabilities: RelationSuggestion;
+    markets: RelationSuggestion;
+  },
 ): PendingChanges | null {
-  if (!companyInfo || !company) return null;
+  if (!company) return null;
   const companyRecord = company as unknown as Record<string, unknown>;
   const scalarFields: PendingChanges["scalarFields"] = {};
 
   for (const [aiKey, columnKey] of Object.entries(AI_PROPOSAL_FIELD_MAP)) {
-    const proposedRaw = companyInfo[aiKey];
+    const proposedRaw = companyInfo?.[aiKey];
     const proposed = typeof proposedRaw === "string" ? proposedRaw.trim() : "";
     if (!proposed) continue;
     const currentRaw = companyRecord[columnKey];
@@ -126,8 +160,18 @@ function buildAIProposals(
     scalarFields[columnKey] = { current, proposed };
   }
 
-  if (Object.keys(scalarFields).length === 0) return null;
-  return { scalarFields, lastSavedAt: new Date().toISOString() };
+  const capabilities = buildRelationField(relationSuggestions?.capabilities);
+  const markets = buildRelationField(relationSuggestions?.markets);
+
+  if (Object.keys(scalarFields).length === 0 && !capabilities && !markets) {
+    return null;
+  }
+  return {
+    scalarFields,
+    ...(capabilities ? { capabilities } : {}),
+    ...(markets ? { markets } : {}),
+    lastSavedAt: new Date().toISOString(),
+  };
 }
 
 function getSectionPendingStatus(pc: PendingChanges | null): SectionPendingStatus {
@@ -159,6 +203,7 @@ export function useCompanyPageData(
   const [capabilities, setCapabilities] = useState<{ id: string; name: string; category: string }[]>([]);
   const [analysisUsage, setAnalysisUsage] = useState<AnalysisUsage | null>(null);
   const [aiProposals, setAiProposals] = useState<PendingChanges | null>(null);
+  const [aiRelationNames, setAiRelationNames] = useState<Record<string, string>>({});
   const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const updateCompanyMutation = useUpdateCompany();
@@ -190,6 +235,11 @@ export function useCompanyPageData(
       setLoading(false);
     }
   }, [userId, companyId, router, queryClient]);
+
+  const applyCompanyUpdate = useCallback((result: CompanyUpdateResult) => {
+    setCompanyData(result.company);
+    setPendingChanges((result.pendingChanges as PendingChanges | null) ?? null);
+  }, []);
 
   const refreshAnalysisUsage = useCallback(async () => {
     if (!companyId) return;
@@ -225,12 +275,27 @@ export function useCompanyPageData(
           );
         }
 
-        // Surface AI-extracted text fields as proposed changes for the user to
-        // accept or reject, rather than silently writing them.
+        // Surface AI-extracted text fields and suggested competency/market
+        // additions as proposed changes for the user to accept or reject,
+        // rather than silently writing them.
         const companyInfo = (data.analysis as { companyInfo?: Record<string, unknown> })
           .companyInfo;
-        const proposals = buildAIProposals(companyInfo, refreshed.company);
+        const proposals = buildAIProposals(
+          companyInfo,
+          refreshed.company,
+          data.relationSuggestions,
+        );
         if (proposals) {
+          const names: Record<string, string> = {};
+          for (const suggestion of [
+            data.relationSuggestions?.capabilities,
+            data.relationSuggestions?.markets,
+          ]) {
+            for (const addition of suggestion?.additions ?? []) {
+              names[addition.id] = addition.name;
+            }
+          }
+          setAiRelationNames(names);
           setAiProposals(proposals);
           setAiModalOpen(true);
         } else {
@@ -299,10 +364,11 @@ export function useCompanyPageData(
     isSaving: updateCompanyMutation.isPending,
     isAnalyzing: analyzeCompanyMutation.isPending,
     aiProposals,
+    aiRelationNames,
     aiModalOpen,
     setAiModalOpen,
     refreshCompanyData,
-    setCompanyData,
+    applyCompanyUpdate,
     handleRefreshAnalysis,
   };
 }

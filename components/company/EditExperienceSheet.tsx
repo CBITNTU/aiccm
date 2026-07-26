@@ -13,6 +13,7 @@ import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import { useUpdateCompany } from "@/hooks/useCompanyMutations";
+import type { CompanyUpdateResult } from "@/hooks/useCompanyPageData";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -68,8 +69,7 @@ interface EditExperienceSheetProps {
   isVerified: boolean;
   isEditLocked: boolean;
   pendingChanges?: PendingChanges | null;
-  onSaved: (updated: CompanyRecord) => void;
-  onDataRefresh: () => void;
+  onSaved: (result: CompanyUpdateResult) => void;
 }
 
 export function EditExperienceSheet({
@@ -81,7 +81,6 @@ export function EditExperienceSheet({
   isEditLocked,
   pendingChanges,
   onSaved,
-  onDataRefresh,
 }: EditExperienceSheetProps) {
   const t = useTranslations("CompanyPage");
   const [projects, setProjects] = useState<PastProjectForm[]>([{ ...emptyProject }]);
@@ -129,8 +128,7 @@ export function EditExperienceSheet({
         },
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.companyProjects(companyId) });
-      onSaved(result.company);
-      onDataRefresh();
+      onSaved(result);
       toast.success(
         isVerified ? t("editExperience.successDraft") : t("editExperience.success"),
       );

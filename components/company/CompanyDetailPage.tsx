@@ -135,7 +135,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
             pendingChanges={data.pendingChanges}
             aiCompetencies={data.aiCompetencies}
             operationLocations={data.operationLocations}
-            onSaved={(updated) => data.setCompanyData(updated)}
+            onSaved={data.applyCompanyUpdate}
           />
         </TabsContent>
 
@@ -160,8 +160,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
             isEditLocked={data.isEditLocked}
             sectionPendingStatus={data.sectionPendingStatus}
             pendingChanges={data.pendingChanges}
-            onSaved={(updated) => data.setCompanyData(updated)}
-            onDataRefresh={data.refreshCompanyData}
+            onSaved={data.applyCompanyUpdate}
           />
         </TabsContent>
 
@@ -199,7 +198,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
         companyData={data.companyData}
         isVerified={data.isVerified}
         isEditLocked={data.isEditLocked}
-        onSaved={(updated) => data.setCompanyData(updated)}
+        onSaved={data.applyCompanyUpdate}
       />
 
       {/* Floating Pending Changes Bar */}
@@ -219,6 +218,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
         onOpenChange={data.setAiModalOpen}
         companyId={companyId}
         proposals={data.aiProposals}
+        relationNames={data.aiRelationNames}
         isVerified={data.isVerified}
         onApplied={data.refreshCompanyData}
       />

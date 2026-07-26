@@ -2490,7 +2490,9 @@
       "accept": "Accept {count, plural, one {# change} other {# changes}}",
       "acceptedToast": "AI-suggested changes applied.",
       "acceptedForReviewToast": "Changes submitted for review.",
-      "acceptError": "Failed to apply changes."
+      "acceptError": "Failed to apply changes.",
+      "relationHint": "These will be added to your existing selections. Nothing is removed.",
+      "relationLimitHint": "Only the first {limit} will be kept — your plan allows {limit} competencies."
     },
     "pendingChangesBar": {
       "changesUnderReview": "Changes under review",

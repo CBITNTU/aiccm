@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Sparkles, Loader2 } from "lucide-react";
 import {
@@ -13,9 +14,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScalarFieldDiff } from "@/components/company/PendingChangesBar";
 import { useUpdateCompany } from "@/hooks/useCompanyMutations";
+import { useCompanyCapabilities } from "@/hooks/useCompanyTaxonomy";
+import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/queryKeys";
 import {
   getLocalizedCompanyFieldLabel,
   type PendingChanges,
@@ -31,11 +36,18 @@ const AI_FIELD_ORDER = [
   "pastProjects",
 ] as const;
 
+// Reviewable relations the AI can propose additions to. Rendered after the
+// scalar rows. `standards` is deliberately absent — nothing suggests those yet.
+const AI_RELATION_ORDER = ["capabilities", "markets"] as const;
+type AIRelation = (typeof AI_RELATION_ORDER)[number];
+
 interface AIProposedChangesModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId: string;
   proposals: PendingChanges | null;
+  /** id -> display name for the competency/market ids inside `proposals`. */
+  relationNames?: Record<string, string>;
   isVerified: boolean;
   onApplied: () => void | Promise<void>;
 }
@@ -45,11 +57,16 @@ export function AIProposedChangesModal({
   onOpenChange,
   companyId,
   proposals,
+  relationNames = {},
   isVerified,
   onApplied,
 }: AIProposedChangesModalProps) {
   const t = useTranslations("CompanyPage");
+  const queryClient = useQueryClient();
   const updateCompanyMutation = useUpdateCompany();
+  const capabilitiesQuery = useCompanyCapabilities(companyId);
+  const competencyLimit = capabilitiesQuery.data?.competencyLimit ?? null;
+  const [isApplying, setIsApplying] = useState(false);
 
   const proposedFields = useMemo(
     () =>
@@ -57,6 +74,19 @@ export function AIProposedChangesModal({
         ? AI_FIELD_ORDER.filter((f) => proposals.scalarFields![f] != null)
         : [],
     [proposals],
+  );
+
+  const proposedRelations = useMemo(
+    () =>
+      AI_RELATION_ORDER.filter(
+        (r) => (proposals?.[r]?.added.length ?? 0) > 0,
+      ),
+    [proposals],
+  );
+
+  const allKeys = useMemo<string[]>(
+    () => [...proposedFields, ...proposedRelations],
+    [proposedFields, proposedRelations],
   );
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -67,20 +97,20 @@ export function AIProposedChangesModal({
   // (adjusting state during render — React's recommended pattern over an effect).
   if (open && proposals && initializedFor !== proposals) {
     setInitializedFor(proposals);
-    setSelected(Object.fromEntries(proposedFields.map((f) => [f, true])));
+    setSelected(Object.fromEntries(allKeys.map((k) => [k, true])));
   }
 
-  if (!proposals || proposedFields.length === 0) return null;
+  if (!proposals || allKeys.length === 0) return null;
 
-  const selectedCount = proposedFields.filter((f) => selected[f]).length;
-  const allSelected = selectedCount === proposedFields.length;
+  const selectedCount = allKeys.filter((k) => selected[k]).length;
+  const allSelected = selectedCount === allKeys.length;
 
   const toggleField = (field: string) =>
     setSelected((prev) => ({ ...prev, [field]: !prev[field] }));
 
   const toggleAll = () => {
     const next = !allSelected;
-    setSelected(Object.fromEntries(proposedFields.map((f) => [f, next])));
+    setSelected(Object.fromEntries(allKeys.map((k) => [k, next])));
   };
 
   const handleReject = () => {
@@ -94,15 +124,46 @@ export function AIProposedChangesModal({
         updates[field] = proposals.scalarFields![field].proposed ?? "";
       }
     }
-    if (Object.keys(updates).length === 0) {
+    const acceptedRelations = proposedRelations.filter((r) => selected[r]);
+
+    if (Object.keys(updates).length === 0 && acceptedRelations.length === 0) {
       onOpenChange(false);
       return;
     }
+
+    setIsApplying(true);
     try {
-      await updateCompanyMutation.mutateAsync({
-        companyId,
-        updates,
-      });
+      if (Object.keys(updates).length > 0) {
+        await updateCompanyMutation.mutateAsync({ companyId, updates });
+      }
+
+      for (const relation of acceptedRelations) {
+        const change = proposals[relation]!;
+        // Merge rather than replace, and always keep every current selection —
+        // only the AI additions are trimmed to fit the competency limit. If
+        // there is no room left the payload equals the current set and the
+        // route short-circuits as a no-op.
+        let merged = Array.from(new Set(change.proposed));
+        if (relation === "capabilities" && competencyLimit != null) {
+          const room = competencyLimit - change.current.length;
+          merged =
+            room > 0
+              ? [...change.current, ...change.added.slice(0, room)]
+              : [...change.current];
+        }
+        if (relation === "capabilities") {
+          await api.syncCapabilities(companyId, merged);
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.companyCapabilities(companyId),
+          });
+        } else {
+          await api.syncMarkets(companyId, merged);
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.companyMarkets(companyId),
+          });
+        }
+      }
+
       await onApplied();
       onOpenChange(false);
       toast.success(
@@ -116,6 +177,8 @@ export function AIProposedChangesModal({
           ? error.message
           : t("aiProposedChanges.acceptError"),
       );
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -174,19 +237,55 @@ export function AIProposedChangesModal({
               </div>
             );
           })}
+
+          {proposedRelations.map((relation: AIRelation) => {
+            const change = proposals[relation]!;
+            const overLimit =
+              relation === "capabilities" &&
+              competencyLimit != null &&
+              change.proposed.length > competencyLimit;
+            return (
+              <div key={relation} className="flex gap-3">
+                <Checkbox
+                  id={`ai-relation-${relation}`}
+                  checked={!!selected[relation]}
+                  onCheckedChange={() => toggleField(relation)}
+                  className="mt-4"
+                  aria-label={getLocalizedCompanyFieldLabel(relation, t)}
+                />
+                <div className="flex-1 min-w-0 rounded-md border p-3">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">
+                    {getLocalizedCompanyFieldLabel(relation, t)}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {change.added.map((id) => (
+                      <Badge key={id} variant="secondary" className="text-xs">
+                        + {relationNames[id] ?? id}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {t("aiProposedChanges.relationHint")}
+                  </p>
+                  {overLimit && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      {t("aiProposedChanges.relationLimitHint", {
+                        limit: competencyLimit!,
+                      })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleReject}>
+          <Button variant="outline" onClick={handleReject} disabled={isApplying}>
             {t("aiProposedChanges.reject")}
           </Button>
-          <Button
-            onClick={handleAccept}
-            disabled={selectedCount === 0 || updateCompanyMutation.isPending}
-          >
-            {updateCompanyMutation.isPending && (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-            )}
+          <Button onClick={handleAccept} disabled={selectedCount === 0 || isApplying}>
+            {isApplying && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
             {t("aiProposedChanges.accept", { count: selectedCount })}
           </Button>
         </DialogFooter>

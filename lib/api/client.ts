@@ -4,6 +4,7 @@ import type {
   AdminCompanyListParams,
   AdminCompanyListResponse,
   CompanyRecord,
+  RelationSuggestion,
 } from "@/lib/api/types";
 import type { FetchUKTendersResponse, TenderFeedRecord } from "@/lib/api/types";
 import type { TenderMatchesResponse } from "@/lib/api/types";
@@ -106,6 +107,10 @@ export const api = {
       success: boolean;
       analysis: unknown;
       suggestedMarketIds?: string[];
+      relationSuggestions?: {
+        capabilities: RelationSuggestion;
+        markets: RelationSuggestion;
+      };
       websiteFetchError?: string | null;
     }>("analyze-company", {
       body: { companyId },

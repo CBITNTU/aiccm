@@ -2490,7 +2490,9 @@
       "accept": "接受 {count, plural, one {# 项更改} other {# 项更改}}",
       "acceptedToast": "已应用 AI 建议的更改。",
       "acceptedForReviewToast": "更改已提交审核。",
-      "acceptError": "应用更改失败。"
+      "acceptError": "应用更改失败。",
+      "relationHint": "这些将添加到您现有的选择中，不会删除任何内容。",
+      "relationLimitHint": "仅保留前 {limit} 项——您的方案允许 {limit} 项专长。"
     },
     "pendingChangesBar": {
       "changesUnderReview": "变更审核中",

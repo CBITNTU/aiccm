@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import type { CompanyRecord } from "@/lib/api/types";
 import { useUpdateCompany } from "@/hooks/useCompanyMutations";
+import type { CompanyUpdateResult } from "@/hooks/useCompanyPageData";
 import { useTranslations } from "next-intl";
 
 interface EditBasicInfoSheetProps {
@@ -17,7 +18,7 @@ interface EditBasicInfoSheetProps {
   companyData: CompanyRecord;
   isVerified: boolean;
   isEditLocked: boolean;
-  onSaved: (updated: CompanyRecord) => void;
+  onSaved: (result: CompanyUpdateResult) => void;
 }
 
 export function EditBasicInfoSheet({
@@ -51,7 +52,7 @@ export function EditBasicInfoSheet({
           websiteUrl: website.trim(),
         },
       });
-      onSaved(result.company);
+      onSaved(result);
       toast.success(
         isVerified
           ? t("editInfo.successWithDraft")

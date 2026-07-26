@@ -463,6 +463,16 @@ export interface CompanyAIAnalysisRequest {
   companyId?: string;
 }
 
+/**
+ * AI-suggested additions to a reviewable relation (competencies / markets),
+ * returned by /api/analyze-company for the review modal. Only additions are
+ * ever proposed — analysis must not suggest removing a human selection.
+ */
+export interface RelationSuggestion {
+  currentIds: string[];
+  additions: { id: string; name: string }[];
+}
+
 export interface DeepCompanyAnalysis {
   companyInfo: {
     description?: string;

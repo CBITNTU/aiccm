@@ -11,7 +11,7 @@ import { OperationLocationsEditor } from "@/components/company/OperationLocation
 import { DraftBlock } from "@/components/company/DraftChangeIndicator";
 import { CompanyTaxonomySelector } from "@/components/CompanyTaxonomySelector";
 import type { CompanyRecord } from "@/lib/api/types";
-import type { SectionPendingStatus } from "@/hooks/useCompanyPageData";
+import type { CompanyUpdateResult, SectionPendingStatus } from "@/hooks/useCompanyPageData";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import { useTranslations } from "next-intl";
 
@@ -25,7 +25,7 @@ interface OverviewTabProps {
   pendingChanges?: PendingChanges | null;
   aiCompetencies: string[] | null;
   operationLocations: string[];
-  onSaved: (updated: CompanyRecord) => void;
+  onSaved: (result: CompanyUpdateResult) => void;
 }
 
 export function OverviewTab({

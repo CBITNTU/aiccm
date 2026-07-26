@@ -19,6 +19,7 @@ import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import {
   isReviewableField,
+  withResolvedScalarCurrents,
   type PendingChanges,
   type ReviewableScalarField,
 } from "@/lib/companyFieldCategories";
@@ -152,6 +153,16 @@ export async function GET(
       }
     }
 
+    // Re-derive the `current` side of scalar drafts from the live row so drafts
+    // persisted with a stale/null `current` still render the approved value
+    let memberPendingChanges = isMember ? company.pendingChanges : undefined;
+    if (memberPendingChanges) {
+      memberPendingChanges = withResolvedScalarCurrents(
+        memberPendingChanges as PendingChanges,
+        company,
+      );
+    }
+
     return apiResponse({
       company,
       isOwner,
@@ -159,7 +170,7 @@ export async function GET(
       markets: marketsData,
       standards: standardsData,
       hasPendingChanges: isMember ? company.pendingChanges != null : undefined,
-      pendingChanges: isMember ? company.pendingChanges : undefined,
+      pendingChanges: memberPendingChanges,
       pendingReviewRequest: isMember ? pendingReviewRequest : undefined,
       latestResolvedRequest: isMember ? latestResolvedRequest : undefined,
     });
@@ -198,11 +209,20 @@ export async function PUT(
       "contactPerson", "equipment",
     ];
 
-    // Fetch current company data (only the fields this handler reads)
+    // Fetch current company data (only the fields this handler reads).
+    // The reviewable scalar columns are required to build the `current` side of
+    // pending change drafts below — do not narrow this projection.
     const company = await db
       .select({
         verificationStatus: companies.verificationStatus,
         pendingChanges: companies.pendingChanges,
+        companyName: companies.companyName,
+        description: companies.description,
+        keyCapabilities: companies.keyCapabilities,
+        certifications: companies.certifications,
+        equipment: companies.equipment,
+        pastProjects: companies.pastProjects,
+        companiesHouseNumber: companies.companiesHouseNumber,
       })
       .from(companies)
       .where(eq(companies.id, companyId))
@@ -261,7 +281,7 @@ export async function PUT(
         pendingChanges.scalarFields = {};
       }
       for (const [field, proposedValue] of Object.entries(reviewableUpdates)) {
-        const currentValue = (company as Record<string, unknown>)[field as ReviewableScalarField] as string | null;
+        const currentValue = company[field as ReviewableScalarField] ?? null;
         if (proposedValue === currentValue) {
           // User reverted to current value — remove from pending
           delete pendingChanges.scalarFields[field];

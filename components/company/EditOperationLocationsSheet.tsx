@@ -7,6 +7,7 @@ import { EditSheetLayout } from "@/components/company/EditSheetLayout";
 import { OperationLocationsEditor } from "@/components/company/OperationLocationsEditor";
 import type { CompanyRecord } from "@/lib/api/types";
 import { useUpdateCompany } from "@/hooks/useCompanyMutations";
+import type { CompanyUpdateResult } from "@/hooks/useCompanyPageData";
 
 interface EditOperationLocationsSheetProps {
   open: boolean;
@@ -14,7 +15,7 @@ interface EditOperationLocationsSheetProps {
   companyData: CompanyRecord;
   operationLocations: string[];
   isEditLocked: boolean;
-  onSaved: (updated: CompanyRecord) => void;
+  onSaved: (result: CompanyUpdateResult) => void;
 }
 
 export function EditOperationLocationsSheet({
@@ -37,7 +38,7 @@ export function EditOperationLocationsSheet({
           operationLocations: edited,
         },
       });
-      onSaved(result.company);
+      onSaved(result);
       toast.success(t("editOperationLocations.success"));
       onOpenChange(false);
     } catch (error) {

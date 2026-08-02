@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
 import { apiResponse, apiError } from "@/lib/api";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { createProfile, createUserRole } from "@/lib/db/queries";
+import { user } from "@/lib/db/schema/auth";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
 export interface SignupRequest {
@@ -60,9 +63,21 @@ export async function POST(request: NextRequest) {
 
     const userId = result.user.id;
 
-    // Create profile + default role via Drizzle (replaces Supabase DB trigger)
-    await createProfile(userId, email);
-    await createUserRole(userId, "user");
+    // Create profile + default role via Drizzle (replaces Supabase DB trigger).
+    // Better Auth writes through its own adapter, so this can't share a
+    // transaction with signUpEmail — roll back the user row on failure so the
+    // email isn't left permanently taken by an account with no profile/role.
+    try {
+      await createProfile(userId, email);
+      await createUserRole(userId, "user");
+    } catch (setupError) {
+      try {
+        await db.delete(user).where(eq(user.id, userId));
+      } catch (rollbackError) {
+        console.error("Signup rollback failed:", rollbackError);
+      }
+      throw setupError;
+    }
 
     await logApiEvent(request, {
       actionType: "user_signup",

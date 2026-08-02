@@ -59,10 +59,19 @@ export function getCpvCodeName(code: string): string {
     return cpvCodeNames[code];
   }
 
-  // Try to find parent code (first 2 digits)
-  const parentCode = code.substring(0, 8).padEnd(8, "0");
-  if (cpvCodeNames[parentCode]) {
-    return cpvCodeNames[parentCode];
+  // Normalise: strip non-digits (check-digit suffix), pad short codes
+  const digits = code.replace(/\D/g, "").substring(0, 8).padEnd(8, "0");
+  if (cpvCodeNames[digits]) {
+    return cpvCodeNames[digits];
+  }
+
+  // Walk up the CPV hierarchy to the nearest known ancestor:
+  // 45211300 → 45211000 → 45210000 → 45200000 → 45000000
+  for (let i = 7; i >= 2; i--) {
+    const parent = digits.substring(0, i).padEnd(8, "0");
+    if (cpvCodeNames[parent]) {
+      return cpvCodeNames[parent];
+    }
   }
 
   // Return formatted code if no match

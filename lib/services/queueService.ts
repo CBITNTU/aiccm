@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { processingQueue, batchJobs } from "@/lib/db/schema/app";
 import { dequeueJobAtomic, incrementBatchProgress } from "@/lib/db/raw";
-import { eq, and, inArray, desc, asc, lt, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, lt, isNotNull, sql } from "drizzle-orm";
 
 // Drizzle-inferred types (camelCase)
 type ProcessingQueue = typeof processingQueue.$inferSelect;
@@ -80,8 +80,6 @@ function mapRawToProcessingQueue(
  * Enqueue a single job
  */
 export async function enqueueJob(options: EnqueueJobOptions): Promise<string> {
-  const now = new Date();
-
   const result = await db
     .insert(processingQueue)
     .values({
@@ -92,7 +90,9 @@ export async function enqueueJob(options: EnqueueJobOptions): Promise<string> {
       tenderId: options.tenderId || null,
       status: "pending",
       priority: options.priority || 0,
-      scheduledAt: options.scheduledAt || now,
+      // Default to the DB clock: dequeue filters on scheduled_at <= NOW(), and
+      // the app clock can run ahead of Postgres, hiding a fresh job.
+      scheduledAt: options.scheduledAt ?? sql`now()`,
       metadata: options.metadata || null,
     })
     .returning({ id: processingQueue.id });
@@ -134,7 +134,6 @@ export async function enqueueBatch(
   }
 
   const batchId = batchResult[0].id;
-  const now = new Date();
 
   // Enqueue all jobs with batchId and optional metadata
   const jobInserts = jobs.map((job) => ({
@@ -146,7 +145,8 @@ export async function enqueueBatch(
     batchId,
     status: "pending",
     priority: job.priority || 0,
-    scheduledAt: job.scheduledAt || now,
+    // DB clock, for the same reason as enqueueJob.
+    scheduledAt: job.scheduledAt ?? sql`now()`,
     metadata: job.metadata ?? null,
   }));
 

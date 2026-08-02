@@ -435,6 +435,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       maxTokens: useOllama ? 4096 : 8000,
       estTokens: useOllama ? 2000 : 4000,
       temperature: useOllama ? 0.2 : undefined,
+      reasoningEffort: options?.reasoningEffort,
     });
 
     // Get scores from AI (no overallScore from AI - we calculate it)

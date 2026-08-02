@@ -17,6 +17,8 @@ interface BaseOptions {
   temperature?: number;
   /** Estimated total tokens for rate-limiter accounting. */
   estTokens?: number;
+  /** Override reasoning effort (otherwise uses the platform default). */
+  reasoningEffort?: string;
 }
 
 interface GenerateObjectOptions<T> extends BaseOptions {
@@ -127,12 +129,12 @@ export async function aiGenerateObject<T>(
       model = resolveModel(modelId);
       resolvedModelId = modelId;
       const platform = await getPlatformModel();
-      reasoningEffort = platform.reasoningEffort;
+      reasoningEffort = options.reasoningEffort ?? platform.reasoningEffort;
     } else {
       const platform = await getPlatformModel();
       model = platform.model;
       resolvedModelId = platform.modelId;
-      reasoningEffort = platform.reasoningEffort;
+      reasoningEffort = options.reasoningEffort ?? platform.reasoningEffort;
     }
 
     const normalisedEffort = normaliseReasoningEffort(
@@ -193,12 +195,12 @@ export async function aiGenerateText(options: BaseOptions): Promise<string> {
       model = resolveModel(modelId);
       resolvedModelId = modelId;
       const platform = await getPlatformModel();
-      reasoningEffort = platform.reasoningEffort;
+      reasoningEffort = options.reasoningEffort ?? platform.reasoningEffort;
     } else {
       const platform = await getPlatformModel();
       model = platform.model;
       resolvedModelId = platform.modelId;
-      reasoningEffort = platform.reasoningEffort;
+      reasoningEffort = options.reasoningEffort ?? platform.reasoningEffort;
     }
 
     const normalisedEffort = normaliseReasoningEffort(

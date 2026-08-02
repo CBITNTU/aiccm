@@ -277,6 +277,21 @@ describe("queue batches (real database)", () => {
       expect(active!.status).toBe("processing");
     });
 
+    it("returns an in-flight company_matching (deep match) batch too", async () => {
+      const companyId = await seedCompany();
+      const { batchId } = await enqueueBatch(
+        [tenderJob(1)],
+        "company_matching",
+        undefined,
+        companyId,
+      );
+
+      const active = await getActiveMatchingBatchForCompany(companyId);
+      expect(active).not.toBeNull();
+      expect(active!.id).toBe(batchId);
+      expect(active!.status).toBe("processing");
+    });
+
     it("ignores cancelled batches and other companies", async () => {
       const companyId = await seedCompany();
       const { batchId } = await enqueueBatch(

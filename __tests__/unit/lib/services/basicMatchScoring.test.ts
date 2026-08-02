@@ -93,20 +93,10 @@ describe("tenderMatchesCapability", () => {
     expect(tenderMatchesCapability("Anything at all", [])).toBe(false);
   });
 
-  it("skips a label whose full phrase appears verbatim in the tender text", () => {
-    // Documents current behaviour: a whole-label match hits the `continue`
-    // branch, so the label's own tokens are never checked and a single
-    // verbatim label yields NO match. Looks inverted — flagged for review.
+  it("matches when a label's full phrase appears verbatim in the tender text", () => {
     expect(
       tenderMatchesCapability("civil engineering framework", [
         "Civil Engineering",
-      ]),
-    ).toBe(false);
-    // ...while a second, token-matching label still rescues the result.
-    expect(
-      tenderMatchesCapability("civil engineering framework", [
-        "Civil Engineering",
-        "Framework agreements",
       ]),
     ).toBe(true);
   });

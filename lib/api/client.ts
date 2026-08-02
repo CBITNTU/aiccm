@@ -1424,7 +1424,7 @@ export const api = {
 
   triggerDeepMatch: (
     companyId: string,
-    tenderIds?: string[],
+    tenderIds: string[],
     options?: { force?: boolean },
   ) =>
     apiCall<{
@@ -1438,8 +1438,8 @@ export const api = {
     }>("match-tenders/trigger", {
       body: {
         companyId,
+        tenderIds,
         force: options?.force === true,
-        ...(tenderIds?.length ? { tenderIds } : {}),
       },
     }),
 };

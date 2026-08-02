@@ -20,8 +20,7 @@ vi.mock("@/lib/services/eventLogger", () => ({
   logApiEvent: vi.fn(),
 }));
 
-// select().from().where() is awaited directly for the open-tenders query and
-// chained with .limit(1) for the active-company check — support both.
+// select().from().where() is chained with .limit(1) for the active-company check.
 const dbMocks = vi.hoisted(() => ({
   where: vi.fn(),
 }));
@@ -108,7 +107,7 @@ describe("POST /api/match-tenders/trigger — auth and company resolution", () =
     isCompanyMemberMock.mockResolvedValue(false);
 
     const { status, body } = await readJson(
-      await POST(triggerRequest({ companyId: TEST_COMPANY_ID })),
+      await POST(triggerRequest({ companyId: TEST_COMPANY_ID, tenderIds: ["t1"] })),
     );
 
     expect(status).toBe(404);
@@ -122,7 +121,7 @@ describe("POST /api/match-tenders/trigger — auth and company resolution", () =
     selectResults.push([]);
 
     const { status, body } = await readJson(
-      await POST(triggerRequest({ companyId: TEST_COMPANY_ID })),
+      await POST(triggerRequest({ companyId: TEST_COMPANY_ID, tenderIds: ["t1"] })),
     );
 
     expect(status).toBe(404);
@@ -133,10 +132,27 @@ describe("POST /api/match-tenders/trigger — auth and company resolution", () =
   it("returns 404 when no companyId is given and the user has no companies", async () => {
     getUserCompanyIdsMock.mockResolvedValue([]);
 
-    const { status, body } = await readJson(await POST(triggerRequest({})));
+    const { status, body } = await readJson(
+      await POST(triggerRequest({ tenderIds: ["t1"] })),
+    );
 
     expect(status).toBe(404);
     expect(body.error).toBe("Company not found for user");
+    expect(batchScoreMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when tenderIds is missing, empty, or not all strings", async () => {
+    for (const json of [
+      {},
+      { tenderIds: [] },
+      { tenderIds: "t1" },
+      { tenderIds: ["t1", 2] },
+    ]) {
+      const { status, body } = await readJson(await POST(triggerRequest(json)));
+
+      expect(status).toBe(400);
+      expect(body.error).toBe("tenderIds must be a non-empty array of tender IDs");
+    }
     expect(batchScoreMock).not.toHaveBeenCalled();
   });
 });
@@ -192,11 +208,10 @@ describe("POST /api/match-tenders/trigger — queueing", () => {
     );
   });
 
-  it("resolves the user's first company and open tenders when the body is empty", async () => {
-    // No companyId → getUserCompanyIds path; the only select is the open-tenders query.
-    selectResults.push([{ id: "t1" }, { id: "t2" }, { id: "t3" }]);
-
-    const { status, body } = await readJson(await POST(triggerRequest({})));
+  it("resolves the user's first company when no companyId is given", async () => {
+    const { status, body } = await readJson(
+      await POST(triggerRequest({ tenderIds: ["t1", "t2", "t3"] })),
+    );
 
     expect(status).toBe(200);
     expect(body.status).toBe("queued");

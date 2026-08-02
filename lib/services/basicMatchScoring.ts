@@ -50,7 +50,7 @@ export function tenderMatchesCapability(
   const haystack = normaliseForMatch(tenderText);
   for (const label of capabilityLabels) {
     const norm = normaliseForMatch(label);
-    if (norm.length >= 4 && haystack.includes(norm)) continue;
+    if (norm.length >= 4 && haystack.includes(norm)) return true;
     for (const token of capabilityTokens(label)) {
       if (haystack.includes(token)) return true;
     }

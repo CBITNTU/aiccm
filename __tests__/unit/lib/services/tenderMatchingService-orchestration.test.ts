@@ -178,25 +178,10 @@ describe("batchScoreTendersForCompany", () => {
     expect(jobs[0].metadata).toEqual({ model: "gpt-5-mini", force: true });
   });
 
-  it("falls back to all open/closing_soon tenders when no IDs are given", async () => {
-    // First select: open tenders; second select: cached lookup.
-    dbMocks.where
-      .mockResolvedValueOnce([{ id: "t1" }, { id: "t2" }])
-      .mockResolvedValueOnce([]);
-
-    const result = await batchScoreTendersForCompany(COMPANY_ID);
-
-    expect(result.jobCount).toBe(2);
-    expect(result.status).toBe("queued");
-    const [jobs] = vi.mocked(enqueueBatch).mock.calls[0];
-    expect(jobs.map((j) => j.tenderId)).toEqual(["t1", "t2"]);
-  });
-
-  it("returns all_cached for an empty tender universe", async () => {
-    dbMocks.where.mockResolvedValueOnce([]); // no open tenders
+  it("returns all_cached for an empty tender list without enqueuing", async () => {
     // cached lookup short-circuits on empty input without a query
 
-    const result = await batchScoreTendersForCompany(COMPANY_ID);
+    const result = await batchScoreTendersForCompany(COMPANY_ID, []);
 
     expect(result).toMatchObject({
       jobCount: 0,

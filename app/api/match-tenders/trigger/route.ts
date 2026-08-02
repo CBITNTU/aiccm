@@ -8,8 +8,8 @@ import {
 import { batchScoreTendersForCompany } from "@/lib/services/tenderMatchingService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
-import { companies, tenders } from "@/lib/db/schema/app";
-import { and, eq, inArray, gte } from "drizzle-orm";
+import { companies } from "@/lib/db/schema/app";
+import { and, eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +25,16 @@ export async function POST(request: NextRequest) {
       companyId?: string;
       force?: boolean;
     };
+
+    // Deep matches are quota-free, so an unbounded "match everything" run is
+    // not allowed here — callers must say which tenders to match.
+    if (
+      !Array.isArray(tenderIds) ||
+      tenderIds.length === 0 ||
+      !tenderIds.every((id) => typeof id === "string")
+    ) {
+      return apiError("tenderIds must be a non-empty array of tender IDs", 400);
+    }
 
     let companyId = requestedCompanyId;
 
@@ -50,27 +60,9 @@ export async function POST(request: NextRequest) {
       companyId = companyIds[0];
     }
 
-    let filteredTenderIds: string[] | undefined;
-    if (tenderIds && Array.isArray(tenderIds) && tenderIds.length > 0) {
-      filteredTenderIds = tenderIds;
-    } else {
-      const today = new Date().toISOString().split("T")[0];
-      const openTenders = await db
-        .select({ id: tenders.id })
-        .from(tenders)
-        .where(
-          and(
-            inArray(tenders.status, ["open", "closing_soon", "framework"]),
-            gte(tenders.deadline, new Date(today)),
-          ),
-        );
-
-      filteredTenderIds = openTenders.map((t) => t.id);
-    }
-
     const result = await batchScoreTendersForCompany(
       companyId,
-      filteredTenderIds,
+      tenderIds,
       user.id,
       { force: force === true },
     );
@@ -98,7 +90,7 @@ export async function POST(request: NextRequest) {
         batchId: result.batchId,
         matchingModel: result.matchingModel,
         skippedCount: result.skippedCount,
-        tenderCount: filteredTenderIds.length,
+        tenderCount: tenderIds.length,
         force: force === true,
       },
     });

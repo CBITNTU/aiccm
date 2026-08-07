@@ -9,7 +9,12 @@ import {
   tenders,
   companyCapabilities,
   companyCapabilitiesRef,
+  companyMarkets,
+  companyStandards,
+  companyTaxonomies,
   competencyTaxonomySeed,
+  markets,
+  standardsRef,
   tenderTaxonomies,
   taxonomies,
 } from "@/lib/db/schema/app";
@@ -131,6 +136,47 @@ export async function fetchCompanyCapabilityLabels(
   return rows.map((r) => r.name);
 }
 
+export interface CompanyProfileLabels {
+  marketLabels: string[];
+  standardLabels: string[];
+  taxonomyNames: string[];
+}
+
+/**
+ * Markets, standards and taxonomy names attached to a company.
+ *
+ * These live in junction tables rather than on `companies`, so they are invisible
+ * to a plain column read — but they are exactly the profile data users curate to
+ * describe what they do, so they belong in the embedding source.
+ */
+export async function fetchCompanyProfileLabels(
+  companyId: string,
+): Promise<CompanyProfileLabels> {
+  const [marketRows, standardRows, taxonomyRows] = await Promise.all([
+    db
+      .select({ name: localizedName(markets.name, markets.nameZh) })
+      .from(companyMarkets)
+      .innerJoin(markets, eq(companyMarkets.marketId, markets.id))
+      .where(eq(companyMarkets.companyId, companyId)),
+    db
+      .select({ name: localizedName(standardsRef.name, standardsRef.nameZh) })
+      .from(companyStandards)
+      .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
+      .where(eq(companyStandards.companyId, companyId)),
+    db
+      .select({ name: taxonomies.name })
+      .from(companyTaxonomies)
+      .innerJoin(taxonomies, eq(companyTaxonomies.taxonomyId, taxonomies.id))
+      .where(eq(companyTaxonomies.companyId, companyId)),
+  ]);
+
+  return {
+    marketLabels: marketRows.map((r) => r.name).filter(Boolean),
+    standardLabels: standardRows.map((r) => r.name).filter(Boolean),
+    taxonomyNames: taxonomyRows.map((r) => r.name).filter(Boolean),
+  };
+}
+
 /** Taxonomy names linked on the tender (plus resolved AI taxonomy UUIDs). */
 export async function fetchTenderCapabilityLabels(
   tenderId: string,
@@ -168,22 +214,28 @@ export function buildCompanySource(company: {
   postcode: string | null;
   address: string | null;
   capabilityLabels?: string[];
+  marketLabels?: string[];
+  standardLabels?: string[];
+  taxonomyNames?: string[];
 }): string {
-  const capabilityLine =
-    company.capabilityLabels && company.capabilityLabels.length > 0
-      ? `Profile competencies: ${company.capabilityLabels.join("; ")}`
-      : "";
+  // Curated profile signals go near the top: embedding models weight early
+  // tokens more heavily, and these are the fields users actively maintain.
+  const labelLine = (prefix: string, labels: string[] | undefined) =>
+    labels && labels.length > 0 ? `${prefix}: ${labels.join("; ")}` : "";
 
   return joinNonEmpty([
     `Company: ${company.companyName}`,
     company.aiSummary ? `Summary: ${company.aiSummary}` : company.description,
-    capabilityLine,
+    labelLine("Profile competencies", company.capabilityLabels),
+    labelLine("Sector taxonomy", company.taxonomyNames),
+    labelLine("Markets served", company.marketLabels),
     company.keyCapabilities ? `Capabilities: ${company.keyCapabilities}` : "",
     jsonbToString(company.aiCapabilities) ? `AI Capabilities: ${jsonbToString(company.aiCapabilities)}` : "",
     jsonbToString(company.aiCompetencies) ? `Competencies: ${jsonbToString(company.aiCompetencies)}` : "",
     jsonbToString(company.aiStrengths) ? `Strengths: ${jsonbToString(company.aiStrengths)}` : "",
     company.certifications ? `Certifications: ${company.certifications}` : "",
     jsonbToString(company.aiCertifications) ? `AI Certifications: ${jsonbToString(company.aiCertifications)}` : "",
+    labelLine("Standards", company.standardLabels),
     company.equipment ? `Equipment: ${company.equipment}` : "",
     company.pastProjects ? `Past Projects: ${company.pastProjects}` : "",
     [company.address, company.postcode].filter(Boolean).join(", "),
@@ -224,14 +276,21 @@ export async function embedCompany(
     return { status: "skipped", reason: "company not found" };
   }
 
-  const junctionLabels = await fetchCompanyCapabilityLabels(companyId);
   const taxonomyIds = parseUuidList(row.aiCapabilityTaxonomy);
-  const taxonomyLabels = await resolveCapabilityNamesByIds(taxonomyIds);
+  const [junctionLabels, taxonomyLabels, profileLabels] = await Promise.all([
+    fetchCompanyCapabilityLabels(companyId),
+    resolveCapabilityNamesByIds(taxonomyIds),
+    fetchCompanyProfileLabels(companyId),
+  ]);
   const capabilityLabels = [
     ...new Set([...junctionLabels, ...taxonomyLabels]),
   ];
 
-  const source = buildCompanySource({ ...row, capabilityLabels });
+  const source = buildCompanySource({
+    ...row,
+    capabilityLabels,
+    ...profileLabels,
+  });
   if (!source.trim()) {
     return { status: "skipped", reason: "no content to embed" };
   }
@@ -253,6 +312,35 @@ export async function embedCompany(
   `);
 
   return { status: "embedded", dim: vector.length, sourceHash };
+}
+
+/**
+ * Refresh a company's embedding after a profile mutation.
+ *
+ * Call this — not `embedCompany` — from request handlers and jobs. Two reasons:
+ *
+ *  1. It never throws. A provider outage (Ollama down, OpenAI 429) must never
+ *     turn a successful save into a 500 for the user.
+ *  2. It is safe to call unconditionally. `embedCompany` hashes the rebuilt
+ *     source text and skips the provider round-trip when nothing that feeds the
+ *     vector actually changed, so callers do not need to track dirty fields.
+ *
+ * Always call it *after* the surrounding transaction commits — it performs a
+ * network round-trip and must not hold a DB transaction open.
+ */
+export async function refreshCompanyEmbedding(
+  companyId: string,
+  options: { force?: boolean } = {},
+): Promise<void> {
+  try {
+    await embedCompany(companyId, options);
+  } catch (error) {
+    console.error(
+      "Company embedding refresh failed (non-fatal):",
+      companyId,
+      error,
+    );
+  }
 }
 
 // ============================================================================

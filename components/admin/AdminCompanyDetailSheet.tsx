@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { CompanyRecord } from "@/lib/api/types";
 import type { JsonValue } from "@/lib/api/types";
@@ -37,6 +38,7 @@ import {
   Zap,
   Brain,
   RotateCcw,
+  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -112,6 +114,7 @@ function SheetInner({
   onCompanyUpdated: () => void;
 }) {
   const t = useTranslations("AdminCompanyDetail");
+  const router = useRouter();
   const isVerified = company.verificationStatus === "verified";
 
   return (
@@ -141,7 +144,22 @@ function SheetInner({
               {company.status && (
                 <span className="capitalize">{company.status}</span>
               )}
+              {company.adminPreparedAt && (
+                <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100">
+                  {t("preparedBadge")}
+                </Badge>
+              )}
             </div>
+          </div>
+          {/* Full editable console — the sheet itself is read-mostly. */}
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              onClick={() => router.push(`/admin/companies/${company.id}`)}
+            >
+              <Wrench className="h-4 w-4" />
+              {t("prepareButton")}
+            </Button>
           </div>
         </div>
       </SheetHeader>

@@ -2,12 +2,12 @@ import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
-  isCompanyMember,
   handleApiError,
   AuthError,
   ValidationError,
   sanitizeLikeParam,
 } from "@/lib/api/validation";
+import { getCompanyAccess } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { matchingResults, tenders } from "@/lib/db/schema/app";
 import { basicMatchTendersForCompany } from "@/lib/services/basicMatchingService";
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     );
     const offset = (page - 1) * pageSize;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
+    const { hasAccess } = await getCompanyAccess(user.id, companyId);
     if (!hasAccess) {
       throw new AuthError("No access to this company");
     }

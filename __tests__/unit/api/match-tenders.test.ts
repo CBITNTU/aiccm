@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { POST } from "@/app/api/match-tenders/route";
-import { getAuthenticatedUser } from "@/lib/api";
+import { getAuthenticatedUser, checkSuperadminRole } from "@/lib/api";
 import { isCompanyMember } from "@/lib/api/validation";
 import {
   findTenderIdsWithCachedMatches,
@@ -17,9 +17,13 @@ import { makeRequest, readJson } from "@/__tests__/helpers/request";
 import { mockUser, TEST_COMPANY_ID, TEST_USER_ID } from "@/__tests__/helpers/mocks";
 import { queueSelects } from "@/__tests__/helpers/drizzleMock";
 
+// `getCompanyAccess` stays real — only its inputs (`isCompanyMember`,
+// `checkSuperadminRole`) are stubbed, so the route exercises the real
+// member-or-superadmin rule.
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
   getAuthenticatedUser: vi.fn(),
+  checkSuperadminRole: vi.fn(),
 }));
 
 vi.mock("@/lib/api/validation", async (importOriginal) => ({
@@ -28,7 +32,11 @@ vi.mock("@/lib/api/validation", async (importOriginal) => ({
 }));
 
 vi.mock("@/lib/db", () => ({
-  db: { select: vi.fn() },
+  db: {
+    select: vi.fn(),
+    // markCompanyAdminPrepared: update().set().where()
+    update: vi.fn(() => ({ set: () => ({ where: async () => {} }) })),
+  },
 }));
 
 vi.mock("@/lib/ai", () => ({
@@ -114,6 +122,7 @@ beforeEach(() => {
 
   mockedGetAuthenticatedUser.mockResolvedValue({ user, error: null });
   mockedIsCompanyMember.mockResolvedValue(true);
+  vi.mocked(checkSuperadminRole).mockResolvedValue(false);
   mockedFindCached.mockResolvedValue(new Set());
   mockedResolveMetadata.mockResolvedValue({
     metadata: { model: "gpt-5-mini" },
@@ -288,6 +297,24 @@ describe("POST /api/match-tenders", () => {
         details: expect.objectContaining({ batchId: "batch-1", totalTenders: 2 }),
       }),
     );
+  });
+
+  it("lets a non-member superadmin match for the company, bypassing the monthly limit", async () => {
+    // Admin console flow: preparing an account before approval. The company may
+    // still be pending_review, and the admin's run must not burn the owner's
+    // monthly allowance.
+    mockedIsCompanyMember.mockResolvedValue(false);
+    vi.mocked(checkSuperadminRole).mockResolvedValue(true);
+    queueSelects(mockedSelect, [companyRow()], [], [{ id: "t1" }], []);
+    vi.mocked(getMatchingRunsThisMonth).mockResolvedValue(10);
+    vi.mocked(getEffectiveMatchingLimit).mockReturnValue(10);
+
+    const { status, body } = await readJson(await post());
+
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ batchId: "batch-1", totalTenders: 1 });
+    expect(getMatchingRunsThisMonth).not.toHaveBeenCalled();
+    expect(mockedEnqueueBatch).toHaveBeenCalled();
   });
 
   it("force=true re-queues cached tenders with force in the job metadata", async () => {

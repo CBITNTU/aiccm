@@ -44,6 +44,7 @@ export async function getAuthenticatedUser(request: NextRequest) {
         email: session.user.email,
         emailVerified: session.user.emailVerified ?? null,
       };
+
       return {
         user,
         error: null,

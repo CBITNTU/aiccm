@@ -4,6 +4,7 @@ import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/db/schema/app";
 import { companyColumnsNoEmbedding } from "@/lib/db/columns";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { eq } from "drizzle-orm";
 
 const ADMIN_COMPANY_FIELD_MAP: Record<string, keyof typeof companies.$inferInsert> =
@@ -122,6 +123,11 @@ export async function PUT(
     if (result.length === 0) {
       throw new Error("Company not found");
     }
+
+    // This route writes embedding-source columns (ai_summary, ai_capabilities,
+    // key_capabilities, past_projects, …) straight through, with no field
+    // validation — so refresh unconditionally and let the source hash decide.
+    await refreshCompanyEmbedding(companyId);
 
     return apiResponse({ company: result[0] });
   } catch (error) {

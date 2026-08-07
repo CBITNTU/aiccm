@@ -5,6 +5,7 @@ import { handleApiError, requireAuth, validateBody } from "@/lib/api/validation"
 import { db } from "@/lib/db";
 import { companies } from "@/lib/db/schema/app";
 import { createCompany, createCompanyMember } from "@/lib/db/queries";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { z } from "zod";
 
 const createCompanyProfileSchema = z.object({
@@ -126,6 +127,9 @@ export async function POST(request: NextRequest) {
       role: "admin",
       status: "approved",
     });
+
+    // Seed the basic-match vector, matching onboarding/update-step.
+    await refreshCompanyEmbedding(company.id);
 
     return apiResponse({ success: true, company });
   } catch (error) {

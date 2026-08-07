@@ -379,3 +379,82 @@ describe("updateSession — /pending-approval bounce", () => {
     expectPassThrough(response);
   });
 });
+
+describe("impersonation is a read-only preview", () => {
+  const IMPERSONATED = {
+    session: {
+      id: "session-1",
+      userId: TEST_USER_ID,
+      impersonatedBy: "admin-user-id",
+    },
+  };
+
+  function impersonatedRequest(url: string, method: string) {
+    return makeRequest(url, { cookies: SESSION_COOKIE, method });
+  }
+
+  beforeEach(() => {
+    getSessionMock.mockResolvedValue(
+      mockSession(IMPERSONATED) as unknown as Awaited<
+        ReturnType<typeof auth.api.getSession>
+      >,
+    );
+  });
+
+  it("allows GET so the admin can browse the account", async () => {
+    const response = await updateSession(
+      impersonatedRequest("/dashboard", "GET"),
+    );
+    expect(response.status).not.toBe(403);
+  });
+
+  it.each(["POST", "PUT", "PATCH", "DELETE"])(
+    "rejects %s so the preview cannot write or send email",
+    async (method) => {
+      const response = await updateSession(
+        impersonatedRequest("/api/companies/abc", method),
+      );
+
+      expect(response.status).toBe(403);
+      const body = await response.json();
+      expect(body.error).toMatch(/read-only preview/i);
+    },
+  );
+
+  it("still allows stopping the impersonation", async () => {
+    const response = await updateSession(
+      impersonatedRequest("/api/admin/impersonate", "DELETE"),
+    );
+    expect(response.status).not.toBe(403);
+  });
+
+  it("leaves a normal session's mutations untouched", async () => {
+    getSessionMock.mockResolvedValue(
+      mockSession() as unknown as Awaited<
+        ReturnType<typeof auth.api.getSession>
+      >,
+    );
+
+    const response = await updateSession(
+      impersonatedRequest("/api/companies/abc", "POST"),
+    );
+    expect(response.status).not.toBe(403);
+  });
+
+  it("lets an impersonated pending user reach approval-gated pages", async () => {
+    // Without the bypass the admin would be bounced to /pending-approval and
+    // could never preview the approved experience.
+    getProfileMock.mockResolvedValue(
+      mockProfile({
+        approvalStatus: "pending",
+        onboardingCompletedAt: new Date(),
+      }) as unknown as Awaited<ReturnType<typeof getProfileByUserId>>,
+    );
+
+    const response = await updateSession(
+      impersonatedRequest("/dashboard", "GET"),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+  });
+});

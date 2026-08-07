@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as getActive } from "@/app/api/match-tenders/active/route";
 import { POST as postCancel } from "@/app/api/match-tenders/cancel/route";
-import { getAuthenticatedUser } from "@/lib/api";
+import { getAuthenticatedUser, checkSuperadminRole } from "@/lib/api";
 import {
   AuthError,
   getUserCompanyIds,
@@ -17,9 +17,12 @@ import { logApiEvent } from "@/lib/services/eventLogger";
 import { makeRequest, readJson } from "@/__tests__/helpers/request";
 import { mockUser, TEST_COMPANY_ID } from "@/__tests__/helpers/mocks";
 
+// `getCompanyAccess` stays real in both routes — only its inputs
+// (`isCompanyMember`, `checkSuperadminRole`) are stubbed.
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
   getAuthenticatedUser: vi.fn(),
+  checkSuperadminRole: vi.fn(),
 }));
 
 vi.mock("@/lib/api/validation", async (importOriginal) => ({
@@ -66,6 +69,7 @@ beforeEach(() => {
   vi.mocked(getAuthenticatedUser).mockResolvedValue({ user, error: null });
   vi.mocked(getUserCompanyIds).mockResolvedValue([TEST_COMPANY_ID]);
   vi.mocked(isCompanyMember).mockResolvedValue(true);
+  vi.mocked(checkSuperadminRole).mockResolvedValue(false);
 });
 
 describe("GET /api/match-tenders/active", () => {
@@ -119,22 +123,42 @@ describe("GET /api/match-tenders/active", () => {
     });
   });
 
-  it("honours an explicit companyId only when the user belongs to it", async () => {
-    vi.mocked(getUserCompanyIds).mockResolvedValue([
-      TEST_COMPANY_ID,
-      OTHER_COMPANY_ID,
-    ]);
+  it("honours an explicit companyId the user belongs to", async () => {
     vi.mocked(getActiveMatchingBatchForCompany).mockResolvedValue(null);
 
     await readJson(await activeRequest(OTHER_COMPANY_ID));
+
     expect(getActiveMatchingBatchForCompany).toHaveBeenLastCalledWith(
       OTHER_COMPANY_ID,
     );
+  });
 
-    // A foreign companyId falls back to the user's primary company.
-    await readJson(await activeRequest("00000000-0000-4000-8000-0000000000ff"));
-    expect(getActiveMatchingBatchForCompany).toHaveBeenLastCalledWith(
-      TEST_COMPANY_ID,
+  it("returns 401 for a foreign companyId instead of falling back", async () => {
+    // Falling back to the caller's own company would show an admin their own
+    // batch under someone else's account.
+    vi.mocked(isCompanyMember).mockResolvedValue(false);
+
+    const { status } = await readJson(await activeRequest(OTHER_COMPANY_ID));
+
+    expect(status).toBe(401);
+    expect(getActiveMatchingBatchForCompany).not.toHaveBeenCalled();
+  });
+
+  it("returns the requested company's batch for a non-member superadmin", async () => {
+    vi.mocked(isCompanyMember).mockResolvedValue(false);
+    vi.mocked(checkSuperadminRole).mockResolvedValue(true);
+    vi.mocked(getActiveMatchingBatchForCompany).mockResolvedValue(
+      batch({ companyId: OTHER_COMPANY_ID }),
+    );
+
+    const { status, body } = await readJson(
+      await activeRequest(OTHER_COMPANY_ID),
+    );
+
+    expect(status).toBe(200);
+    expect(body.batch).toMatchObject({ batchId: "batch-1" });
+    expect(getActiveMatchingBatchForCompany).toHaveBeenCalledWith(
+      OTHER_COMPANY_ID,
     );
   });
 });
@@ -181,6 +205,23 @@ describe("POST /api/match-tenders/cancel", () => {
 
     expect(status).toBe(403);
     expect(cancelBatch).not.toHaveBeenCalled();
+  });
+
+  it("lets a non-member superadmin cancel the batch they started", async () => {
+    vi.mocked(getBatchStatus).mockResolvedValue(batch());
+    vi.mocked(isCompanyMember).mockResolvedValue(false);
+    vi.mocked(checkSuperadminRole).mockResolvedValue(true);
+    vi.mocked(cancelBatch).mockResolvedValue({
+      cancelled: true,
+      status: "cancelled",
+      deletedPending: 5,
+      cancelledInFlight: 1,
+    });
+
+    const { status } = await readJson(await cancelRequest({ batchId: "batch-1" }));
+
+    expect(status).toBe(200);
+    expect(cancelBatch).toHaveBeenCalledWith("batch-1");
   });
 
   it("cancels the batch and logs the event", async () => {

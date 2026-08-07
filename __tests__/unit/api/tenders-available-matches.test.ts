@@ -8,11 +8,17 @@ import {
   isCompanyMember,
   requireAuth,
 } from "@/lib/api/validation";
+import { checkSuperadminRole } from "@/lib/api";
 import { basicMatchTendersForCompany } from "@/lib/services/basicMatchingService";
 import { db } from "@/lib/db";
 import { makeRequest, readJson } from "@/__tests__/helpers/request";
 import { mockUser, TEST_COMPANY_ID } from "@/__tests__/helpers/mocks";
 import { queueSelects, type Chain } from "@/__tests__/helpers/drizzleMock";
+
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  checkSuperadminRole: vi.fn(),
+}));
 
 vi.mock("@/lib/api/validation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/validation")>()),
@@ -36,6 +42,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireAuth).mockResolvedValue({ user: mockUser() } as never);
   vi.mocked(isCompanyMember).mockResolvedValue(true);
+  vi.mocked(checkSuperadminRole).mockResolvedValue(false);
   mockedBasicMatch.mockResolvedValue([]);
 });
 

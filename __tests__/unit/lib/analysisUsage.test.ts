@@ -1,10 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 
-// getAnalysisRunsThisMonth is IO; only the pure limit resolution is under test.
-vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/db", () => ({ db: { select: vi.fn() } }));
 
-import { getEffectiveAnalysisLimit } from "@/lib/analysisUsage";
+import { db } from "@/lib/db";
+import {
+  getAnalysisRunsThisMonth,
+  getEffectiveAnalysisLimit,
+} from "@/lib/analysisUsage";
 import { extractRequestInfo } from "@/lib/services/eventLogger";
+import { makeChain } from "@/__tests__/helpers/drizzleMock";
+import { TEST_COMPANY_ID } from "@/__tests__/helpers/mocks";
 
 const settings = {
   verifiedAnalysisRunsPerMonth: 20,
@@ -47,6 +54,51 @@ describe("getEffectiveAnalysisLimit", () => {
     expect(
       getEffectiveAnalysisLimit({ verificationStatus: null }, settings),
     ).toBe(3);
+  });
+});
+
+describe("getAnalysisRunsThisMonth", () => {
+  const mockedSelect = db.select as unknown as Mock;
+  const dialect = new PgDialect();
+
+  /** The WHERE clause the counter builds, so its predicates can be asserted. */
+  function capturedWhere(): { sql: string; params: unknown[] } {
+    const chain = mockedSelect.mock.results[0].value;
+    const condition = chain.where.mock.calls[0][0] as SQL;
+    const query = dialect.sqlToQuery(condition);
+    return { sql: query.sql, params: query.params };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedSelect.mockImplementation(() => makeChain(() => [{ count: 3 }]));
+  });
+
+  it("counts comprehensive analysis events for the company", async () => {
+    await expect(getAnalysisRunsThisMonth(TEST_COMPANY_ID)).resolves.toBe(3);
+
+    const { sql, params } = capturedWhere();
+    expect(sql).toContain("'analysisType' = 'comprehensive'");
+    expect(params).toContain(TEST_COMPANY_ID);
+    expect(params).toContain("company_updated");
+  });
+
+  it("excludes admin-initiated runs from the user's quota", async () => {
+    // Preparing an account before approving it must not spend the owner's
+    // monthly allowance, so those events carry details.initiatedBy = 'admin'.
+    await getAnalysisRunsThisMonth(TEST_COMPANY_ID);
+
+    const { sql, params } = capturedWhere();
+    expect(sql).toContain(
+      "\"events\".\"details\"->>'initiatedBy' is null or \"events\".\"details\"->>'initiatedBy' <>",
+    );
+    expect(params).toContain("admin");
+  });
+
+  it("returns 0 when the company has no runs", async () => {
+    mockedSelect.mockImplementation(() => makeChain(() => []));
+
+    await expect(getAnalysisRunsThisMonth(TEST_COMPANY_ID)).resolves.toBe(0);
   });
 });
 

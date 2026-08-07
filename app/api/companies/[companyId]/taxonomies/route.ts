@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import {
-  requireAuth,
-  handleApiError,
-  isCompanyMember,
-  AuthError,
-} from "@/lib/api/validation";
+  requireCompanyAccess,
+  markCompanyAdminPrepared,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { companyTaxonomies, taxonomies } from "@/lib/db/schema/app";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { eq, and, inArray } from "drizzle-orm";
 
 export async function GET(
@@ -18,10 +19,7 @@ export async function GET(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    await requireCompanyAccess(user.id, companyId);
 
     const taxData = await db
       .select({
@@ -48,10 +46,9 @@ export async function PUT(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    const access = await requireCompanyAccess(user.id, companyId);
+    // Must be in this frame — see enableEmailSuppression's contract.
+    suppressEmailForAdminOverride(access, user.id);
 
     const body = await request.json();
     const { taxonomyIds }: { taxonomyIds: string[] } = body;
@@ -92,6 +89,18 @@ export async function PUT(
           );
       }
     });
+
+    // Unlike capabilities/markets/standards, taxonomies have no review queue
+    // and no verification-tier limit — they always write straight through — so
+    // `adminOverride` only suppresses email and records the curation.
+    if (access.adminOverride && (toAdd.length > 0 || toRemove.length > 0)) {
+      await markCompanyAdminPrepared(companyId, user.id);
+    }
+
+    // Taxonomy names feed the embedding source — see refreshCompanyEmbedding.
+    if (toAdd.length > 0 || toRemove.length > 0) {
+      await refreshCompanyEmbedding(companyId);
+    }
 
     return apiResponse({ success: true, taxonomyIds });
   } catch (error) {

@@ -12,6 +12,11 @@
     "getStarted": "开始使用",
     "menuToggle": "切换导航菜单"
   },
+  "PublicCompanyBanner": {
+    "tagline": "寻找招标、组建团队、赢得项目。",
+    "signIn": "登录",
+    "createAccount": "免费注册"
+  },
   "LocaleSwitcher": {
     "label": "语言"
   },
@@ -220,7 +225,7 @@
       },
       "create": {
         "chNumberLabel": "英国 Companies House 编号",
-        "chNumberPlaceholder": "例如：12345678",
+        "chNumberPlaceholder": "例如：12345678 或 SC123456",
         "chNumberHelper": "选填。输入公司编号可从 Companies House 自动填充信息。",
         "lookUp": "查询",
         "toastFound": "已找到公司！",
@@ -356,6 +361,8 @@
   "AdminCompanyDetail": {
     "srTitle": "公司详情",
     "srDescription": "查看公司详情与管理设置",
+    "prepareButton": "准备",
+    "preparedBadge": "已准备",
     "verified": "已认证",
     "unverified": "未认证",
     "notProvided": "未提供",
@@ -523,7 +530,8 @@
       "updateCompanyFailed": "更新公司失败",
       "analyzeCompanySuccess": "已开始公司分析，数据将很快更新。",
       "analyzeCompanyFailed": "分析公司失败"
-    }
+    },
+    "prepareButton": "准备"
   },
   "AdminUsers": {
     "title": "用户",
@@ -1402,7 +1410,13 @@
       "financialInformation": "财务信息",
       "notAvailable": "暂无",
       "status": "状态",
-      "statusActive": "活跃",
+      "statusValues": {
+        "active": "已启用",
+        "pending_review": "待审核",
+        "draft": "草稿",
+        "inactive": "未启用",
+        "rejected": "已拒绝"
+      },
       "verification": "认证",
       "verificationPending": "待审核",
       "verificationNot": "未认证",
@@ -3323,5 +3337,84 @@
       "resubmit": "请更新所需项目并重新提交您的认证申请。",
       "button": "更新您的提交"
     }
+  },
+  "AdminPreparation": {
+    "banner": {
+      "title": "您正在准备 {name} 的账户",
+      "description": "此处的更改会直接保存到其公司资料，且不会向其发送任何邮件。确认无误后再批准。",
+      "prepared": "管理员已于 {date} 完成准备。批准时将保留这些内容，而不会重新运行自动 AI 预填充。"
+    },
+    "loading": "正在加载账户…",
+    "notFound": "未找到该账户。",
+    "noCompany": "该用户尚无可准备的公司。",
+    "backToApprovals": "返回审批列表",
+    "unknownUser": "未知用户",
+    "preparedBadge": "已准备",
+    "prepareButton": "准备",
+    "approveButton": "批准",
+    "rejectButton": "拒绝",
+    "tendersHelp": "该公司将看到的招标项目。可对任意招标运行深度分析——管理员运行不计入其每月额度。",
+    "dashboardHelp": "批准后其仪表板将显示的内容。",
+    "status": {
+      "pending": "待审批",
+      "approved": "已批准",
+      "rejected": "已拒绝"
+    },
+    "tabs": {
+      "company": "公司",
+      "tenders": "招标",
+      "dashboard": "仪表板"
+    },
+    "rejectDialog": {
+      "title": "拒绝 {name}？",
+      "description": "系统将通知该用户其申请未获批准。",
+      "reasonLabel": "原因（可选）",
+      "reasonPlaceholder": "请说明拒绝此申请的原因…",
+      "cancel": "取消",
+      "confirm": "拒绝用户"
+    },
+    "toasts": {
+      "loadFailed": "加载该账户失败",
+      "actionSuccess": "操作完成",
+      "actionFailed": "操作失败",
+      "analyzeSuccess": "深度分析已完成",
+      "analyzeFailed": "深度分析失败",
+      "impersonateFailed": "无法以该用户身份查看"
+    },
+    "viewAsButton": "以该用户身份查看"
+  },
+  "AdminCompanyPreparation": {
+    "loading": "正在加载公司…",
+    "notFound": "未找到该公司。",
+    "backToCompanies": "返回公司列表",
+    "unknownUser": "未知用户",
+    "noOwner": "无所有者 — 导入或系统公司",
+    "verified": "已认证",
+    "unverified": "未认证",
+    "preparedBadge": "已准备",
+    "viewAsButton": "以该用户身份查看",
+    "approvalConsoleButton": "审批控制台",
+    "clearPreparedButton": "清除准备标记",
+    "banner": {
+      "title": "您正在编辑 {name} 的公司",
+      "titleNoOwner": "您正在直接编辑 {name}"
+    },
+    "clearDialog": {
+      "title": "要清除准备标记吗？",
+      "description": "您整理的内容会保留，但批准时会重新运行自动 AI 预填充，并可能覆盖这些内容。",
+      "cancel": "取消",
+      "confirm": "清除标记"
+    },
+    "toasts": {
+      "loadFailed": "加载该公司失败",
+      "impersonateFailed": "无法以该用户身份查看",
+      "clearSuccess": "已清除准备标记",
+      "clearFailed": "无法清除准备标记"
+    }
+  },
+  "Impersonation": {
+    "banner": "正在以 {email} 的身份查看——您的操作会记录在该账户下，且不会发送任何邮件。",
+    "stop": "结束以该用户身份查看",
+    "stopFailed": "无法结束身份模拟，请尝试退出登录。"
   }
 }

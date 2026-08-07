@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as getStatus } from "@/app/api/match-tenders/status/route";
 import { GET as getProgress } from "@/app/api/match-tenders/progress/route";
-import { getAuthenticatedUser } from "@/lib/api";
+import { getAuthenticatedUser, checkSuperadminRole } from "@/lib/api";
 import {
   AuthError,
   getUserCompanyIds,
@@ -16,9 +16,12 @@ import {
 import { makeRequest, readJson } from "@/__tests__/helpers/request";
 import { mockUser, TEST_COMPANY_ID } from "@/__tests__/helpers/mocks";
 
+// `getCompanyAccess` stays real in the progress route — only its inputs
+// (`isCompanyMember`, `checkSuperadminRole`) are stubbed.
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
   getAuthenticatedUser: vi.fn(),
+  checkSuperadminRole: vi.fn(),
 }));
 
 vi.mock("@/lib/api/validation", async (importOriginal) => ({
@@ -63,6 +66,7 @@ beforeEach(() => {
   vi.mocked(getAuthenticatedUser).mockResolvedValue({ user, error: null });
   vi.mocked(getUserCompanyIds).mockResolvedValue([TEST_COMPANY_ID]);
   vi.mocked(isCompanyMember).mockResolvedValue(true);
+  vi.mocked(checkSuperadminRole).mockResolvedValue(false);
 });
 
 describe("GET /api/match-tenders/status", () => {
@@ -168,6 +172,20 @@ describe("GET /api/match-tenders/progress", () => {
     expect(status).toBe(403);
     expect(body.error).toBe("Access denied");
     expect(reconcileBatch).not.toHaveBeenCalled();
+  });
+
+  it("returns progress to a superadmin who is not a member", async () => {
+    // /trigger lets a superadmin start a run on a company they don't belong to,
+    // so polling that same batch must not 403.
+    vi.mocked(getBatchStatus).mockResolvedValue(batch());
+    vi.mocked(isCompanyMember).mockResolvedValue(false);
+    vi.mocked(checkSuperadminRole).mockResolvedValue(true);
+    vi.mocked(reconcileBatch).mockResolvedValue(null);
+
+    const { status, body } = await readJson(await progressRequest("batch-1"));
+
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ batchId: "batch-1", status: "processing" });
   });
 
   it("returns reconciled progress with a rounded percentage", async () => {

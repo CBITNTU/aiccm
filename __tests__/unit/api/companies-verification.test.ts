@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { POST } from "@/app/api/companies/[companyId]/verification/route";
+import { GET, POST } from "@/app/api/companies/[companyId]/verification/route";
 import { isCompanyMember, requireAuth } from "@/lib/api/validation";
+import { checkSuperadminRole } from "@/lib/api";
 import { db } from "@/lib/db";
 import { companies, companyVerificationRequests } from "@/lib/db/schema/app";
 import { makeRequest, readJson, routeParams } from "@/__tests__/helpers/request";
 import { mockUser, TEST_COMPANY_ID, TEST_USER_ID } from "@/__tests__/helpers/mocks";
 import { makeChain } from "@/__tests__/helpers/drizzleMock";
+
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  checkSuperadminRole: vi.fn(),
+}));
 
 vi.mock("@/lib/api/validation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/validation")>()),
@@ -19,6 +25,7 @@ vi.mock("@/lib/db", () => ({
 
 const mockedRequireAuth = requireAuth as unknown as Mock;
 const mockedIsCompanyMember = isCompanyMember as unknown as Mock;
+const mockedCheckSuperadminRole = checkSuperadminRole as unknown as Mock;
 const mockedSelect = db.select as unknown as Mock;
 const mockedTransaction = db.transaction as unknown as Mock;
 
@@ -55,11 +62,52 @@ function post(json?: Record<string, unknown>) {
   );
 }
 
+function get() {
+  return GET(
+    makeRequest(`/api/companies/${TEST_COMPANY_ID}/verification`),
+    routeParams({ companyId: TEST_COMPANY_ID }),
+  );
+}
+
+describe("GET /api/companies/[companyId]/verification", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedRequireAuth.mockResolvedValue({ user: mockUser() });
+    mockedIsCompanyMember.mockResolvedValue(true);
+    mockedCheckSuperadminRole.mockResolvedValue(false);
+  });
+
+  it("returns 401 for a non-member who is not a superadmin", async () => {
+    mockedIsCompanyMember.mockResolvedValue(false);
+
+    const { status, body } = await readJson(await get());
+
+    expect(status).toBe(401);
+    expect(body.error).toBe("No access to this company");
+    expect(mockedSelect).not.toHaveBeenCalled();
+  });
+
+  it("lets a superadmin non-member read the status while preparing", async () => {
+    mockedIsCompanyMember.mockResolvedValue(false);
+    mockedCheckSuperadminRole.mockResolvedValue(true);
+    queueCompanyLookup([
+      { verificationStatus: "unverified", verifiedAt: null, pendingChanges: null },
+    ]);
+    queueCompanyLookup([]);
+
+    const { status, body } = await readJson(await get());
+
+    expect(status).toBe(200);
+    expect(body.verificationStatus).toBe("unverified");
+  });
+});
+
 describe("POST /api/companies/[companyId]/verification", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedRequireAuth.mockResolvedValue({ user: mockUser() });
     mockedIsCompanyMember.mockResolvedValue(true);
+    mockedCheckSuperadminRole.mockResolvedValue(false);
   });
 
   it("returns 401 when the user is not a company member (AuthError path)", async () => {
@@ -71,6 +119,20 @@ describe("POST /api/companies/[companyId]/verification", () => {
     expect(body.error).toBe("No access to this company");
     expect(mockedSelect).not.toHaveBeenCalled();
     expect(mockedIsCompanyMember).toHaveBeenCalledWith(TEST_USER_ID, TEST_COMPANY_ID);
+  });
+
+  it("still rejects a superadmin non-member — submitting is the owner's act", async () => {
+    // Deliberate asymmetry with GET above: an admin's edits already bypass the
+    // review queue, so they have nothing to submit. The console hides the
+    // button; this asserts the route does not quietly grant it.
+    mockedIsCompanyMember.mockResolvedValue(false);
+    mockedCheckSuperadminRole.mockResolvedValue(true);
+
+    const { status, body } = await readJson(await post());
+
+    expect(status).toBe(401);
+    expect(body.error).toBe("No access to this company");
+    expect(mockedSelect).not.toHaveBeenCalled();
   });
 
   it("returns 400 when the company is already verified", async () => {

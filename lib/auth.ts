@@ -62,7 +62,18 @@ export const auth = betterAuth({
 
   plugins: [
     organization(),
-    admin(),
+    // App roles live in `user_roles`. This plugin authorizes off its own
+    // `user.role` column and only accepts roles declared in its access-control
+    // config, so app superadmins are mirrored onto its built-in "admin" role
+    // (see migration 0014 and /api/admin/users/[userId]/role). `user_roles`
+    // stays the app's source of truth.
+    //
+    // Impersonation lets an admin preview a pending account exactly as its
+    // owner will see it. The session is deliberately short-lived, and the
+    // plugin refuses to impersonate another admin by default.
+    admin({
+      impersonationSessionDuration: 60 * 60,
+    }),
     // Augment the session response with the app role + profile state so the
     // client doesn't need separate /api/user-role and /api/profile/me calls.
     // NOTE: this replaces the get-session response body, so user + session

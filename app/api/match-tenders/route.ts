@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
-import { isCompanyMember } from "@/lib/api/validation";
+import {
+  getCompanyAccess,
+  markCompanyAdminPrepared,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { aiGenerateObject } from "@/lib/ai";
 import { matchingScoreSchema } from "@/lib/schemas/tenderMatching";
 import { logApiEvent } from "@/lib/services/eventLogger";
@@ -234,17 +238,27 @@ export async function POST(request: NextRequest) {
     const force = requestBody.force === true;
 
     let company: CompanyMatchRow | null = null;
+    let adminOverride = false;
 
     if (targetCompanyId) {
-      const hasAccess = await isCompanyMember(user.id, targetCompanyId);
-      if (!hasAccess) {
+      const access = await getCompanyAccess(user.id, targetCompanyId);
+      if (!access.hasAccess) {
         return apiError(`Company not found or access denied: ${targetCompanyId}`, 404);
       }
+      adminOverride = access.adminOverride;
+      suppressEmailForAdminOverride(access, user.id);
 
+      // A superadmin preparing an account before approval works against a
+      // company still in `pending_review`, so the active-status gate only
+      // applies to the company's own members (same rule as /trigger).
       const result = await db
         .select(companyMatchColumns)
         .from(companies)
-        .where(and(eq(companies.id, targetCompanyId), eq(companies.status, "active")))
+        .where(
+          adminOverride
+            ? eq(companies.id, targetCompanyId)
+            : and(eq(companies.id, targetCompanyId), eq(companies.status, "active")),
+        )
         .limit(1);
 
       company = result[0] ?? null;
@@ -415,24 +429,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check monthly matching run limit
-    const [matchingSettings, runsThisMonth] = await Promise.all([
-      getPlatformMatchingSettings(),
-      getMatchingRunsThisMonth(companyData.id, company.usageResetAt),
-    ]);
-    const effectiveLimit = getEffectiveMatchingLimit(company, matchingSettings);
-    if (runsThisMonth >= effectiveLimit) {
-      const resetsAt = getNextMonthStart().toISOString();
-      return NextResponse.json(
-        {
-          error: `Matching run limit reached (${runsThisMonth}/${effectiveLimit} this month). Resets on ${new Date(resetsAt).toLocaleDateString()}.`,
-          limitExceeded: true,
-          used: runsThisMonth,
-          limit: effectiveLimit,
-          resetsAt,
-        },
-        { status: 429 },
-      );
+    // Check monthly matching run limit. An admin preparing someone else's
+    // account never burns that company's allowance.
+    if (!adminOverride) {
+      const [matchingSettings, runsThisMonth] = await Promise.all([
+        getPlatformMatchingSettings(),
+        getMatchingRunsThisMonth(companyData.id, company.usageResetAt),
+      ]);
+      const effectiveLimit = getEffectiveMatchingLimit(company, matchingSettings);
+      if (runsThisMonth >= effectiveLimit) {
+        const resetsAt = getNextMonthStart().toISOString();
+        return NextResponse.json(
+          {
+            error: `Matching run limit reached (${runsThisMonth}/${effectiveLimit} this month). Resets on ${new Date(resetsAt).toLocaleDateString()}.`,
+            limitExceeded: true,
+            used: runsThisMonth,
+            limit: effectiveLimit,
+            resetsAt,
+          },
+          { status: 429 },
+        );
+      }
+    } else {
+      await markCompanyAdminPrepared(companyData.id, user.id);
     }
 
     // Create batch and queue all jobs

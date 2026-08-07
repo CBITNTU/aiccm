@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
-import { requireAuth, isCompanyMember, handleApiError, AuthError } from "@/lib/api/validation";
+import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import {
+  getCompanyAccess,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { matchingResults } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
@@ -24,11 +28,13 @@ export async function DELETE(
       throw new AuthError("Matching result not found");
     }
 
-    // Verify user is owner or approved member of the company
-    const hasAccess = await isCompanyMember(user.id, result[0].companyId);
-    if (!hasAccess) {
+    // Owner, approved member, or a superadmin preparing the account.
+    const access = await getCompanyAccess(user.id, result[0].companyId);
+    if (!access.hasAccess) {
       throw new AuthError("No access to this matching result");
     }
+    // Must be in this frame — see enableEmailSuppression's contract.
+    suppressEmailForAdminOverride(access, user.id);
 
     await db.delete(matchingResults).where(eq(matchingResults.id, resultId));
 

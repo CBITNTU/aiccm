@@ -19,6 +19,7 @@ import {
   enqueueBatch,
   type EnqueueJobOptions,
 } from "@/lib/services/queueService";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 
 const csvImportRowSchema = z.object({
   companyName: z.string().min(1),
@@ -224,6 +225,7 @@ export async function POST(request: NextRequest) {
 
     const results: ImportRowResult[] = [];
     const jobsToQueue: EnqueueJobOptions[] = [];
+    const companyIdsToEmbed: string[] = [];
     let imported = 0;
     let updated = 0;
     let skipped = 0;
@@ -322,6 +324,7 @@ export async function POST(request: NextRequest) {
 
           if (status !== "skipped") {
             await replaceCompanyCapabilities(companyId, matchedCapabilityIds);
+            companyIdsToEmbed.push(companyId);
           }
 
           if (shouldQueueJobs) {
@@ -386,6 +389,24 @@ export async function POST(request: NextRequest) {
           });
         }
       }
+    }
+
+    // Embed the touched companies after the import loop, bounded the same way as
+    // the bulk tender embed in lib/tenders/ingest.ts. Queued summary/taxonomy
+    // jobs also re-embed, but they are opt-in (enqueueJobs defaults to false),
+    // so an import must not depend on them to leave the vectors current.
+    if (companyIdsToEmbed.length > 0) {
+      const CONCURRENCY = 4;
+      const queue = [...companyIdsToEmbed];
+      await Promise.all(
+        Array.from({ length: CONCURRENCY }, async () => {
+          while (queue.length > 0) {
+            const id = queue.shift();
+            if (!id) break;
+            await refreshCompanyEmbedding(id);
+          }
+        }),
+      );
     }
 
     let batchId: string | null = null;

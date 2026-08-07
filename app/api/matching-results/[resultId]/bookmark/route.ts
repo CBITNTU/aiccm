@@ -1,11 +1,10 @@
 import { NextRequest } from "next/server";
 import { apiResponse, apiError } from "@/lib/api";
+import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
 import {
-  requireAuth,
-  handleApiError,
-  isCompanyMember,
-  AuthError,
-} from "@/lib/api/validation";
+  getCompanyAccess,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { matchingResults } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
@@ -32,10 +31,13 @@ export async function PUT(
       return apiError("Result not found", 404);
     }
 
-    const hasAccess = await isCompanyMember(user.id, result[0].companyId);
-    if (!hasAccess) {
+    // Owner, approved member, or a superadmin preparing the account.
+    const access = await getCompanyAccess(user.id, result[0].companyId);
+    if (!access.hasAccess) {
       throw new AuthError("No access to this matching result");
     }
+    // Must be in this frame — see enableEmailSuppression's contract.
+    suppressEmailForAdminOverride(access, user.id);
 
     const body = await request.json();
     const isBookmarked = body.isBookmarked ?? body.is_bookmarked;

@@ -2,13 +2,17 @@ import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
-  isCompanyMember,
   handleApiError,
-  AuthError,
 } from "@/lib/api/validation";
+import {
+  requireCompanyAccess,
+  markCompanyAdminPrepared,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { companyMarkets, markets, companies, companyVerificationRequests } from "@/lib/db/schema/app";
 import { localizedName } from "@/lib/taxonomy/localizedName";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { eq, and, inArray } from "drizzle-orm";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 
@@ -33,10 +37,7 @@ export async function GET(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    await requireCompanyAccess(user.id, companyId);
 
     const data = await getCompanyMarketsData(companyId);
     return apiResponse({ markets: data });
@@ -53,10 +54,10 @@ export async function PUT(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    const access = await requireCompanyAccess(user.id, companyId);
+    // Must be in this frame — see enableEmailSuppression's contract.
+    suppressEmailForAdminOverride(access, user.id);
+    const { adminOverride } = access;
 
     const body = await request.json();
     const { marketIds } = body as { marketIds: string[] };
@@ -86,7 +87,8 @@ export async function PUT(
       .where(eq(companies.id, companyId))
       .then((rows) => rows[0]);
 
-    if (company?.verificationStatus === "verified") {
+    // An admin acting on the user's behalf bypasses the change-review queue.
+    if (company?.verificationStatus === "verified" && !adminOverride) {
       // Check edit lock
       const pendingRequest = await db
         .select({ id: companyVerificationRequests.id })
@@ -152,6 +154,13 @@ export async function PUT(
         })),
       );
     }
+
+    if (adminOverride) {
+      await markCompanyAdminPrepared(companyId, user.id);
+    }
+
+    // Markets feed the embedding source — see refreshCompanyEmbedding.
+    await refreshCompanyEmbedding(companyId);
 
     const data = await getCompanyMarketsData(companyId);
     return apiResponse({ markets: data, pendingReview: false });

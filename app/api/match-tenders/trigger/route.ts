@@ -3,8 +3,9 @@ import { apiResponse, apiError } from "@/lib/api";
 import {
   requireAuth,
   handleApiError,
-  isCompanyMember,
 } from "@/lib/api/validation";
+import { getCompanyAccess, markCompanyAdminPrepared } from "@/lib/api/companyAccess";
+import { enableEmailSuppression } from "@/lib/email/suppression";
 import { batchScoreTendersForCompany } from "@/lib/services/tenderMatchingService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
@@ -37,16 +38,31 @@ export async function POST(request: NextRequest) {
     }
 
     let companyId = requestedCompanyId;
+    let adminOverride = false;
 
     if (companyId) {
-      const hasAccess = await isCompanyMember(user.id, companyId);
-      if (!hasAccess) {
+      const access = await getCompanyAccess(user.id, companyId);
+      if (!access.hasAccess) {
         return apiError("Company not found or access denied", 404);
       }
+      adminOverride = access.adminOverride;
+      if (adminOverride) {
+        enableEmailSuppression({
+          reason: "admin-acting-on-behalf",
+          actorUserId: user.id,
+        });
+      }
+      // A superadmin preparing an account before approval works against a
+      // company still in `pending_review`, so the active-status gate only
+      // applies to the company's own members.
       const [row] = await db
         .select({ id: companies.id })
         .from(companies)
-        .where(and(eq(companies.id, companyId), eq(companies.status, "active")))
+        .where(
+          adminOverride
+            ? eq(companies.id, companyId)
+            : and(eq(companies.id, companyId), eq(companies.status, "active")),
+        )
         .limit(1);
       if (!row) {
         return apiError("Company not found or not active", 404);
@@ -58,6 +74,10 @@ export async function POST(request: NextRequest) {
         return apiError("Company not found for user", 404);
       }
       companyId = companyIds[0];
+    }
+
+    if (adminOverride) {
+      await markCompanyAdminPrepared(companyId, user.id);
     }
 
     const result = await batchScoreTendersForCompany(

@@ -12,6 +12,11 @@ vi.mock("@/lib/api/validation", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  checkSuperadminRole: vi.fn(),
+}));
+
 vi.mock("@/lib/services/tenderMatchingService", () => ({
   batchScoreTendersForCompany: vi.fn(),
 }));
@@ -44,6 +49,7 @@ import {
   getUserCompanyIds,
   AuthError,
 } from "@/lib/api/validation";
+import { checkSuperadminRole } from "@/lib/api";
 import { batchScoreTendersForCompany } from "@/lib/services/tenderMatchingService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { makeRequest, readJson } from "@/__tests__/helpers/request";
@@ -51,6 +57,7 @@ import { mockUser, TEST_COMPANY_ID, TEST_USER_ID } from "@/__tests__/helpers/moc
 
 const requireAuthMock = vi.mocked(requireAuth);
 const isCompanyMemberMock = vi.mocked(isCompanyMember);
+const checkSuperadminRoleMock = vi.mocked(checkSuperadminRole);
 const getUserCompanyIdsMock = vi.mocked(getUserCompanyIds);
 const batchScoreMock = vi.mocked(batchScoreTendersForCompany);
 const logApiEventMock = vi.mocked(logApiEvent);
@@ -83,6 +90,7 @@ beforeEach(() => {
 
   requireAuthMock.mockResolvedValue({ user: mockUser() } as never);
   isCompanyMemberMock.mockResolvedValue(true);
+  checkSuperadminRoleMock.mockResolvedValue(false);
   getUserCompanyIdsMock.mockResolvedValue([TEST_COMPANY_ID]);
   batchScoreMock.mockResolvedValue(queuedResult);
   logApiEventMock.mockResolvedValue(undefined as never);

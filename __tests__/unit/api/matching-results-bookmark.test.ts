@@ -1,10 +1,19 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { PUT } from "@/app/api/matching-results/[resultId]/bookmark/route";
 import { AuthError, isCompanyMember, requireAuth } from "@/lib/api/validation";
+import { checkSuperadminRole } from "@/lib/api";
 import { db } from "@/lib/db";
 import { makeRequest, readJson, routeParams } from "@/__tests__/helpers/request";
 import { mockUser } from "@/__tests__/helpers/mocks";
 import { makeChain } from "@/__tests__/helpers/drizzleMock";
+
+// The route now gates via `getCompanyAccess`, which falls through to the
+// superadmin role when membership fails — stub it so the deny path doesn't
+// reach the real `userHasRole` query.
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  checkSuperadminRole: vi.fn(),
+}));
 
 vi.mock("@/lib/api/validation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/validation")>()),
@@ -18,6 +27,7 @@ vi.mock("@/lib/db", () => ({
 
 const mockedRequireAuth = requireAuth as unknown as Mock;
 const mockedIsCompanyMember = isCompanyMember as unknown as Mock;
+const mockedCheckSuperadminRole = checkSuperadminRole as unknown as Mock;
 const mockedSelect = db.select as unknown as Mock;
 const mockedUpdate = db.update as unknown as Mock;
 
@@ -44,6 +54,7 @@ describe("PUT /api/matching-results/[resultId]/bookmark", () => {
     vi.clearAllMocks();
     mockedRequireAuth.mockResolvedValue({ user });
     mockedIsCompanyMember.mockResolvedValue(true);
+    mockedCheckSuperadminRole.mockResolvedValue(false);
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -75,6 +86,19 @@ describe("PUT /api/matching-results/[resultId]/bookmark", () => {
     expect(body.error).toBe("No access to this matching result");
     expect(mockedIsCompanyMember).toHaveBeenCalledWith(user.id, COMPANY_ID);
     expect(mockedUpdate).not.toHaveBeenCalled();
+  });
+
+  it("allows a superadmin non-member preparing the account", async () => {
+    queueLookup([{ id: RESULT_ID, companyId: COMPANY_ID }]);
+    mockedIsCompanyMember.mockResolvedValue(false);
+    mockedCheckSuperadminRole.mockResolvedValue(true);
+    const updateChain = makeChain(() => [{ id: RESULT_ID, isBookmarked: true }]);
+    mockedUpdate.mockImplementation(() => updateChain);
+
+    const { status } = await readJson(await put({ isBookmarked: true }));
+
+    expect(status).toBe(200);
+    expect(mockedUpdate).toHaveBeenCalled();
   });
 
   it("allows an approved team member (not just the owner) to bookmark", async () => {

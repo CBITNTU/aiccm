@@ -66,6 +66,9 @@ export type EventActionType =
   | "admin_company_ai_regenerated"
   | "admin_capabilities_reset"
   | "admin_usage_reset"
+  | "admin_impersonation_started"
+  | "admin_impersonation_stopped"
+  | "admin_company_prepared"
   // Queue/Processing
   | "queue_job_created"
   | "queue_job_completed"

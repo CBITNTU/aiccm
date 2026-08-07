@@ -21,6 +21,7 @@ vi.mock("@/lib/services/tenderMatchingService", () => ({
 vi.mock("@/lib/services/embeddingService", () => ({
   embedCompany: vi.fn(),
   embedTender: vi.fn(),
+  refreshCompanyEmbedding: vi.fn(),
 }));
 
 import { processJob } from "@/lib/services/jobProcessor";
@@ -34,7 +35,11 @@ import {
   generateCompanyCapabilityTaxonomy,
 } from "@/lib/services/companyAIService";
 import { scoreTenderMatch } from "@/lib/services/tenderMatchingService";
-import { embedCompany, embedTender } from "@/lib/services/embeddingService";
+import {
+  embedCompany,
+  embedTender,
+  refreshCompanyEmbedding,
+} from "@/lib/services/embeddingService";
 import type { JobType } from "@/lib/services/queueService";
 
 const tenderSummaryMock = vi.mocked(generateTenderSummary);
@@ -45,6 +50,7 @@ const companyTaxonomyMock = vi.mocked(generateCompanyCapabilityTaxonomy);
 const scoreTenderMatchMock = vi.mocked(scoreTenderMatch);
 const embedCompanyMock = vi.mocked(embedCompany);
 const embedTenderMock = vi.mocked(embedTender);
+const refreshCompanyEmbeddingMock = vi.mocked(refreshCompanyEmbedding);
 
 function baseJob(overrides: Partial<Parameters<typeof processJob>[0]> = {}) {
   return {
@@ -135,6 +141,19 @@ describe("processJob — company jobs", () => {
     expect(result).toEqual({ success: true, summary: "company summary" });
   });
 
+  it("company_summary force-refreshes the embedding after writing aiSummary", async () => {
+    // aiSummary is the top line of the company embedding source, so this job
+    // invalidates the vector — it used to leave it stale.
+    companySummaryMock.mockResolvedValue("company summary" as never);
+
+    await processJob(baseJob({ jobType: "company_summary", entityId: "c-1" }));
+
+    expect(refreshCompanyEmbeddingMock).toHaveBeenCalledWith("c-1", { force: true });
+    expect(
+      companySummaryMock.mock.invocationCallOrder[0],
+    ).toBeLessThan(refreshCompanyEmbeddingMock.mock.invocationCallOrder[0]);
+  });
+
   it("company_taxonomy passes fullRegeneration=true from metadata", async () => {
     companyTaxonomyMock.mockResolvedValue(["tx"] as never);
 
@@ -148,6 +167,14 @@ describe("processJob — company jobs", () => {
 
     expect(companyTaxonomyMock).toHaveBeenCalledWith("c-2", true);
     expect(result).toEqual({ success: true, taxonomy: ["tx"] });
+  });
+
+  it("company_taxonomy force-refreshes the embedding", async () => {
+    companyTaxonomyMock.mockResolvedValue(["tx"] as never);
+
+    await processJob(baseJob({ jobType: "company_taxonomy", entityId: "c-2" }));
+
+    expect(refreshCompanyEmbeddingMock).toHaveBeenCalledWith("c-2", { force: true });
   });
 
   it("company_taxonomy defaults fullRegeneration to false when metadata is absent or non-true", async () => {
@@ -169,7 +196,6 @@ describe("processJob — company jobs", () => {
   it("company_ai_complete runs taxonomy, then summary, then force embed", async () => {
     companyTaxonomyMock.mockResolvedValue(["tx"] as never);
     companySummaryMock.mockResolvedValue("sum" as never);
-    embedCompanyMock.mockResolvedValue({ embedded: true } as never);
 
     const result = await processJob(
       baseJob({
@@ -181,30 +207,16 @@ describe("processJob — company jobs", () => {
 
     expect(companyTaxonomyMock).toHaveBeenCalledWith("c-4", true);
     expect(companySummaryMock).toHaveBeenCalledWith("c-4");
-    expect(embedCompanyMock).toHaveBeenCalledWith("c-4", { force: true });
+    expect(refreshCompanyEmbeddingMock).toHaveBeenCalledWith("c-4", { force: true });
 
     // Ordering: taxonomy → summary → embed
     const taxonomyOrder = companyTaxonomyMock.mock.invocationCallOrder[0];
     const summaryOrder = companySummaryMock.mock.invocationCallOrder[0];
-    const embedOrder = embedCompanyMock.mock.invocationCallOrder[0];
+    const embedOrder = refreshCompanyEmbeddingMock.mock.invocationCallOrder[0];
     expect(taxonomyOrder).toBeLessThan(summaryOrder);
     expect(summaryOrder).toBeLessThan(embedOrder);
 
     expect(result).toEqual({ success: true, summary: "sum", taxonomy: ["tx"] });
-  });
-
-  it("company_ai_complete treats embed failure as non-fatal", async () => {
-    companyTaxonomyMock.mockResolvedValue(["tx"] as never);
-    companySummaryMock.mockResolvedValue("sum" as never);
-    embedCompanyMock.mockRejectedValue(new Error("no embedder"));
-
-    const result = await processJob(baseJob({ jobType: "company_ai_complete", entityId: "c-5" }));
-
-    expect(result).toEqual({ success: true, summary: "sum", taxonomy: ["tx"] });
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Embedding after company_ai_complete failed (non-fatal) for c-5"),
-      expect.any(Error),
-    );
   });
 });
 

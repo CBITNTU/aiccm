@@ -16,10 +16,20 @@ export interface BrandConfig {
   supportEmail: string;
   /** Optional public-facing base URL for the deployment. */
   supportUrl?: string;
-  /** Path (under /public) to the nav/hero logo image. */
+  /** Path (under /public) to the nav/hero wordmark image. */
   logoPath: string;
-  /** Path (under /public) to the favicon. */
+  /**
+   * Path (under /public) to the square icon mark, used where the full wordmark
+   * doesn't fit — the collapsed sidenav rail and the loading splashes. Falls
+   * back to `logoPath` when absent.
+   */
+  markPath?: string;
+  /** Path (under /public) to the .ico favicon. */
   faviconPath: string;
+  /** Path (under /public) to a 512px PNG icon. */
+  iconPath?: string;
+  /** Path (under /public) to a 180px apple-touch-icon PNG. */
+  appleIconPath?: string;
   /** Optional "Powered by …" footer label. */
   poweredBy?: string;
 }

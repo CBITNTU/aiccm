@@ -4,6 +4,7 @@ import { checkSuperadminRole } from "@/lib/api";
 import { isCompanyMember, requireAuth } from "@/lib/api/validation";
 import { getCompanyMemberRole } from "@/lib/db/queries";
 import { db } from "@/lib/db";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { makeRequest, readJson, routeParams } from "@/__tests__/helpers/request";
 import { mockUser, TEST_COMPANY_ID, TEST_USER_ID } from "@/__tests__/helpers/mocks";
 import { makeChain, queueSelects, type Chain } from "@/__tests__/helpers/drizzleMock";
@@ -31,6 +32,7 @@ vi.mock("@/lib/geocode", () => ({
 
 vi.mock("@/lib/services/embeddingService", () => ({
   embedCompany: vi.fn(async () => {}),
+  refreshCompanyEmbedding: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -177,6 +179,20 @@ describe("PUT /api/companies/[companyId]", () => {
     expect(setArg.description).toBe("Updated");
     expect(setArg).not.toHaveProperty("status");
     expect(setArg).not.toHaveProperty("userId");
+  });
+
+  it("refreshes the embedding on every successful save", async () => {
+    // Unconditional by design: the field whitelist this replaced drifted out of
+    // sync with buildCompanySource. The source-hash guard inside
+    // refreshCompanyEmbedding makes a no-change save cheap.
+    queueSelects(mockedSelect, [companyRow()]);
+    setupUpdate([companyRow({ contactPhone: "0999" })]);
+
+    await put({ contactPhone: "0999" });
+
+    expect(vi.mocked(refreshCompanyEmbedding)).toHaveBeenCalledWith(
+      TEST_COMPANY_ID,
+    );
   });
 
   it("routes reviewable fields of a verified company into pendingChanges", async () => {

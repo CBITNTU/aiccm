@@ -47,6 +47,10 @@ vi.mock("@/lib/services/eventLogger", () => ({
   logApiEvent: vi.fn(async () => {}),
 }));
 
+vi.mock("@/lib/services/embeddingService", () => ({
+  refreshCompanyEmbedding: vi.fn(async () => {}),
+}));
+
 vi.mock("@/lib/geocode", () => ({
   isGeocodingEnabled: vi.fn(() => false),
   geocodeLocation: vi.fn(),

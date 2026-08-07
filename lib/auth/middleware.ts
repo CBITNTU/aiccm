@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isValidRedirectUrl } from "@/lib/utils/redirectUrl";
 import { getProfileByUserId, getUserRoleByUserId } from "@/lib/db/queries";
 
+/** HTTP methods that cannot change server state. */
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
 /**
  * Better Auth middleware helper.
  * Checks for Better Auth session cookie, validates it, then applies route protection.
@@ -12,6 +15,10 @@ export async function updateSession(request: NextRequest) {
 
   // Get user ID from Better Auth session cookie
   let userId: string | null = null;
+  // Set when a superadmin is impersonating this user. Approval gating is then
+  // relaxed so the admin can preview a still-pending account exactly as its
+  // owner will see it once approved.
+  let isImpersonating = false;
 
   const sessionToken =
     request.cookies.get("better-auth.session_token")?.value ??
@@ -25,10 +32,36 @@ export async function updateSession(request: NextRequest) {
       });
       if (session?.user?.id) {
         userId = session.user.id;
+        isImpersonating = !!(
+          session.session as { impersonatedBy?: string | null } | undefined
+        )?.impersonatedBy;
       }
     } catch {
       // Session invalid or expired
     }
+  }
+
+  // Impersonation is a read-only preview. Rejecting every mutating request
+  // here — rather than trying to suppress the side effects one by one — means
+  // an admin looking at a user's account can never write to it, enqueue AI work
+  // for it, or cause it to be emailed. Editing happens in the admin console
+  // instead, where the actor is the admin and email is suppressed explicitly.
+  //
+  // Enforced in middleware because it is the only layer that reliably sees
+  // every request before its handler runs.
+  if (
+    isImpersonating &&
+    !SAFE_METHODS.has(request.method) &&
+    !request.nextUrl.pathname.startsWith("/api/admin/impersonate") &&
+    !request.nextUrl.pathname.startsWith("/api/auth")
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "This session is a read-only preview. Stop viewing as the user to make changes.",
+      },
+      { status: 403 },
+    );
   }
 
   // No Better Auth session = unauthenticated
@@ -119,14 +152,20 @@ export async function updateSession(request: NextRequest) {
       if (profile) {
         const isOnboardingPath = request.nextUrl.pathname.startsWith("/onboarding");
 
-        // If onboarding not completed, redirect to onboarding
-        if (!profile.onboardingCompletedAt && !isOnboardingAllowedPath) {
+        // If onboarding not completed, redirect to onboarding. An impersonating
+        // admin is exempt: the point of the preview is to reach the approved
+        // experience, not to be funnelled back into the user's onboarding.
+        if (
+          !profile.onboardingCompletedAt &&
+          !isOnboardingAllowedPath &&
+          !isImpersonating
+        ) {
           const url = request.nextUrl.clone();
           url.pathname = "/onboarding";
           return NextResponse.redirect(url);
         }
 
-        if (profile.onboardingCompletedAt) {
+        if (profile.onboardingCompletedAt && !isImpersonating) {
           if (profile.approvalStatus === "pending" && isApprovalRequiredPath) {
             const url = request.nextUrl.clone();
             url.pathname = "/pending-approval";

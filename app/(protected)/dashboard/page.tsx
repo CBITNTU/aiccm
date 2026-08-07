@@ -14,6 +14,7 @@ import { StatsCards } from "./_components/StatsCards";
 import { PerformanceBenchmarkCard } from "./_components/PerformanceBenchmarkCard";
 import { CompanyOverviewCard } from "./_components/CompanyOverviewCard";
 import { QuickActionsSection } from "./_components/QuickActionsSection";
+import { buildRadarData } from "./_components/types";
 import type {
   Company,
   DashboardStats,
@@ -89,16 +90,7 @@ export default function DashboardPage() {
     }
   };
 
-  const radarData = companyAnalysis?.performanceBenchmark
-    ? [
-        { subject: "Technical Expertise", A: companyAnalysis.performanceBenchmark.technicalExpertise || 0, fullMark: 100 },
-        { subject: "Safety Standards", A: companyAnalysis.performanceBenchmark.safetyStandards || 0, fullMark: 100 },
-        { subject: "Innovation", A: companyAnalysis.performanceBenchmark.innovation || 0, fullMark: 100 },
-        { subject: "Project Experience", A: companyAnalysis.performanceBenchmark.projectExperience || 0, fullMark: 100 },
-        { subject: "Certifications", A: companyAnalysis.performanceBenchmark.certifications || 0, fullMark: 100 },
-        { subject: "Market Reputation", A: companyAnalysis.performanceBenchmark.marketReputation || 0, fullMark: 100 },
-      ]
-    : [];
+  const radarData = buildRadarData(companyAnalysis);
 
   const displayCompany = enrichedCompany ?? selectedOrg;
 

@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
-import { useDeployment } from "@/lib/deployment/client";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Menu, LogOut } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 
 interface HeaderProps {
   variant?: "landing" | "app";
@@ -18,7 +18,6 @@ export function Header({
   onMobileMenuToggle,
 }: HeaderProps) {
   const t = useTranslations("Header");
-  const { brand } = useDeployment();
   const { user, loading, signOut, hasReadyUiInSession, isUiReadyHydrated } =
     useAuth();
   const canUseReadyBranch = isUiReadyHydrated && hasReadyUiInSession;
@@ -36,17 +35,12 @@ export function Header({
           {/* Logo and Brand */}
           <Link
             href="/"
-            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <div className="w-10 h-10 gradient-hero rounded-lg flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-primary">{t("brand", { brand: brand.name })}</h1>
-              <p className="text-xs text-muted-foreground leading-none">
-                {t("tagline")}
-              </p>
-            </div>
+            <BrandLogo className="h-8" priority />
+            <span className="hidden sm:block border-l border-border pl-3 text-xs text-muted-foreground leading-none">
+              {t("tagline")}
+            </span>
           </Link>
 
           {/* Actions */}

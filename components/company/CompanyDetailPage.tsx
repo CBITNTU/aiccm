@@ -63,7 +63,10 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
     );
   }
 
-  const hasPendingBar = data.isOwner && !!data.pendingChanges;
+  // `canEdit`, not `isOwner`: a superadmin preparing this account needs the
+  // bar's Discard control to clear an owner's stale draft, which their own
+  // write-through edits would otherwise leave behind.
+  const hasPendingBar = data.canEdit && !!data.pendingChanges;
 
   return (
     <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ${hasPendingBar ? "pb-24" : ""}`}>
@@ -72,7 +75,8 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
         <VerificationBanner
           companyId={companyId}
           companyData={data.companyData}
-          isOwner={data.isOwner}
+          isOwner={data.canEdit}
+          isAdminOverride={data.isAdminOverride}
           hasPendingChanges={!!data.pendingChanges}
           pendingReviewRequest={data.pendingReviewRequest}
           latestResolvedRequest={data.latestResolvedRequest}
@@ -83,7 +87,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
       <div className="mb-6">
         <CompanyHeroHeader
           companyData={data.companyData}
-          isOwner={data.isOwner}
+          isOwner={data.canEdit}
           isVerified={data.isVerified}
           isEditLocked={data.isEditLocked}
           isAnalyzing={data.isAnalyzing}
@@ -128,7 +132,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
           <OverviewTab
             companyData={data.companyData}
             companyId={companyId}
-            isOwner={data.isOwner}
+            isOwner={data.canEdit}
             isVerified={data.isVerified}
             isEditLocked={data.isEditLocked}
             sectionPendingStatus={data.sectionPendingStatus}
@@ -142,7 +146,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
         <TabsContent value="capabilities">
           <CapabilitiesTab
             companyId={companyId}
-            isOwner={data.isOwner}
+            isOwner={data.canEdit}
             isVerified={data.isVerified}
             isEditLocked={data.isEditLocked}
             sectionPendingStatus={data.sectionPendingStatus}
@@ -155,7 +159,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
           <ExperienceTab
             companyData={data.companyData}
             companyId={companyId}
-            isOwner={data.isOwner}
+            isOwner={data.canEdit}
             isVerified={data.isVerified}
             isEditLocked={data.isEditLocked}
             sectionPendingStatus={data.sectionPendingStatus}
@@ -165,6 +169,12 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
         </TabsContent>
 
         <TabsContent value="team">
+          {/*
+            Membership stays owner-only. Team invites and approvals require a
+            real approved membership server-side (and would email the invitee),
+            so an admin acting on the owner's behalf gets a read-only view
+            rather than buttons that would 403.
+          */}
           <TeamTab
             companyId={companyId}
             companyName={data.companyData.companyName}
@@ -176,7 +186,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
         <TabsContent value="intelligence">
           <IntelligenceTab
             companyId={companyId}
-            isOwner={data.isOwner}
+            isOwner={data.canEdit}
             isVerified={data.isVerified}
             isEditLocked={data.isEditLocked}
             financialData={data.financialData}
@@ -208,6 +218,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
           pendingChanges={data.pendingChanges}
           pendingReviewRequest={data.pendingReviewRequest}
           latestResolvedRequest={data.latestResolvedRequest}
+          isAdminOverride={data.isAdminOverride}
           onSuccess={data.refreshCompanyData}
         />
       )}

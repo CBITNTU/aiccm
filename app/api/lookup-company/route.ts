@@ -21,6 +21,8 @@ interface LookupCompanyResponse {
     registeredAddress: string;
     companyStatus: string;
     companyType?: string;
+    /** Canonical form of the submitted number — clients should display this. */
+    companyNumber: string;
   };
   existingCompany?: {
     id: string;
@@ -131,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     return apiResponse<LookupCompanyResponse>({
       success: true,
-      data: lookupResult.data,
+      data: { ...lookupResult.data, companyNumber: normalizedNumber },
     });
   } catch (error) {
     console.error("Lookup company error:", error);

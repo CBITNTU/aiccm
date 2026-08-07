@@ -4,7 +4,9 @@ import {
   requireAuth,
   handleApiError,
   getUserCompanyIds,
+  AuthError,
 } from "@/lib/api/validation";
+import { getCompanyAccess } from "@/lib/api/companyAccess";
 import { getActiveMatchingBatchForCompany } from "@/lib/services/queueService";
 
 /**
@@ -18,16 +20,25 @@ export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
 
-    const companyIds = await getUserCompanyIds(user.id);
-    if (companyIds.length === 0) {
-      return apiResponse({ batch: null });
-    }
-
-    // Honor an explicit companyId (multi-company users), but only if the user is
-    // a member of it; otherwise fall back to their primary company.
+    // An explicit companyId is always honored or refused — never quietly
+    // rewritten to another company. Falling back to the caller's own company
+    // would show an admin their own batch under someone else's account.
     const requested = new URL(request.url).searchParams.get("companyId");
-    const companyId =
-      requested && companyIds.includes(requested) ? requested : companyIds[0];
+
+    let companyId: string;
+    if (requested) {
+      const { hasAccess } = await getCompanyAccess(user.id, requested);
+      if (!hasAccess) {
+        throw new AuthError("No access to this company");
+      }
+      companyId = requested;
+    } else {
+      const companyIds = await getUserCompanyIds(user.id);
+      if (companyIds.length === 0) {
+        return apiResponse({ batch: null });
+      }
+      companyId = companyIds[0];
+    }
 
     const batch = await getActiveMatchingBatchForCompany(companyId);
 

@@ -139,6 +139,11 @@ export const companies = pgTable("companies", {
   operationLocations: jsonb("operation_locations").default([]),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
+  // Set when a superadmin curated this company on the owner's behalf (typically
+  // from /admin/approvals before approving them). Approval then skips the
+  // automatic AI prefill so the curated values are not overwritten.
+  adminPreparedAt: timestamp("admin_prepared_at", { withTimezone: true }),
+  adminPreparedBy: uuid("admin_prepared_by").references(() => user.id, { onDelete: "set null" }),
   verificationStatus: verificationStatusEnum("verification_status").notNull().default("unverified"),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   verifiedBy: uuid("verified_by").references(() => user.id, { onDelete: "set null" }),

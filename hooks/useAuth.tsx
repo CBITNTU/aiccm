@@ -26,6 +26,8 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   session: unknown;
+  /** Set while a superadmin is impersonating this user. */
+  impersonatedBy: string | null;
   loading: boolean;
   profileLoading: boolean;
   hasResolvedInitialProfile: boolean;
@@ -41,6 +43,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
+  impersonatedBy: null,
   loading: true,
   profileLoading: false,
   hasResolvedInitialProfile: false,
@@ -96,6 +99,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [sessionData?.user]);
 
   const session = sessionData?.session ?? null;
+  const impersonatedBy =
+    (session as { impersonatedBy?: string | null } | null)?.impersonatedBy ??
+    null;
   const loading = isPending;
 
   // Profile now rides on the session response (via the customSession plugin),
@@ -173,6 +179,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         user,
         session,
+        impersonatedBy,
         loading,
         profileLoading,
         hasResolvedInitialProfile,

@@ -12,8 +12,11 @@ export const cnProfile: DeploymentProfile = {
   brand: {
     name: "TNDRX 中国",
     supportEmail: "support@tndrx.cn",
-    logoPath: "/brand/cn/logo.png",
-    faviconPath: "/brand/cn/favicon.ico",
+    logoPath: "/brand/tndrx/wordmark.png",
+    markPath: "/brand/tndrx/mark.png",
+    faviconPath: "/favicon.ico",
+    iconPath: "/brand/tndrx/icon-512.png",
+    appleIconPath: "/brand/tndrx/apple-icon.png",
     poweredBy: "TNDRX",
   },
   theme: {

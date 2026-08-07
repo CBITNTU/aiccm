@@ -1,11 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
-import {
-  requireAuth,
-  isCompanyMember,
-  handleApiError,
-  AuthError,
-} from "@/lib/api/validation";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { requireCompanyAccess } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { matchingResults } from "@/lib/db/schema/app";
 import { eq, and } from "drizzle-orm";
@@ -24,10 +20,7 @@ export async function GET(
       return apiResponse({ error: "companyId is required" }, 400);
     }
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    await requireCompanyAccess(user.id, companyId);
 
     const result = await db
       .select({

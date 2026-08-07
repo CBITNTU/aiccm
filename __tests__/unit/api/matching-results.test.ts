@@ -6,10 +6,19 @@ import {
   isCompanyMember,
   requireAuth,
 } from "@/lib/api/validation";
+import { checkSuperadminRole } from "@/lib/api";
 import { db } from "@/lib/db";
 import { makeRequest, readJson, routeParams } from "@/__tests__/helpers/request";
 import { mockUser, TEST_COMPANY_ID, TEST_USER_ID } from "@/__tests__/helpers/mocks";
 import { makeChain, queueSelects, type Chain } from "@/__tests__/helpers/drizzleMock";
+
+// Both routes now gate via `getCompanyAccess`, which falls through to the
+// superadmin role when membership fails — stub it so the deny path doesn't
+// reach the real `userHasRole` query.
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  checkSuperadminRole: vi.fn(),
+}));
 
 vi.mock("@/lib/api/validation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/validation")>()),
@@ -52,6 +61,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireAuth).mockResolvedValue({ user } as never);
   vi.mocked(isCompanyMember).mockResolvedValue(true);
+  vi.mocked(checkSuperadminRole).mockResolvedValue(false);
 });
 
 describe("GET /api/matching-results", () => {
@@ -80,6 +90,18 @@ describe("GET /api/matching-results", () => {
     );
   });
 
+  it("lets a superadmin read a company they are not a member of", async () => {
+    vi.mocked(isCompanyMember).mockResolvedValue(false);
+    vi.mocked(checkSuperadminRole).mockResolvedValue(true);
+    queueSelects(mockedSelect, [{ count: 0 }], []);
+
+    const { status } = await readJson(
+      await get({ companyId: TEST_COMPANY_ID }),
+    );
+
+    expect(status).toBe(200);
+  });
+
   it("returns joined results in the legacy shape with a total count", async () => {
     // Results are consumed in await order: Promise.all subscribes the count
     // query first, then the data query (even though the data chain is built first).
@@ -104,7 +126,9 @@ describe("GET /api/matching-results", () => {
   it("clamps pagination and applies limit/offset", async () => {
     const chains = queueSelects(mockedSelect, [{ count: 0 }], []);
 
-    await readJson(await get({ page: "3", pageSize: "500" }));
+    await readJson(
+      await get({ companyId: TEST_COMPANY_ID, page: "3", pageSize: "500" }),
+    );
 
     // chains is in creation order: the data query chain is built first.
     const dataChain: Chain = chains[0];
@@ -115,8 +139,18 @@ describe("GET /api/matching-results", () => {
   it("defaults totalCount to 0 when the count query returns nothing", async () => {
     queueSelects(mockedSelect, [], []);
 
-    const { body } = await readJson(await get());
+    const { body } = await readJson(await get({ companyId: TEST_COMPANY_ID }));
     expect(body).toEqual({ results: [], totalCount: 0 });
+  });
+
+  it("rejects a request with no companyId instead of returning every company", async () => {
+    // Without the param the where-clause carried no company predicate at all,
+    // so any authenticated caller could page through the whole table.
+    const { status, body } = await readJson(await get());
+
+    expect(status).toBe(400);
+    expect(body.error).toBe("companyId is required");
+    expect(mockedSelect).not.toHaveBeenCalled();
   });
 });
 
@@ -147,6 +181,20 @@ describe("DELETE /api/matching-results/[resultId]", () => {
     expect(status).toBe(401);
     expect(body.error).toBe("No access to this matching result");
     expect(mockedDelete).not.toHaveBeenCalled();
+  });
+
+  it("lets a superadmin non-member delete while preparing the account", async () => {
+    queueSelects(mockedSelect, [{ companyId: TEST_COMPANY_ID }]);
+    vi.mocked(isCompanyMember).mockResolvedValue(false);
+    vi.mocked(checkSuperadminRole).mockResolvedValue(true);
+    const deleteChain = makeChain(() => undefined);
+    mockedDelete.mockImplementation(() => deleteChain);
+
+    const { status, body } = await readJson(await del());
+
+    expect(status).toBe(200);
+    expect(body).toEqual({ success: true });
+    expect(mockedDelete).toHaveBeenCalled();
   });
 
   it("deletes the result for an authorized member", async () => {

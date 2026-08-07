@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useDeployment } from "@/lib/deployment/client";
 import {
@@ -42,6 +43,7 @@ import {
   Pencil,
   Sparkles,
   Save,
+  Settings2,
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -210,6 +212,7 @@ function toJoinRequest(input: unknown): JoinRequest | null {
 
 export default function AdminApprovals() {
   const t = useTranslations("AdminApprovals");
+  const router = useRouter();
   const deployment = useDeployment();
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
@@ -683,6 +686,16 @@ export default function AdminApprovals() {
                             )}
                           </div>
                           <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                router.push(`/admin/approvals/${user.userId}`)
+                              }
+                            >
+                              <Settings2 className="w-4 h-4 mr-1" />
+                              {t("prepareButton")}
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"

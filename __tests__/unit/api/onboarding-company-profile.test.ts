@@ -3,6 +3,7 @@ import { POST } from "@/app/api/onboarding/company-profile/route";
 import { AuthError, requireAuth } from "@/lib/api/validation";
 import { db } from "@/lib/db";
 import { createCompany, createCompanyMember } from "@/lib/db/queries";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { makeRequest, readJson } from "@/__tests__/helpers/request";
 import { mockCompany, mockUser, TEST_COMPANY_ID, TEST_USER_ID } from "@/__tests__/helpers/mocks";
 import { makeChain } from "@/__tests__/helpers/drizzleMock";
@@ -19,6 +20,10 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/db/queries", () => ({
   createCompany: vi.fn(),
   createCompanyMember: vi.fn(),
+}));
+
+vi.mock("@/lib/services/embeddingService", () => ({
+  refreshCompanyEmbedding: vi.fn(async () => {}),
 }));
 
 const mockedRequireAuth = requireAuth as unknown as Mock;
@@ -119,6 +124,11 @@ describe("POST /api/onboarding/company-profile", () => {
       role: "admin",
       status: "approved",
     });
+
+    // Seed the basic-match vector so the new company is matchable immediately.
+    expect(vi.mocked(refreshCompanyEmbedding)).toHaveBeenCalledWith(
+      TEST_COMPANY_ID,
+    );
   });
 
   it("accepts snake_case keys and passes an explicit status through", async () => {

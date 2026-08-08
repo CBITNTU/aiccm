@@ -5,10 +5,19 @@ import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import bcrypt from "bcryptjs";
-import { sendEmail, getPlatformName } from "@/lib/email";
+import {
+  sendEmail,
+  getPlatformName,
+  getPasswordResetEmailSubject,
+  getPasswordResetEmailHtml,
+} from "@/lib/email";
 import { getEmailLocale, getEmailTranslator } from "@/lib/email/i18n";
 import { getProfileByUserId, getUserRolesByUserId } from "@/lib/db/queries";
+import { logApiEvent } from "@/lib/services/eventLogger";
 import { randomUUID } from "crypto";
+
+/** Password-reset token lifetime. Mirrored in the email copy and the UI. */
+const PASSWORD_RESET_EXPIRY_MINUTES = 60;
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -30,6 +39,45 @@ export const auth = betterAuth({
       verify: async ({ hash, password }: { hash: string; password: string }) => {
         return bcrypt.compare(password, hash);
       },
+    },
+
+    // A reset may well be the response to a compromised account, so drop every
+    // session the old password could have established.
+    revokeSessionsOnPasswordReset: true,
+    resetPasswordTokenExpiresIn: PASSWORD_RESET_EXPIRY_MINUTES * 60,
+
+    // Sends the "forgot password" email. `url` already carries the token and the
+    // client-supplied callback (/auth/reset-password) — unlike the verification
+    // email below it needs no rewriting. Runs inside the POST
+    // /api/auth/forget-password request, so the locale cookie is available.
+    sendResetPassword: async ({ user, url }, request) => {
+      const locale = await getEmailLocale();
+      await sendEmail({
+        to: user.email,
+        subject: getPasswordResetEmailSubject({
+          resetLink: url,
+          expiresInMinutes: PASSWORD_RESET_EXPIRY_MINUTES,
+          locale,
+        }),
+        html: getPasswordResetEmailHtml({
+          resetLink: url,
+          expiresInMinutes: PASSWORD_RESET_EXPIRY_MINUTES,
+          locale,
+        }),
+      });
+      await logApiEvent(request ?? {}, {
+        actionType: "password_reset_requested",
+        userId: user.id,
+        userEmail: user.email,
+      }).catch(() => {});
+    },
+
+    onPasswordReset: async ({ user }, request) => {
+      await logApiEvent(request ?? {}, {
+        actionType: "password_reset_completed",
+        userId: user.id,
+        userEmail: user.email,
+      }).catch(() => {});
     },
   },
 
@@ -108,6 +156,11 @@ export const auth = betterAuth({
     }),
     nextCookies(),
   ],
+
+  // No custom `rateLimit` rule for password reset: Better-Auth already ships a
+  // default special rule capping /request-password-reset at 3 requests per 60s
+  // (see its api/rate-limiter defaults). Note its rate limiting is
+  // production-only by default and counts per instance on in-memory storage.
   secret: process.env.BETTER_AUTH_SECRET,
 });
 

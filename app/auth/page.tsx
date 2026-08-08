@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { authClient } from "@/lib/auth-client";
@@ -260,6 +261,15 @@ export default function AuthPage() {
                         required
                       />
                     </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
+                    >
+                      {t("signIn.forgotPasswordLink")}
+                    </Link>
                   </div>
 
                   <Button

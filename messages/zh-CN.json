@@ -84,7 +84,8 @@
       "redirecting": "正在跳转…",
       "errorUnverifiedEmail": "请先查收邮件并点击验证链接后再登录。",
       "errorInvalidCredentials": "邮箱或密码不正确，请检查后重试。",
-      "errorFallback": "登录失败"
+      "errorFallback": "登录失败",
+      "forgotPasswordLink": "忘记密码？"
     },
     "signUp": {
       "emailLabel": "邮箱",
@@ -107,6 +108,39 @@
       "successStep3": "完成资料设置",
       "successExpiry": "验证链接 24 小时内有效",
       "successBackToSignIn": "返回登录"
+    },
+    "forgotPassword": {
+      "title": "忘记密码？",
+      "description": "请输入您账户的邮箱地址，我们将向您发送设置新密码的链接。",
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "请输入邮箱",
+      "submit": "发送重置链接",
+      "submitLoading": "正在发送…",
+      "backToSignIn": "返回登录",
+      "successTitle": "请查收邮件",
+      "successSentTo": "如果该地址对应的账户存在，我们已将重置链接发送至：",
+      "successBody": "请打开邮件并点击链接以设置新密码。别忘了查看垃圾邮件文件夹。",
+      "successExpiry": "重置链接将在 1 小时后失效",
+      "errorFallback": "发送重置链接失败"
+    },
+    "resetPassword": {
+      "title": "设置新密码",
+      "description": "请为您的账户设置一个新密码。",
+      "passwordLabel": "新密码",
+      "passwordPlaceholder": "请输入新密码（至少 6 个字符）",
+      "confirmPasswordLabel": "确认新密码",
+      "confirmPasswordPlaceholder": "请再次输入新密码",
+      "submit": "重置密码",
+      "submitLoading": "正在重置…",
+      "errorPasswordsMismatch": "两次输入的密码不一致",
+      "errorPasswordTooShort": "密码至少需要 6 个字符",
+      "errorFallback": "重置密码失败",
+      "invalidTokenTitle": "此链接已失效",
+      "invalidTokenBody": "密码重置链接将在 1 小时后失效，且仅能使用一次。请重新申请。",
+      "requestNewLink": "重新获取链接",
+      "successTitle": "密码已更新",
+      "successBody": "您的密码已更改，所有其他设备上的登录状态均已退出。请使用新密码登录以继续。",
+      "goToSignIn": "前往登录"
     },
     "invite": {
       "validating": "正在验证邀请…",
@@ -3187,6 +3221,16 @@
       "instruction": "请点击下方链接验证您的电子邮箱地址：",
       "button": "验证邮箱",
       "ignore": "如果您并未创建 {platformName} 账户，请忽略此邮件。您的邮箱不会被用于注册。"
+    },
+    "passwordReset": {
+      "subject": "重置您的密码 - {platformName}",
+      "heading": "重置您的密码",
+      "instruction": "我们收到了重置您 {platformName} 账户密码的请求。请点击下方按钮设置新密码。",
+      "button": "重置密码",
+      "expiry": "此链接将在 {minutes} 分钟后失效，且仅能使用一次",
+      "signOutNote": "为保障您的安全，重置密码后将退出所有其他设备的登录状态。",
+      "ignore": "如果您并未申请重置密码，请忽略此邮件——您的密码将保持不变。",
+      "footer": "此邮件由 {platformName} 发送。如果上方按钮无法使用，请将以下链接复制到浏览器中打开："
     },
     "teamInvitation": {
       "subject": "您已被邀请加入 {platformName} 上的 {companyName}",

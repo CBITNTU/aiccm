@@ -84,7 +84,8 @@
       "redirecting": "Redirecting...",
       "errorUnverifiedEmail": "Please check your email and click the verification link before signing in.",
       "errorInvalidCredentials": "Invalid email or password. Please check your credentials and try again.",
-      "errorFallback": "Failed to sign in"
+      "errorFallback": "Failed to sign in",
+      "forgotPasswordLink": "Forgot password?"
     },
     "signUp": {
       "emailLabel": "Email",
@@ -107,6 +108,39 @@
       "successStep3": "Complete your profile setup",
       "successExpiry": "The verification link expires in 24 hours",
       "successBackToSignIn": "Back to Sign In"
+    },
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "description": "Enter the email address for your account and we'll send you a link to set a new password.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "submit": "Send Reset Link",
+      "submitLoading": "Sending...",
+      "backToSignIn": "Back to Sign In",
+      "successTitle": "Check your email",
+      "successSentTo": "If an account exists for this address, we've sent a reset link to:",
+      "successBody": "Open the email and click the link to choose a new password. Remember to check your spam folder.",
+      "successExpiry": "The reset link expires in 1 hour",
+      "errorFallback": "Failed to send reset link"
+    },
+    "resetPassword": {
+      "title": "Set a new password",
+      "description": "Choose a new password for your account.",
+      "passwordLabel": "New Password",
+      "passwordPlaceholder": "Enter a new password (min 6 characters)",
+      "confirmPasswordLabel": "Confirm New Password",
+      "confirmPasswordPlaceholder": "Confirm your new password",
+      "submit": "Reset Password",
+      "submitLoading": "Resetting...",
+      "errorPasswordsMismatch": "Passwords do not match",
+      "errorPasswordTooShort": "Password must be at least 6 characters",
+      "errorFallback": "Failed to reset password",
+      "invalidTokenTitle": "This link is no longer valid",
+      "invalidTokenBody": "Password reset links expire after 1 hour and can only be used once. Please request a new one.",
+      "requestNewLink": "Request a new link",
+      "successTitle": "Password updated",
+      "successBody": "Your password has been changed and you've been signed out on all other devices. Sign in with your new password to continue.",
+      "goToSignIn": "Go to Sign In"
     },
     "invite": {
       "validating": "Validating invitation...",
@@ -3187,6 +3221,16 @@
       "instruction": "Please verify your email address by clicking the link below:",
       "button": "Verify Email",
       "ignore": "If you didn't create a {platformName} account, you can safely ignore this email."
+    },
+    "passwordReset": {
+      "subject": "Reset your password - {platformName}",
+      "heading": "Reset Your Password",
+      "instruction": "We received a request to reset the password for your {platformName} account. Click the button below to choose a new one.",
+      "button": "Reset Password",
+      "expiry": "This link expires in {minutes} minutes and can only be used once",
+      "signOutNote": "For your security, resetting your password signs you out on all other devices.",
+      "ignore": "If you didn't request a password reset, you can safely ignore this email — your password will stay unchanged.",
+      "footer": "This email was sent by {platformName}. If the button above doesn't work, copy and paste this link into your browser:"
     },
     "teamInvitation": {
       "subject": "You've been invited to join {companyName} on {platformName}",

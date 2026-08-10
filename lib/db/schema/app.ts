@@ -294,6 +294,17 @@ export const curatedMatches = pgTable(
     curatedSummary: text("curated_summary"),
     /** Private context fed into the deep-research prompt on an evidence re-run. */
     evidenceNote: text("evidence_note"),
+    /**
+     * Which score dimensions the evidence note actually vouches for —
+     * `capability` | `experience` | `certification`.
+     *
+     * The note is always shown to the model, but it only counts as *direct*
+     * company data (lifting the missing-data zero and the 30% indirect penalty
+     * in `scoreTenderMatch`) for the dimensions listed here. Without this, one
+     * note about a framework agreement silently vouched for certifications and
+     * capabilities too — and certification alone is 50% of the overall score.
+     */
+    evidenceDimensions: text("evidence_dimensions").array(),
     /** Admin-only justification. Never leaves /api/admin/**. */
     internalNote: text("internal_note"),
     /** Defaults to the tender's deadline; a lapsed curation stops applying. */
@@ -305,6 +316,9 @@ export const curatedMatches = pgTable(
   (table) => [
     unique().on(table.companyId, table.tenderId),
     index("curated_matches_company_status_idx").on(table.companyId, table.status),
+    // The tender FK cascades on delete and Postgres does not index FK children
+    // automatically, so without this a tender delete seq-scans this table.
+    index("curated_matches_tender_idx").on(table.tenderId),
   ],
 );
 

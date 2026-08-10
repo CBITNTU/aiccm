@@ -3457,7 +3457,14 @@
       "title": "证据（推荐）",
       "help": "该公司档案中未体现但确实属实的信息——未登记的资质认证、与该采购方的既往合作、框架协议等。系统会带着这些信息重新运行分析，因此分数的变化有据可依。",
       "placeholder": "例如：持有未登记的 ISO 14001 认证，并已为该采购方完成两个框架项目。",
-      "rerun": "带证据重新运行分析"
+      "rerun": "带证据重新运行分析",
+      "dimensionsLabel": "该证据可佐证",
+      "dimensionsHelp": "勾选的维度将按企业第一手数据计分。若备注并未真正佐证某个维度，请不要勾选。",
+      "dimensions": {
+        "capability": "能力",
+        "experience": "经验",
+        "certification": "认证"
+      }
     },
     "override": {
       "title": "分数覆盖（备选）",
@@ -3501,6 +3508,7 @@
     "realism": {
       "tenderClosed": "该招标已关闭，无法进行策展。",
       "deadlinePassed": "截止日期已过。置顶一个已失效的招标最容易被发现。",
+      "curationExpired": "该策展已过期，即使发布也不会生效。",
       "scoreTooHigh": "{score}% 超过了 {ceiling}% 的上限——过高的分数会显得不真实。",
       "duplicateScore": "另一条生效的策展已显示 {score}%。完全相同的分数看起来是刻意为之。",
       "liftTooLarge": "此操作将分数提高了 {lift} 分，超出了 {max} 分的建议范围。",

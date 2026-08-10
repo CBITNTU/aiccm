@@ -100,6 +100,21 @@ export interface CuratableMatch {
  * substituted when the curation actually carries them (evidence-mode curations
  * leave them NULL because the model already produced coherent ones).
  */
+/**
+ * Whether the curation's score actually stands in for the computed one.
+ *
+ * False for an evidence-mode curation (no `curatedScore`) and for an override
+ * the real score has since overtaken. Everything the curation would substitute
+ * — breakdown, reasons, summary — is gated on this, so the card and the detail
+ * page can't end up mixing curated prose with real numbers.
+ */
+export function curationOverridesScore(
+  curation: CurationOverlayEntry | undefined,
+  realScore: number,
+): boolean {
+  return !!curation && curation.curatedScore != null && curation.curatedScore >= realScore;
+}
+
 export function applyCuration<T extends CuratableMatch>(
   match: T,
   curation: CurationOverlayEntry | undefined,
@@ -115,8 +130,7 @@ export function applyCuration<T extends CuratableMatch>(
   // Only override the breakdown when the curation raised the headline number —
   // otherwise the real, higher score would sit above a frozen breakdown solved
   // for a lower target, and the card would contradict itself the other way.
-  const overrodeScore =
-    curation.curatedScore != null && curation.curatedScore >= match.score;
+  const overrodeScore = curationOverridesScore(curation, match.score);
 
   if (overrodeScore) {
     if (curation.capabilityScore != null) next.capabilityScore = curation.capabilityScore;
@@ -137,11 +151,18 @@ export function applyCuration<T extends CuratableMatch>(
  * Substitute the curated summary into an `ai_analysis` payload for the detail
  * page, leaving the per-dimension explanations alone — they're prose about the
  * company, not about the number, so they stay true either way.
+ *
+ * Gated on the same condition as the breakdown and the reasons: once the real
+ * score has overtaken the curated floor, the card reverts to the model's own
+ * numbers and reasons, and a curated narrative sitting beside them on the same
+ * page is exactly the mismatch this module exists to prevent.
  */
 export function applyCurationToAnalysis(
   analysis: unknown,
   curation: CurationOverlayEntry | undefined,
+  realScore: number,
 ): unknown {
+  if (!curationOverridesScore(curation, realScore)) return analysis;
   if (!curation?.summary) return analysis;
   const base =
     analysis && typeof analysis === "object" ? (analysis as Record<string, unknown>) : {};

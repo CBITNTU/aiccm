@@ -372,8 +372,15 @@ interface UnifiedMatchCommon {
 
 export interface UnifiedMatchDeep extends UnifiedMatchCommon {
   variant: "deep";
-  /** matching_results.id — React key + bookmark/delete target. */
-  resultId: string;
+  /**
+   * matching_results.id — the bookmark/delete target.
+   *
+   * NULL when the card was synthesized rather than read from `matching_results`
+   * (see the orphan path in app/api/tenders/matches/route.ts). There is no row
+   * to mutate in that case, so the client must not offer bookmark or delete —
+   * passing a placeholder id here previously produced a 500 from the uuid cast.
+   */
+  resultId: string | null;
   capabilityScore: number;
   experienceScore: number;
   locationScore: number;
@@ -419,6 +426,13 @@ export interface CurationRealismIssue {
   values?: Record<string, string | number>;
 }
 
+/**
+ * Dimensions an evidence note can vouch for. Mirrors EVIDENCE_DIMENSIONS in
+ * lib/services/tenderMatchingService.ts — location is excluded there because it
+ * comes from the postcode, not from prose.
+ */
+export type EvidenceDimensionKey = "capability" | "experience" | "certification";
+
 export interface AdminCuratedMatch {
   id: string;
   companyId: string;
@@ -434,6 +448,8 @@ export interface AdminCuratedMatch {
   curatedMatchReasons: string[] | null;
   curatedSummary: string | null;
   evidenceNote: string | null;
+  /** Dimensions the evidence note counts as direct data for. */
+  evidenceDimensions: EvidenceDimensionKey[] | null;
   internalNote: string | null;
   expiresAt: string | null;
   publishedAt: string | null;
@@ -466,6 +482,7 @@ export interface AdminCuratedMatchUpdate {
   curatedMatchReasons?: string[];
   curatedSummary?: string | null;
   evidenceNote?: string | null;
+  evidenceDimensions?: EvidenceDimensionKey[];
   internalNote?: string | null;
   expiresAt?: string | null;
   /** Re-run deep research with the evidence note attached. */

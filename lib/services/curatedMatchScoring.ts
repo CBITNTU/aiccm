@@ -165,6 +165,12 @@ export interface RealismCheckInput {
   breakdown: ScoreBreakdown | null;
   tenderDeadline: Date | null;
   tenderStatus: string | null;
+  /**
+   * The curation's own expiry. A curation published past this date is written
+   * to the table and then filtered straight back out by
+   * `activeCurationCondition`, so the admin sees a success it never got.
+   */
+  curationExpiresAt?: Date | null;
   /** Scores of the company's other published curations. */
   siblingScores: number[];
   /** How many other curations this company already has published. */
@@ -186,6 +192,13 @@ export function checkCurationRealism(input: RealismCheckInput): RealismIssue[] {
 
   if (input.tenderDeadline && input.tenderDeadline.getTime() <= now.getTime()) {
     issues.push({ severity: "block", code: "deadlinePassed" });
+  }
+
+  if (
+    input.curationExpiresAt &&
+    input.curationExpiresAt.getTime() <= now.getTime()
+  ) {
+    issues.push({ severity: "block", code: "curationExpired" });
   }
 
   if (input.curatedScore != null) {

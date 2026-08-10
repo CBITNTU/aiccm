@@ -301,37 +301,43 @@ export function TenderMatchCard({
             {t("details")}
           </Button>
           {isDeep ? (
+            // Both actions target a matching_results row. A synthesized card
+            // has none, and says so by passing no handlers.
             <>
-              <Button
-                variant={isBookmarked ? "default" : "ghost"}
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBookmark?.();
-                }}
-                disabled={readOnly}
-                title={readOnly ? t("pendingAccountRestricted") : undefined}
-              >
-                <Bookmark
-                  className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`}
-                />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete?.();
-                }}
-                disabled={isDeleting || readOnly}
-                title={readOnly ? t("pendingAccountRestricted") : undefined}
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </Button>
+              {onBookmark && (
+                <Button
+                  variant={isBookmarked ? "default" : "ghost"}
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBookmark();
+                  }}
+                  disabled={readOnly}
+                  title={readOnly ? t("pendingAccountRestricted") : undefined}
+                >
+                  <Bookmark
+                    className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`}
+                  />
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  disabled={isDeleting || readOnly}
+                  title={readOnly ? t("pendingAccountRestricted") : undefined}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
             </>
           ) : (
             onDeepResearch &&

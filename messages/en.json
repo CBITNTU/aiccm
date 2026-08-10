@@ -3457,7 +3457,14 @@
       "title": "Evidence (preferred)",
       "help": "Anything true about this company that its profile doesn't capture — an unlisted accreditation, prior work with this buyer, a framework agreement. The analysis is re-run with it, so the score moves for a reason the card can stand behind.",
       "placeholder": "e.g. Holds an unlisted ISO 14001 certification and has completed two previous frameworks for this buyer.",
-      "rerun": "Re-run analysis with evidence"
+      "rerun": "Re-run analysis with evidence",
+      "dimensionsLabel": "This evidence vouches for",
+      "dimensionsHelp": "Ticked dimensions are scored as first-hand company data. Leave a dimension unticked when the note doesn't actually evidence it.",
+      "dimensions": {
+        "capability": "Capability",
+        "experience": "Experience",
+        "certification": "Certifications"
+      }
     },
     "override": {
       "title": "Score override (fallback)",
@@ -3501,6 +3508,7 @@
     "realism": {
       "tenderClosed": "This tender is closed and cannot be curated.",
       "deadlinePassed": "The deadline has passed. A pinned dead tender is the fastest way for this to be noticed.",
+      "curationExpired": "This curation has already expired, so publishing it would have no effect.",
       "scoreTooHigh": "{score}% is above the {ceiling}% ceiling — scores that high read as manufactured.",
       "duplicateScore": "Another live curation already shows {score}%. Identical scores look deliberate.",
       "liftTooLarge": "This raises the score by {lift} points, past the {max}-point guideline.",

@@ -213,7 +213,11 @@ export async function GET(request: NextRequest) {
         locationScore: curated.locationScore ?? null,
         certificationScore: curated.certificationScore ?? null,
         matchReasons: curated.matchReasons ?? null,
-        aiAnalysis: applyCurationToAnalysis(row.match.aiAnalysis, c),
+        aiAnalysis: applyCurationToAnalysis(
+          row.match.aiAnalysis,
+          c,
+          row.match.overallScore ?? 0,
+        ),
         tenders: {
           title: row.tender.title,
           buyer: row.tender.buyer,

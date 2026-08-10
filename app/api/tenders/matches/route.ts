@@ -480,9 +480,10 @@ export async function GET(request: NextRequest) {
               item: {
                 variant: "deep" as const,
                 // No matching_results row exists, so there is nothing to bookmark
-                // or delete. The id namespaces the React key and makes a stray
-                // mutation attempt 404 rather than hit an unrelated row.
-                resultId: `curated:${t.id}`,
+                // or delete — the client hides both actions on a null id. A
+                // placeholder string here would be cast to uuid by those routes
+                // and 500, and any recognisable prefix is a tell in the payload.
+                resultId: null,
                 tenderId: t.id,
                 title: t.title,
                 buyer: t.buyer,

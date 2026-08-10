@@ -76,6 +76,8 @@ export type EventActionType =
   | "match_curation_published"
   | "match_curation_unpublished"
   | "match_curation_deleted"
+  /** A user dismissed the underlying match, which retires the curation with it. */
+  | "match_curation_archived"
   // Queue/Processing
   | "queue_job_created"
   | "queue_job_completed"

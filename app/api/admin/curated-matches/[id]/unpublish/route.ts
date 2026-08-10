@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiResponse, apiError, checkSuperadminRole } from "@/lib/api";
-import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { requireAuth, handleApiError, isUuid } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { curatedMatches } from "@/lib/db/schema/app";
@@ -24,6 +24,7 @@ export async function POST(
     }
 
     const { id } = await params;
+    if (!isUuid(id)) return apiError("Curation not found", 404);
 
     const [updated] = await db
       .update(curatedMatches)
@@ -38,13 +39,18 @@ export async function POST(
 
     if (!updated) return apiError("Curation not found", 404);
 
-    await logApiEvent(request, {
-      actionType: "match_curation_unpublished",
-      userId: user.id,
-      entityType: "curated_match",
-      entityId: id,
-      details: { companyId: updated.companyId, tenderId: updated.tenderId },
-    });
+    // Already unpublished; a failed audit write must not report otherwise.
+    try {
+      await logApiEvent(request, {
+        actionType: "match_curation_unpublished",
+        userId: user.id,
+        entityType: "curated_match",
+        entityId: id,
+        details: { companyId: updated.companyId, tenderId: updated.tenderId },
+      });
+    } catch (error) {
+      console.error("Failed to log match_curation_unpublished event:", error);
+    }
 
     return apiResponse({ result: updated });
   } catch (error) {

@@ -1,13 +1,27 @@
 import { NextRequest } from "next/server";
 import { apiResponse, apiError, checkSuperadminRole } from "@/lib/api";
-import { requireAuth, handleApiError, ValidationError } from "@/lib/api/validation";
+import {
+  requireAuth,
+  handleApiError,
+  ValidationError,
+  isUuid,
+} from "@/lib/api/validation";
 import { enableEmailSuppression } from "@/lib/email/suppression";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { companies, curatedMatches, matchingResults, tenders } from "@/lib/db/schema/app";
 import { batchScoreTendersForCompany } from "@/lib/services/tenderMatchingService";
 import { checkCurationRealism } from "@/lib/services/curatedMatchScoring";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+
+/**
+ * How many tenders one request may curate at once.
+ *
+ * Each unanalysed tender in the batch queues a deep-research job, so an
+ * unbounded array is an unbounded spend. Fifty is far above any real curation
+ * session and still bounded.
+ */
+const MAX_CURATION_BATCH = 50;
 
 /**
  * Superadmin console for curated matches.
@@ -28,6 +42,9 @@ export async function GET(request: NextRequest) {
     const companyId = new URL(request.url).searchParams.get("companyId");
     if (!companyId) {
       throw new ValidationError("companyId is required");
+    }
+    if (!isUuid(companyId)) {
+      throw new ValidationError("companyId must be a valid id");
     }
 
     const rows = await db
@@ -59,42 +76,49 @@ export async function GET(request: NextRequest) {
       .where(eq(curatedMatches.companyId, companyId))
       .orderBy(desc(curatedMatches.pinned), curatedMatches.pinRank, desc(curatedMatches.createdAt));
 
-    const published = rows.filter((r) => r.curation.status === "published");
+    // Hoisted out of the map: every row's realism check needs the same view of
+    // the company's other published curations.
+    const publishedEntries = rows
+      .filter((r) => r.curation.status === "published")
+      .map((r) => ({ id: r.curation.id, score: r.curation.curatedScore }));
 
-    const results = rows.map((row) => ({
-      ...row.curation,
-      tender: row.tender,
-      realScore: row.realScore,
-      realBreakdown: {
-        capabilityScore: row.realCapabilityScore,
-        experienceScore: row.realExperienceScore,
-        locationScore: row.realLocationScore,
-        certificationScore: row.realCertificationScore,
-      },
-      realMatchReasons: row.realMatchReasons ?? [],
-      /** Whether the deep-research pass has landed yet. */
-      hasDeepResult: row.realScore != null,
-      realismIssues: checkCurationRealism({
-        curatedScore: row.curation.curatedScore,
+    const results = rows.map((row) => {
+      const siblings = publishedEntries.filter((p) => p.id !== row.curation.id);
+      return {
+        ...row.curation,
+        tender: row.tender,
         realScore: row.realScore,
-        breakdown:
-          row.curation.curatedCapabilityScore != null
-            ? {
-                capabilityScore: row.curation.curatedCapabilityScore,
-                experienceScore: row.curation.curatedExperienceScore ?? 0,
-                locationScore: row.curation.curatedLocationScore ?? 0,
-                certificationScore: row.curation.curatedCertificationScore ?? 0,
-              }
-            : null,
-        tenderDeadline: row.tender.deadline,
-        tenderStatus: row.tender.status,
-        siblingScores: published
-          .filter((p) => p.curation.id !== row.curation.id)
-          .map((p) => p.curation.curatedScore)
-          .filter((s): s is number => s != null),
-        siblingCount: published.filter((p) => p.curation.id !== row.curation.id).length,
-      }),
-    }));
+        realBreakdown: {
+          capabilityScore: row.realCapabilityScore,
+          experienceScore: row.realExperienceScore,
+          locationScore: row.realLocationScore,
+          certificationScore: row.realCertificationScore,
+        },
+        realMatchReasons: row.realMatchReasons ?? [],
+        /** Whether the deep-research pass has landed yet. */
+        hasDeepResult: row.realScore != null,
+        realismIssues: checkCurationRealism({
+          curatedScore: row.curation.curatedScore,
+          realScore: row.realScore,
+          breakdown:
+            row.curation.curatedCapabilityScore != null
+              ? {
+                  capabilityScore: row.curation.curatedCapabilityScore,
+                  experienceScore: row.curation.curatedExperienceScore ?? 0,
+                  locationScore: row.curation.curatedLocationScore ?? 0,
+                  certificationScore: row.curation.curatedCertificationScore ?? 0,
+                }
+              : null,
+          tenderDeadline: row.tender.deadline,
+          tenderStatus: row.tender.status,
+          curationExpiresAt: row.curation.expiresAt,
+          siblingScores: siblings
+            .map((p) => p.score)
+            .filter((s): s is number => s != null),
+          siblingCount: siblings.length,
+        }),
+      };
+    });
 
     return apiResponse({ results });
   } catch (error) {
@@ -123,14 +147,24 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const companyId = typeof body.companyId === "string" ? body.companyId : null;
-    const tenderIds: string[] = Array.isArray(body.tenderIds)
-      ? body.tenderIds.filter((id: unknown): id is string => typeof id === "string")
+    const rawTenderIds: unknown[] = Array.isArray(body.tenderIds)
+      ? body.tenderIds
       : typeof body.tenderId === "string"
         ? [body.tenderId]
         : [];
+    // Dedup before the cap so a repeated id can't eat the batch allowance.
+    const tenderIds = [...new Set(rawTenderIds.filter(isUuid))];
 
     if (!companyId) throw new ValidationError("companyId is required");
+    if (!isUuid(companyId)) {
+      throw new ValidationError("companyId must be a valid id");
+    }
     if (tenderIds.length === 0) throw new ValidationError("tenderId is required");
+    if (tenderIds.length > MAX_CURATION_BATCH) {
+      throw new ValidationError(
+        `At most ${MAX_CURATION_BATCH} tenders can be curated in one request`,
+      );
+    }
 
     const [company] = await db
       .select({ id: companies.id })
@@ -145,28 +179,54 @@ export async function POST(request: NextRequest) {
       .where(inArray(tenders.id, tenderIds));
     if (tenderRows.length === 0) return apiError("Tender not found", 404);
 
-    const created = await db
-      .insert(curatedMatches)
-      .values(
-        tenderRows.map((t) => ({
-          companyId,
-          tenderId: t.id,
-          status: "draft",
-          // A curation outlives its usefulness the moment the tender closes, and
-          // a pinned dead tender is how this gets noticed. Expiry is the default,
-          // not an opt-in.
-          expiresAt: t.deadline,
-          createdBy: user.id,
-          updatedBy: user.id,
-        })),
-      )
-      // Re-curating a tender that was archived or already drafted should reopen
-      // that record rather than fail on the unique constraint.
-      .onConflictDoUpdate({
-        target: [curatedMatches.companyId, curatedMatches.tenderId],
-        set: { status: "draft", updatedBy: user.id, updatedAt: new Date() },
-      })
-      .returning();
+    // A curation that is already live must not be reopened by re-adding its
+    // tender from the picker: that would silently pull it out of the owner's
+    // feed. Those rows are returned untouched instead.
+    const existing = await db
+      .select()
+      .from(curatedMatches)
+      .where(
+        and(
+          eq(curatedMatches.companyId, companyId),
+          inArray(curatedMatches.tenderId, tenderIds),
+        ),
+      );
+    const alreadyPublished = existing.filter((c) => c.status === "published");
+    const publishedTenderIds = new Set(alreadyPublished.map((c) => c.tenderId));
+    const toUpsert = tenderRows.filter((t) => !publishedTenderIds.has(t.id));
+
+    const created = toUpsert.length
+      ? await db
+          .insert(curatedMatches)
+          .values(
+            toUpsert.map((t) => ({
+              companyId,
+              tenderId: t.id,
+              status: "draft",
+              // A curation outlives its usefulness the moment the tender closes,
+              // and a pinned dead tender is how this gets noticed. Expiry is the
+              // default, not an opt-in.
+              expiresAt: t.deadline,
+              createdBy: user.id,
+              updatedBy: user.id,
+            })),
+          )
+          // Re-curating a tender that was archived or already drafted should
+          // reopen that record rather than fail on the unique constraint. The
+          // expiry is re-read from the tender in case its deadline moved, and
+          // any `publishedAt` left over from an earlier life is cleared.
+          .onConflictDoUpdate({
+            target: [curatedMatches.companyId, curatedMatches.tenderId],
+            set: {
+              status: "draft",
+              updatedBy: user.id,
+              updatedAt: new Date(),
+              publishedAt: null,
+              expiresAt: sql`excluded.expires_at`,
+            },
+          })
+          .returning()
+      : [];
 
     // Queue deep research for anything that has never been analysed, so the
     // admin has real output to review before publishing.
@@ -188,15 +248,29 @@ export async function POST(request: NextRequest) {
       queued = batch.jobCount;
     }
 
-    await logApiEvent(request, {
-      actionType: "match_curated",
-      userId: user.id,
-      entityType: "company",
-      entityId: companyId,
-      details: { tenderIds, queuedDeepResearch: queued },
-    });
+    // The curation is already committed at this point, so a failed audit write
+    // must not report the whole request as failed. Logged loudly instead.
+    try {
+      await logApiEvent(request, {
+        actionType: "match_curated",
+        userId: user.id,
+        entityType: "company",
+        entityId: companyId,
+        details: {
+          tenderIds,
+          queuedDeepResearch: queued,
+          skippedAlreadyPublished: [...publishedTenderIds],
+        },
+      });
+    } catch (error) {
+      console.error("Failed to log match_curated event:", error);
+    }
 
-    return apiResponse({ results: created, queuedDeepResearch: queued });
+    return apiResponse({
+      // Published rows come back as they are so the console still shows them.
+      results: [...created, ...alreadyPublished],
+      queuedDeepResearch: queued,
+    });
   } catch (error) {
     return handleApiError(error);
   }

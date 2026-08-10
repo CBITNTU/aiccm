@@ -1,10 +1,16 @@
 import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
-import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import {
+  requireAuth,
+  handleApiError,
+  AuthError,
+  isUuid,
+} from "@/lib/api/validation";
 import {
   getCompanyAccess,
   suppressEmailForAdminOverride,
 } from "@/lib/api/companyAccess";
+import { logEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { curatedMatches, matchingResults } from "@/lib/db/schema/app";
 import { and, eq } from "drizzle-orm";
@@ -16,6 +22,11 @@ export async function DELETE(
   try {
     const { user } = await requireAuth(request);
     const { resultId } = await params;
+
+    // A non-uuid would reach Postgres as a failed cast and surface as a 500.
+    if (!isUuid(resultId)) {
+      throw new AuthError("Matching result not found");
+    }
 
     // Fetch the matching result's company
     const result = await db
@@ -45,15 +56,37 @@ export async function DELETE(
     // the tender on the next load as a synthesized card, and a "deleted" result
     // coming back is the loudest possible tell that something is overriding the
     // feed. Archiving keeps the admin's work recoverable in the console.
-    await db
+    const [archived] = await db
       .update(curatedMatches)
-      .set({ status: "archived", updatedAt: new Date() })
+      .set({ status: "archived", updatedAt: new Date(), updatedBy: user.id })
       .where(
         and(
           eq(curatedMatches.companyId, result[0].companyId),
           eq(curatedMatches.tenderId, result[0].tenderId),
         ),
-      );
+      )
+      .returning({ id: curatedMatches.id, status: curatedMatches.status });
+
+    // A dismissal is the one way a curation leaves the feed without an admin
+    // touching it, so it needs to appear in the same audit trail as the rest of
+    // the curation lifecycle. Best-effort: the dismissal itself already stands.
+    if (archived) {
+      try {
+        await logEvent({
+          actionType: "match_curation_archived",
+          userId: user.id,
+          entityType: "curated_match",
+          entityId: archived.id,
+          details: {
+            companyId: result[0].companyId,
+            tenderId: result[0].tenderId,
+            reason: "match_dismissed_by_user",
+          },
+        });
+      } catch (error) {
+        console.error("Failed to log curation archive event:", error);
+      }
+    }
 
     return apiResponse({ success: true });
   } catch (error) {

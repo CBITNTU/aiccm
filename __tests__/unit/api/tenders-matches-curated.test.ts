@@ -246,6 +246,10 @@ describe("GET /api/tenders/matches — curated overlay", () => {
       capabilityScore: 70,
     });
     expect(body.matchedCount).toBe(1);
+    // There is no matching_results row behind this card, so there is nothing to
+    // bookmark or delete. A placeholder id here would be cast to uuid by those
+    // routes and 500; a recognisable one would also be a tell in the payload.
+    expect(results[0].resultId).toBeNull();
   });
 
   it("keeps a curated match inside a score filter that its real score would fail", async () => {

@@ -134,6 +134,23 @@ describe("checkCurationRealism", () => {
     expect(issues.map((i) => i.code)).toContain("deadlinePassed");
   });
 
+  it("blocks a curation that has already expired", () => {
+    // activeCurationCondition filters an expired curation out of every
+    // user-facing read, so publishing one is a success the admin never got.
+    const issues = checkCurationRealism({ ...base, curationExpiresAt: PAST });
+    expect(hasBlockingIssue(issues)).toBe(true);
+    expect(issues.map((i) => i.code)).toContain("curationExpired");
+  });
+
+  it("leaves an unexpired or never-expiring curation alone", () => {
+    expect(
+      checkCurationRealism({ ...base, curationExpiresAt: null }).map((i) => i.code),
+    ).not.toContain("curationExpired");
+    expect(
+      checkCurationRealism({ ...base, curationExpiresAt: FUTURE }).map((i) => i.code),
+    ).not.toContain("curationExpired");
+  });
+
   it("warns above the score ceiling", () => {
     const issues = checkCurationRealism({
       ...base,

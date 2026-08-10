@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiResponse, apiError, checkSuperadminRole } from "@/lib/api";
-import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { requireAuth, handleApiError, isUuid } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { curatedMatches, matchingResults, tenders } from "@/lib/db/schema/app";
@@ -37,6 +37,8 @@ export async function POST(
     }
 
     const { id } = await params;
+    if (!isUuid(id)) return apiError("Curation not found", 404);
+
     const acknowledgeWarnings =
       new URL(request.url).searchParams.get("force") === "1";
 
@@ -66,6 +68,17 @@ export async function POST(
     if (!row) return apiError("Curation not found", 404);
 
     const { curation } = row;
+
+    // `archived` is a retirement, not a holding state: the dismiss path in
+    // /api/matching-results/[resultId] uses it to record that the user threw
+    // this match away. Bringing it back has to be a deliberate re-draft in the
+    // console, not a publish call against a stale id.
+    if (curation.status === "archived") {
+      return apiError(
+        "This curation was archived — reopen it as a draft before publishing",
+        409,
+      );
+    }
 
     const siblings = await db
       .select({ curatedScore: curatedMatches.curatedScore })
@@ -99,6 +112,7 @@ export async function POST(
       breakdown,
       tenderDeadline: row.tenderDeadline,
       tenderStatus: row.tenderStatus,
+      curationExpiresAt: curation.expiresAt,
       siblingScores: siblings
         .map((s) => s.curatedScore)
         .filter((s): s is number => s != null),
@@ -116,7 +130,9 @@ export async function POST(
       .update(curatedMatches)
       .set({
         status: "published",
-        publishedAt: new Date(),
+        // Re-publishing an already-live curation shouldn't rewrite when it first
+        // went live — the audit trail depends on that timestamp.
+        publishedAt: curation.publishedAt ?? new Date(),
         updatedBy: user.id,
         updatedAt: new Date(),
         curatedCapabilityScore: breakdown?.capabilityScore ?? null,
@@ -127,22 +143,28 @@ export async function POST(
       .where(eq(curatedMatches.id, id))
       .returning();
 
-    await logApiEvent(request, {
-      actionType: "match_curation_published",
-      userId: user.id,
-      entityType: "curated_match",
-      entityId: id,
-      details: {
-        companyId: curation.companyId,
-        tenderId: curation.tenderId,
-        realScore: row.realScore,
-        shownScore: curation.curatedScore ?? row.realScore,
-        mode: curation.curatedScore != null ? "override" : "evidence",
-        pinned: curation.pinned,
-        internalNote: curation.internalNote,
-        acknowledgedWarnings: issues.map((i) => i.code),
-      },
-    });
+    // The curation is live at this point; a failed audit write must not report
+    // the publish as having failed.
+    try {
+      await logApiEvent(request, {
+        actionType: "match_curation_published",
+        userId: user.id,
+        entityType: "curated_match",
+        entityId: id,
+        details: {
+          companyId: curation.companyId,
+          tenderId: curation.tenderId,
+          realScore: row.realScore,
+          shownScore: curation.curatedScore ?? row.realScore,
+          mode: curation.curatedScore != null ? "override" : "evidence",
+          pinned: curation.pinned,
+          internalNote: curation.internalNote,
+          acknowledgedWarnings: issues.map((i) => i.code),
+        },
+      });
+    } catch (error) {
+      console.error("Failed to log match_curation_published event:", error);
+    }
 
     return apiResponse({
       published: true,

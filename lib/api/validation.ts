@@ -45,6 +45,21 @@ export function sanitizeTextInput(text: string, maxLength: number): string {
   return text.trim().slice(0, maxLength);
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Whether a value is a well-formed UUID.
+ *
+ * Every id in this schema is a `uuid` column, and Postgres rejects a malformed
+ * one with `22P02 invalid input syntax for type uuid` — which surfaces as a 500
+ * rather than the 400/404 the caller deserves. Guard route params and body ids
+ * with this before they reach `eq()` / `inArray()`.
+ */
+export function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
 /**
  * Escape LIKE/ILIKE special chars (%, _, \) so user input is treated as literal.
  * Use before interpolating into Supabase .or() or .ilike() to prevent injection.

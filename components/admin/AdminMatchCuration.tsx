@@ -47,6 +47,7 @@ import { getTenderSourceLabel } from "@/lib/tenders/externalNoticeLink";
 import type {
   AdminCuratedMatch,
   CurationRealismIssue,
+  EvidenceDimensionKey,
   TenderRecord,
 } from "@/lib/api/types";
 import {
@@ -597,6 +598,7 @@ function CurationEditor({
   curation: AdminCuratedMatch;
   onSave: (updates: {
     evidenceNote?: string | null;
+    evidenceDimensions?: EvidenceDimensionKey[];
     internalNote?: string | null;
     curatedScore?: number | null;
     pinned?: boolean;
@@ -612,6 +614,9 @@ function CurationEditor({
   const blocking = curation.realismIssues.some((i) => i.severity === "block");
 
   const [evidenceNote, setEvidenceNote] = useState(curation.evidenceNote ?? "");
+  const [evidenceDimensions, setEvidenceDimensions] = useState<
+    EvidenceDimensionKey[]
+  >(curation.evidenceDimensions ?? []);
   const [internalNote, setInternalNote] = useState(curation.internalNote ?? "");
   const [curatedScore, setCuratedScore] = useState(
     curation.curatedScore != null ? String(curation.curatedScore) : "",
@@ -620,21 +625,33 @@ function CurationEditor({
   const [pinRank, setPinRank] = useState(
     curation.pinRank != null ? String(curation.pinRank) : "",
   );
-  const [reasons, setReasons] = useState(
-    (curation.curatedMatchReasons ?? curation.realMatchReasons).join("\n"),
-  );
+  // Pre-filled from the model's own reasons when nothing has been curated yet,
+  // so the admin edits real text rather than an empty box. `initialReasons`
+  // keeps that prefill from being *saved* as a curated override — see below.
+  const initialReasons = (
+    curation.curatedMatchReasons ?? curation.realMatchReasons
+  ).join("\n");
+  const [reasons, setReasons] = useState(initialReasons);
   const [summary, setSummary] = useState(curation.curatedSummary ?? "");
 
   const collect = (rerun = false) => ({
     evidenceNote: evidenceNote.trim() || null,
+    evidenceDimensions,
     internalNote: internalNote.trim() || null,
     curatedScore: curatedScore.trim() ? Number(curatedScore) : null,
     pinned,
     pinRank: pinRank.trim() ? Number(pinRank) : null,
-    curatedMatchReasons: reasons
-      .split("\n")
-      .map((r) => r.trim())
-      .filter(Boolean),
+    // Only sent when actually edited. Saving the untouched prefill would freeze
+    // today's AI reasons as a curated override, and a later evidence re-run
+    // would then move the score while the card kept the stale text.
+    ...(reasons === initialReasons
+      ? {}
+      : {
+          curatedMatchReasons: reasons
+            .split("\n")
+            .map((r) => r.trim())
+            .filter(Boolean),
+        }),
     curatedSummary: summary.trim() || null,
     rerun,
   });
@@ -679,6 +696,40 @@ function CurationEditor({
           rows={4}
           placeholder={t("evidence.placeholder")}
         />
+
+        {/* The note reaches the model either way. Ticking a dimension is the
+            stronger claim: it tells the scorer to treat this as first-hand
+            company data there, lifting the missing-data zero and the 30%
+            penalty. Untick everything a note doesn't actually evidence. */}
+        <div className="space-y-1.5">
+          <Label>{t("evidence.dimensionsLabel")}</Label>
+          <p className="text-xs text-muted-foreground">
+            {t("evidence.dimensionsHelp")}
+          </p>
+          <div className="flex flex-wrap gap-4 pt-1">
+            {(
+              ["capability", "experience", "certification"] as const
+            ).map((dimension) => (
+              <label
+                key={dimension}
+                className="flex items-center gap-2 text-sm"
+              >
+                <Checkbox
+                  checked={evidenceDimensions.includes(dimension)}
+                  onCheckedChange={(v) =>
+                    setEvidenceDimensions((prev) =>
+                      v === true
+                        ? [...prev, dimension]
+                        : prev.filter((d) => d !== dimension),
+                    )
+                  }
+                />
+                {t(`evidence.dimensions.${dimension}`)}
+              </label>
+            ))}
+          </div>
+        </div>
+
         <Button
           variant="outline"
           size="sm"

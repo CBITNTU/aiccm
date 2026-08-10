@@ -198,7 +198,7 @@ describe("DELETE /api/matching-results/[resultId]", () => {
     vi.mocked(checkSuperadminRole).mockResolvedValue(true);
     const deleteChain = makeChain(() => undefined);
     mockedDelete.mockImplementation(() => deleteChain);
-    mockedUpdate.mockImplementation(() => makeChain(() => undefined));
+    mockedUpdate.mockImplementation(() => makeChain(() => []));
 
     const { status, body } = await readJson(await del());
 
@@ -211,7 +211,7 @@ describe("DELETE /api/matching-results/[resultId]", () => {
     queueSelects(mockedSelect, [{ companyId: TEST_COMPANY_ID }]);
     const deleteChain = makeChain(() => undefined);
     mockedDelete.mockImplementation(() => deleteChain);
-    mockedUpdate.mockImplementation(() => makeChain(() => undefined));
+    mockedUpdate.mockImplementation(() => makeChain(() => []));
 
     const { status, body } = await readJson(await del());
 
@@ -226,7 +226,7 @@ describe("DELETE /api/matching-results/[resultId]", () => {
       { companyId: TEST_COMPANY_ID, tenderId: "t1" },
     ]);
     mockedDelete.mockImplementation(() => makeChain(() => undefined));
-    const updateChain = makeChain(() => undefined);
+    const updateChain = makeChain(() => [{ id: "c1", status: "archived" }]);
     mockedUpdate.mockImplementation(() => updateChain);
 
     const { status } = await readJson(await del());

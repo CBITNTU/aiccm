@@ -3,6 +3,7 @@
 import type {
   AdminCompanyListParams,
   AdminCompanyListResponse,
+  AdminCompanyPreparation,
   CompanyRecord,
   RelationSuggestion,
 } from "@/lib/api/types";
@@ -405,6 +406,10 @@ export const api = {
     apiCall<{
       company: Record<string, unknown>;
       isOwner: boolean;
+      /** Owner, or a superadmin acting on the owner's behalf. */
+      canEdit?: boolean;
+      /** True when edit rights come from the superadmin role, not ownership. */
+      isAdminOverride?: boolean;
       capabilities: { id: string; name: string; category: string }[];
       markets: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
       standards: { id: string; name: string; parentId: string | null; sortOrder: number | null }[];
@@ -685,8 +690,9 @@ export const api = {
     })),
 
   // Matching results
-  getMatchingResults: (params?: {
-    companyId?: string;
+  // `companyId` is required — the route rejects an unscoped request with a 400.
+  getMatchingResults: (params: {
+    companyId: string;
     bookmarked?: boolean;
     tenderStatus?: string;
     keyword?: string;
@@ -704,22 +710,22 @@ export const api = {
       {
         method: "GET",
         params: {
-          ...(params?.companyId && { companyId: params.companyId }),
-          ...(params?.bookmarked && { bookmarked: true }),
-          ...(params?.tenderStatus && { tenderStatus: params.tenderStatus }),
-          ...(params?.keyword && { keyword: params.keyword }),
-          ...(params?.minScore && { minScore: params.minScore }),
-          ...(params?.maxScore !== undefined &&
+          companyId: params.companyId,
+          ...(params.bookmarked && { bookmarked: true }),
+          ...(params.tenderStatus && { tenderStatus: params.tenderStatus }),
+          ...(params.keyword && { keyword: params.keyword }),
+          ...(params.minScore && { minScore: params.minScore }),
+          ...(params.maxScore !== undefined &&
             params.maxScore < 100 && { maxScore: params.maxScore }),
-          ...(params?.showApplied &&
+          ...(params.showApplied &&
             params.showApplied !== "all" && {
               showApplied: params.showApplied,
             }),
-          ...(params?.quickFilter && { quickFilter: params.quickFilter }),
-          ...(params?.sortBy && { sortBy: params.sortBy }),
-          ...(params?.sortDirection && { sortDirection: params.sortDirection }),
-          ...(params?.page && { page: params.page }),
-          ...(params?.pageSize && { pageSize: params.pageSize }),
+          ...(params.quickFilter && { quickFilter: params.quickFilter }),
+          ...(params.sortBy && { sortBy: params.sortBy }),
+          ...(params.sortDirection && { sortDirection: params.sortDirection }),
+          ...(params.page && { page: params.page }),
+          ...(params.pageSize && { pageSize: params.pageSize }),
         },
       },
     ).then((data) => ({
@@ -961,6 +967,18 @@ export const api = {
     apiCall<{ success: boolean; usageResetAt: string | null }>(
       `admin/companies/${companyId}/reset-usage`,
       { method: "POST", body: {} },
+    ),
+
+  adminGetCompanyPreparation: (companyId: string) =>
+    apiCall<AdminCompanyPreparation>(
+      `admin/companies/${companyId}/preparation`,
+      { method: "GET" },
+    ),
+
+  adminClearCompanyPrepared: (companyId: string) =>
+    apiCall<{ success: boolean }>(
+      `admin/companies/${companyId}/preparation`,
+      { method: "DELETE" },
     ),
 
   adminImportCompany: (companyData: Record<string, unknown>) =>
@@ -1424,7 +1442,7 @@ export const api = {
 
   triggerDeepMatch: (
     companyId: string,
-    tenderIds?: string[],
+    tenderIds: string[],
     options?: { force?: boolean },
   ) =>
     apiCall<{
@@ -1438,8 +1456,8 @@ export const api = {
     }>("match-tenders/trigger", {
       body: {
         companyId,
+        tenderIds,
         force: options?.force === true,
-        ...(tenderIds?.length ? { tenderIds } : {}),
       },
     }),
 };

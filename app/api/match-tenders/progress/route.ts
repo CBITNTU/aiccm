@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
+import { getCompanyAccess } from "@/lib/api/companyAccess";
 import { getBatchStatus, reconcileBatch } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
@@ -23,10 +24,12 @@ export async function GET(request: NextRequest) {
       return apiError("Batch not found", 404);
     }
 
-    // Verify user has access to this batch (owner or team member)
+    // Verify the caller can see this batch: owner, team member, or a superadmin
+    // preparing the account. The trigger route lets a superadmin start a run on
+    // a company they don't belong to, so the same rule has to apply here or the
+    // progress poll 403s on a batch the caller just created.
     if (existing.companyId) {
-      const { isCompanyMember } = await import("@/lib/api/validation");
-      const hasAccess = await isCompanyMember(user.id, existing.companyId);
+      const { hasAccess } = await getCompanyAccess(user.id, existing.companyId);
       if (!hasAccess) {
         return apiError("Access denied", 403);
       }

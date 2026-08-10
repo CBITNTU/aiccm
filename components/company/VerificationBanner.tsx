@@ -35,6 +35,12 @@ interface VerificationBannerProps {
   companyId: string;
   companyData?: Company;
   isOwner?: boolean;
+  /**
+   * The caller may edit only because they are a superadmin preparing this
+   * account. Submitting for verification is the owner's act — and the POST
+   * route is deliberately member-only — so the submit affordance is hidden.
+   */
+  isAdminOverride?: boolean;
   hasPendingChanges?: boolean;
   pendingReviewRequest?: {
     id: string;
@@ -57,6 +63,7 @@ export function VerificationBanner({
   companyId,
   companyData,
   isOwner = false,
+  isAdminOverride = false,
   hasPendingChanges = false,
   pendingReviewRequest,
   latestResolvedRequest,
@@ -350,20 +357,24 @@ export function VerificationBanner({
             </>
           )}
 
-          <Button
-            size="sm"
-            className="mt-3"
-            onClick={() => setShowDialog(true)}
-          >
-            <ShieldCheck className="h-4 w-4 mr-1" />
-            {hasChangesRequested
-              ? t("verification.resubmitButton")
-              : t("verification.submitButton")}
-          </Button>
+          {/* An admin preparing this account can read the reviewer feedback
+              above, but submitting for verification is the owner's act. */}
+          {!isAdminOverride && (
+            <Button
+              size="sm"
+              className="mt-3"
+              onClick={() => setShowDialog(true)}
+            >
+              <ShieldCheck className="h-4 w-4 mr-1" />
+              {hasChangesRequested
+                ? t("verification.resubmitButton")
+                : t("verification.submitButton")}
+            </Button>
+          )}
         </AlertDescription>
       </Alert>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog && !isAdminOverride} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>

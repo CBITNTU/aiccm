@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { getActiveProfile } from "@/lib/deployment";
+import { getEmailSuppression, recordSuppressedEmail } from "./suppression";
 
 // Initialize Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -38,6 +39,8 @@ export interface SendEmailResult {
   success: boolean;
   data?: { id: string };
   error?: unknown;
+  /** True when the send was withheld by an active suppression scope. */
+  suppressed?: boolean;
 }
 
 /**
@@ -47,6 +50,24 @@ export async function sendEmail(
   options: SendEmailOptions,
 ): Promise<SendEmailResult> {
   const { to, subject, html, text } = options;
+
+  // Suppression is checked before anything else so that no future email can
+  // leak to a user whose account a superadmin is preparing or impersonating.
+  const suppression = getEmailSuppression();
+  if (suppression) {
+    const recipients = Array.isArray(to) ? to : [to];
+    for (const recipient of recipients) {
+      recordSuppressedEmail({ to: recipient, subject });
+    }
+    console.log(
+      `[email suppressed: ${suppression.reason}] to=${recipients.join(", ")} subject="${subject}"`,
+    );
+    return {
+      success: true,
+      suppressed: true,
+      data: { id: `suppressed-${Date.now()}` },
+    };
+  }
 
   // In development mode, log email instead of sending via Resend
   if (process.env.NODE_ENV === "development") {
@@ -126,6 +147,8 @@ export function getPlatformName(): string {
   return platformName();
 }
 
+export * from "./suppression";
+
 // Re-export templates
 export * from "./templates/welcome-verification";
 export * from "./templates/verification-resend";
@@ -134,5 +157,6 @@ export * from "./templates/admin-notification";
 export * from "./templates/company-join-request";
 export * from "./templates/approval-notification";
 export * from "./templates/team-invitation";
+export * from "./templates/password-reset";
 export * from "./templates/project-invitation";
 export * from "./templates/verification-review";

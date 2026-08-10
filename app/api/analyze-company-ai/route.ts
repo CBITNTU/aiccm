@@ -3,6 +3,7 @@ import { apiResponse } from "@/lib/api";
 import { aiGenerateObject } from "@/lib/ai";
 import { companyAnalysisSchema } from "@/lib/schemas/companyAnalysis";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { z } from "zod";
 import {
   requireAuth,
@@ -155,6 +156,13 @@ export async function POST(request: NextRequest) {
         });
         console.log("[CompanyAI:analyze-ai] Taxonomy insert — linked", taxonomyInserts.length, "taxonomies");
       }
+    }
+
+    // This route writes aiCompetencies/aiCapabilities/aiStrengths/
+    // aiCertifications and replaces the taxonomy links — all embedding-source
+    // data. force: true because the source just changed.
+    if (companyId) {
+      await refreshCompanyEmbedding(companyId, { force: true });
     }
 
     await logApiEvent(request, {

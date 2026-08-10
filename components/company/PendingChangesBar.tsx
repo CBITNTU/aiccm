@@ -56,6 +56,13 @@ interface PendingChangesBarProps {
   pendingChanges: PendingChanges;
   pendingReviewRequest: PendingReviewRequest | null;
   latestResolvedRequest?: ResolvedReviewRequest | null;
+  /**
+   * The caller may edit only because they are a superadmin preparing this
+   * account. Their own edits bypass the review queue entirely, so they have
+   * nothing to submit — but they still need Discard, to clear an owner's stale
+   * draft that would otherwise be submitted later carrying outdated values.
+   */
+  isAdminOverride?: boolean;
   onSuccess?: () => void;
 }
 
@@ -155,6 +162,7 @@ export function PendingChangesBar({
   pendingChanges,
   pendingReviewRequest,
   latestResolvedRequest,
+  isAdminOverride = false,
   onSuccess,
 }: PendingChangesBarProps) {
   const t = useTranslations("CompanyPage");
@@ -387,18 +395,20 @@ export function PendingChangesBar({
                   </AlertDialogContent>
                 </AlertDialog>
 
-                <Button
-                  size="sm"
-                  onClick={() => setShowSubmitDialog(true)}
-                  disabled={submitMutation.isPending}
-                >
-                  {submitMutation.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                  ) : (
-                    <Send className="h-3.5 w-3.5 mr-1" />
-                  )}
-                  {hasResolvedFeedback ? t("pendingChangesBar.resubmitForReview") : t("pendingChangesBar.reviewAndSubmit")}
-                </Button>
+                {!isAdminOverride && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowSubmitDialog(true)}
+                    disabled={submitMutation.isPending}
+                  >
+                    {submitMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    {hasResolvedFeedback ? t("pendingChangesBar.resubmitForReview") : t("pendingChangesBar.reviewAndSubmit")}
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -406,7 +416,7 @@ export function PendingChangesBar({
       </div>
 
       {/* Submit dialog with full diff */}
-      <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
+      <Dialog open={showSubmitDialog && !isAdminOverride} onOpenChange={setShowSubmitDialog}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("pendingChangesBar.submitDialogTitle")}</DialogTitle>

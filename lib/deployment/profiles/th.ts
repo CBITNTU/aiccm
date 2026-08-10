@@ -9,8 +9,11 @@ export const thProfile: DeploymentProfile = {
   brand: {
     name: "TNDRX Thailand",
     supportEmail: "support@tndrx.co.th",
-    logoPath: "/brand/th/logo.png",
-    faviconPath: "/brand/th/favicon.ico",
+    logoPath: "/brand/tndrx/wordmark.png",
+    markPath: "/brand/tndrx/mark.png",
+    faviconPath: "/favicon.ico",
+    iconPath: "/brand/tndrx/icon-512.png",
+    appleIconPath: "/brand/tndrx/apple-icon.png",
     poweredBy: "TNDRX",
   },
   theme: {

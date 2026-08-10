@@ -10,6 +10,7 @@ import {
   companyStandards,
 } from "@/lib/db/schema/app";
 import { user as userTable } from "@/lib/db/schema/auth";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { eq, and, inArray } from "drizzle-orm";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
 import { REVIEWABLE_SCALAR_FIELDS } from "@/lib/companyFieldCategories";
@@ -238,6 +239,14 @@ export async function PUT(
         }
       }
     });
+
+    // Approving a change review is the moment a verified company's queued edits
+    // (scalars, capabilities, markets, standards) actually land in the columns,
+    // so the vector is stale until now. After the transaction: the embed does a
+    // provider round-trip and must not hold a DB transaction open.
+    if (isChangeReview && action === "approve") {
+      await refreshCompanyEmbedding(verificationRequest.companyId);
+    }
 
     // Send notification email to the submitter
     const [submitter, company] = await Promise.all([

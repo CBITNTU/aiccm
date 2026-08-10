@@ -2,10 +2,13 @@ import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
-  isCompanyMember,
   handleApiError,
-  AuthError,
 } from "@/lib/api/validation";
+import {
+  requireCompanyAccess,
+  markCompanyAdminPrepared,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import {
   companyCapabilities,
@@ -15,6 +18,7 @@ import {
   companyVerificationRequests,
 } from "@/lib/db/schema/app";
 import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { getPlatformVerificationSettings } from "@/lib/platformVerificationSettings";
 import type { PendingChanges } from "@/lib/companyFieldCategories";
@@ -27,10 +31,7 @@ export async function GET(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    await requireCompanyAccess(user.id, companyId);
 
     // Fetch company's current capabilities via join
     const capData = await db
@@ -95,10 +96,10 @@ export async function PUT(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    const access = await requireCompanyAccess(user.id, companyId);
+    // Must be in this frame — see enableEmailSuppression's contract.
+    suppressEmailForAdminOverride(access, user.id);
+    const { adminOverride } = access;
 
     const body = await request.json();
     const { capabilityIds } = body as { capabilityIds: string[] };
@@ -122,7 +123,10 @@ export async function PUT(
       return apiResponse({ error: "Company not found" }, 404);
     }
 
-    const isVerified = company.verificationStatus === "verified";
+    // An admin acting on the user's behalf writes straight through: no change
+    // review, and no unverified-company competency cap.
+    const useReviewQueue =
+      company.verificationStatus === "verified" && !adminOverride;
 
     // Get current capability IDs
     const current = await db
@@ -142,7 +146,7 @@ export async function PUT(
       return apiResponse({ capabilities: current, pendingReview: false });
     }
 
-    if (isVerified) {
+    if (useReviewQueue) {
       // Check edit lock: reject if a change review is already submitted
       const pendingReview = await db
         .select({ id: companyVerificationRequests.id })
@@ -196,7 +200,7 @@ export async function PUT(
     } else {
       // Unverified companies: direct sync up to limit
       const settings = await getPlatformVerificationSettings();
-      if (capabilityIds.length > settings.unverifiedCompetencyLimit) {
+      if (!adminOverride && capabilityIds.length > settings.unverifiedCompetencyLimit) {
         return apiResponse(
           { error: `Unverified companies can have at most ${settings.unverifiedCompetencyLimit} competencies. Get verified to unlock unlimited competencies.` },
           403,
@@ -226,6 +230,14 @@ export async function PUT(
           );
         }
       });
+
+      if (adminOverride) {
+        await markCompanyAdminPrepared(companyId, user.id);
+      }
+
+      // Competency labels feed the embedding source, so the vector is stale
+      // until this runs. Non-fatal by design — see refreshCompanyEmbedding.
+      await refreshCompanyEmbedding(companyId);
 
       // Fetch updated capabilities via join
       const updatedCaps = await db

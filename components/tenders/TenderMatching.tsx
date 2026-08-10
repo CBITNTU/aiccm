@@ -342,8 +342,18 @@ export function TenderMatching({
           `/api/match-tenders/progress?batchId=${batchId}`,
         );
         if (!response.ok) {
-          if (response.status === 404) {
-            console.log(`Batch ${batchId} not found (404) - clearing progress`);
+          // 404 = the batch is gone; 401/403 = we may not track it. Both are
+          // permanent, so stop polling instead of logging on every tick. Other
+          // failures (5xx, network) are treated as transient — we keep the
+          // current progress and try again rather than assume the job died.
+          if (
+            response.status === 404 ||
+            response.status === 401 ||
+            response.status === 403
+          ) {
+            console.log(
+              `Batch ${batchId} unavailable (${response.status}) - clearing progress`,
+            );
             if (companyId) {
               localStorage.removeItem(`matching_batch_${companyId}`);
             }

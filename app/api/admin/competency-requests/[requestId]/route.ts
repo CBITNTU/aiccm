@@ -6,6 +6,7 @@ import {
   competencyChangeRequests,
   companyCapabilities,
 } from "@/lib/db/schema/app";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import { eq, and, inArray } from "drizzle-orm";
 
 export async function PUT(
@@ -86,6 +87,11 @@ export async function PUT(
             })),
           )
           .onConflictDoNothing();
+      }
+
+      if (additions.length > 0 || removals.length > 0) {
+        // Competency labels feed the embedding source.
+        await refreshCompanyEmbedding(changeRequest.companyId);
       }
     }
 

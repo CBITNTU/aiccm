@@ -10,6 +10,7 @@ import {
 } from "@/lib/email";
 import { getEmailLocale } from "@/lib/email/i18n";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import {
   geocodeLocation,
   buildCompanyGeoQuery,
@@ -149,6 +150,9 @@ export async function POST(request: NextRequest) {
         role: "admin",
         status: "pending",
       });
+
+      // Seed the basic-match vector, matching onboarding/update-step.
+      await refreshCompanyEmbedding(company.id);
 
       // Handle individual user converting to business
       if (profile.accountType === "individual") {

@@ -504,7 +504,12 @@ This installs the component into `components/ui/` and updates necessary dependen
 ### Testing & Quality
 
 - ESLint configured for Next.js
-- No formal test suite currently (manual testing)
+- Vitest with two projects (`vitest.config.mts`):
+  - **unit** — `__tests__/unit/**`; API route tests live flat in `__tests__/unit/api/` with descriptive names (e.g. `auth-signup.test.ts` for `app/api/auth/signup/route.ts`), lib tests mirror source paths under `__tests__/unit/lib/`; mocked at module seams (`@/lib/db`, `@/lib/ai`, `@/lib/auth`, `@/lib/email`); no DB/network. Run with `npm run test` (also part of `npm run check` and the pre-commit hook).
+  - **integration** — `__tests__/integration/**`; real Postgres against a dedicated `tndrx_test` database on the local docker container (`npm run docker:up` first). Run with `npm run test:integration`. Global setup creates the DB (name must end in `_test`), enables pgvector, and pushes the schema.
+- Shared test helpers in `__tests__/helpers/` (`makeRequest`, `readJson`, `routeParams`, mock data builders, `resetDb`)
+- Tests use explicit vitest imports (no globals); Next 16 route handlers are invoked directly with a `NextRequest`, dynamic-route params passed as `Promise` via `routeParams()`
+- Prefer partially mocking `@/lib/api/validation` via `importOriginal` (stub `requireAuth`/`isCompanyMember` only) so `handleApiError`/`validateBody` stay real
 
 ### Deployment
 

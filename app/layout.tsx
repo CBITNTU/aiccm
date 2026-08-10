@@ -20,10 +20,25 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Metadata");
   const { brand } = getPublicProfile();
+
+  // The .ico carries 16/32/48 for legacy and pinned tabs; the PNG is what
+  // modern browsers and Android home screens pick up. Profiles that only set
+  // faviconPath still work — the optional entries drop out.
+  const icon = [
+    { url: brand.faviconPath, sizes: "16x16 32x32 48x48" },
+    brand.iconPath
+      ? { url: brand.iconPath, type: "image/png", sizes: "512x512" }
+      : null,
+  ].filter((entry) => entry !== null);
+
   return {
     title: t("title", { brand: brand.name }),
     description: t("description", { brand: brand.name }),
-    icons: { icon: brand.faviconPath },
+    icons: {
+      icon,
+      shortcut: brand.faviconPath,
+      ...(brand.appleIconPath ? { apple: brand.appleIconPath } : {}),
+    },
   };
 }
 

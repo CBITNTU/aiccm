@@ -173,11 +173,14 @@ export function CompanyInfoStep({
       const data = await response.json();
 
       if (data.success && data.data) {
+        // Use the server's canonical number: padStart(8) here would mangle
+        // letter-prefixed numbers like SC117119.
+        const normalizedNumber = data.data.companyNumber ?? companyNumber;
         setLookupState({
           status: "success",
           data: {
             companyName: data.data.companyName,
-            companyNumber: companyNumber.padStart(8, "0"),
+            companyNumber: normalizedNumber,
             registeredAddress: data.data.registeredAddress,
             companyStatus: data.data.companyStatus,
           },
@@ -186,6 +189,7 @@ export function CompanyInfoStep({
         setCreateForm((prev) => ({
           ...prev,
           companyName: data.data.companyName,
+          companiesHouseNumber: normalizedNumber,
           address: data.data.registeredAddress,
         }));
         toast.success(tCreate("toastFound"), {
@@ -515,8 +519,11 @@ export function CompanyInfoStep({
                           onChange={(e) =>
                             setCreateForm({
                               ...createForm,
+                              // Letters are valid: SC/NI/OC/… prefixes.
+                              // The server does the real validation.
                               companiesHouseNumber: e.target.value
-                                .replace(/\D/g, "")
+                                .replace(/[^A-Za-z0-9]/g, "")
+                                .toUpperCase()
                                 .slice(0, 8),
                             })
                           }
@@ -672,28 +679,28 @@ export function CompanyInfoStep({
                     </div>
                   </div>
 
-                  {/* Address - only editable if no lookup success */}
-                  {lookupState.status !== "success" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="address">{tCreate("addressLabel")}</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="address"
-                          type="text"
-                          placeholder={tCreate("addressPlaceholder")}
-                          value={createForm.address}
-                          onChange={(e) =>
-                            setCreateForm({
-                              ...createForm,
-                              address: e.target.value,
-                            })
-                          }
-                          className="pl-10"
-                        />
-                      </div>
+                  {/* Address — always editable, including after a lookup: the
+                      registered office can be stale or simply wrong, and hiding
+                      the field leaves no way to correct it. */}
+                  <div className="space-y-2">
+                    <Label htmlFor="address">{tCreate("addressLabel")}</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="address"
+                        type="text"
+                        placeholder={tCreate("addressPlaceholder")}
+                        value={createForm.address}
+                        onChange={(e) =>
+                          setCreateForm({
+                            ...createForm,
+                            address: e.target.value,
+                          })
+                        }
+                        className="pl-10"
+                      />
                     </div>
-                  )}
+                  </div>
 
                   {/* Postcode — always editable; lookup rarely returns one and
                       it materially improves location-based tender matching. */}

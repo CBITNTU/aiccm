@@ -1,8 +1,12 @@
 import { NextRequest } from "next/server";
 import { apiResponse, apiError } from "@/lib/api";
 import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import {
+  getCompanyAccess,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
-import { matchingResults, companies } from "@/lib/db/schema/app";
+import { matchingResults } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
 
 export async function PUT(
@@ -13,14 +17,13 @@ export async function PUT(
     const { user } = await requireAuth(request);
     const { resultId } = await params;
 
-    // Verify user owns the company associated with this result
+    // Verify user has access to the company associated with this result
     const result = await db
       .select({
         id: matchingResults.id,
-        companyUserId: companies.userId,
+        companyId: matchingResults.companyId,
       })
       .from(matchingResults)
-      .innerJoin(companies, eq(matchingResults.companyId, companies.id))
       .where(eq(matchingResults.id, resultId))
       .limit(1);
 
@@ -28,9 +31,13 @@ export async function PUT(
       return apiError("Result not found", 404);
     }
 
-    if (result[0].companyUserId !== user.id) {
+    // Owner, approved member, or a superadmin preparing the account.
+    const access = await getCompanyAccess(user.id, result[0].companyId);
+    if (!access.hasAccess) {
       throw new AuthError("No access to this matching result");
     }
+    // Must be in this frame — see enableEmailSuppression's contract.
+    suppressEmailForAdminOverride(access, user.id);
 
     const body = await request.json();
     const isBookmarked = body.isBookmarked ?? body.is_bookmarked;

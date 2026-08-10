@@ -14,6 +14,31 @@ function normalizeCompanyNumber(companyNumber: string): string | null {
   return null;
 }
 
+/** Strip tags from a fragment of Companies House markup and collapse whitespace. */
+function toText(fragment: string): string {
+  return fragment
+    .replace(/<br\s*\/?>/gi, ", ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Read the inner text of the element carrying `id`. Anchoring on the id rather
+ * than on a label + sibling `<dd>` matters: the registered-office `<dd>` carries
+ * no class of its own (the classes sit on an inner `<span id="roa-address">`), so
+ * a label-anchored search skips it and lands on the next `<dd>` — the company
+ * status — silently turning the address into "Active"/"Dissolved".
+ */
+function textById(html: string, id: string): string | undefined {
+  const match = html.match(
+    new RegExp(`<(\\w+)[^>]*\\bid="${id}"[^>]*>([\\s\\S]*?)</\\1>`, "i"),
+  );
+  if (!match) return undefined;
+  const text = toText(match[2]);
+  return text || undefined;
+}
+
 async function lookup(companyNumber: string): Promise<CompanyLookupResult> {
   const url = `https://find-and-update.company-information.service.gov.uk/company/${companyNumber}`;
 
@@ -36,34 +61,29 @@ async function lookup(companyNumber: string): Promise<CompanyLookupResult> {
 
     const html = await response.text();
 
-    const nameMatch =
-      html.match(/<h1[^>]*class="[^"]*heading-xlarge[^"]*"[^>]*>([^<]+)<\/h1>/i) ||
-      html.match(/<title>([^-<]+)/i);
-    const companyName = nameMatch
-      ? nameMatch[1].trim().replace(/\s+/g, " ")
-      : undefined;
-
-    const statusMatch =
-      html.match(/<dd[^>]*id="company-status"[^>]*>([^<]+)<\/dd>/i) ||
-      html.match(/Company status[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
-    const companyStatus = statusMatch ? statusMatch[1].trim() : undefined;
-
-    const addressMatch = html.match(
-      /Registered office address[\s\S]*?<dd[^>]*class="[^"]*text[^"]*"[^>]*>([\s\S]*?)<\/dd>/i,
+    // No `<title>` fallback: the page title is the literal string "GOV.UK", so
+    // falling back to it would name every company "GOV.UK" instead of failing.
+    const nameMatch = html.match(
+      /<h1[^>]*class="[^"]*heading-xlarge[^"]*"[^>]*>([^<]+)<\/h1>/i,
     );
-    let registeredAddress: string | undefined;
-    if (addressMatch) {
-      registeredAddress = addressMatch[1]
-        .replace(/<br\s*\/?>/gi, ", ")
-        .replace(/<[^>]+>/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-    }
+    const companyName = nameMatch ? toText(nameMatch[1]) : undefined;
 
-    const typeMatch = html.match(/Company type[^<]*<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
-    const companyType = typeMatch ? typeMatch[1].trim() : undefined;
+    const registeredAddress =
+      textById(html, "roa-address") ??
+      // Secondary: the whole registered-office `<dd>`, nested markup included.
+      (() => {
+        const m = html.match(
+          /Registered office address\s*<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/i,
+        );
+        return m ? toText(m[1]) || undefined : undefined;
+      })();
 
-    if (!companyName) {
+    const companyStatus = textById(html, "company-status");
+    const companyType = textById(html, "company-type-value");
+
+    // Fail loudly: an empty address is indistinguishable from "company has no
+    // registered address", and callers write this straight into companies.address.
+    if (!companyName || !registeredAddress) {
       return {
         found: false,
         error: "Could not parse company data from Companies House",
@@ -74,7 +94,7 @@ async function lookup(companyNumber: string): Promise<CompanyLookupResult> {
       found: true,
       data: {
         companyName,
-        registeredAddress: registeredAddress || "",
+        registeredAddress,
         companyStatus: companyStatus || "Unknown",
         companyType,
       },

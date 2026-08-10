@@ -70,6 +70,9 @@ export interface CompanyRecord {
   pendingChanges?: JsonValue;
   matchingRunsLimit?: number | null;
   analysisRunsLimit?: number | null;
+  /** Set when a superadmin curated this company on the owner's behalf. */
+  adminPreparedAt?: string | null;
+  adminPreparedBy?: string | null;
 }
 
 export type AdminCompanyListType = "user" | "system";
@@ -103,6 +106,29 @@ export interface AdminCompanyListResponse {
   totalCount: number;
   totalPages: number;
   stats: AdminCompanyStats;
+}
+
+/** Header payload for the company-scoped preparation console. */
+export interface AdminCompanyPreparation {
+  company: {
+    id: string;
+    companyName: string;
+    userId: string | null;
+    status: string | null;
+    verificationStatus: string;
+    isSystemCompany: boolean | null;
+    adminPreparedAt: string | null;
+    adminPreparedBy: string | null;
+  };
+  /** Null for imported/system companies, which nobody owns. */
+  owner: {
+    userId: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    approvalStatus: string;
+  } | null;
+  adminPrepared: { at: string; by: string | null } | null;
 }
 
 export interface AdminPendingCompanyDetails {

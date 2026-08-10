@@ -435,6 +435,7 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
       maxTokens: useOllama ? 4096 : 8000,
       estTokens: useOllama ? 2000 : 4000,
       temperature: useOllama ? 0.2 : undefined,
+      reasoningEffort: options?.reasoningEffort,
     });
 
     // Get scores from AI (no overallScore from AI - we calculate it)
@@ -656,23 +657,11 @@ export async function resolveMatchingJobMetadata(): Promise<{
  */
 export async function batchScoreTendersForCompany(
   companyId: string,
-  tenderIds?: string[],
+  tenderIds: string[],
   userId?: string,
   options: { force?: boolean } = {},
 ): Promise<BatchScoreResult> {
-  // If no tender IDs provided, fetch all open tenders
-  let tendersToMatch: string[] = [];
-
-  if (tenderIds && tenderIds.length > 0) {
-    tendersToMatch = tenderIds;
-  } else {
-    const openTenders = await db
-      .select({ id: tenders.id })
-      .from(tenders)
-      .where(inArray(tenders.status, ["open", "closing_soon"]));
-
-    tendersToMatch = openTenders.map((t) => t.id);
-  }
+  const tendersToMatch = tenderIds;
 
   const { metadata, matchingModel } = await resolveMatchingJobMetadata();
   const cachedIds = await findTenderIdsWithCachedMatches(
@@ -707,6 +696,9 @@ export async function batchScoreTendersForCompany(
     metadata: { ...metadata, force: options.force === true },
   }));
 
+  // "company_matching" is intentionally distinct from "tender_matching":
+  // getMatchingRunsThisMonth only counts "tender_matching" batches, so
+  // deep-match runs do not burn the company's monthly matching quota.
   const { batchId } = await enqueueBatch(
     jobs,
     "company_matching",

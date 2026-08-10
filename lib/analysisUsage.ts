@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema/app";
-import { and, eq, gte, count, sql } from "drizzle-orm";
+import { and, eq, gte, count, sql, ne, or, isNull } from "drizzle-orm";
 import { getUsageWindowStart } from "@/lib/matchingUsage";
 import type { PlatformAnalysisSettings } from "@/lib/platformAnalysisSettings";
 
@@ -12,6 +12,10 @@ type CompanyForLimit = {
 /**
  * Counts how many AI analysis runs the company has used in the current calendar month.
  * Uses the events table where actionType='company_updated' and details->>'analysisType'='comprehensive'.
+ *
+ * Runs a superadmin started on the company's behalf are tagged
+ * `details.initiatedBy = 'admin'` and excluded — preparing an account before
+ * approving it must not spend the user's monthly allowance.
  */
 export async function getAnalysisRunsThisMonth(
   companyId: string,
@@ -26,6 +30,10 @@ export async function getAnalysisRunsThisMonth(
         eq(events.entityId, companyId),
         eq(events.actionType, "company_updated"),
         sql`${events.details}->>'analysisType' = 'comprehensive'`,
+        or(
+          isNull(sql`${events.details}->>'initiatedBy'`),
+          ne(sql`${events.details}->>'initiatedBy'`, "admin"),
+        ),
         gte(events.createdAt, windowStart),
       ),
     );

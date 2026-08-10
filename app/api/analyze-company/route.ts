@@ -14,8 +14,12 @@ import {
   requireAuth,
   validateBody,
   handleApiError,
-  isCompanyMember,
 } from "@/lib/api/validation";
+import {
+  requireCompanyAccess,
+  markCompanyAdminPrepared,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import {
   companies,
@@ -177,18 +181,19 @@ export async function POST(request: NextRequest) {
       hasFinancialData: !!company.financialData,
     });
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      return apiResponse({ error: "Not authorized to analyze this company" }, 403);
-    }
+    // Superadmins can analyze any company on the owner's behalf. `adminOverride`
+    // marks that case: the run is quota-free and sends no email.
+    const access = await requireCompanyAccess(user.id, companyId);
+    suppressEmailForAdminOverride(access, user.id);
+    const { adminOverride } = access;
 
-    // Check monthly analysis run limit
+    // Check monthly analysis run limit (skipped for admin-initiated runs)
     const [analysisSettings, analysisRunsThisMonth] = await Promise.all([
       getPlatformAnalysisSettings(),
       getAnalysisRunsThisMonth(companyId, company.usageResetAt),
     ]);
     const analysisLimit = getEffectiveAnalysisLimit(company, analysisSettings);
-    if (analysisRunsThisMonth >= analysisLimit) {
+    if (!adminOverride && analysisRunsThisMonth >= analysisLimit) {
       const resetsAt = getNextMonthStart().toISOString();
       return NextResponse.json(
         {
@@ -452,15 +457,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Refresh basic-match vector after AI fields are written
-    try {
-      const { embedCompany } = await import("@/lib/services/embeddingService");
-      await embedCompany(companyId, { force: true });
-    } catch (embedError) {
-      console.error(
-        "[CompanyAI:analyze] Embedding refresh failed (non-fatal):",
-        embedError,
-      );
-    }
+    const { refreshCompanyEmbedding } = await import(
+      "@/lib/services/embeddingService"
+    );
+    await refreshCompanyEmbedding(companyId, { force: true });
 
     logApiEvent(request, {
       actionType: "company_updated",
@@ -471,8 +471,14 @@ export async function POST(request: NextRequest) {
       details: {
         analysisType: "comprehensive",
         companyName: company.companyName,
+        // Excluded from the monthly quota by `getAnalysisRunsThisMonth`.
+        ...(adminOverride ? { initiatedBy: "admin" } : {}),
       },
     }).catch(() => {});
+
+    if (adminOverride) {
+      await markCompanyAdminPrepared(companyId, user.id);
+    }
 
     return apiResponse({
       success: true,

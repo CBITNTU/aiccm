@@ -11,8 +11,11 @@ export const ukProfile: DeploymentProfile = {
     name: "TNDRX",
     supportEmail: "support@tndrx.com",
     supportUrl: "https://tndrx.com",
-    logoPath: "/cbit-logo.png",
+    logoPath: "/brand/tndrx/wordmark.png",
+    markPath: "/brand/tndrx/mark.png",
     faviconPath: "/favicon.ico",
+    iconPath: "/brand/tndrx/icon-512.png",
+    appleIconPath: "/brand/tndrx/apple-icon.png",
     poweredBy: "TNDRX",
   },
   theme: {

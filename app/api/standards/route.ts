@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
-import { requireAuth, handleApiError, isCompanyMember } from "@/lib/api/validation";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { requireCompanyAccess } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { companyMarkets, markets, standardsRef } from "@/lib/db/schema/app";
 import { localizedName } from "@/lib/taxonomy/localizedName";
@@ -35,10 +36,8 @@ export async function GET(request: NextRequest) {
 
     let marketNamesNorm: string[] = [];
     if (companyId) {
-      const hasAccess = await isCompanyMember(user.id, companyId);
-      if (!hasAccess) {
-        return apiResponse({ standards: [] });
-      }
+      // Read-only, so no email suppression is needed for the admin-override case.
+      await requireCompanyAccess(user.id, companyId);
 
       // Get company's market IDs
       const cmRows = await db

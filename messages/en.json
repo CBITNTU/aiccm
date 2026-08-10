@@ -12,6 +12,11 @@
     "getStarted": "Get Started",
     "menuToggle": "Toggle navigation menu"
   },
+  "PublicCompanyBanner": {
+    "tagline": "Find tenders, form teams, win work.",
+    "signIn": "Sign In",
+    "createAccount": "Create Free Account"
+  },
   "LocaleSwitcher": {
     "label": "Language"
   },
@@ -79,7 +84,8 @@
       "redirecting": "Redirecting...",
       "errorUnverifiedEmail": "Please check your email and click the verification link before signing in.",
       "errorInvalidCredentials": "Invalid email or password. Please check your credentials and try again.",
-      "errorFallback": "Failed to sign in"
+      "errorFallback": "Failed to sign in",
+      "forgotPasswordLink": "Forgot password?"
     },
     "signUp": {
       "emailLabel": "Email",
@@ -102,6 +108,39 @@
       "successStep3": "Complete your profile setup",
       "successExpiry": "The verification link expires in 24 hours",
       "successBackToSignIn": "Back to Sign In"
+    },
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "description": "Enter the email address for your account and we'll send you a link to set a new password.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "submit": "Send Reset Link",
+      "submitLoading": "Sending...",
+      "backToSignIn": "Back to Sign In",
+      "successTitle": "Check your email",
+      "successSentTo": "If an account exists for this address, we've sent a reset link to:",
+      "successBody": "Open the email and click the link to choose a new password. Remember to check your spam folder.",
+      "successExpiry": "The reset link expires in 1 hour",
+      "errorFallback": "Failed to send reset link"
+    },
+    "resetPassword": {
+      "title": "Set a new password",
+      "description": "Choose a new password for your account.",
+      "passwordLabel": "New Password",
+      "passwordPlaceholder": "Enter a new password (min 6 characters)",
+      "confirmPasswordLabel": "Confirm New Password",
+      "confirmPasswordPlaceholder": "Confirm your new password",
+      "submit": "Reset Password",
+      "submitLoading": "Resetting...",
+      "errorPasswordsMismatch": "Passwords do not match",
+      "errorPasswordTooShort": "Password must be at least 6 characters",
+      "errorFallback": "Failed to reset password",
+      "invalidTokenTitle": "This link is no longer valid",
+      "invalidTokenBody": "Password reset links expire after 1 hour and can only be used once. Please request a new one.",
+      "requestNewLink": "Request a new link",
+      "successTitle": "Password updated",
+      "successBody": "Your password has been changed and you've been signed out on all other devices. Sign in with your new password to continue.",
+      "goToSignIn": "Go to Sign In"
     },
     "invite": {
       "validating": "Validating invitation...",
@@ -220,7 +259,7 @@
       },
       "create": {
         "chNumberLabel": "UK Companies House Number",
-        "chNumberPlaceholder": "e.g., 12345678",
+        "chNumberPlaceholder": "e.g., 12345678 or SC123456",
         "chNumberHelper": "Optional. Enter your company number to auto-fill details from Companies House.",
         "lookUp": "Look Up",
         "toastFound": "Company found!",
@@ -356,6 +395,8 @@
   "AdminCompanyDetail": {
     "srTitle": "Company Details",
     "srDescription": "View company details and manage settings",
+    "prepareButton": "Prepare",
+    "preparedBadge": "Prepared",
     "verified": "Verified",
     "unverified": "Unverified",
     "notProvided": "Not provided",
@@ -523,7 +564,8 @@
       "updateCompanyFailed": "Failed to update company",
       "analyzeCompanySuccess": "Company analysis started. Data will be updated shortly.",
       "analyzeCompanyFailed": "Failed to analyze company"
-    }
+    },
+    "prepareButton": "Prepare"
   },
   "AdminUsers": {
     "title": "Users",
@@ -1402,7 +1444,13 @@
       "financialInformation": "Financial Information",
       "notAvailable": "N/A",
       "status": "Status",
-      "statusActive": "Active",
+      "statusValues": {
+        "active": "Active",
+        "pending_review": "Pending Review",
+        "draft": "Draft",
+        "inactive": "Inactive",
+        "rejected": "Rejected"
+      },
       "verification": "Verification",
       "verificationPending": "Pending",
       "verificationNot": "Not Verified",
@@ -3174,6 +3222,16 @@
       "button": "Verify Email",
       "ignore": "If you didn't create a {platformName} account, you can safely ignore this email."
     },
+    "passwordReset": {
+      "subject": "Reset your password - {platformName}",
+      "heading": "Reset Your Password",
+      "instruction": "We received a request to reset the password for your {platformName} account. Click the button below to choose a new one.",
+      "button": "Reset Password",
+      "expiry": "This link expires in {minutes} minutes and can only be used once",
+      "signOutNote": "For your security, resetting your password signs you out on all other devices.",
+      "ignore": "If you didn't request a password reset, you can safely ignore this email — your password will stay unchanged.",
+      "footer": "This email was sent by {platformName}. If the button above doesn't work, copy and paste this link into your browser:"
+    },
     "teamInvitation": {
       "subject": "You've been invited to join {companyName} on {platformName}",
       "heading": "You're Invited!",
@@ -3323,5 +3381,84 @@
       "resubmit": "Please update the requested items and resubmit your verification request.",
       "button": "Update Your Submission"
     }
+  },
+  "AdminPreparation": {
+    "banner": {
+      "title": "You are preparing {name}'s account",
+      "description": "Changes here are saved directly to their company and never email them. Approve when everything looks right.",
+      "prepared": "Prepared by an admin on {date}. Approval will keep these values instead of re-running the automatic AI prefill."
+    },
+    "loading": "Loading account…",
+    "notFound": "This account could not be found.",
+    "noCompany": "This user has no company to prepare yet.",
+    "backToApprovals": "Back to approvals",
+    "unknownUser": "Unknown user",
+    "preparedBadge": "Prepared",
+    "prepareButton": "Prepare",
+    "approveButton": "Approve",
+    "rejectButton": "Reject",
+    "tendersHelp": "The tenders this company will see. Run deep analysis on any tender — admin runs do not count against their monthly limit.",
+    "dashboardHelp": "What their dashboard will show after approval.",
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "tabs": {
+      "company": "Company",
+      "tenders": "Tenders",
+      "dashboard": "Dashboard"
+    },
+    "rejectDialog": {
+      "title": "Reject {name}?",
+      "description": "The user will be told their application was not approved.",
+      "reasonLabel": "Reason (optional)",
+      "reasonPlaceholder": "Explain why this application was rejected…",
+      "cancel": "Cancel",
+      "confirm": "Reject user"
+    },
+    "toasts": {
+      "loadFailed": "Failed to load this account",
+      "actionSuccess": "Done",
+      "actionFailed": "Action failed",
+      "analyzeSuccess": "Deep analysis complete",
+      "analyzeFailed": "Deep analysis failed",
+      "impersonateFailed": "Could not start viewing as this user"
+    },
+    "viewAsButton": "View as user"
+  },
+  "AdminCompanyPreparation": {
+    "loading": "Loading company…",
+    "notFound": "This company could not be found.",
+    "backToCompanies": "Back to companies",
+    "unknownUser": "Unknown user",
+    "noOwner": "No owner — imported or system company",
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "preparedBadge": "Prepared",
+    "viewAsButton": "View as user",
+    "approvalConsoleButton": "Approval console",
+    "clearPreparedButton": "Clear prepared marker",
+    "banner": {
+      "title": "You are editing {name}'s company",
+      "titleNoOwner": "You are editing {name} directly"
+    },
+    "clearDialog": {
+      "title": "Clear the prepared marker?",
+      "description": "The values you curated stay as they are, but approval will run the automatic AI prefill again and may overwrite them.",
+      "cancel": "Cancel",
+      "confirm": "Clear marker"
+    },
+    "toasts": {
+      "loadFailed": "Failed to load this company",
+      "impersonateFailed": "Could not start viewing as this user",
+      "clearSuccess": "Prepared marker cleared",
+      "clearFailed": "Could not clear the prepared marker"
+    }
+  },
+  "Impersonation": {
+    "banner": "Viewing as {email} — actions you take are recorded against this account and send no email.",
+    "stop": "Stop viewing as user",
+    "stopFailed": "Could not stop impersonating. Try signing out."
   }
 }

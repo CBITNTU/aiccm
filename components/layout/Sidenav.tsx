@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
-import { useDeployment } from "@/lib/deployment/client";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { VerificationStatusIndicator } from "@/components/layout/VerificationStatusIndicator";
@@ -295,7 +295,6 @@ function SidebarContent({
   userInitials,
 }: SidebarContentProps) {
   const t = useTranslations("Sidenav");
-  const { brand } = useDeployment();
   return (
     <div className="flex flex-col h-full">
       {/* Logo section */}
@@ -310,15 +309,10 @@ function SidebarContent({
           className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
           onClick={handleNavClick}
         >
-          <div className="w-8 h-8 gradient-hero rounded-lg flex items-center justify-center flex-shrink-0">
-            <Building2 className="w-5 h-5 text-white" />
-          </div>
-          {(!isCollapsed || isMobile) && (
-            <div className="overflow-hidden">
-              <h1 className="text-lg font-bold text-primary leading-tight">
-                {brand.name}
-              </h1>
-            </div>
+          {isCollapsed && !isMobile ? (
+            <BrandLogo variant="mark" className="h-8 flex-shrink-0" />
+          ) : (
+            <BrandLogo className="h-7" />
           )}
         </Link>
         {!isMobile && (

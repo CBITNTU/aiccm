@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedUser, apiResponse, apiError } from "@/lib/api";
+import {
+  getCompanyAccess,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { getBatchStatus, cancelBatch } from "@/lib/services/queueService";
 import { logApiEvent } from "@/lib/services/eventLogger";
 
@@ -23,13 +27,14 @@ export async function POST(request: NextRequest) {
       return apiError("Batch not found", 404);
     }
 
-    // Verify user has access to this batch (owner or team member)
+    // Owner, team member, or a superadmin preparing the account — the same rule
+    // the trigger route uses to start the run.
     if (batchStatus.companyId) {
-      const { isCompanyMember } = await import("@/lib/api/validation");
-      const hasAccess = await isCompanyMember(user.id, batchStatus.companyId);
-      if (!hasAccess) {
+      const access = await getCompanyAccess(user.id, batchStatus.companyId);
+      if (!access.hasAccess) {
         return apiError("Access denied", 403);
       }
+      suppressEmailForAdminOverride(access, user.id);
     }
 
     // Cancel: deletes pending queue items, marks in-flight + batch as cancelled.

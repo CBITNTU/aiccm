@@ -12,6 +12,11 @@
     "getStarted": "开始使用",
     "menuToggle": "切换导航菜单"
   },
+  "PublicCompanyBanner": {
+    "tagline": "寻找招标、组建团队、赢得项目。",
+    "signIn": "登录",
+    "createAccount": "免费注册"
+  },
   "LocaleSwitcher": {
     "label": "语言"
   },
@@ -79,7 +84,8 @@
       "redirecting": "正在跳转…",
       "errorUnverifiedEmail": "请先查收邮件并点击验证链接后再登录。",
       "errorInvalidCredentials": "邮箱或密码不正确，请检查后重试。",
-      "errorFallback": "登录失败"
+      "errorFallback": "登录失败",
+      "forgotPasswordLink": "忘记密码？"
     },
     "signUp": {
       "emailLabel": "邮箱",
@@ -102,6 +108,39 @@
       "successStep3": "完成资料设置",
       "successExpiry": "验证链接 24 小时内有效",
       "successBackToSignIn": "返回登录"
+    },
+    "forgotPassword": {
+      "title": "忘记密码？",
+      "description": "请输入您账户的邮箱地址，我们将向您发送设置新密码的链接。",
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "请输入邮箱",
+      "submit": "发送重置链接",
+      "submitLoading": "正在发送…",
+      "backToSignIn": "返回登录",
+      "successTitle": "请查收邮件",
+      "successSentTo": "如果该地址对应的账户存在，我们已将重置链接发送至：",
+      "successBody": "请打开邮件并点击链接以设置新密码。别忘了查看垃圾邮件文件夹。",
+      "successExpiry": "重置链接将在 1 小时后失效",
+      "errorFallback": "发送重置链接失败"
+    },
+    "resetPassword": {
+      "title": "设置新密码",
+      "description": "请为您的账户设置一个新密码。",
+      "passwordLabel": "新密码",
+      "passwordPlaceholder": "请输入新密码（至少 6 个字符）",
+      "confirmPasswordLabel": "确认新密码",
+      "confirmPasswordPlaceholder": "请再次输入新密码",
+      "submit": "重置密码",
+      "submitLoading": "正在重置…",
+      "errorPasswordsMismatch": "两次输入的密码不一致",
+      "errorPasswordTooShort": "密码至少需要 6 个字符",
+      "errorFallback": "重置密码失败",
+      "invalidTokenTitle": "此链接已失效",
+      "invalidTokenBody": "密码重置链接将在 1 小时后失效，且仅能使用一次。请重新申请。",
+      "requestNewLink": "重新获取链接",
+      "successTitle": "密码已更新",
+      "successBody": "您的密码已更改，所有其他设备上的登录状态均已退出。请使用新密码登录以继续。",
+      "goToSignIn": "前往登录"
     },
     "invite": {
       "validating": "正在验证邀请…",
@@ -220,7 +259,7 @@
       },
       "create": {
         "chNumberLabel": "英国 Companies House 编号",
-        "chNumberPlaceholder": "例如：12345678",
+        "chNumberPlaceholder": "例如：12345678 或 SC123456",
         "chNumberHelper": "选填。输入公司编号可从 Companies House 自动填充信息。",
         "lookUp": "查询",
         "toastFound": "已找到公司！",
@@ -356,6 +395,8 @@
   "AdminCompanyDetail": {
     "srTitle": "公司详情",
     "srDescription": "查看公司详情与管理设置",
+    "prepareButton": "准备",
+    "preparedBadge": "已准备",
     "verified": "已认证",
     "unverified": "未认证",
     "notProvided": "未提供",
@@ -523,7 +564,8 @@
       "updateCompanyFailed": "更新公司失败",
       "analyzeCompanySuccess": "已开始公司分析，数据将很快更新。",
       "analyzeCompanyFailed": "分析公司失败"
-    }
+    },
+    "prepareButton": "准备"
   },
   "AdminUsers": {
     "title": "用户",
@@ -1402,7 +1444,13 @@
       "financialInformation": "财务信息",
       "notAvailable": "暂无",
       "status": "状态",
-      "statusActive": "活跃",
+      "statusValues": {
+        "active": "已启用",
+        "pending_review": "待审核",
+        "draft": "草稿",
+        "inactive": "未启用",
+        "rejected": "已拒绝"
+      },
       "verification": "认证",
       "verificationPending": "待审核",
       "verificationNot": "未认证",
@@ -3174,6 +3222,16 @@
       "button": "验证邮箱",
       "ignore": "如果您并未创建 {platformName} 账户，请忽略此邮件。您的邮箱不会被用于注册。"
     },
+    "passwordReset": {
+      "subject": "重置您的密码 - {platformName}",
+      "heading": "重置您的密码",
+      "instruction": "我们收到了重置您 {platformName} 账户密码的请求。请点击下方按钮设置新密码。",
+      "button": "重置密码",
+      "expiry": "此链接将在 {minutes} 分钟后失效，且仅能使用一次",
+      "signOutNote": "为保障您的安全，重置密码后将退出所有其他设备的登录状态。",
+      "ignore": "如果您并未申请重置密码，请忽略此邮件——您的密码将保持不变。",
+      "footer": "此邮件由 {platformName} 发送。如果上方按钮无法使用，请将以下链接复制到浏览器中打开："
+    },
     "teamInvitation": {
       "subject": "您已被邀请加入 {platformName} 上的 {companyName}",
       "heading": "您受到邀请！",
@@ -3323,5 +3381,84 @@
       "resubmit": "请更新所需项目并重新提交您的认证申请。",
       "button": "更新您的提交"
     }
+  },
+  "AdminPreparation": {
+    "banner": {
+      "title": "您正在准备 {name} 的账户",
+      "description": "此处的更改会直接保存到其公司资料，且不会向其发送任何邮件。确认无误后再批准。",
+      "prepared": "管理员已于 {date} 完成准备。批准时将保留这些内容，而不会重新运行自动 AI 预填充。"
+    },
+    "loading": "正在加载账户…",
+    "notFound": "未找到该账户。",
+    "noCompany": "该用户尚无可准备的公司。",
+    "backToApprovals": "返回审批列表",
+    "unknownUser": "未知用户",
+    "preparedBadge": "已准备",
+    "prepareButton": "准备",
+    "approveButton": "批准",
+    "rejectButton": "拒绝",
+    "tendersHelp": "该公司将看到的招标项目。可对任意招标运行深度分析——管理员运行不计入其每月额度。",
+    "dashboardHelp": "批准后其仪表板将显示的内容。",
+    "status": {
+      "pending": "待审批",
+      "approved": "已批准",
+      "rejected": "已拒绝"
+    },
+    "tabs": {
+      "company": "公司",
+      "tenders": "招标",
+      "dashboard": "仪表板"
+    },
+    "rejectDialog": {
+      "title": "拒绝 {name}？",
+      "description": "系统将通知该用户其申请未获批准。",
+      "reasonLabel": "原因（可选）",
+      "reasonPlaceholder": "请说明拒绝此申请的原因…",
+      "cancel": "取消",
+      "confirm": "拒绝用户"
+    },
+    "toasts": {
+      "loadFailed": "加载该账户失败",
+      "actionSuccess": "操作完成",
+      "actionFailed": "操作失败",
+      "analyzeSuccess": "深度分析已完成",
+      "analyzeFailed": "深度分析失败",
+      "impersonateFailed": "无法以该用户身份查看"
+    },
+    "viewAsButton": "以该用户身份查看"
+  },
+  "AdminCompanyPreparation": {
+    "loading": "正在加载公司…",
+    "notFound": "未找到该公司。",
+    "backToCompanies": "返回公司列表",
+    "unknownUser": "未知用户",
+    "noOwner": "无所有者 — 导入或系统公司",
+    "verified": "已认证",
+    "unverified": "未认证",
+    "preparedBadge": "已准备",
+    "viewAsButton": "以该用户身份查看",
+    "approvalConsoleButton": "审批控制台",
+    "clearPreparedButton": "清除准备标记",
+    "banner": {
+      "title": "您正在编辑 {name} 的公司",
+      "titleNoOwner": "您正在直接编辑 {name}"
+    },
+    "clearDialog": {
+      "title": "要清除准备标记吗？",
+      "description": "您整理的内容会保留，但批准时会重新运行自动 AI 预填充，并可能覆盖这些内容。",
+      "cancel": "取消",
+      "confirm": "清除标记"
+    },
+    "toasts": {
+      "loadFailed": "加载该公司失败",
+      "impersonateFailed": "无法以该用户身份查看",
+      "clearSuccess": "已清除准备标记",
+      "clearFailed": "无法清除准备标记"
+    }
+  },
+  "Impersonation": {
+    "banner": "正在以 {email} 的身份查看——您的操作会记录在该账户下，且不会发送任何邮件。",
+    "stop": "结束以该用户身份查看",
+    "stopFailed": "无法结束身份模拟，请尝试退出登录。"
   }
 }

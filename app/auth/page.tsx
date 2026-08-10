@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { authClient } from "@/lib/auth-client";
@@ -10,14 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Building2,
-  Mail,
-  Lock,
-  AlertCircle,
-  CheckCircle2,
-} from "lucide-react";
+import { Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 import { Header } from "@/components/layout/Header";
 import { isValidRedirectUrl } from "@/lib/utils/redirectUrl";
 import { useDeployment } from "@/lib/deployment/client";
@@ -196,9 +192,7 @@ export default function AuthPage() {
 
       <div className="max-w-md mx-auto px-4 pt-20 pb-16">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 gradient-hero rounded-lg mx-auto mb-4 flex items-center justify-center">
-            <Building2 className="w-8 h-8 text-white" />
-          </div>
+          <BrandLogo className="h-10 mx-auto mb-4" priority />
           <h1 className="text-2xl font-bold text-foreground mb-2">
             {t("main.welcome", { brand: brand.name })}
           </h1>
@@ -267,6 +261,15 @@ export default function AuthPage() {
                         required
                       />
                     </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
+                    >
+                      {t("signIn.forgotPasswordLink")}
+                    </Link>
                   </div>
 
                   <Button

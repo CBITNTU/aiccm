@@ -8,6 +8,7 @@ import { Header } from "@/components/layout/Header";
 import { Sidenav } from "@/components/layout/Sidenav";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { EmailVerifiedToast } from "@/components/EmailVerifiedToast";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { OrgProvider } from "@/hooks/useOrg";
 
 function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
@@ -51,6 +52,8 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <OrgProvider>
       <div className="min-h-screen bg-background">
+        <ImpersonationBanner />
+
         <Suspense fallback={null}>
           <EmailVerifiedToast />
         </Suspense>

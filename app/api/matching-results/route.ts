@@ -2,11 +2,11 @@ import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
 import {
   requireAuth,
-  isCompanyMember,
   handleApiError,
-  AuthError,
   sanitizeLikeParam,
+  ValidationError,
 } from "@/lib/api/validation";
+import { requireCompanyAccess } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { matchingResults, tenders } from "@/lib/db/schema/app";
 import { eq, and, or, ne, ilike, gte, lte, asc, desc, count, sql, SQL } from "drizzle-orm";
@@ -15,7 +15,13 @@ export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request);
     const url = new URL(request.url);
+    // Mandatory: without it the query carries no company predicate at all and
+    // every caller would see every company's results.
     const companyId = url.searchParams.get("companyId");
+    if (!companyId) {
+      throw new ValidationError("companyId is required");
+    }
+
     const bookmarked = url.searchParams.get("bookmarked");
     const tenderStatus = url.searchParams.get("tenderStatus") || "active";
     const keyword = url.searchParams.get("keyword") || "";
@@ -40,13 +46,8 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(tenders.status, tenderStatus));
     }
 
-    if (companyId) {
-      const hasAccess = await isCompanyMember(user.id, companyId);
-      if (!hasAccess) {
-        throw new AuthError("No access to this company");
-      }
-      conditions.push(eq(matchingResults.companyId, companyId));
-    }
+    await requireCompanyAccess(user.id, companyId);
+    conditions.push(eq(matchingResults.companyId, companyId));
 
     if (bookmarked === "true") {
       conditions.push(eq(matchingResults.isBookmarked, true));

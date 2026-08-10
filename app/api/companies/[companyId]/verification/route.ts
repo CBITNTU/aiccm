@@ -6,6 +6,7 @@ import {
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import { requireCompanyAccess } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { companies, companyVerificationRequests } from "@/lib/db/schema/app";
 import { eq, desc } from "drizzle-orm";
@@ -18,10 +19,7 @@ export async function GET(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    await requireCompanyAccess(user.id, companyId);
 
     const company = await db
       .select({
@@ -65,6 +63,9 @@ export async function POST(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
+    // Deliberately member-only: submitting for verification is the owner's act,
+    // not the admin's. The console hides the submit button via `isAdminOverride`
+    // (see VerificationBanner) rather than granting the admin this route.
     const hasAccess = await isCompanyMember(user.id, companyId);
     if (!hasAccess) {
       throw new AuthError("No access to this company");

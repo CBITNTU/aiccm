@@ -2,11 +2,16 @@ import { NextRequest } from "next/server";
 import { apiResponse, checkSuperadminRole } from "@/lib/api";
 import {
   requireAuth,
-  isCompanyMember,
   handleApiError,
   AuthError,
 } from "@/lib/api/validation";
+import {
+  requireCompanyAccess,
+  markCompanyAdminPrepared,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { getCompanyMemberRole } from "@/lib/db/queries";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import {
   geocodeLocation,
   buildCompanyGeoQuery,
@@ -32,16 +37,8 @@ export async function GET(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    // Check access (company member/owner or superadmin)
-    const [hasAccess, isSuperadmin] = await Promise.all([
-      isCompanyMember(user.id, companyId),
-      checkSuperadminRole(user.id),
-    ]);
-    if (!hasAccess) {
-      if (!isSuperadmin) {
-        throw new AuthError("No access to this company");
-      }
-    }
+    // Company member/owner, or a superadmin acting on their behalf.
+    const access = await requireCompanyAccess(user.id, companyId);
 
     // Fetch company
     const companyResult = await db
@@ -56,6 +53,10 @@ export async function GET(
     }
 
     const isOwner = company.userId === user.id;
+    // A superadmin who is not a member is "acting on behalf": the company page
+    // must render its edit affordances, but the caller is not the owner.
+    const isAdminOverride = access.adminOverride;
+    const canEdit = isOwner || isAdminOverride;
 
     // Fetch capabilities via join
     const capData = await db
@@ -95,8 +96,9 @@ export async function GET(
       .innerJoin(standardsRef, eq(companyStandards.standardId, standardsRef.id))
       .where(eq(companyStandards.companyId, companyId));
 
-    // Include pending changes info for company members
-    const isMember = hasAccess;
+    // Include pending changes info for company members — and for a superadmin
+    // acting on their behalf, who needs to see (and clear) any draft state.
+    const isMember = access.hasAccess;
     let pendingReviewRequest = null;
     if (isMember && company.verificationStatus === "verified") {
       pendingReviewRequest = await db
@@ -166,6 +168,8 @@ export async function GET(
     return apiResponse({
       company,
       isOwner,
+      canEdit,
+      isAdminOverride,
       capabilities: capData,
       markets: marketsData,
       standards: standardsData,
@@ -187,7 +191,9 @@ export async function PUT(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    // Only owner, admin member, or superadmin can update
+    // Not `requireCompanyAccess`: this guard needs role granularity that
+    // `CompanyAccess` cannot express — a plain `member` may not update, only a
+    // company `admin` (or the owner, whom getCompanyMemberRole reports as admin).
     const [memberRole, isSuperadmin] = await Promise.all([
       getCompanyMemberRole(user.id, companyId),
       checkSuperadminRole(user.id),
@@ -198,6 +204,17 @@ export async function PUT(
     if (memberRole && memberRole !== "admin" && !isSuperadmin) {
       throw new AuthError("Only company admins can update company details");
     }
+
+    // A superadmin who is not a member of the company is acting on the user's
+    // behalf (typically preparing an account before approving it). Their edits
+    // are already reviewed by definition, so they write straight to the columns
+    // instead of queuing a change review — and nothing they do sends email.
+    const adminOverride = !memberRole && isSuperadmin;
+    // Must be in this frame — see enableEmailSuppression's contract.
+    suppressEmailForAdminOverride(
+      { isMember: !!memberRole, adminOverride, hasAccess: true },
+      user.id,
+    );
 
     const body = await request.json();
 
@@ -232,7 +249,10 @@ export async function PUT(
       return apiResponse({ error: "Company not found" }, 404);
     }
 
+    // `useReviewQueue` — not `isVerified` — decides whether reviewable edits are
+    // diverted into a draft. An admin override skips the queue entirely.
     const isVerified = company.verificationStatus === "verified";
+    const useReviewQueue = isVerified && !adminOverride;
 
     // Split fields into reviewable and non-reviewable
     const directUpdates: Partial<typeof companies.$inferInsert> = {};
@@ -240,7 +260,7 @@ export async function PUT(
 
     for (const field of allowedFields) {
       if (!(field in body)) continue;
-      if (isVerified && isReviewableField(field)) {
+      if (useReviewQueue && isReviewableField(field)) {
         reviewableUpdates[field] = body[field] ?? null;
       } else {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -249,7 +269,7 @@ export async function PUT(
     }
 
     // For verified companies, check edit lock before accepting reviewable changes
-    if (isVerified && Object.keys(reviewableUpdates).length > 0) {
+    if (useReviewQueue && Object.keys(reviewableUpdates).length > 0) {
       const pendingRequest = await db
         .select({ id: companyVerificationRequests.id })
         .from(companyVerificationRequests)
@@ -273,7 +293,7 @@ export async function PUT(
 
     // Build pending changes for reviewable fields (verified companies only)
     let pendingChanges: PendingChanges | null = (company.pendingChanges as PendingChanges | null) ?? null;
-    if (isVerified && Object.keys(reviewableUpdates).length > 0) {
+    if (useReviewQueue && Object.keys(reviewableUpdates).length > 0) {
       if (!pendingChanges) {
         pendingChanges = { lastSavedAt: new Date().toISOString() };
       }
@@ -322,7 +342,7 @@ export async function PUT(
       ...directUpdates,
       updatedAt: new Date(),
     };
-    if (isVerified && Object.keys(reviewableUpdates).length > 0) {
+    if (useReviewQueue && Object.keys(reviewableUpdates).length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (dbUpdate as any).pendingChanges = pendingChanges;
     }
@@ -337,32 +357,15 @@ export async function PUT(
       return apiResponse({ error: "Company not found" }, 404);
     }
 
-    // Refresh the basic-match embedding if any text field that contributes to
-    // the source vector has changed. Synchronous, but with a hard try-catch:
-    // failures (Ollama down, etc.) must never break the user's save.
-    const EMBED_TRIGGER_FIELDS = [
-      "companyName",
-      "description",
-      "keyCapabilities",
-      "certifications",
-      "equipment",
-      "pastProjects",
-      "postcode",
-      "address",
-    ] as const;
-    const embedDirty = EMBED_TRIGGER_FIELDS.some((f) => f in directUpdates);
-    if (embedDirty) {
-      try {
-        const { embedCompany } = await import(
-          "@/lib/services/embeddingService"
-        );
-        await embedCompany(companyId);
-      } catch (embedError) {
-        console.error(
-          "Company embedding refresh failed (non-fatal):",
-          embedError,
-        );
-      }
+    // Refresh the basic-match embedding. Unconditional: refreshCompanyEmbedding
+    // hashes the rebuilt source and no-ops when nothing that feeds the vector
+    // changed, which covers the review-queue case where the edit only landed in
+    // pendingChanges. A field whitelist here would just drift out of sync with
+    // buildCompanySource.
+    await refreshCompanyEmbedding(companyId);
+
+    if (adminOverride) {
+      await markCompanyAdminPrepared(companyId, user.id);
     }
 
     return apiResponse({

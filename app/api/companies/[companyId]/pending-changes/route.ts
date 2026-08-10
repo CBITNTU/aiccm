@@ -1,11 +1,10 @@
 import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import {
-  requireAuth,
-  isCompanyMember,
-  handleApiError,
-  AuthError,
-} from "@/lib/api/validation";
+  requireCompanyAccess,
+  suppressEmailForAdminOverride,
+} from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { companies, companyVerificationRequests } from "@/lib/db/schema/app";
 import { eq, and, inArray } from "drizzle-orm";
@@ -18,10 +17,14 @@ export async function DELETE(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
-    if (!hasAccess) {
-      throw new AuthError("No access to this company");
-    }
+    // No `markCompanyAdminPrepared` here: that marker means "the admin curated
+    // values worth preserving through approval", and discarding a draft is the
+    // opposite. The pending-review guard below is deliberately NOT bypassed for
+    // `adminOverride` either — discarding under a submitted review would strand
+    // the request.
+    const access = await requireCompanyAccess(user.id, companyId);
+    // Must be in this frame — see enableEmailSuppression's contract.
+    suppressEmailForAdminOverride(access, user.id);
 
     // Check for pending change_review — can't discard while submitted
     const pendingRequest = await db

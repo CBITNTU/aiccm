@@ -348,17 +348,10 @@ export async function POST(request: NextRequest) {
           // Compute the basic-match embedding immediately so the user can see
           // matches without waiting for the AI taxonomy job. Best-effort: a
           // failure here must never block onboarding completion.
-          try {
-            const { embedCompany } = await import(
-              "@/lib/services/embeddingService"
-            );
-            await embedCompany(company.id);
-          } catch (embedError) {
-            console.error(
-              "Initial company embedding failed (non-fatal):",
-              embedError,
-            );
-          }
+          const { refreshCompanyEmbedding } = await import(
+            "@/lib/services/embeddingService"
+          );
+          await refreshCompanyEmbedding(company.id);
 
           // Log company creation during onboarding
           await logApiEvent(request, {

@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { processingQueue, batchJobs } from "@/lib/db/schema/app";
 import { dequeueJobAtomic, incrementBatchProgress } from "@/lib/db/raw";
-import { eq, and, inArray, desc, asc, lt, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, desc, lt, sql } from "drizzle-orm";
 
 // Drizzle-inferred types (camelCase)
 type ProcessingQueue = typeof processingQueue.$inferSelect;
@@ -80,8 +80,6 @@ function mapRawToProcessingQueue(
  * Enqueue a single job
  */
 export async function enqueueJob(options: EnqueueJobOptions): Promise<string> {
-  const now = new Date();
-
   const result = await db
     .insert(processingQueue)
     .values({
@@ -92,7 +90,9 @@ export async function enqueueJob(options: EnqueueJobOptions): Promise<string> {
       tenderId: options.tenderId || null,
       status: "pending",
       priority: options.priority || 0,
-      scheduledAt: options.scheduledAt || now,
+      // Default to the DB clock: dequeue filters on scheduled_at <= NOW(), and
+      // the app clock can run ahead of Postgres, hiding a fresh job.
+      scheduledAt: options.scheduledAt ?? sql`now()`,
       metadata: options.metadata || null,
     })
     .returning({ id: processingQueue.id });
@@ -134,7 +134,6 @@ export async function enqueueBatch(
   }
 
   const batchId = batchResult[0].id;
-  const now = new Date();
 
   // Enqueue all jobs with batchId and optional metadata
   const jobInserts = jobs.map((job) => ({
@@ -146,7 +145,8 @@ export async function enqueueBatch(
     batchId,
     status: "pending",
     priority: job.priority || 0,
-    scheduledAt: job.scheduledAt || now,
+    // DB clock, for the same reason as enqueueJob.
+    scheduledAt: job.scheduledAt ?? sql`now()`,
     metadata: job.metadata ?? null,
   }));
 
@@ -213,94 +213,6 @@ export async function dequeueJob(): Promise<ProcessingQueue | null> {
 
   // dequeueJobAtomic returns snake_case from raw SQL, map to camelCase
   return mapRawToProcessingQueue(data as unknown as Record<string, unknown>);
-}
-
-/**
- * Fallback method for dequeuing (non-atomic, for backward compatibility)
- * Uses conditional UPDATE to prevent race conditions where multiple workers claim the same job.
- * @deprecated Use dequeueJob() which uses atomic database function
- */
-async function _dequeueJobFallback(): Promise<ProcessingQueue | null> {
-  const now = new Date();
-
-  // First, try to get a job with batchId (prioritize batch jobs)
-  const batchJobRows = await db
-    .select()
-    .from(processingQueue)
-    .where(
-      and(
-        eq(processingQueue.status, "pending"),
-        isNotNull(processingQueue.batchId),
-      ),
-    )
-    .orderBy(desc(processingQueue.priority), asc(processingQueue.scheduledAt))
-    .limit(1);
-
-  if (batchJobRows[0]) {
-    // Atomically claim the job - only succeeds if status is still 'pending'
-    const claimed = await db
-      .update(processingQueue)
-      .set({
-        status: "processing",
-        startedAt: now,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(processingQueue.id, batchJobRows[0].id),
-          eq(processingQueue.status, "pending"), // KEY: Only update if still pending
-        ),
-      )
-      .returning();
-
-    if (!claimed[0]) {
-      // Another worker claimed it, try again recursively
-      console.log(
-        `Job ${batchJobRows[0].id} was claimed by another worker, retrying...`,
-      );
-      return _dequeueJobFallback();
-    }
-
-    return claimed[0];
-  }
-
-  // If no batch job found, get any pending job (for backward compatibility)
-  const pendingRows = await db
-    .select()
-    .from(processingQueue)
-    .where(eq(processingQueue.status, "pending"))
-    .orderBy(desc(processingQueue.priority), asc(processingQueue.scheduledAt))
-    .limit(1);
-
-  if (!pendingRows[0]) {
-    return null;
-  }
-
-  // Atomically claim the job - only succeeds if status is still 'pending'
-  const claimed = await db
-    .update(processingQueue)
-    .set({
-      status: "processing",
-      startedAt: now,
-      updatedAt: now,
-    })
-    .where(
-      and(
-        eq(processingQueue.id, pendingRows[0].id),
-        eq(processingQueue.status, "pending"), // KEY: Only update if still pending
-      ),
-    )
-    .returning();
-
-  if (!claimed[0]) {
-    // Another worker claimed it, try again recursively
-    console.log(
-      `Job ${pendingRows[0].id} was claimed by another worker, retrying...`,
-    );
-    return _dequeueJobFallback();
-  }
-
-  return claimed[0];
 }
 
 /**
@@ -695,10 +607,11 @@ export async function reconcileBatch(
 }
 
 /**
- * Get the company's currently-active (processing) tender-matching batch, if any.
- * Reconciles a drifted batch first, so a batch that has actually finished is
- * reported as terminal (and therefore not "active"). This is the authoritative
- * source the client hydrates from on mount/focus.
+ * Get the company's currently-active (processing) matching batch, if any —
+ * covers both full matching runs ("tender_matching") and deep-match runs
+ * ("company_matching"). Reconciles a drifted batch first, so a batch that has
+ * actually finished is reported as terminal (and therefore not "active").
+ * This is the authoritative source the client hydrates from on mount/focus.
  */
 export async function getActiveMatchingBatchForCompany(
   companyId: string,
@@ -709,7 +622,7 @@ export async function getActiveMatchingBatchForCompany(
     .where(
       and(
         eq(batchJobs.companyId, companyId),
-        eq(batchJobs.batchType, "tender_matching"),
+        inArray(batchJobs.batchType, ["tender_matching", "company_matching"]),
         eq(batchJobs.status, "processing"),
       ),
     )
@@ -793,50 +706,6 @@ async function updateBatchProgress(
     console.error(`Error in updateBatchProgress for job ${jobId}:`, error);
     throw error;
   }
-}
-
-/**
- * Fallback method for updating batch progress (non-atomic, for backward compatibility)
- * @deprecated Use updateBatchProgress() which uses atomic database function
- */
-async function _updateBatchProgressFallback(
-  jobId: string,
-  outcome: "completed" | "failed",
-): Promise<void> {
-  const job = await getJob(jobId);
-  if (!job || !job.batchId) {
-    return;
-  }
-
-  const batchId = job.batchId;
-  const batch = await getBatchStatus(batchId);
-  if (!batch) {
-    return;
-  }
-
-  // Calculate new values (non-atomic - may have race conditions)
-  const newCompleted =
-    outcome === "completed" ? batch.completedJobs + 1 : batch.completedJobs;
-  const newFailed =
-    outcome === "failed" ? batch.failedJobs + 1 : batch.failedJobs;
-  const totalProcessed = newCompleted + newFailed;
-
-  let newStatus: "processing" | "completed" | "failed";
-  if (totalProcessed >= batch.totalJobs) {
-    newStatus = newFailed === batch.totalJobs ? "failed" : "completed";
-  } else {
-    newStatus = "processing";
-  }
-
-  await db
-    .update(batchJobs)
-    .set({
-      completedJobs: newCompleted,
-      failedJobs: newFailed,
-      status: newStatus,
-      updatedAt: new Date(),
-    })
-    .where(eq(batchJobs.id, batchId));
 }
 
 /**

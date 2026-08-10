@@ -34,6 +34,14 @@ export interface CompanyPageData {
   companyData: CompanyRecord | null;
   loading: boolean;
   isOwner: boolean;
+  /**
+   * May edit this company — the owner, or a superadmin acting on their behalf
+   * from the pre-approval console. Every edit affordance gates on this rather
+   * than `isOwner`.
+   */
+  canEdit: boolean;
+  /** Edit rights come from the superadmin role rather than ownership. */
+  isAdminOverride: boolean;
   analysis: Record<string, unknown> | null;
   pendingChanges: PendingChanges | null;
   pendingReviewRequest: PendingReviewRequest | null;
@@ -196,6 +204,8 @@ export function useCompanyPageData(
   const [companyData, setCompanyData] = useState<CompanyRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  const [isAdminOverride, setIsAdminOverride] = useState(false);
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null);
   const [pendingChanges, setPendingChanges] = useState<PendingChanges | null>(null);
   const [pendingReviewRequest, setPendingReviewRequest] = useState<PendingReviewRequest | null>(null);
@@ -215,6 +225,8 @@ export function useCompanyPageData(
       const data = await api.getCompany(companyId);
       setCompanyData(data.company);
       setIsOwner(data.isOwner);
+      setCanEdit(data.canEdit ?? data.isOwner);
+      setIsAdminOverride(data.isAdminOverride ?? false);
       setCapabilities(data.capabilities);
       setPendingChanges((data.pendingChanges as PendingChanges | null) ?? null);
       setPendingReviewRequest(data.pendingReviewRequest ?? null);
@@ -346,6 +358,8 @@ export function useCompanyPageData(
     companyData,
     loading,
     isOwner,
+    canEdit,
+    isAdminOverride,
     analysis,
     pendingChanges,
     pendingReviewRequest,

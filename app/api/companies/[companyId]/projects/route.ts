@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api";
-import { requireAuth, handleApiError, isCompanyMember } from "@/lib/api/validation";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
+import { getCompanyAccess } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
 import { virtualOrganizations, voMembers, tenders, companies } from "@/lib/db/schema/app";
 import { eq, or } from "drizzle-orm";
@@ -13,7 +14,7 @@ export async function GET(
     const { user } = await requireAuth(request);
     const { companyId } = await params;
 
-    const hasAccess = await isCompanyMember(user.id, companyId);
+    const { hasAccess } = await getCompanyAccess(user.id, companyId);
     if (!hasAccess) {
       return apiResponse({ voProjects: [], pastProjects: [] });
     }

@@ -12,7 +12,18 @@ fi
 echo "✓ Lint passed"
 echo ""
 
-# 2. Build
+# 2. Unit tests
+echo "▶ Unit tests..."
+if ! npm run test; then
+  echo ""
+  echo "❌ Tests failed. Fix the failures above and try again."
+  echo "   You can run 'npm run test' locally to see the same output."
+  exit 1
+fi
+echo "✓ Tests passed"
+echo ""
+
+# 3. Build
 echo "▶ Building..."
 if ! npm run build; then
   echo ""

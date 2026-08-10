@@ -19,4 +19,8 @@ export const {
   signUp,
   signOut,
   useSession,
+  // Password recovery: `requestPasswordReset` emails a reset link,
+  // `resetPassword` consumes the token from that link.
+  requestPasswordReset,
+  resetPassword,
 } = authClient;

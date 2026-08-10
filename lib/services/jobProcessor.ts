@@ -8,7 +8,11 @@ import {
   generateCompanyCapabilityTaxonomy,
 } from "@/lib/services/companyAIService";
 import { scoreTenderMatch } from "@/lib/services/tenderMatchingService";
-import { embedCompany, embedTender } from "@/lib/services/embeddingService";
+import {
+  embedCompany,
+  embedTender,
+  refreshCompanyEmbedding,
+} from "@/lib/services/embeddingService";
 import { type JobType } from "@/lib/services/queueService";
 
 export async function processJob(job: {
@@ -50,31 +54,33 @@ export async function processJob(job: {
       };
     }
 
-    case "company_summary":
+    case "company_summary": {
       const companySummary = await generateCompanySummary(job.entityId);
+      // aiSummary is the highest-priority line in the company embedding source,
+      // so this job invalidates the vector. force: true — the source just
+      // changed, and the hash dedupe would otherwise be the only thing checked.
+      await refreshCompanyEmbedding(job.entityId, { force: true });
       return { success: true, summary: companySummary };
+    }
 
-    case "company_taxonomy":
+    case "company_taxonomy": {
       const fullRegeneration = job.metadata?.fullRegeneration === true;
       const companyTaxonomy = await generateCompanyCapabilityTaxonomy(
         job.entityId,
         fullRegeneration,
       );
+      // Writes aiCapabilityTaxonomy and can seed company_capabilities; both
+      // resolve to capability labels in the embedding source.
+      await refreshCompanyEmbedding(job.entityId, { force: true });
       return { success: true, taxonomy: companyTaxonomy };
+    }
 
     case "company_ai_complete": {
       const fullRegen = job.metadata?.fullRegeneration === true;
       // Local keyword taxonomy first (no AI, reliable), then AI summary
       const companyTaxonomyIds = await generateCompanyCapabilityTaxonomy(job.entityId, fullRegen);
       const companySummaryText = await generateCompanySummary(job.entityId);
-      try {
-        await embedCompany(job.entityId, { force: true });
-      } catch (embedError) {
-        console.error(
-          `Embedding after company_ai_complete failed (non-fatal) for ${job.entityId}:`,
-          embedError,
-        );
-      }
+      await refreshCompanyEmbedding(job.entityId, { force: true });
       return {
         success: true,
         summary: companySummaryText,

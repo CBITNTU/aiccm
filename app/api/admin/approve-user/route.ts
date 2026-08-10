@@ -6,6 +6,7 @@ import {
 } from "@/lib/api";
 import { requireAuth, handleApiError } from "@/lib/api/validation";
 import { logApiEvent } from "@/lib/services/eventLogger";
+import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import {
   sendEmail,
   getApprovalNotificationEmailSubject,
@@ -179,6 +180,10 @@ async function triggerAIPrefill(
           .set(updateData as typeof companies.$inferInsert)
           .where(eq(companies.id, companyId));
         console.log(`AI prefill applied to company ${companyId}`);
+        // Prefill writes description/keyCapabilities/certifications/equipment,
+        // all embedding-source fields. Both callers run this in the background,
+        // so the refresh belongs here rather than at the call sites.
+        await refreshCompanyEmbedding(companyId);
       } catch (updateError) {
         console.error("Error applying prefill data to company:", updateError);
       }
@@ -229,6 +234,7 @@ export async function POST(request: NextRequest) {
       companyName: string;
       companiesHouseNumber: string | null;
       websiteUrl: string | null;
+      adminPreparedAt: Date | null;
     } | null = null;
 
     console.log("Approval check:", {
@@ -244,6 +250,7 @@ export async function POST(request: NextRequest) {
           companyName: companies.companyName,
           companiesHouseNumber: companies.companiesHouseNumber,
           websiteUrl: companies.websiteUrl,
+          adminPreparedAt: companies.adminPreparedAt,
         })
         .from(companies)
         .where(
@@ -283,6 +290,7 @@ export async function POST(request: NextRequest) {
       companyName: string;
       companiesHouseNumber: string | null;
       websiteUrl: string | null;
+      adminPreparedAt: Date | null;
     } | null = null;
 
     console.log("Profile data for approval:", {
@@ -310,6 +318,7 @@ export async function POST(request: NextRequest) {
           companyName: companies.companyName,
           companiesHouseNumber: companies.companiesHouseNumber,
           websiteUrl: companies.websiteUrl,
+          adminPreparedAt: companies.adminPreparedAt,
         })
         .from(companies)
         .where(eq(companies.userId, userId))
@@ -370,14 +379,23 @@ export async function POST(request: NextRequest) {
           return apiError("Failed to approve company", 500);
         }
 
-        // Trigger AI prefill in the background
-        triggerAIPrefill(pendingCompany.id, {
-          companyName: pendingCompany.companyName,
-          companyNumber: pendingCompany.companiesHouseNumber,
-          websiteUrl: pendingCompany.websiteUrl,
-        }).catch((err) => {
-          console.error("Background AI prefill error:", err);
-        });
+        // Trigger AI prefill in the background — unless a superadmin already
+        // curated this company from /admin/approvals. Prefill overwrites
+        // description, address, capabilities, certifications and equipment, so
+        // running it here would discard that work.
+        if (pendingCompany.adminPreparedAt) {
+          console.log(
+            `Skipping AI prefill for admin-prepared company ${pendingCompany.id}`,
+          );
+        } else {
+          triggerAIPrefill(pendingCompany.id, {
+            companyName: pendingCompany.companyName,
+            companyNumber: pendingCompany.companiesHouseNumber,
+            websiteUrl: pendingCompany.websiteUrl,
+          }).catch((err) => {
+            console.error("Background AI prefill error:", err);
+          });
+        }
 
         // Log admin approval
         await logApiEvent(request, {
@@ -429,8 +447,14 @@ export async function POST(request: NextRequest) {
           { status: "active" },
         );
 
-        // Trigger AI prefill in the background (non-blocking)
-        if (companyDetails) {
+        // Trigger AI prefill in the background (non-blocking) — skipped when a
+        // superadmin already prepared the company, since prefill overwrites the
+        // curated description, address, capabilities and equipment.
+        if (companyDetails?.adminPreparedAt) {
+          console.log(
+            `Skipping AI prefill for admin-prepared company ${companyDetails.id}`,
+          );
+        } else if (companyDetails) {
           triggerAIPrefill(companyDetails.id, {
             companyName: companyDetails.companyName,
             companyNumber: companyDetails.companiesHouseNumber,

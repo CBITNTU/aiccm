@@ -24,7 +24,8 @@ export function useMatchingResults(params: MatchingResultsParams) {
 
   return useQuery({
     queryKey: queryKeys.matchingResults(params.companyId!, filterKey),
-    queryFn: () => api.getMatchingResults(params),
+    // Non-null assertion is safe: `enabled` keeps the query off until it's set.
+    queryFn: () => api.getMatchingResults({ ...params, companyId: params.companyId! }),
     enabled: !!params.companyId,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,

@@ -1,6 +1,7 @@
 import { checkSuperadminRole } from "@/lib/api";
 import { isCompanyMember, AuthError } from "@/lib/api/validation";
 import { enableEmailSuppression } from "@/lib/email/suppression";
+import { logEvent } from "@/lib/services/eventLogger";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/db/schema/app";
 import { eq } from "drizzle-orm";
@@ -100,10 +101,39 @@ export async function markCompanyAdminPrepared(
   adminUserId: string,
 ): Promise<void> {
   try {
+    // Read the prior state before overwriting it, so the audit log can tell a
+    // first on-behalf edit from the twentieth. Deliberately isolated: the marker
+    // write is what approval depends on, and it must not be lost because the
+    // lookup failed.
+    let alreadyPrepared = true;
+    try {
+      const [existing] = await db
+        .select({ preparedAt: companies.adminPreparedAt })
+        .from(companies)
+        .where(eq(companies.id, companyId))
+        .limit(1);
+      alreadyPrepared = !!existing?.preparedAt;
+    } catch {
+      // Fall through with the write; skip the event rather than risk a duplicate.
+    }
+
     await db
       .update(companies)
       .set({ adminPreparedAt: new Date(), adminPreparedBy: adminUserId })
       .where(eq(companies.id, companyId));
+
+    // Only the first edit of a preparation session is worth recording; logging
+    // every field save would bury the signal. Without this the edits are
+    // unattributable — they land on the owner's record looking like the owner
+    // made them.
+    if (!alreadyPrepared) {
+      await logEvent({
+        actionType: "admin_company_prepared",
+        userId: adminUserId,
+        entityType: "company",
+        entityId: companyId,
+      });
+    }
   } catch (error) {
     console.error("Failed to mark company as admin-prepared:", error);
   }

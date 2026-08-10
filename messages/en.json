@@ -3407,7 +3407,8 @@
     "tabs": {
       "company": "Company",
       "tenders": "Tenders",
-      "dashboard": "Dashboard"
+      "dashboard": "Dashboard",
+      "curation": "Curation"
     },
     "rejectDialog": {
       "title": "Reject {name}?",
@@ -3426,6 +3427,104 @@
       "impersonateFailed": "Could not start viewing as this user"
     },
     "viewAsButton": "View as user"
+  },
+  "AdminMatchCuration": {
+    "title": "Match curation",
+    "description": "Lift specific tenders in this company's feed. Prefer adding evidence and re-running the analysis over setting a score by hand.",
+    "addTender": "Add tender",
+    "empty": "No curated matches for this company yet.",
+    "tooManyWarning": "{count} curated matches are live for this company. Past a handful, a feed stops looking organic.",
+    "shownScore": "Shown",
+    "realScore": "Real",
+    "notAnalysed": "not analysed",
+    "researchPending": "Deep research running",
+    "edit": "Edit",
+    "unpublish": "Unpublish",
+    "remove": "Remove",
+    "save": "Save draft",
+    "publish": "Publish",
+    "publishAnyway": "Publish anyway",
+    "internalNote": "Internal note",
+    "internalNotePlaceholder": "Why this tender is being lifted",
+    "internalNoteHelp": "Admin-only. Recorded in the audit log and never sent to the user.",
+    "status": {
+      "draft": "Draft",
+      "published": "Live",
+      "archived": "Archived",
+      "pinned": "Pinned"
+    },
+    "evidence": {
+      "title": "Evidence (preferred)",
+      "help": "Anything true about this company that its profile doesn't capture — an unlisted accreditation, prior work with this buyer, a framework agreement. The analysis is re-run with it, so the score moves for a reason the card can stand behind.",
+      "placeholder": "e.g. Holds an unlisted ISO 14001 certification and has completed two previous frameworks for this buyer.",
+      "rerun": "Re-run analysis with evidence",
+      "dimensionsLabel": "This evidence vouches for",
+      "dimensionsHelp": "Ticked dimensions are scored as first-hand company data. Leave a dimension unticked when the note doesn't actually evidence it.",
+      "dimensions": {
+        "capability": "Capability",
+        "experience": "Experience",
+        "certification": "Certifications"
+      }
+    },
+    "override": {
+      "title": "Score override (fallback)",
+      "help": "Sets the score shown to the user. The four sub-scores are recalculated on publish so the card's breakdown still adds up to it.",
+      "score": "Shown score",
+      "scoreHelp": "Between {min}% and {max}%. Leave empty to keep the real score.",
+      "pin": "Pin to the top of the feed",
+      "pinHelp": "Applies only to the default 'Overall score, high to low' view. Under any other sort the tender ranks on its score alone.",
+      "pinRank": "Pin order",
+      "reasons": "Match reasons (one per line)",
+      "reasonsHelp": "Shown on the card and the detail page. Reasoning that contradicts the score is the thing users notice.",
+      "summary": "Analysis summary"
+    },
+    "warnings": {
+      "title": "Realism checks",
+      "blockedTitle": "Publishing is blocked",
+      "savedStateHelp": "Based on the saved draft. Save your changes to re-check.",
+      "dialogTitle": "Review before publishing",
+      "dialogDescription": "These checks flagged the curation. Publish anyway only if the feed still reads as organic.",
+      "blockedDescription": "These issues cannot be overridden. Fix them, or remove the curation.",
+      "back": "Back to editing"
+    },
+    "picker": {
+      "title": "Add a tender",
+      "description": "Search every tender, including ones the matcher never surfaced for this company.",
+      "searchPlaceholder": "Search by title, buyer or keyword",
+      "ref": "Ref {reference}",
+      "budgetNotDisclosed": "Budget not disclosed",
+      "closes": "Closes {date}",
+      "deadlinePassed": "Closed {date}",
+      "noDeadline": "No deadline",
+      "published": "Published {date}",
+      "add": "Curate"
+    },
+    "deleteDialog": {
+      "title": "Remove this curation?",
+      "description": "The tender returns to its real score of {score}% in the company's feed. The underlying analysis is untouched.",
+      "cancel": "Cancel",
+      "confirm": "Remove"
+    },
+    "realism": {
+      "tenderClosed": "This tender is closed and cannot be curated.",
+      "deadlinePassed": "The deadline has passed. A pinned dead tender is the fastest way for this to be noticed.",
+      "curationExpired": "This curation has already expired, so publishing it would have no effect.",
+      "scoreTooHigh": "{score}% is above the {ceiling}% ceiling — scores that high read as manufactured.",
+      "duplicateScore": "Another live curation already shows {score}%. Identical scores look deliberate.",
+      "liftTooLarge": "This raises the score by {lift} points, past the {max}-point guideline.",
+      "dimensionMaxed": "{count} sub-score(s) had to be pushed to 100% to reach this number.",
+      "tooManyCurations": "{count} curated matches are already live, at or above the {cap} guideline."
+    },
+    "toasts": {
+      "added": "Tender curated as a draft.",
+      "addedWithResearch": "Tender curated. Deep research queued — review it before publishing.",
+      "addFailed": "Could not curate this tender.",
+      "searchFailed": "Tender search failed.",
+      "saved": "Draft saved.",
+      "rerunDone": "Analysis re-run. New score: {score}%.",
+      "published": "Curation is live at {score}%.",
+      "publishFailed": "Could not publish this curation."
+    }
   },
   "AdminCompanyPreparation": {
     "loading": "Loading company…",

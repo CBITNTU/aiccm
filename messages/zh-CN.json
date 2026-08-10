@@ -3407,7 +3407,8 @@
     "tabs": {
       "company": "公司",
       "tenders": "招标",
-      "dashboard": "仪表板"
+      "dashboard": "仪表板",
+      "curation": "策展"
     },
     "rejectDialog": {
       "title": "拒绝 {name}？",
@@ -3426,6 +3427,104 @@
       "impersonateFailed": "无法以该用户身份查看"
     },
     "viewAsButton": "以该用户身份查看"
+  },
+  "AdminMatchCuration": {
+    "title": "匹配策展",
+    "description": "在该公司的信息流中提升特定招标。建议优先补充证据并重新运行分析，而不是手动设定分数。",
+    "addTender": "添加招标",
+    "empty": "该公司暂无策展匹配。",
+    "tooManyWarning": "该公司已有 {count} 条生效的策展匹配。数量过多会让信息流显得不自然。",
+    "shownScore": "显示分数",
+    "realScore": "真实分数",
+    "notAnalysed": "未分析",
+    "researchPending": "深度研究进行中",
+    "edit": "编辑",
+    "unpublish": "取消发布",
+    "remove": "移除",
+    "save": "保存草稿",
+    "publish": "发布",
+    "publishAnyway": "仍然发布",
+    "internalNote": "内部备注",
+    "internalNotePlaceholder": "提升该招标的原因",
+    "internalNoteHelp": "仅管理员可见。会记录在审计日志中，绝不会发送给用户。",
+    "status": {
+      "draft": "草稿",
+      "published": "已生效",
+      "archived": "已归档",
+      "pinned": "已置顶"
+    },
+    "evidence": {
+      "title": "证据（推荐）",
+      "help": "该公司档案中未体现但确实属实的信息——未登记的资质认证、与该采购方的既往合作、框架协议等。系统会带着这些信息重新运行分析，因此分数的变化有据可依。",
+      "placeholder": "例如：持有未登记的 ISO 14001 认证，并已为该采购方完成两个框架项目。",
+      "rerun": "带证据重新运行分析",
+      "dimensionsLabel": "该证据可佐证",
+      "dimensionsHelp": "勾选的维度将按企业第一手数据计分。若备注并未真正佐证某个维度，请不要勾选。",
+      "dimensions": {
+        "capability": "能力",
+        "experience": "经验",
+        "certification": "认证"
+      }
+    },
+    "override": {
+      "title": "分数覆盖（备选）",
+      "help": "直接设定向用户显示的分数。发布时会重新计算四项子分数，使卡片上的明细仍能与总分吻合。",
+      "score": "显示分数",
+      "scoreHelp": "取值范围为 {min}%–{max}%。留空则保留真实分数。",
+      "pin": "置顶到信息流最前",
+      "pinHelp": "仅在默认的“总分从高到低”视图中生效。在其他排序方式下，该招标仅按分数排列。",
+      "pinRank": "置顶顺序",
+      "reasons": "匹配理由（每行一条）",
+      "reasonsHelp": "显示在卡片和详情页上。与分数相互矛盾的理由最容易被用户察觉。",
+      "summary": "分析摘要"
+    },
+    "warnings": {
+      "title": "合理性检查",
+      "blockedTitle": "无法发布",
+      "savedStateHelp": "基于已保存的草稿。保存改动后会重新检查。",
+      "dialogTitle": "发布前请确认",
+      "dialogDescription": "以下检查对该策展提出了提醒。只有在信息流看起来仍然自然时才继续发布。",
+      "blockedDescription": "这些问题无法跳过。请先修正，或删除该策展。",
+      "back": "返回编辑"
+    },
+    "picker": {
+      "title": "添加招标",
+      "description": "搜索全部招标，包括匹配引擎从未为该公司呈现过的招标。",
+      "searchPlaceholder": "按标题、采购方或关键词搜索",
+      "ref": "编号 {reference}",
+      "budgetNotDisclosed": "未公开预算",
+      "closes": "{date} 截止",
+      "deadlinePassed": "已于 {date} 截止",
+      "noDeadline": "无截止日期",
+      "published": "{date} 发布",
+      "add": "策展"
+    },
+    "deleteDialog": {
+      "title": "移除此策展？",
+      "description": "该招标将在公司信息流中恢复为其真实分数 {score}%。底层分析不受影响。",
+      "cancel": "取消",
+      "confirm": "移除"
+    },
+    "realism": {
+      "tenderClosed": "该招标已关闭，无法进行策展。",
+      "deadlinePassed": "截止日期已过。置顶一个已失效的招标最容易被发现。",
+      "curationExpired": "该策展已过期，即使发布也不会生效。",
+      "scoreTooHigh": "{score}% 超过了 {ceiling}% 的上限——过高的分数会显得不真实。",
+      "duplicateScore": "另一条生效的策展已显示 {score}%。完全相同的分数看起来是刻意为之。",
+      "liftTooLarge": "此操作将分数提高了 {lift} 分，超出了 {max} 分的建议范围。",
+      "dimensionMaxed": "为达到该分数，有 {count} 项子分数被推高至 100%。",
+      "tooManyCurations": "已有 {count} 条策展匹配生效，达到或超过 {cap} 条的建议上限。"
+    },
+    "toasts": {
+      "added": "已将该招标策展为草稿。",
+      "addedWithResearch": "已完成策展。深度研究已排队——请在发布前查看结果。",
+      "addFailed": "无法策展该招标。",
+      "searchFailed": "招标搜索失败。",
+      "saved": "草稿已保存。",
+      "rerunDone": "分析已重新运行。新分数：{score}%。",
+      "published": "策展已生效，分数为 {score}%。",
+      "publishFailed": "无法发布此策展。"
+    }
   },
   "AdminCompanyPreparation": {
     "loading": "正在加载公司…",

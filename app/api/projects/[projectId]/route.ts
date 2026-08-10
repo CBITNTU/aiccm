@@ -16,6 +16,11 @@ import {
   matchingResults,
 } from "@/lib/db/schema/app";
 import { companyColumnsNoEmbedding, tenderColumnsNoEmbedding } from "@/lib/db/columns";
+import {
+  applyCuration,
+  applyCurationToAnalysis,
+  getCurationOverlay,
+} from "@/lib/services/curatedMatches";
 import { eq, and, inArray } from "drizzle-orm";
 
 export async function GET(
@@ -115,7 +120,38 @@ export async function GET(
         .limit(1);
 
       if (matchRows[0]) {
-        tenderMatchResult = matchRows[0];
+        // GapAnalysisPanel renders this as "Match score" for the same
+        // company/tender pair the feed already showed. Any read surface that
+        // exposes a score has to go through the curation overlay or the two
+        // disagree — see lib/services/curatedMatches.ts.
+        const overlay = await getCurationOverlay(project.leadCompanyId);
+        const curation = overlay.get(project.targetTenderId);
+        const realScore = matchRows[0].overallScore ?? 0;
+        const curated = applyCuration(
+          {
+            score: realScore,
+            capabilityScore: matchRows[0].capabilityScore,
+            experienceScore: matchRows[0].experienceScore,
+            locationScore: matchRows[0].locationScore,
+            certificationScore: matchRows[0].certificationScore,
+            matchReasons: matchRows[0].matchReasons,
+          },
+          curation,
+        );
+        tenderMatchResult = {
+          ...matchRows[0],
+          overallScore: curated.score,
+          capabilityScore: curated.capabilityScore ?? null,
+          experienceScore: curated.experienceScore ?? null,
+          locationScore: curated.locationScore ?? null,
+          certificationScore: curated.certificationScore ?? null,
+          matchReasons: curated.matchReasons ?? null,
+          aiAnalysis: applyCurationToAnalysis(
+            matchRows[0].aiAnalysis,
+            curation,
+            realScore,
+          ),
+        };
       }
     }
 

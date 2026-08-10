@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
 import { apiResponse, apiError } from "@/lib/api";
-import { requireAuth, handleApiError, AuthError } from "@/lib/api/validation";
+import {
+  requireAuth,
+  handleApiError,
+  AuthError,
+  isUuid,
+} from "@/lib/api/validation";
 import {
   getCompanyAccess,
   suppressEmailForAdminOverride,
@@ -16,6 +21,11 @@ export async function PUT(
   try {
     const { user } = await requireAuth(request);
     const { resultId } = await params;
+
+    // A non-uuid would reach Postgres as a failed cast and surface as a 500.
+    if (!isUuid(resultId)) {
+      return apiError("Result not found", 404);
+    }
 
     // Verify user has access to the company associated with this result
     const result = await db

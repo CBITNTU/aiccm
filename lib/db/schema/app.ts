@@ -237,7 +237,89 @@ export const matchingResults = pgTable(
     isApplied: boolean("is_applied").default(false),
     applicationDate: timestamp("application_date", { withTimezone: true }),
   },
-  (table) => [unique().on(table.companyId, table.tenderId)],
+  (table) => [
+    unique().on(table.companyId, table.tenderId),
+    // The unified feed sorts a company's deep matches by score. Without this the
+    // `ORDER BY ... LIMIT offset+pageSize` window is a full scan of the company's
+    // matches; the curated overlay's LEFT JOIN makes that cost more visible.
+    index("matching_results_company_score_idx").on(
+      table.companyId,
+      table.overallScore,
+    ),
+  ],
+);
+
+// ============================================================================
+// Curated Matches
+// ============================================================================
+/**
+ * Superadmin-curated overrides layered on top of the computed match feed.
+ *
+ * Deliberately a separate table rather than columns on `matching_results`:
+ * `scoreTenderMatch` treats any existing row as an AI cache hit and a forced
+ * re-run upserts over it, so admin-authored values stored there would both
+ * poison the model cache and be silently destroyed. Keeping curation in its own
+ * table also lets it target a tender that has no match row at all, and keeps the
+ * AI pipeline's own data honest for quality metrics and evals.
+ *
+ * Applied at read time — see lib/services/curatedMatches.ts, which is the single
+ * source of truth every read surface must go through.
+ */
+export const curatedMatches = pgTable(
+  "curated_matches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    tenderId: uuid("tender_id")
+      .notNull()
+      .references(() => tenders.id, { onDelete: "cascade" }),
+    /** draft | published | archived. Only `published` affects any user-facing read. */
+    status: text("status").notNull().default("draft"),
+    /** Display floor, 1-100. NULL means "pin only, don't touch the score". */
+    curatedScore: integer("curated_score"),
+    pinned: boolean("pinned").notNull().default(false),
+    /** Ascending order among a company's pinned curations. */
+    pinRank: integer("pin_rank"),
+    // Back-solved breakdown, frozen at publish so the list card and the detail
+    // page can never disagree. NULL when evidence mode produced real numbers.
+    curatedCapabilityScore: integer("curated_capability_score"),
+    curatedExperienceScore: integer("curated_experience_score"),
+    curatedLocationScore: integer("curated_location_score"),
+    curatedCertificationScore: integer("curated_certification_score"),
+    curatedMatchReasons: text("curated_match_reasons").array(),
+    curatedSummary: text("curated_summary"),
+    /** Private context fed into the deep-research prompt on an evidence re-run. */
+    evidenceNote: text("evidence_note"),
+    /**
+     * Which score dimensions the evidence note actually vouches for —
+     * `capability` | `experience` | `certification`.
+     *
+     * The note is always shown to the model, but it only counts as *direct*
+     * company data (lifting the missing-data zero and the 30% indirect penalty
+     * in `scoreTenderMatch`) for the dimensions listed here. Without this, one
+     * note about a framework agreement silently vouched for certifications and
+     * capabilities too — and certification alone is 50% of the overall score.
+     */
+    evidenceDimensions: text("evidence_dimensions").array(),
+    /** Admin-only justification. Never leaves /api/admin/**. */
+    internalNote: text("internal_note"),
+    /** Defaults to the tender's deadline; a lapsed curation stops applying. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => user.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => user.id, { onDelete: "set null" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique().on(table.companyId, table.tenderId),
+    index("curated_matches_company_status_idx").on(table.companyId, table.status),
+    // The tender FK cascades on delete and Postgres does not index FK children
+    // automatically, so without this a tender delete seq-scans this table.
+    index("curated_matches_tender_idx").on(table.tenderId),
+  ],
 );
 
 // ============================================================================

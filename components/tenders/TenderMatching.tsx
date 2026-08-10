@@ -1015,7 +1015,7 @@ export function TenderMatching({
               if (m.variant === "deep") {
                 return (
                   <TenderMatchCard
-                    key={m.resultId}
+                    key={m.resultId ?? m.tenderId}
                     variant="deep"
                     tenderId={m.tenderId}
                     title={m.title}
@@ -1037,11 +1037,18 @@ export function TenderMatching({
                     isApplied={m.isApplied}
                     ruledOut={isRuledOut}
                     onViewDetails={viewDetails}
-                    onBookmark={() =>
-                      toggleBookmark(m.resultId, m.isBookmarked)
+                    // A synthesized card has no matching_results row behind it,
+                    // so there is nothing to bookmark or delete — the card hides
+                    // both actions when the handlers are absent.
+                    onBookmark={
+                      m.resultId
+                        ? () => toggleBookmark(m.resultId!, m.isBookmarked)
+                        : undefined
                     }
-                    onDelete={() => deleteResult(m.resultId)}
-                    isDeleting={deleting === m.resultId}
+                    onDelete={
+                      m.resultId ? () => deleteResult(m.resultId!) : undefined
+                    }
+                    isDeleting={!!m.resultId && deleting === m.resultId}
                     readOnly={readOnly}
                   />
                 );

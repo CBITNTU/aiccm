@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyDetailPage } from "@/components/company/CompanyDetailPage";
 import { AdminTenderPreview } from "@/components/admin/AdminTenderPreview";
 import { AdminDashboardPreview } from "@/components/admin/AdminDashboardPreview";
+import { AdminMatchCuration } from "@/components/admin/AdminMatchCuration";
 
 interface AdminPreparationTabsProps {
   companyId: string;
@@ -33,6 +34,7 @@ export function AdminPreparationTabs({
       <TabsList>
         <TabsTrigger value="company">{t("tabs.company")}</TabsTrigger>
         <TabsTrigger value="tenders">{t("tabs.tenders")}</TabsTrigger>
+        <TabsTrigger value="curation">{t("tabs.curation")}</TabsTrigger>
         <TabsTrigger value="dashboard">{t("tabs.dashboard")}</TabsTrigger>
       </TabsList>
 
@@ -47,6 +49,12 @@ export function AdminPreparationTabs({
 
       <TabsContent value="tenders">
         <AdminTenderPreview companyId={companyId} />
+      </TabsContent>
+
+      {/* Ranking overrides for this company's feed. Admin-only surface — the
+          overlay it writes is invisible on every user-facing route. */}
+      <TabsContent value="curation">
+        <AdminMatchCuration companyId={companyId} />
       </TabsContent>
 
       <TabsContent value="dashboard">

@@ -69,6 +69,15 @@ export type EventActionType =
   | "admin_impersonation_started"
   | "admin_impersonation_stopped"
   | "admin_company_prepared"
+  // Match curation. This is ranking influence a user cannot see, so the audit
+  // trail is the only record that a feed was shaped by hand — always log the
+  // real score alongside the shown one.
+  | "match_curated"
+  | "match_curation_published"
+  | "match_curation_unpublished"
+  | "match_curation_deleted"
+  /** A user dismissed the underlying match, which retires the curation with it. */
+  | "match_curation_archived"
   // Queue/Processing
   | "queue_job_created"
   | "queue_job_completed"

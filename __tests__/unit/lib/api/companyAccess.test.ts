@@ -11,8 +11,10 @@ vi.mock("@/lib/api/validation", async (importOriginal) => ({
 }));
 
 vi.mock("@/lib/db", () => ({
-  db: { update: vi.fn() },
+  db: { update: vi.fn(), select: vi.fn(), insert: vi.fn() },
 }));
+
+vi.mock("@/lib/services/eventLogger", () => ({ logEvent: vi.fn() }));
 
 import { checkSuperadminRole } from "@/lib/api";
 import { isCompanyMember, AuthError } from "@/lib/api/validation";
@@ -24,7 +26,9 @@ import {
   suppressEmailForAdminOverride,
 } from "@/lib/api/companyAccess";
 import { isEmailSuppressed } from "@/lib/email/suppression";
+import { logEvent } from "@/lib/services/eventLogger";
 import { TEST_COMPANY_ID, TEST_USER_ID } from "@/__tests__/helpers/mocks";
+import { makeChain } from "@/__tests__/helpers/drizzleMock";
 
 const memberMock = vi.mocked(isCompanyMember);
 const superadminMock = vi.mocked(checkSuperadminRole);
@@ -134,7 +138,15 @@ describe("suppressEmailForAdminOverride", () => {
 });
 
 describe("markCompanyAdminPrepared", () => {
+  /** Prior state of the company row the marker is being stamped onto. */
+  function mockPriorState(preparedAt: Date | null) {
+    vi.mocked(db.select).mockImplementation(
+      () => makeChain(() => [{ preparedAt }]) as never,
+    );
+  }
+
   it("stamps the preparing admin and timestamp on the company", async () => {
+    mockPriorState(null);
     const where = vi.fn().mockResolvedValue(undefined);
     const set = vi.fn(() => ({ where }));
     vi.mocked(db.update).mockReturnValue({ set } as never);
@@ -148,6 +160,33 @@ describe("markCompanyAdminPrepared", () => {
       }),
     );
     expect(where).toHaveBeenCalled();
+  });
+
+  it("audits the first on-behalf edit, so it is attributable to the admin", async () => {
+    mockPriorState(null);
+    const where = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(db.update).mockReturnValue({ set: () => ({ where }) } as never);
+
+    await markCompanyAdminPrepared(TEST_COMPANY_ID, TEST_USER_ID);
+
+    expect(logEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "admin_company_prepared",
+        userId: TEST_USER_ID,
+        entityId: TEST_COMPANY_ID,
+      }),
+    );
+  });
+
+  it("does not re-log once the company is already marked", async () => {
+    mockPriorState(new Date());
+    const where = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(db.update).mockReturnValue({ set: () => ({ where }) } as never);
+
+    await markCompanyAdminPrepared(TEST_COMPANY_ID, TEST_USER_ID);
+
+    expect(where).toHaveBeenCalled();
+    expect(logEvent).not.toHaveBeenCalled();
   });
 
   it("never throws — a marker failure must not break the admin's save", async () => {

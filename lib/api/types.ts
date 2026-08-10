@@ -372,8 +372,15 @@ interface UnifiedMatchCommon {
 
 export interface UnifiedMatchDeep extends UnifiedMatchCommon {
   variant: "deep";
-  /** matching_results.id — React key + bookmark/delete target. */
-  resultId: string;
+  /**
+   * matching_results.id — the bookmark/delete target.
+   *
+   * NULL when the card was synthesized rather than read from `matching_results`
+   * (see the orphan path in app/api/tenders/matches/route.ts). There is no row
+   * to mutate in that case, so the client must not offer bookmark or delete —
+   * passing a placeholder id here previously produced a 500 from the uuid cast.
+   */
+  resultId: string | null;
   capabilityScore: number;
   experienceScore: number;
   locationScore: number;
@@ -403,6 +410,83 @@ export interface TenderMatchesResponse {
   ruledOutCount: number;
   page: number;
   pageSize: number;
+}
+
+// ---------------------------------------------------------------------------
+// Curated matches — ADMIN ONLY.
+//
+// None of these fields may ever be added to UnifiedMatch, MatchingResultRecord
+// or TenderMatchRecord. The whole point of a curated match is that it is
+// indistinguishable from an organic one in every user-facing payload; a single
+// leaked flag in a network response undoes it.
+// ---------------------------------------------------------------------------
+export interface CurationRealismIssue {
+  severity: "block" | "warn";
+  code: string;
+  values?: Record<string, string | number>;
+}
+
+/**
+ * Dimensions an evidence note can vouch for. Mirrors EVIDENCE_DIMENSIONS in
+ * lib/services/tenderMatchingService.ts — location is excluded there because it
+ * comes from the postcode, not from prose.
+ */
+export type EvidenceDimensionKey = "capability" | "experience" | "certification";
+
+export interface AdminCuratedMatch {
+  id: string;
+  companyId: string;
+  tenderId: string;
+  status: "draft" | "published" | "archived";
+  curatedScore: number | null;
+  pinned: boolean;
+  pinRank: number | null;
+  curatedCapabilityScore: number | null;
+  curatedExperienceScore: number | null;
+  curatedLocationScore: number | null;
+  curatedCertificationScore: number | null;
+  curatedMatchReasons: string[] | null;
+  curatedSummary: string | null;
+  evidenceNote: string | null;
+  /** Dimensions the evidence note counts as direct data for. */
+  evidenceDimensions: EvidenceDimensionKey[] | null;
+  internalNote: string | null;
+  expiresAt: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  tender: {
+    id: string;
+    title: string;
+    buyer: string;
+    deadline: string | null;
+    status: string | null;
+  };
+  /** What the matcher actually scored, before any override. */
+  realScore: number | null;
+  realBreakdown: {
+    capabilityScore: number | null;
+    experienceScore: number | null;
+    locationScore: number | null;
+    certificationScore: number | null;
+  };
+  realMatchReasons: string[];
+  hasDeepResult: boolean;
+  realismIssues: CurationRealismIssue[];
+}
+
+export interface AdminCuratedMatchUpdate {
+  curatedScore?: number | null;
+  pinned?: boolean;
+  pinRank?: number | null;
+  curatedMatchReasons?: string[];
+  curatedSummary?: string | null;
+  evidenceNote?: string | null;
+  evidenceDimensions?: EvidenceDimensionKey[];
+  internalNote?: string | null;
+  expiresAt?: string | null;
+  /** Re-run deep research with the evidence note attached. */
+  rerun?: boolean;
 }
 
 // Verification review types

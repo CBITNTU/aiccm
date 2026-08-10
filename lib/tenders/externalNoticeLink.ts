@@ -77,6 +77,27 @@ function getFindATenderFallback(referenceNumber: string | null | undefined): str
   return `https://www.find-tender.service.gov.uk/Notice/${reference}?origin=SearchResults`;
 }
 
+const SOURCE_LABELS: Record<Exclude<ExternalTenderSource, "unknown">, string> = {
+  ted: "TED (EU)",
+  "find-a-tender": "Find a Tender (UK)",
+  "contracts-finder": "Contracts Finder (UK)",
+};
+
+/**
+ * Human-readable portal name for a tender, derived from its `documents` URLs.
+ * Returns null when the tender came from somewhere we don't have a name for —
+ * callers render nothing rather than an "Unknown source" badge.
+ */
+export function getTenderSourceLabel(documents: unknown): string | null {
+  const url = getDocumentUrl(documents);
+  if (!url) {
+    return null;
+  }
+
+  const source = inferSourceFromUrl(url);
+  return source === "unknown" ? null : SOURCE_LABELS[source];
+}
+
 export function resolveExternalNoticeLink(params: {
   documents: unknown;
   referenceNumber: string | null | undefined;

@@ -27,11 +27,20 @@ vi.mock("@/lib/api/validation", async (importOriginal) => ({
 }));
 
 vi.mock("@/lib/db", () => ({
-  db: { select: vi.fn(), delete: vi.fn() },
+  db: { select: vi.fn(), delete: vi.fn(), update: vi.fn() },
+}));
+
+// Mocked at the seam so these tests stay indifferent to how many queries the
+// curated overlay runs. The SQL helpers stay real — the where-clause assertions
+// below depend on the effective-score expression they build.
+vi.mock("@/lib/services/curatedMatches", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/services/curatedMatches")>()),
+  getCurationOverlay: vi.fn(async () => new Map()),
 }));
 
 const mockedSelect = db.select as unknown as Mock;
 const mockedDelete = db.delete as unknown as Mock;
+const mockedUpdate = db.update as unknown as Mock;
 const user = mockUser();
 
 const RESULT_ID = "00000000-0000-4000-8000-0000000000aa";
@@ -189,6 +198,7 @@ describe("DELETE /api/matching-results/[resultId]", () => {
     vi.mocked(checkSuperadminRole).mockResolvedValue(true);
     const deleteChain = makeChain(() => undefined);
     mockedDelete.mockImplementation(() => deleteChain);
+    mockedUpdate.mockImplementation(() => makeChain(() => []));
 
     const { status, body } = await readJson(await del());
 
@@ -201,6 +211,7 @@ describe("DELETE /api/matching-results/[resultId]", () => {
     queueSelects(mockedSelect, [{ companyId: TEST_COMPANY_ID }]);
     const deleteChain = makeChain(() => undefined);
     mockedDelete.mockImplementation(() => deleteChain);
+    mockedUpdate.mockImplementation(() => makeChain(() => []));
 
     const { status, body } = await readJson(await del());
 
@@ -208,5 +219,24 @@ describe("DELETE /api/matching-results/[resultId]", () => {
     expect(body).toEqual({ success: true });
     expect(mockedDelete).toHaveBeenCalledTimes(1);
     expect(deleteChain.where).toHaveBeenCalledTimes(1);
+  });
+
+  it("archives any curation so a dismissed match cannot come back", async () => {
+    queueSelects(mockedSelect, [
+      { companyId: TEST_COMPANY_ID, tenderId: "t1" },
+    ]);
+    mockedDelete.mockImplementation(() => makeChain(() => undefined));
+    const updateChain = makeChain(() => [{ id: "c1", status: "archived" }]);
+    mockedUpdate.mockImplementation(() => updateChain);
+
+    const { status } = await readJson(await del());
+
+    expect(status).toBe(200);
+    // Without this the curated tender re-renders on the next load as a
+    // synthesized card, and a "deleted" result reappearing is the loudest
+    // possible sign that something is overriding the feed.
+    expect(updateChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "archived" }),
+    );
   });
 });

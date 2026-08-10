@@ -14,20 +14,11 @@ import { useState } from "react";
 import type { TenderRecord } from "@/lib/api/types";
 import { useDeployment } from "@/lib/deployment/client";
 import { formatCurrency, resolveCurrencyConfig } from "@/lib/format/currency";
+import { getTenderSourceLabel } from "@/lib/tenders/externalNoticeLink";
 
 interface Taxonomy {
   id: string;
   name: string;
-}
-
-function getTenderSourceLabel(documents: unknown): string | null {
-  const doc = documents as { specification_url?: string; application_url?: string } | null;
-  const url = doc?.specification_url || doc?.application_url || "";
-  if (!url) return null;
-  if (url.includes("ted.europa.eu")) return "TED (EU)";
-  if (url.includes("find-tender.service.gov.uk")) return "Find a Tender (UK)";
-  if (url.includes("contracts-finder.service.gov.uk")) return "Contracts Finder (UK)";
-  return null;
 }
 
 interface TenderCardProps {

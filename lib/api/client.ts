@@ -4,7 +4,10 @@ import type {
   AdminCompanyListParams,
   AdminCompanyListResponse,
   AdminCompanyPreparation,
+  AdminCuratedMatch,
+  AdminCuratedMatchUpdate,
   CompanyRecord,
+  CurationRealismIssue,
   RelationSuggestion,
 } from "@/lib/api/types";
 import type { FetchUKTendersResponse, TenderFeedRecord } from "@/lib/api/types";
@@ -19,12 +22,19 @@ import {
 export class ApiError extends Error {
   status: number;
   details?: string;
+  /**
+   * The parsed response body. Some routes answer a refusal with structured data
+   * rather than just a message — a blocked curation publish returns the realism
+   * issues that stopped it, and the console needs them to explain itself.
+   */
+  payload?: unknown;
 
-  constructor(message: string, status: number, details?: string) {
+  constructor(message: string, status: number, details?: string, payload?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.details = details;
+    this.payload = payload;
   }
 }
 
@@ -77,6 +87,7 @@ export async function apiCall<T>(
       data.error || "Request failed",
       response.status,
       data.details,
+      data,
     );
   }
 
@@ -1459,5 +1470,55 @@ export const api = {
         tenderIds,
         force: options?.force === true,
       },
+    }),
+
+  // --- Curated matches (superadmin only) ----------------------------------
+  // These endpoints exist solely under /api/admin. Nothing they return is ever
+  // echoed onto a user-facing route — see lib/api/types.ts.
+
+  adminListCuratedMatches: (companyId: string) =>
+    apiCall<{ results: AdminCuratedMatch[] }>("admin/curated-matches", {
+      method: "GET",
+      params: { companyId },
+    }),
+
+  adminCreateCuratedMatch: (companyId: string, tenderIds: string[]) =>
+    apiCall<{ results: AdminCuratedMatch[]; queuedDeepResearch: number }>(
+      "admin/curated-matches",
+      { body: { companyId, tenderIds } },
+    ),
+
+  adminUpdateCuratedMatch: (id: string, updates: AdminCuratedMatchUpdate) =>
+    apiCall<{ result: AdminCuratedMatch; rerunScore: number | null }>(
+      `admin/curated-matches/${id}`,
+      { method: "PATCH", body: updates as Record<string, unknown> },
+    ),
+
+  /**
+   * `force` acknowledges realism warnings. Blocking issues (closed tender,
+   * passed deadline) are refused regardless and come back as a 409.
+   */
+  adminPublishCuratedMatch: (id: string, options?: { force?: boolean }) =>
+    apiCall<{
+      published: boolean;
+      result?: AdminCuratedMatch;
+      issues: CurationRealismIssue[];
+      needsAcknowledgement?: boolean;
+      verifiedOverall?: number | null;
+    }>(`admin/curated-matches/${id}/publish`, {
+      method: "POST",
+      body: {},
+      params: options?.force ? { force: "1" } : undefined,
+    }),
+
+  adminUnpublishCuratedMatch: (id: string) =>
+    apiCall<{ result: AdminCuratedMatch }>(
+      `admin/curated-matches/${id}/unpublish`,
+      { method: "POST", body: {} },
+    ),
+
+  adminDeleteCuratedMatch: (id: string) =>
+    apiCall<{ success: boolean }>(`admin/curated-matches/${id}`, {
+      method: "DELETE",
     }),
 };

@@ -405,6 +405,73 @@ export interface TenderMatchesResponse {
   pageSize: number;
 }
 
+// ---------------------------------------------------------------------------
+// Curated matches — ADMIN ONLY.
+//
+// None of these fields may ever be added to UnifiedMatch, MatchingResultRecord
+// or TenderMatchRecord. The whole point of a curated match is that it is
+// indistinguishable from an organic one in every user-facing payload; a single
+// leaked flag in a network response undoes it.
+// ---------------------------------------------------------------------------
+export interface CurationRealismIssue {
+  severity: "block" | "warn";
+  code: string;
+  values?: Record<string, string | number>;
+}
+
+export interface AdminCuratedMatch {
+  id: string;
+  companyId: string;
+  tenderId: string;
+  status: "draft" | "published" | "archived";
+  curatedScore: number | null;
+  pinned: boolean;
+  pinRank: number | null;
+  curatedCapabilityScore: number | null;
+  curatedExperienceScore: number | null;
+  curatedLocationScore: number | null;
+  curatedCertificationScore: number | null;
+  curatedMatchReasons: string[] | null;
+  curatedSummary: string | null;
+  evidenceNote: string | null;
+  internalNote: string | null;
+  expiresAt: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  tender: {
+    id: string;
+    title: string;
+    buyer: string;
+    deadline: string | null;
+    status: string | null;
+  };
+  /** What the matcher actually scored, before any override. */
+  realScore: number | null;
+  realBreakdown: {
+    capabilityScore: number | null;
+    experienceScore: number | null;
+    locationScore: number | null;
+    certificationScore: number | null;
+  };
+  realMatchReasons: string[];
+  hasDeepResult: boolean;
+  realismIssues: CurationRealismIssue[];
+}
+
+export interface AdminCuratedMatchUpdate {
+  curatedScore?: number | null;
+  pinned?: boolean;
+  pinRank?: number | null;
+  curatedMatchReasons?: string[];
+  curatedSummary?: string | null;
+  evidenceNote?: string | null;
+  internalNote?: string | null;
+  expiresAt?: string | null;
+  /** Re-run deep research with the evidence note attached. */
+  rerun?: boolean;
+}
+
 // Verification review types
 export interface ReviewFeedbackItem {
   section: string;

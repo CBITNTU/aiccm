@@ -34,6 +34,15 @@ vi.mock("@/lib/services/basicMatchingService", () => ({
   basicMatchTendersForCompany: vi.fn(),
 }));
 
+// Mocked at the seam so the existing await-order assertions below stay about
+// the deep/basic merge. With no curations the route runs exactly the queries it
+// always did — the pinned and orphan branches are both skipped. Curated
+// behaviour is covered in tenders-matches-curated.test.ts.
+vi.mock("@/lib/services/curatedMatches", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/services/curatedMatches")>()),
+  getCurationOverlay: vi.fn(async () => new Map()),
+}));
+
 const mockedSelect = db.select as unknown as Mock;
 const mockedBasicMatch = vi.mocked(basicMatchTendersForCompany);
 const dialect = new PgDialect();

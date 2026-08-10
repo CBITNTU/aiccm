@@ -6,8 +6,8 @@ import {
   suppressEmailForAdminOverride,
 } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
-import { matchingResults } from "@/lib/db/schema/app";
-import { eq } from "drizzle-orm";
+import { curatedMatches, matchingResults } from "@/lib/db/schema/app";
+import { and, eq } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -19,7 +19,10 @@ export async function DELETE(
 
     // Fetch the matching result's company
     const result = await db
-      .select({ companyId: matchingResults.companyId })
+      .select({
+        companyId: matchingResults.companyId,
+        tenderId: matchingResults.tenderId,
+      })
       .from(matchingResults)
       .where(eq(matchingResults.id, resultId))
       .limit(1);
@@ -37,6 +40,20 @@ export async function DELETE(
     suppressEmailForAdminOverride(access, user.id);
 
     await db.delete(matchingResults).where(eq(matchingResults.id, resultId));
+
+    // Dismissing a match has to stick. A live curation would otherwise re-render
+    // the tender on the next load as a synthesized card, and a "deleted" result
+    // coming back is the loudest possible tell that something is overriding the
+    // feed. Archiving keeps the admin's work recoverable in the console.
+    await db
+      .update(curatedMatches)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(
+        and(
+          eq(curatedMatches.companyId, result[0].companyId),
+          eq(curatedMatches.tenderId, result[0].tenderId),
+        ),
+      );
 
     return apiResponse({ success: true });
   } catch (error) {

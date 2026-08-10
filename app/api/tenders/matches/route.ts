@@ -9,13 +9,21 @@ import {
 } from "@/lib/api/validation";
 import { getCompanyAccess } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
-import { matchingResults, tenders } from "@/lib/db/schema/app";
+import { curatedMatches, matchingResults, tenders } from "@/lib/db/schema/app";
 import { basicMatchTendersForCompany } from "@/lib/services/basicMatchingService";
+import {
+  activeCurationCondition,
+  applyCuration,
+  effectiveScoreSql,
+  getCurationOverlay,
+  type CurationOverlayEntry,
+} from "@/lib/services/curatedMatches";
 import {
   eq,
   and,
   or,
   ne,
+  notInArray,
   ilike,
   gte,
   lte,
@@ -23,7 +31,6 @@ import {
   desc,
   count,
   inArray,
-  isNull,
   sql,
   SQL,
 } from "drizzle-orm";
@@ -56,6 +63,14 @@ import type {
  * the top `offset + pageSize` deep rows are a superset of every deep item that
  * can appear at/before union position `offset + pageSize` — so slicing the
  * requested page from that bounded merge is exact. Memory stays bounded.
+ *
+ * Curated matches (lib/services/curatedMatches.ts) ride on that same argument.
+ * A curation is a score FLOOR, so it can only raise an item's rank, and the
+ * effective score is computed in SQL — so the window, the filters and the counts
+ * all agree. Pinned curations are the one exception: they jump the ordering
+ * outright, so they're materialized as their own small set, excluded from the
+ * window and the overlay, and prepended. A fully materialized set can't break
+ * the proof for the same reason the basic overlay can't.
  */
 /**
  * The basic-match service returns rows from a raw `db.execute` query, so its
@@ -111,14 +126,39 @@ export async function GET(request: NextRequest) {
     // minScore filter into a single lower bound so 0% rows never surface.
     const effectiveMin = Math.max(minScore, 1);
 
-    // The exact complement of `overallScore >= 1`: everything the matched view
-    // hides. NULL scores count as ruled out — the column is nullable and a NULL
-    // is excluded by the `gte` above, so without this they'd be invisible in
-    // both views.
-    const ruledOutScore = or(
-      isNull(matchingResults.overallScore),
-      lte(matchingResults.overallScore, 0),
+    // ---- Curated overlay -----------------------------------------------------
+    // Loaded once and used on every side of the merge. The deep side folds it
+    // into SQL (so filters, counts and ordering agree); the basic and orphan
+    // sides apply it in JS from this same map.
+    const curation = await getCurationOverlay(companyId);
+
+    // A pin jumps the ordering outright, so it only applies in the default view.
+    // Under an explicit deadline/budget/ascending sort a pinned 41% sitting above
+    // a 92% is exactly the anomaly a user notices — there, curation degrades to
+    // the score floor alone, which looks like nothing at all.
+    const pinApplies =
+      sortBy === "overall_score" && sortDirection === "desc" && !isRuledOut;
+    const pinnedIds = pinApplies
+      ? [...curation.values()]
+          .filter((c) => c.pinned)
+          .sort((a, b) => (a.pinRank ?? 0) - (b.pinRank ?? 0))
+          .map((c) => c.tenderId)
+      : [];
+    const pinnedOrder = new Map(pinnedIds.map((id, i) => [id, i]));
+
+    // Join predicate for the curated overlay. `activeCurationCondition` keeps
+    // drafts and expired curations out of every user-facing read.
+    const curationJoin = and(
+      eq(curatedMatches.companyId, matchingResults.companyId),
+      eq(curatedMatches.tenderId, matchingResults.tenderId),
+      activeCurationCondition(),
     )!;
+
+    // The exact complement of `effectiveScore >= 1`: everything the matched view
+    // hides. GREATEST/COALESCE already folds a NULL real score to 0, so a row
+    // that was never scored still lands here rather than vanishing from both
+    // views — and a curated row is pulled out of it automatically.
+    const ruledOutScore = lte(effectiveScoreSql, 0);
 
     // ---- Deep side: filter conditions (mirrors /api/matching-results) -------
     const conditions: SQL[] = [eq(matchingResults.companyId, companyId)];
@@ -146,8 +186,8 @@ export async function GET(request: NextRequest) {
       // deliberately ignored here rather than intersected.
       conditions.push(ruledOutScore);
     } else {
-      conditions.push(gte(matchingResults.overallScore, effectiveMin));
-      conditions.push(lte(matchingResults.overallScore, maxScore));
+      conditions.push(gte(effectiveScoreSql, effectiveMin));
+      conditions.push(lte(effectiveScoreSql, maxScore));
     }
 
     if (showApplied === "applied") {
@@ -159,7 +199,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (quickFilter === "high_score" && !isRuledOut) {
-      conditions.push(gte(matchingResults.overallScore, 80));
+      conditions.push(gte(effectiveScoreSql, 80));
     } else if (quickFilter === "urgent") {
       const sevenDaysFromNow = new Date();
       sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
@@ -206,7 +246,7 @@ export async function GET(request: NextRequest) {
         break;
       case "overall_score":
       default:
-        orderByClause = sortFn(matchingResults.overallScore);
+        orderByClause = sortFn(effectiveScoreSql);
     }
 
     // deepResearchedCount: total deep-researched tenders for company+status,
@@ -218,99 +258,256 @@ export async function GET(request: NextRequest) {
       researchedConditions.push(eq(tenders.status, tenderStatus));
     }
 
-    const [deepCountRows, deepResearchedRows, ruledOutRows, deepWindow, basicRaw] =
-      await Promise.all([
-        db
-          .select({ count: count() })
-          .from(matchingResults)
-          .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
-          .where(deepWhere),
-        db
-          .select({ count: count() })
-          .from(matchingResults)
-          .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
-          .where(and(...researchedConditions)),
-        // ruledOutCount is returned in BOTH views so the matched view can
-        // advertise how many results live behind the "Ruled out" toggle. It is
-        // deliberately unfiltered (company + tender status only) so the badge
-        // doesn't flicker as the user narrows the matched list.
-        db
-          .select({ count: count() })
-          .from(matchingResults)
-          .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
-          .where(and(...researchedConditions, ruledOutScore)),
-        db
-          .select({
-            match: matchingResults,
-            tender: {
-              title: tenders.title,
-              buyer: tenders.buyer,
-              description: tenders.description,
-              location: tenders.location,
-              deadline: tenders.deadline,
-              budgetMin: tenders.budgetMin,
-              budgetMax: tenders.budgetMax,
-              currency: tenders.currency,
-              status: tenders.status,
-            },
-          })
-          .from(matchingResults)
-          .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
-          .where(deepWhere)
-          .orderBy(orderByClause)
-          .limit(offset + pageSize),
-        // The semantic overlay has no place in the ruled-out view (see the file
-        // header), so skip the work entirely rather than filtering it later.
-        isRuledOut
-          ? Promise.resolve(
-              [] as Awaited<ReturnType<typeof basicMatchTendersForCompany>>,
-            )
-          : basicMatchTendersForCompany(companyId, {
-              limit: 500,
-              minScore: 0,
-              requireSharedTaxonomy: false,
-              ...(tenderStatus !== "active" && tenderStatus !== "all"
-                ? { status: tenderStatus }
-                : {}),
-            }),
-      ]);
+    const deepTenderFields = {
+      title: tenders.title,
+      buyer: tenders.buyer,
+      description: tenders.description,
+      location: tenders.location,
+      deadline: tenders.deadline,
+      budgetMin: tenders.budgetMin,
+      budgetMax: tenders.budgetMax,
+      currency: tenders.currency,
+      status: tenders.status,
+    } as const;
+
+    const [
+      deepCountRows,
+      deepResearchedRows,
+      ruledOutRows,
+      deepWindow,
+      pinnedWindow,
+      basicRaw,
+    ] = await Promise.all([
+      db
+        .select({ count: count() })
+        .from(matchingResults)
+        .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+        .leftJoin(curatedMatches, curationJoin)
+        .where(deepWhere),
+      db
+        .select({ count: count() })
+        .from(matchingResults)
+        .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+        .where(and(...researchedConditions)),
+      // ruledOutCount is returned in BOTH views so the matched view can
+      // advertise how many results live behind the "Ruled out" toggle. It is
+      // deliberately unfiltered (company + tender status only) so the badge
+      // doesn't flicker as the user narrows the matched list.
+      db
+        .select({ count: count() })
+        .from(matchingResults)
+        .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+        .leftJoin(curatedMatches, curationJoin)
+        .where(and(...researchedConditions, ruledOutScore)),
+      db
+        .select({ match: matchingResults, tender: deepTenderFields })
+        .from(matchingResults)
+        .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+        .leftJoin(curatedMatches, curationJoin)
+        .where(
+          pinnedIds.length
+            ? and(deepWhere, notInArray(matchingResults.tenderId, pinnedIds))
+            : deepWhere,
+        )
+        .orderBy(orderByClause)
+        .limit(offset + pageSize),
+      // Pinned curations bypass the ordering, so the bounded window above can't
+      // be relied on to contain them. The set is small (a company's pinned
+      // curations) and fully materialized, which is what keeps the page slice
+      // exact. It still respects every active filter — a pin is a ranking
+      // override, not a licence to ignore the user's own search.
+      pinnedIds.length
+        ? db
+            .select({ match: matchingResults, tender: deepTenderFields })
+            .from(matchingResults)
+            .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+            .leftJoin(curatedMatches, curationJoin)
+            .where(and(deepWhere, inArray(matchingResults.tenderId, pinnedIds)))
+        : Promise.resolve([]),
+      // The semantic overlay has no place in the ruled-out view (see the file
+      // header), so skip the work entirely rather than filtering it later.
+      isRuledOut
+        ? Promise.resolve(
+            [] as Awaited<ReturnType<typeof basicMatchTendersForCompany>>,
+          )
+        : basicMatchTendersForCompany(companyId, {
+            limit: 500,
+            minScore: 0,
+            requireSharedTaxonomy: false,
+            ...(tenderStatus !== "active" && tenderStatus !== "all"
+              ? { status: tenderStatus }
+              : {}),
+          }),
+    ]);
 
     const deepMatchedCount = deepCountRows[0]?.count ?? 0;
     const deepResearchedCount = deepResearchedRows[0]?.count ?? 0;
     const ruledOutCount = ruledOutRows[0]?.count ?? 0;
 
-    // Track each deep item's createdAt so the JS merge can mirror the SQL sort
-    // exactly for created_at ordering (required for the window-superset proof).
-    const deepUnified: Array<{ item: UnifiedMatchDeep; createdAt: Date | null }> =
-      deepWindow.map((row) => {
-        const m = row.match;
-        const t = row.tender;
-        return {
-          item: {
-            variant: "deep",
-            resultId: m.id,
-            tenderId: m.tenderId,
-            title: t.title,
-            buyer: t.buyer,
-            description: t.description ?? null,
-            location: t.location ?? null,
-            deadline: toIsoString(t.deadline),
-            status: t.status ?? null,
-            budgetMin: t.budgetMin ?? null,
-            budgetMax: t.budgetMax ?? null,
-            currency: t.currency ?? null,
-            score: m.overallScore ?? 0,
-            capabilityScore: m.capabilityScore ?? 0,
-            experienceScore: m.experienceScore ?? 0,
-            locationScore: m.locationScore ?? 0,
-            certificationScore: m.certificationScore ?? 0,
-            matchReasons: m.matchReasons ?? [],
-            isBookmarked: m.isBookmarked ?? false,
-            isApplied: m.isApplied ?? false,
-          },
-          createdAt: m.createdAt ?? null,
-        };
-      });
+    type DeepRow = (typeof deepWindow)[number];
+
+    /**
+     * Map a deep row to its user-facing shape, with any curation applied.
+     *
+     * `rankScore` carries the *pre-curation* sub-scores used for the sub-score
+     * sorts: the SQL ORDER BY reads the real columns there, so the JS merge has
+     * to as well or the window stops being a superset. For `overall_score` the
+     * SQL sorts on the effective score, which is exactly what curation writes
+     * into `item.score` — so the two agree by construction.
+     */
+    const toDeepItem = (
+      row: DeepRow,
+    ): {
+      item: UnifiedMatchDeep;
+      createdAt: Date | null;
+      rankScores: {
+        capability: number;
+        experience: number;
+        location: number;
+        certification: number;
+      };
+    } => {
+      const m = row.match;
+      const t = row.tender;
+      const base: UnifiedMatchDeep = {
+        variant: "deep",
+        resultId: m.id,
+        tenderId: m.tenderId,
+        title: t.title,
+        buyer: t.buyer,
+        description: t.description ?? null,
+        location: t.location ?? null,
+        deadline: toIsoString(t.deadline),
+        status: t.status ?? null,
+        budgetMin: t.budgetMin ?? null,
+        budgetMax: t.budgetMax ?? null,
+        currency: t.currency ?? null,
+        score: m.overallScore ?? 0,
+        capabilityScore: m.capabilityScore ?? 0,
+        experienceScore: m.experienceScore ?? 0,
+        locationScore: m.locationScore ?? 0,
+        certificationScore: m.certificationScore ?? 0,
+        matchReasons: m.matchReasons ?? [],
+        isBookmarked: m.isBookmarked ?? false,
+        isApplied: m.isApplied ?? false,
+      };
+      return {
+        item: applyCuration(base, curation.get(m.tenderId)),
+        createdAt: m.createdAt ?? null,
+        rankScores: {
+          capability: base.capabilityScore,
+          experience: base.experienceScore,
+          location: base.locationScore,
+          certification: base.certificationScore,
+        },
+      };
+    };
+
+    const deepUnified = deepWindow.map(toDeepItem);
+    const pinnedDeep = pinnedWindow.map(toDeepItem);
+
+    // ---- Orphan curations ----------------------------------------------------
+    // A published curation whose deep row never landed (or was deleted while the
+    // curation stayed live) still has to render, or the admin's pick silently
+    // disappears from the feed. It's synthesized from the frozen breakdown, so
+    // it presents as an ordinary deep card.
+    const deepTenderIds = new Set([
+      ...deepWindow.map((r) => r.match.tenderId),
+      ...pinnedWindow.map((r) => r.match.tenderId),
+    ]);
+    const curatedIds = [...curation.keys()];
+
+    // applied/bookmarked are deep-only attributes; a synthesized item has none.
+    const orphanExcludedByApplied =
+      showApplied === "applied" || showApplied === "bookmarked";
+
+    let orphanUnified: Array<{ item: UnifiedMatchDeep; curation: CurationOverlayEntry }> =
+      [];
+
+    if (curatedIds.length && !isRuledOut && !orphanExcludedByApplied) {
+      const withDeepRows = await db
+        .select({ tenderId: matchingResults.tenderId })
+        .from(matchingResults)
+        .where(
+          and(
+            eq(matchingResults.companyId, companyId),
+            inArray(matchingResults.tenderId, curatedIds),
+          ),
+        );
+      for (const row of withDeepRows) deepTenderIds.add(row.tenderId);
+
+      const orphanIds = curatedIds.filter((id) => !deepTenderIds.has(id));
+      if (orphanIds.length) {
+        const orphanConditions: SQL[] = [inArray(tenders.id, orphanIds)];
+        if (tenderStatus === "active") {
+          orphanConditions.push(ne(tenders.status, "closed"));
+        } else if (tenderStatus !== "all") {
+          orphanConditions.push(eq(tenders.status, tenderStatus));
+        }
+        if (safeKeyword) {
+          orphanConditions.push(
+            or(
+              ilike(tenders.title, `%${safeKeyword}%`),
+              ilike(tenders.description, `%${safeKeyword}%`),
+              ilike(tenders.buyer, `%${safeKeyword}%`),
+              ilike(tenders.location, `%${safeKeyword}%`),
+            )!,
+          );
+        }
+        if (quickFilter === "urgent") {
+          const sevenDays = new Date();
+          sevenDays.setDate(sevenDays.getDate() + 7);
+          orphanConditions.push(gte(tenders.deadline, new Date()));
+          orphanConditions.push(lte(tenders.deadline, sevenDays));
+        } else if (quickFilter === "high_value") {
+          orphanConditions.push(
+            or(gte(tenders.budgetMax, 1000000), gte(tenders.budgetMin, 1000000))!,
+          );
+        }
+
+        const orphanRows = await db
+          .select({ id: tenders.id, ...deepTenderFields })
+          .from(tenders)
+          .where(and(...orphanConditions));
+
+        orphanUnified = orphanRows.flatMap((t) => {
+          const c = curation.get(t.id)!;
+          const score = c.curatedScore ?? 0;
+          if (score < effectiveMin || score > maxScore) return [];
+          if (quickFilter === "high_score" && score < 80) return [];
+          return [
+            {
+              item: {
+                variant: "deep" as const,
+                // No matching_results row exists, so there is nothing to bookmark
+                // or delete. The id namespaces the React key and makes a stray
+                // mutation attempt 404 rather than hit an unrelated row.
+                resultId: `curated:${t.id}`,
+                tenderId: t.id,
+                title: t.title,
+                buyer: t.buyer,
+                description: t.description ?? null,
+                location: t.location ?? null,
+                deadline: toIsoString(t.deadline),
+                status: t.status ?? null,
+                budgetMin: t.budgetMin ?? null,
+                budgetMax: t.budgetMax ?? null,
+                currency: t.currency ?? null,
+                score,
+                capabilityScore: c.capabilityScore ?? 0,
+                experienceScore: c.experienceScore ?? 0,
+                locationScore: c.locationScore ?? 0,
+                certificationScore: c.certificationScore ?? 0,
+                matchReasons: c.matchReasons ?? [],
+                isBookmarked: false,
+                isApplied: false,
+              },
+              curation: c,
+            },
+          ];
+        });
+      }
+    }
 
     // ---- Basic overlay: bounded (~250), only tenders WITHOUT a deep row ------
     let basicCandidates = basicRaw;
@@ -336,6 +533,9 @@ export async function GET(request: NextRequest) {
           )
       : [];
     const deepIdSet = new Set(deepIdRows.map((r) => r.tenderId));
+    // Anything already emitted as a deep or synthesized-curated item. Without
+    // the orphan ids a curated tender with no deep row would appear twice.
+    for (const o of orphanUnified) deepIdSet.add(o.item.tenderId);
 
     // applied/bookmarked are deep-only attributes; a non-deep tender has none.
     const basicExcludedByApplied =
@@ -349,7 +549,14 @@ export async function GET(request: NextRequest) {
       ? []
       : basicCandidates
           .filter((b) => !deepIdSet.has(b.tenderId))
-          .map((b) => ({ b, score: Math.round((b.similarity ?? 0) * 100) }))
+          .map((b) => {
+            const raw = Math.round((b.similarity ?? 0) * 100);
+            const c = curation.get(b.tenderId);
+            // Floor semantics apply here too: a curated tender that fell through
+            // to the semantic overlay still has to clear the user's score filter
+            // on its curated value, not its raw similarity.
+            return { b, score: Math.max(raw, c?.curatedScore ?? 0) };
+          })
           .filter(({ score }) => score >= effectiveMin && score <= maxScore);
 
     if (keywordLower) {
@@ -414,16 +621,30 @@ export async function GET(request: NextRequest) {
 
     // ---- Merge + paginate ----------------------------------------------------
     const dir = sortDirection === "asc" ? 1 : -1;
-    const rankOf = (item: UnifiedMatch, createdAt: Date | null): number => {
+    /**
+     * `subScores` carries the pre-curation values for deep rows so the sub-score
+     * sorts mirror their SQL ORDER BY exactly (which reads the real columns).
+     * Omitted for synthesized and basic items, which fall back to `score`.
+     */
+    const rankOf = (
+      item: UnifiedMatch,
+      createdAt: Date | null,
+      subScores?: {
+        capability: number;
+        experience: number;
+        location: number;
+        certification: number;
+      },
+    ): number => {
       switch (sortBy) {
         case "capability_score":
-          return item.variant === "deep" ? item.capabilityScore : item.score;
+          return subScores?.capability ?? item.score;
         case "experience_score":
-          return item.variant === "deep" ? item.experienceScore : item.score;
+          return subScores?.experience ?? item.score;
         case "location_score":
-          return item.variant === "deep" ? item.locationScore : item.score;
+          return subScores?.location ?? item.score;
         case "certification_score":
-          return item.variant === "deep" ? item.certificationScore : item.score;
+          return subScores?.certification ?? item.score;
         case "deadline":
           return item.deadline
             ? new Date(item.deadline).getTime()
@@ -446,8 +667,16 @@ export async function GET(request: NextRequest) {
     };
 
     const ranked: Array<{ item: UnifiedMatch; rank: number; tie: string }> = [];
-    for (const { item, createdAt } of deepUnified) {
-      ranked.push({ item, rank: rankOf(item, createdAt), tie: item.tenderId });
+    for (const { item, createdAt, rankScores } of deepUnified) {
+      ranked.push({
+        item,
+        rank: rankOf(item, createdAt, rankScores),
+        tie: item.tenderId,
+      });
+    }
+    for (const { item } of orphanUnified) {
+      if (pinnedOrder.has(item.tenderId)) continue;
+      ranked.push({ item, rank: rankOf(item, null), tie: item.tenderId });
     }
     for (const item of basicUnified) {
       ranked.push({ item, rank: rankOf(item, null), tie: item.tenderId });
@@ -458,13 +687,30 @@ export async function GET(request: NextRequest) {
       return a.tie < b.tie ? -1 : a.tie > b.tie ? 1 : 0;
     });
 
-    const results = ranked
-      .slice(offset, offset + pageSize)
-      .map((r) => r.item);
+    // Pinned items sit ahead of the ranked merge, in the admin's own order. The
+    // set is fully materialized, so slicing the page across the concatenation is
+    // still exact.
+    const pinnedItems: UnifiedMatch[] = [
+      ...pinnedDeep.map((d) => d.item),
+      ...orphanUnified
+        .filter((o) => pinnedOrder.has(o.item.tenderId))
+        .map((o) => o.item),
+    ].sort(
+      (a, b) =>
+        (pinnedOrder.get(a.tenderId) ?? 0) - (pinnedOrder.get(b.tenderId) ?? 0),
+    );
 
-    // Deep and basic are disjoint (dedup above) and basic is fully materialized,
-    // so the matched total is just the sum.
-    const matchedCount = deepMatchedCount + basicUnified.length;
+    const results = [...pinnedItems, ...ranked.map((r) => r.item)].slice(
+      offset,
+      offset + pageSize,
+    );
+
+    // Deep, orphan and basic are disjoint (dedup above) and both the orphan and
+    // basic sets are fully materialized, so the matched total is just the sum.
+    // `deepMatchedCount` already includes the pinned rows — they were only split
+    // out of the *window*, not out of the filter.
+    const matchedCount =
+      deepMatchedCount + orphanUnified.length + basicUnified.length;
 
     const response: TenderMatchesResponse = {
       results,

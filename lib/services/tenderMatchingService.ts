@@ -28,6 +28,17 @@ export interface ScoreTenderMatchOptions {
   batchLabel?: string;
   /** GPT-5 nano only: reduce thinking for faster/cheaper runs (e.g. "low", "minimal", "none"). */
   reasoningEffort?: ReasoningEffort;
+  /**
+   * Verified context a superadmin holds about this company that the profile
+   * doesn't capture — an unlisted accreditation, prior work with this buyer, a
+   * framework agreement. Fed to the model as company-supplied fact so it scores
+   * on the full picture instead of guessing from an incomplete profile.
+   *
+   * Set by the curation console (lib/services/curatedMatches.ts). Treated as
+   * direct, user-entered data: a human vouched for it, so it should not attract
+   * the indirect-data penalty applied to AI-derived fields.
+   */
+  evidenceNote?: string;
 }
 
 export interface MatchingScore {
@@ -268,9 +279,16 @@ export async function scoreTenderMatch(
       ? `${cur}${tenderData.budgetMin ? tenderData.budgetMin.toLocaleString() : "?"} - ${cur}${tenderData.budgetMax ? tenderData.budgetMax.toLocaleString() : "?"}`
       : "Not specified";
 
+  // Admin-supplied evidence is human-verified, so it counts as direct data
+  // wherever it is present — it exists precisely because the profile was missing
+  // something the admin knows to be true.
+  const evidenceNote = options?.evidenceNote?.trim();
+  const hasEvidence = !!evidenceNote && evidenceNote.length > 0;
+
   // Check data completeness for company
   // "Direct" means user-entered data; "indirect" means AI-generated or derived data
   const hasDirectCapabilities =
+    hasEvidence ||
     !!(companyData.keyCapabilities && companyData.keyCapabilities.trim().length > 10) ||
     structuredCapabilityNames.length > 0;
   const hasIndirectCapabilities =
@@ -303,13 +321,15 @@ export async function scoreTenderMatch(
     })
     .join("\n");
 
-  const hasDirectExperience = uniqueVOProjects.length > 0 || parsedPastProjects.length > 0;
+  const hasDirectExperience =
+    hasEvidence || uniqueVOProjects.length > 0 || parsedPastProjects.length > 0;
   const hasIndirectExperience = !!(
     companyData.aiSummary && String(companyData.aiSummary).trim().length > 20
   );
   const hasExperience = hasDirectExperience || hasIndirectExperience;
 
   const hasDirectCertifications =
+    hasEvidence ||
     !!(companyData.certifications && companyData.certifications.trim().length > 5) ||
     structuredStandardNames.length > 0;
   const hasIndirectCertifications = !!(
@@ -409,6 +429,11 @@ FIRST: Check if industries match. If NO → capabilityScore = 0. If YES → rate
   }
   if (hasOperationLocations) {
     companyLines.push(`Operation Locations: ${JSON.stringify(operationLocations)}`);
+  }
+  if (hasEvidence) {
+    companyLines.push(
+      `Additional verified information about this company (confirmed by the platform, treat as fact): ${evidenceNote}`,
+    );
   }
 
   const userPrompt = `${companyLines.join("\n")}

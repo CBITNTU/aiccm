@@ -8,7 +8,14 @@ import {
 } from "@/lib/api/validation";
 import { requireCompanyAccess } from "@/lib/api/companyAccess";
 import { db } from "@/lib/db";
-import { matchingResults, tenders } from "@/lib/db/schema/app";
+import { curatedMatches, matchingResults, tenders } from "@/lib/db/schema/app";
+import {
+  activeCurationCondition,
+  applyCuration,
+  applyCurationToAnalysis,
+  effectiveScoreSql,
+  getCurationOverlay,
+} from "@/lib/services/curatedMatches";
 import { eq, and, or, ne, ilike, gte, lte, asc, desc, count, sql, SQL } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -66,12 +73,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Score range filters
+    // Score range filters. These run on the curated effective score so a boosted
+    // match doesn't drop out of the saved list the moment the user narrows the
+    // range — /api/tenders/matches shows it at the curated value, and the two
+    // views have to agree.
     if (minScore) {
-      conditions.push(gte(matchingResults.overallScore, parseFloat(minScore)));
+      conditions.push(gte(effectiveScoreSql, parseFloat(minScore)));
     }
     if (maxScore) {
-      conditions.push(lte(matchingResults.overallScore, parseFloat(maxScore)));
+      conditions.push(lte(effectiveScoreSql, parseFloat(maxScore)));
     }
 
     // Applied/bookmarked filter
@@ -85,7 +95,7 @@ export async function GET(request: NextRequest) {
 
     // Quick filters
     if (quickFilter === "high_score") {
-      conditions.push(gte(matchingResults.overallScore, 80));
+      conditions.push(gte(effectiveScoreSql, 80));
     } else if (quickFilter === "urgent") {
       const sevenDaysFromNow = new Date();
       sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
@@ -107,7 +117,7 @@ export async function GET(request: NextRequest) {
     let orderByClause;
     switch (sortBy) {
       case "overall_score":
-        orderByClause = sortFn(matchingResults.overallScore);
+        orderByClause = sortFn(effectiveScoreSql);
         break;
       case "capability_score":
         orderByClause = sortFn(matchingResults.capabilityScore);
@@ -135,8 +145,15 @@ export async function GET(request: NextRequest) {
             : sql`${tenders.budgetMax} desc nulls last`;
         break;
       default:
-        orderByClause = desc(matchingResults.overallScore);
+        orderByClause = desc(effectiveScoreSql);
     }
+
+    // Applied by the same join predicate everywhere: published, unexpired only.
+    const curationJoin = and(
+      eq(curatedMatches.companyId, matchingResults.companyId),
+      eq(curatedMatches.tenderId, matchingResults.tenderId),
+      activeCurationCondition(),
+    )!;
 
     const baseQuery = db
       .select({
@@ -154,36 +171,62 @@ export async function GET(request: NextRequest) {
         },
       })
       .from(matchingResults)
-      .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id));
+      .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+      .leftJoin(curatedMatches, curationJoin);
 
-    const [countResult, data] = await Promise.all([
+    const [countResult, data, curation] = await Promise.all([
       db
         .select({ count: count() })
         .from(matchingResults)
         .innerJoin(tenders, eq(matchingResults.tenderId, tenders.id))
+        .leftJoin(curatedMatches, curationJoin)
         .where(whereClause),
       baseQuery
         .where(whereClause)
         .orderBy(orderByClause)
         .limit(pageSize)
         .offset(offset),
+      getCurationOverlay(companyId),
     ]);
 
     // Format results to match old Supabase shape
-    const results = data.map((row) => ({
-      ...row.match,
-      tenders: {
-        title: row.tender.title,
-        buyer: row.tender.buyer,
-        description: row.tender.description,
-        location: row.tender.location,
-        deadline: row.tender.deadline,
-        budgetMin: row.tender.budgetMin,
-        budgetMax: row.tender.budgetMax,
-        currency: row.tender.currency,
-        status: row.tender.status,
-      },
-    }));
+    const results = data.map((row) => {
+      const c = curation.get(row.match.tenderId);
+      // This route's records carry `overallScore` rather than `score`, so the
+      // shared helper is fed a normalized view and its output mapped back.
+      const curated = applyCuration(
+        {
+          score: row.match.overallScore ?? 0,
+          capabilityScore: row.match.capabilityScore,
+          experienceScore: row.match.experienceScore,
+          locationScore: row.match.locationScore,
+          certificationScore: row.match.certificationScore,
+          matchReasons: row.match.matchReasons,
+        },
+        c,
+      );
+      return {
+        ...row.match,
+        overallScore: curated.score,
+        capabilityScore: curated.capabilityScore ?? null,
+        experienceScore: curated.experienceScore ?? null,
+        locationScore: curated.locationScore ?? null,
+        certificationScore: curated.certificationScore ?? null,
+        matchReasons: curated.matchReasons ?? null,
+        aiAnalysis: applyCurationToAnalysis(row.match.aiAnalysis, c),
+        tenders: {
+          title: row.tender.title,
+          buyer: row.tender.buyer,
+          description: row.tender.description,
+          location: row.tender.location,
+          deadline: row.tender.deadline,
+          budgetMin: row.tender.budgetMin,
+          budgetMax: row.tender.budgetMax,
+          currency: row.tender.currency,
+          status: row.tender.status,
+        },
+      };
+    });
 
     return apiResponse({ results, totalCount: countResult[0]?.count || 0 });
   } catch (error) {

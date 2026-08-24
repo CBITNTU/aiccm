@@ -23,6 +23,7 @@ export async function GET(
       .select({
         id: companies.id,
         companyName: companies.companyName,
+        logoUrl: companies.logoUrl,
         description: companies.description,
         keyCapabilities: companies.keyCapabilities,
         postcode: companies.postcode,

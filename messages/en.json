@@ -887,7 +887,8 @@
         "certifications": "Certifications",
         "equipment": "Equipment",
         "pastProjects": "Past Projects",
-        "companiesHouseNumber": "Companies House Number"
+        "companiesHouseNumber": "Companies House Number",
+        "logoUrl": "Company Logo"
       }
     },
     "overview": {
@@ -2516,7 +2517,8 @@
       "operationLocations": "Operation Locations",
       "capabilities": "Competencies",
       "markets": "Markets",
-      "standards": "Standards"
+      "standards": "Standards",
+      "logoUrl": "Company Logo"
     },
     "pendingChanges": {
       "current": "Current",
@@ -2615,6 +2617,30 @@
       "done": "Done",
       "failedToLoad": "Failed to load standards",
       "failedToSave": "Failed to save standards"
+    },
+    "logo": {
+      "label": "Company Logo",
+      "hint": "PNG, JPEG or WebP. Max 2 MB. Square images look best.",
+      "upload": "Upload logo",
+      "replace": "Replace logo",
+      "remove": "Remove logo",
+      "uploading": "Uploading…",
+      "uploadSuccess": "Logo updated",
+      "uploadError": "Could not upload logo",
+      "removeSuccess": "Logo removed",
+      "removeError": "Could not remove logo",
+      "tooLarge": "That file is larger than 2 MB",
+      "badType": "Only PNG, JPEG and WebP images are supported",
+      "tooSmall": "That image is too small — use at least 32×32",
+      "discover": "Find from website",
+      "discovering": "Searching your website…",
+      "discoverSuccess": "Found a logo on your website",
+      "discoverNotFound": "No usable logo found on your website",
+      "discoverNoWebsite": "Add a website address first",
+      "discoverError": "Could not read your website",
+      "sourceWebsite": "Found automatically on your website",
+      "pendingReview": "Your new logo is awaiting admin review",
+      "storageUnavailable": "Logo storage is not available right now"
     }
   },
   "EditSheetLayout": {
@@ -3559,5 +3585,8 @@
     "banner": "Viewing as {email} — actions you take are recorded against this account and send no email.",
     "stop": "Stop viewing as user",
     "stopFailed": "Could not stop impersonating. Try signing out."
+  },
+  "CompanyLogo": {
+    "alt": "{companyName} logo"
   }
 }

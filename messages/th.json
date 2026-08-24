@@ -881,7 +881,8 @@
         "certifications": "ใบรับรอง",
         "equipment": "อุปกรณ์",
         "pastProjects": "โครงการที่ผ่านมา",
-        "companiesHouseNumber": "หมายเลข Companies House"
+        "companiesHouseNumber": "หมายเลข Companies House",
+        "logoUrl": "โลโก้บริษัท"
       }
     },
     "overview": {
@@ -2507,7 +2508,8 @@
       "operationLocations": "พื้นที่ดำเนินงาน",
       "capabilities": "สมรรถนะ",
       "markets": "ตลาด",
-      "standards": "มาตรฐาน"
+      "standards": "มาตรฐาน",
+      "logoUrl": "โลโก้บริษัท"
     },
     "pendingChanges": {
       "current": "ปัจจุบัน",
@@ -2606,6 +2608,30 @@
       "done": "เสร็จ",
       "failedToLoad": "โหลดมาตรฐานไม่สำเร็จ",
       "failedToSave": "บันทึกมาตรฐานไม่สำเร็จ"
+    },
+    "logo": {
+      "label": "โลโก้บริษัท",
+      "hint": "รองรับ PNG, JPEG หรือ WebP ขนาดไม่เกิน 2 MB ภาพสี่เหลี่ยมจัตุรัสจะแสดงผลได้ดีที่สุด",
+      "upload": "อัปโหลดโลโก้",
+      "replace": "เปลี่ยนโลโก้",
+      "remove": "ลบโลโก้",
+      "uploading": "กำลังอัปโหลด…",
+      "uploadSuccess": "อัปเดตโลโก้แล้ว",
+      "uploadError": "ไม่สามารถอัปโหลดโลโก้ได้",
+      "removeSuccess": "ลบโลโก้แล้ว",
+      "removeError": "ไม่สามารถลบโลโก้ได้",
+      "tooLarge": "ไฟล์นี้มีขนาดเกิน 2 MB",
+      "badType": "รองรับเฉพาะรูปภาพ PNG, JPEG และ WebP",
+      "tooSmall": "รูปภาพเล็กเกินไป กรุณาใช้ขนาดอย่างน้อย 32×32",
+      "discover": "ค้นหาจากเว็บไซต์",
+      "discovering": "กำลังค้นหาในเว็บไซต์ของคุณ…",
+      "discoverSuccess": "พบโลโก้ในเว็บไซต์ของคุณ",
+      "discoverNotFound": "ไม่พบโลโก้ที่ใช้งานได้ในเว็บไซต์ของคุณ",
+      "discoverNoWebsite": "กรุณาเพิ่มที่อยู่เว็บไซต์ก่อน",
+      "discoverError": "ไม่สามารถอ่านเว็บไซต์ของคุณได้",
+      "sourceWebsite": "พบโดยอัตโนมัติจากเว็บไซต์ของคุณ",
+      "pendingReview": "โลโก้ใหม่ของคุณกำลังรอการตรวจสอบจากผู้ดูแลระบบ",
+      "storageUnavailable": "ระบบจัดเก็บโลโก้ไม่พร้อมใช้งานในขณะนี้"
     }
   },
   "EditSheetLayout": {
@@ -3550,5 +3576,8 @@
     "banner": "กำลังดูในฐานะ {email} — การกระทำของคุณจะถูกบันทึกในบัญชีนี้ และจะไม่ส่งอีเมลใด ๆ",
     "stop": "หยุดดูในฐานะผู้ใช้",
     "stopFailed": "ไม่สามารถหยุดการสวมบทบาทได้ ลองออกจากระบบ"
+  },
+  "CompanyLogo": {
+    "alt": "โลโก้ {companyName}"
   }
 }

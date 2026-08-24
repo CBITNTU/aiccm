@@ -14,6 +14,7 @@ type PublicCompany = Pick<
   Company,
   | "id"
   | "companyName"
+  | "logoUrl"
   | "description"
   | "keyCapabilities"
   | "postcode"

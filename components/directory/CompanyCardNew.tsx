@@ -14,10 +14,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslations, useLocale } from "next-intl";
 import { translateTaxonomyName } from "@/lib/taxonomyTranslations";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 type PublicCompany = Pick<
   Company,
   | "id"
   | "companyName"
+  | "logoUrl"
   | "description"
   | "keyCapabilities"
   | "postcode"
@@ -89,9 +91,17 @@ export function CompanyCardNew({
     >
       {/* Header: Name + Verified badge */}
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h3 className="font-semibold text-base text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-          {company.companyName}
-        </h3>
+        <div className="flex items-start gap-2.5 min-w-0">
+          <CompanyLogo
+            companyName={company.companyName}
+            logoUrl={company.logoUrl}
+            size="sm"
+            fallback="initials"
+          />
+          <h3 className="font-semibold text-base text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+            {company.companyName}
+          </h3>
+        </div>
         {company.verificationStatus === "verified" ? (
           <VerifiedBadge />
         ) : company.isSystemCompany && !company.userId ? (

@@ -41,6 +41,16 @@ export function getActiveProfile(): DeploymentProfile {
   return ACTIVE_PROFILE;
 }
 
+/**
+ * Whether this process should report page views to Vercel Web Analytics.
+ * Profile-gated (UK only — see `webAnalytics` in the profiles) and
+ * production-only, so preview deploys and local dev stay out of the dashboard
+ * and off the event quota. `VERCEL_ENV` is unset outside Vercel.
+ */
+export function isWebAnalyticsEnabled(): boolean {
+  return ACTIVE_PROFILE.webAnalytics && process.env.VERCEL_ENV === "production";
+}
+
 /** Client-safe subset of the active profile, for serializing into the client tree. */
 export function getPublicProfile(): PublicDeploymentProfile {
   const { id, brand, theme, i18n, currency, verification } = ACTIVE_PROFILE;

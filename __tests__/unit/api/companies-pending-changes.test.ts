@@ -22,6 +22,12 @@ vi.mock("@/lib/db", () => ({
   db: { select: vi.fn(), update: vi.fn() },
 }));
 
+const deleteBlob = vi.fn(async () => {});
+vi.mock("@/lib/storage", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/storage")>()),
+  getBlobStore: () => ({ isConfigured: true, put: vi.fn(), delete: deleteBlob, keyFromUrl: () => null }),
+}));
+
 const mockedRequireAuth = requireAuth as unknown as Mock;
 const mockedIsCompanyMember = isCompanyMember as unknown as Mock;
 const mockedCheckSuperadminRole = checkSuperadminRole as unknown as Mock;
@@ -31,6 +37,19 @@ const mockedUpdate = db.update as unknown as Mock;
 /** Queue the "is a change_review pending?" lookup. */
 function queuePendingReview(rows: unknown[]) {
   mockedSelect.mockImplementationOnce(() => makeChain(() => rows));
+}
+
+/** Queue the staged-logo lookup that runs just before the draft is cleared. */
+function queueStagedLogo(proposed: string | null) {
+  mockedSelect.mockImplementationOnce(() =>
+    makeChain(() => [
+      {
+        pendingChanges: proposed
+          ? { scalarFields: { logoUrl: { current: null, proposed } }, lastSavedAt: "" }
+          : null,
+      },
+    ]),
+  );
 }
 
 function del() {
@@ -48,6 +67,9 @@ beforeEach(() => {
   mockedIsCompanyMember.mockResolvedValue(true);
   mockedCheckSuperadminRole.mockResolvedValue(false);
   mockedUpdate.mockImplementation(() => makeChain(() => undefined));
+  // Default for the staged-logo lookup that follows the review check; specs
+  // that care about it override with queueStagedLogo().
+  mockedSelect.mockImplementation(() => makeChain(() => []));
 });
 
 describe("DELETE /api/companies/[companyId]/pending-changes", () => {
@@ -98,5 +120,30 @@ describe("DELETE /api/companies/[companyId]/pending-changes", () => {
     expect(status).toBe(400);
     expect(body.error).toContain("Cannot discard changes while a review is pending");
     expect(mockedUpdate).not.toHaveBeenCalled();
+  });
+
+
+  it("deletes the staged logo object when the draft is discarded", async () => {
+    // A staged logo is a real blob with no other owner once the draft that
+    // referenced it is gone — discarding without this leaks it.
+    queuePendingReview([]);
+    queueStagedLogo("https://store.public.blob.vercel-storage.com/pending/abc.png");
+
+    const { status } = await readJson(await del());
+
+    expect(status).toBe(200);
+    expect(deleteBlob).toHaveBeenCalledWith(
+      "https://store.public.blob.vercel-storage.com/pending/abc.png",
+    );
+  });
+
+  it("does not call storage when the draft had no staged logo", async () => {
+    queuePendingReview([]);
+    queueStagedLogo(null);
+
+    const { status } = await readJson(await del());
+
+    expect(status).toBe(200);
+    expect(deleteBlob).not.toHaveBeenCalled();
   });
 });

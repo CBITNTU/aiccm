@@ -245,6 +245,23 @@ export async function POST(request: NextRequest) {
     // user as a warning (analysis still proceeds on existing data).
     let websiteFetchError: string | null = null;
 
+    // Opportunistic: an analysis is the one moment we know the user cares about
+    // this profile being complete. Only for companies still missing a logo, and
+    // queued rather than inline so it cannot slow the analysis down.
+    if (!company.logoUrl && company.websiteUrl) {
+      try {
+        const { enqueueJob } = await import("@/lib/services/queueService");
+        await enqueueJob({
+          jobType: "company_logo",
+          entityType: "company",
+          entityId: companyId,
+          priority: 3,
+        });
+      } catch (queueError) {
+        console.error("Failed to queue company logo job:", queueError);
+      }
+    }
+
     if (company.companiesHouseNumber || company.websiteUrl) {
       console.log("[CompanyAI:analyze] Crawling external sources for analysis...");
       try {

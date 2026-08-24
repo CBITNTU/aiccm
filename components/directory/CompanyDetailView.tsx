@@ -33,11 +33,13 @@ import { toast } from "sonner";
 import type { CompanyRecord as Company } from "@/lib/api/types";
 import { useAnalyzeCompany } from "@/hooks/useCompanyMutations";
 import { VerifiedBadge } from "@/components/company/VerifiedBadge";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { useTranslations } from "next-intl";
 type PublicCompany = Pick<
   Company,
   | "id"
   | "companyName"
+  | "logoUrl"
   | "description"
   | "keyCapabilities"
   | "postcode"
@@ -252,7 +254,15 @@ export function CompanyDetailView({
       {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-start mb-2">
-          <h1 className="text-2xl font-bold">{company.companyName}</h1>
+          <div className="flex items-center gap-3 min-w-0">
+            <CompanyLogo
+              companyName={company.companyName}
+              logoUrl={company.logoUrl}
+              size="md"
+              fallback="icon"
+            />
+            <h1 className="text-2xl font-bold">{company.companyName}</h1>
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             {!isOwner && user && (
               <Button

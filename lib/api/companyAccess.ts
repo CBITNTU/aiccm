@@ -75,6 +75,46 @@ export async function requireCompanyAccess(
 }
 
 /**
+ * Like `requireCompanyAccess`, but for routes that mutate the company record
+ * itself — where a plain `member` must not write.
+ *
+ * `requireCompanyAccess` cannot express this: `CompanyAccess` only knows
+ * member-or-not, and a company `member` is a legitimate member who still may
+ * not edit company details. `getCompanyMemberRole` reports the owner as
+ * `admin`, so the owner passes.
+ *
+ * Returns a `CompanyAccess` so callers can hand it straight to
+ * `suppressEmailForAdminOverride` — which, per that function's contract, they
+ * must still call from their own frame.
+ */
+export async function requireCompanyAdmin(
+  userId: string,
+  companyId: string,
+): Promise<CompanyAccess> {
+  const { getCompanyMemberRole } = await import("@/lib/db/queries");
+  const [memberRole, isSuperadmin] = await Promise.all([
+    getCompanyMemberRole(userId, companyId),
+    checkSuperadminRole(userId),
+  ]);
+
+  if (!memberRole && !isSuperadmin) {
+    throw new AuthError("No access to this company");
+  }
+  if (memberRole && memberRole !== "admin" && !isSuperadmin) {
+    throw new AuthError("Only company admins can update company details");
+  }
+
+  // A superadmin who is not a member is acting on the user's behalf (typically
+  // preparing an account before approving it). Their edits are already reviewed
+  // by definition, so they bypass the change-review queue and send no email.
+  return {
+    isMember: !!memberRole,
+    adminOverride: !memberRole && isSuperadmin,
+    hasAccess: true,
+  };
+}
+
+/**
  * Withhold email for the rest of this request when the caller is acting purely
  * as an admin. Must be called from the route handler body.
  */

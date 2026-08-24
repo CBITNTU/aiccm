@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { getPublicProfile } from "@/lib/deployment";
+import { getPublicProfile, isWebAnalyticsEnabled } from "@/lib/deployment";
 import { DeploymentProvider } from "@/lib/deployment/client";
 
 const geistSans = Geist({
@@ -70,6 +71,7 @@ export default async function RootLayout({
   const messages = await getMessages();
   const deployment = getPublicProfile();
   const themeStyle = buildThemeStyle(deployment.theme);
+  const analytics = isWebAnalyticsEnabled();
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -89,6 +91,8 @@ export default async function RootLayout({
             <Providers>{children}</Providers>
           </DeploymentProvider>
         </NextIntlClientProvider>
+        {/* UK production only — see isWebAnalyticsEnabled(). */}
+        {analytics && <Analytics />}
       </body>
     </html>
   );

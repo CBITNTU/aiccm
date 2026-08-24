@@ -49,5 +49,6 @@ export const thProfile: DeploymentProfile = {
   geocodingProvider: "google",
   taxonomy: "stub",
   taxonomyLanguage: "en",
+  webAnalytics: false,
   ai: { defaultModel: "gpt-5-nano" },
 };

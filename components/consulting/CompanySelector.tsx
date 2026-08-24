@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Building2 } from "lucide-react";
 import type { CompanyRecord as Company } from "@/lib/api/types";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
@@ -127,7 +128,12 @@ export function CompanySelector({
           <SelectValue placeholder={t("selectPlaceholder")}>
             {selectedCompany ? (
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
+                <CompanyLogo
+                  companyName={selectedCompany.companyName}
+                  logoUrl={selectedCompany.logoUrl}
+                  size="xs"
+                  fallback="initials"
+                />
                 {selectedCompany.companyName}
               </div>
             ) : (
@@ -139,7 +145,12 @@ export function CompanySelector({
           {companies.map((company) => (
             <SelectItem key={company.id} value={company.id}>
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
+                <CompanyLogo
+                  companyName={company.companyName}
+                  logoUrl={company.logoUrl}
+                  size="xs"
+                  fallback="initials"
+                />
                 <div>
                   <div className="font-medium">{company.companyName}</div>
                   <div className="text-xs text-muted-foreground">

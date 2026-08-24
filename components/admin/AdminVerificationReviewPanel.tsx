@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { PastProjectsDisplay, formatPastProjectsValue } from "@/components/company/PastProjectsDisplay";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { queryKeys } from "@/lib/queryKeys";
 import type { ReviewFeedback, JsonValue } from "@/lib/api/types";
 import {
@@ -216,7 +217,10 @@ export function AdminVerificationReviewPanel({
                   <div className="p-6">
                     {data.request.requestType === "change_review" && data.resolvedPendingChanges && (
                       <TabsContent value="changes" className="mt-0">
-                        <ChangeReviewTab resolvedChanges={data.resolvedPendingChanges as Record<string, unknown>} />
+                        <ChangeReviewTab
+                          resolvedChanges={data.resolvedPendingChanges as Record<string, unknown>}
+                          companyName={data.company.companyName}
+                        />
                       </TabsContent>
                     )}
 
@@ -474,7 +478,13 @@ function SectionCard({
 // Tab Components
 // =============================================================================
 
-function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, unknown> }) {
+function ChangeReviewTab({
+  resolvedChanges,
+  companyName,
+}: {
+  resolvedChanges: Record<string, unknown>;
+  companyName: string;
+}) {
   const t = useTranslations("AdminVerificationReview");
   const tCompanyPage = useTranslations("CompanyPage");
   const scalarFields = resolvedChanges.scalarFields as Record<string, { current: string | null; proposed: string | null }> | undefined;
@@ -494,7 +504,7 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
     removedNames?: string[];
   } | undefined;
 
-  const fieldOrder = ["companyName", "description", "keyCapabilities", "certifications", "equipment", "pastProjects", "companiesHouseNumber"] as const;
+  const fieldOrder = ["companyName", "logoUrl", "description", "keyCapabilities", "certifications", "equipment", "pastProjects", "companiesHouseNumber"] as const;
   const fieldLabels: Record<string, string> = Object.fromEntries(
     fieldOrder.map((k) => [k, t(`changeReview.fields.${k}` as const)]),
   );
@@ -520,6 +530,24 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
             const change = scalarFields![field];
             if (!change) return null;
             const isPastProjects = field === "pastProjects";
+            // A logo diff is only reviewable if the admin can see the images —
+            // two blob URLs side by side tell them nothing.
+            const isLogo = field === "logoUrl";
+            const renderValue = (value: string | null) => {
+              if (isLogo) {
+                // CompanyLogo, not a bare <img>: it falls back to a visible tile
+                // when the blob URL fails, so a broken image cannot masquerade as
+                // "no logo proposed". A real null still reads as Empty — that is
+                // what a staged logo *removal* means.
+                return value ? (
+                  <CompanyLogo companyName={companyName} logoUrl={value} size="md" fallback="icon" />
+                ) : (
+                  <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>
+                );
+              }
+              if (isPastProjects) return formatPastProjectsValue(value, tCompanyPage);
+              return value || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>;
+            };
             return (
               <div key={field} className="border rounded-lg p-4 space-y-2">
                 <div className="text-sm font-medium">{fieldLabels[field] ?? field}</div>
@@ -527,13 +555,13 @@ function ChangeReviewTab({ resolvedChanges }: { resolvedChanges: Record<string, 
                   <div>
                     <div className="text-xs text-muted-foreground mb-1 font-medium">{t("changeReview.current")}</div>
                     <div className="text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
-                      {isPastProjects ? formatPastProjectsValue(change.current, tCompanyPage) : (change.current || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>)}
+                      {renderValue(change.current)}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground mb-1 font-medium">{t("changeReview.proposed")}</div>
                     <div className="text-sm bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-3 min-h-[2.5rem] whitespace-pre-wrap">
-                      {isPastProjects ? formatPastProjectsValue(change.proposed, tCompanyPage) : (change.proposed || <span className="text-muted-foreground italic">{t("changeReview.emptyValue")}</span>)}
+                      {renderValue(change.proposed)}
                     </div>
                   </div>
                 </div>

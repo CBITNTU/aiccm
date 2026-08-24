@@ -136,6 +136,7 @@ export function EditCompetenciesSheet({
               })
             : t("editCompetenciesSheet.descriptionUnverified")
       }
+      size="wide"
       isReviewable={true}
       isVerified={isVerified}
       isEditLocked={isEditLocked}

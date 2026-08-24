@@ -183,6 +183,7 @@ export async function GET(request: NextRequest) {
           id: companies.id,
           userId: companies.userId,
           companyName: companies.companyName,
+          logoUrl: companies.logoUrl,
           companiesHouseNumber: companies.companiesHouseNumber,
           websiteUrl: companies.websiteUrl,
           contactEmail: companies.contactEmail,

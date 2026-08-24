@@ -94,6 +94,19 @@ export async function PUT(
 
     const isChangeReview = verificationRequest.requestType === "change_review";
 
+    // Read the live logo before the transaction can overwrite it. Approving a
+    // staged logo supersedes the old object, and nothing else holds a reference
+    // to it — without this it leaks. Reject and request_changes deliberately
+    // keep pendingChanges (and so the staged object) intact.
+    const supersededLogoUrl =
+      isChangeReview && action === "approve"
+        ? await db
+            .select({ logoUrl: companies.logoUrl })
+            .from(companies)
+            .where(eq(companies.id, verificationRequest.companyId))
+            .then((rows) => rows[0]?.logoUrl ?? null)
+        : null;
+
     // Update request and company status atomically
     await db.transaction(async (tx) => {
       await tx
@@ -122,6 +135,16 @@ export async function PUT(
                   (scalarUpdates as any)[field] = snapshot.scalarFields[field].proposed;
                 }
               }
+              // The generic loop writes logo_url but not its companions.
+              // logo_source is what stops automatic discovery from overwriting
+              // a human-chosen logo (see 0017_company_logo.sql) — leaving it at
+              // whatever it was before the upload silently forfeits that.
+              const logoChange = snapshot.scalarFields.logoUrl;
+              if (logoChange) {
+                scalarUpdates.logoSource = logoChange.proposed ? "upload" : null;
+                scalarUpdates.logoUpdatedAt = now;
+              }
+
               if (Object.keys(scalarUpdates).length > 0) {
                 await tx
                   .update(companies)
@@ -246,6 +269,21 @@ export async function PUT(
     // provider round-trip and must not hold a DB transaction open.
     if (isChangeReview && action === "approve") {
       await refreshCompanyEmbedding(verificationRequest.companyId);
+
+      // The promoted logo now owns the column, so the object it replaced is
+      // unreferenced. Best-effort — an orphan costs cents, a throw here would
+      // fail a review that already committed.
+      const promotedLogoUrl = (
+        verificationRequest.pendingChangesSnapshot as PendingChanges | null
+      )?.scalarFields?.logoUrl?.proposed;
+      if (
+        promotedLogoUrl !== undefined &&
+        supersededLogoUrl &&
+        supersededLogoUrl !== promotedLogoUrl
+      ) {
+        const { getBlobStore } = await import("@/lib/storage");
+        await getBlobStore().delete(supersededLogoUrl);
+      }
     }
 
     // Send notification email to the submitter

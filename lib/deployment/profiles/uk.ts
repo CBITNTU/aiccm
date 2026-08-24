@@ -62,5 +62,6 @@ export const ukProfile: DeploymentProfile = {
   geocodingProvider: "google",
   taxonomy: "cpv_eic",
   taxonomyLanguage: "en",
+  webAnalytics: true,
   ai: { defaultModel: "gpt-5-nano" },
 };

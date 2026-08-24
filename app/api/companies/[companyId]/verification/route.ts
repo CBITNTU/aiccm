@@ -87,6 +87,7 @@ export async function POST(
         certifications: companies.certifications,
         equipment: companies.equipment,
         pastProjects: companies.pastProjects,
+        logoUrl: companies.logoUrl,
       })
       .from(companies)
       .where(eq(companies.id, companyId))
@@ -137,6 +138,9 @@ export async function POST(
       certifications: company.certifications,
       equipment: company.equipment,
       pastProjects: company.pastProjects,
+      // Keep the two companySnapshot writers identical: the admin diff resolves
+      // a change review's "current" side out of whichever one wrote the row.
+      logoUrl: company.logoUrl,
     };
 
     // Create verification request and update company status atomically

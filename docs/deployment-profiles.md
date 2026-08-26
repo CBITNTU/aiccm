@@ -51,6 +51,14 @@ This is resolved once at process start (`lib/deployment/`) and drives:
 | Taxonomy language (markets/standards/competencies) | `taxonomyLanguage` → `lib/taxonomy/localizedName` | en | zh-CN | en |
 | Geocoding | `geocodingProvider` | Google | none (blocked in CN) | Google |
 | AI default model | `ai.defaultModel` (seed for `platform_settings`) | gpt-5-nano | deepseek-v4-flash | gpt-5-nano |
+| Web analytics | `webAnalytics` → `app/layout.tsx` | Vercel Web Analytics (prod only) | off | off |
+
+**Web analytics:** only the UK project (`aiccm`) has Vercel Web Analytics enabled
+in the dashboard, so only the `uk` profile sets `webAnalytics: true`. The root
+layout renders `<Analytics />` via `isWebAnalyticsEnabled()`, which additionally
+requires `VERCEL_ENV=production` — preview deploys and local dev report nothing.
+Turning it on for another region means both flipping the profile flag *and*
+enabling Analytics on that region's Vercel project.
 
 **Adding a region's source/verification later:** implement a `TenderSourceAdapter`
 (`lib/tenders/adapters/`) and/or `CompanyRegistryAdapter`

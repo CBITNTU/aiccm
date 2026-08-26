@@ -24,6 +24,10 @@ vi.mock("@/lib/services/embeddingService", () => ({
   refreshCompanyEmbedding: vi.fn(),
 }));
 
+vi.mock("@/lib/services/companyLogoService", () => ({
+  discoverCompanyLogo: vi.fn(),
+}));
+
 import { processJob } from "@/lib/services/jobProcessor";
 import {
   generateTenderSummary,
@@ -40,6 +44,7 @@ import {
   embedTender,
   refreshCompanyEmbedding,
 } from "@/lib/services/embeddingService";
+import { discoverCompanyLogo } from "@/lib/services/companyLogoService";
 import type { JobType } from "@/lib/services/queueService";
 
 const tenderSummaryMock = vi.mocked(generateTenderSummary);
@@ -51,6 +56,7 @@ const scoreTenderMatchMock = vi.mocked(scoreTenderMatch);
 const embedCompanyMock = vi.mocked(embedCompany);
 const embedTenderMock = vi.mocked(embedTender);
 const refreshCompanyEmbeddingMock = vi.mocked(refreshCompanyEmbedding);
+const discoverCompanyLogoMock = vi.mocked(discoverCompanyLogo);
 
 function baseJob(overrides: Partial<Parameters<typeof processJob>[0]> = {}) {
   return {
@@ -330,5 +336,49 @@ describe("processJob — unknown job type", () => {
     await expect(
       processJob(baseJob({ jobType: "make_coffee" as JobType })),
     ).rejects.toThrow("Unknown job type: make_coffee");
+  });
+});
+
+describe("processJob — company_logo", () => {
+  it("dispatches to discoverCompanyLogo with the entity id", async () => {
+    discoverCompanyLogoMock.mockResolvedValue({ ok: true, logoUrl: "u", errors: [] });
+
+    const result = await processJob(
+      baseJob({ jobType: "company_logo", entityType: "company", entityId: "c-1" }),
+    );
+
+    expect(discoverCompanyLogoMock).toHaveBeenCalledWith("c-1", { force: false });
+    expect(result).toMatchObject({ success: true, ok: true, logoUrl: "u" });
+  });
+
+  it("passes force through from job metadata", async () => {
+    discoverCompanyLogoMock.mockResolvedValue({ ok: true, errors: [] });
+
+    await processJob(
+      baseJob({
+        jobType: "company_logo",
+        entityType: "company",
+        entityId: "c-2",
+        metadata: { force: true },
+      }),
+    );
+
+    expect(discoverCompanyLogoMock).toHaveBeenCalledWith("c-2", { force: true });
+  });
+
+  it("succeeds when no logo was found — that is a permanent answer, not a fault", async () => {
+    // Retries exist for transient faults. A homepage with no extractable mark
+    // must not burn three attempts and land the job in `failed`.
+    discoverCompanyLogoMock.mockResolvedValue({
+      ok: false,
+      reason: "no_candidates",
+      errors: [],
+    });
+
+    const result = await processJob(
+      baseJob({ jobType: "company_logo", entityType: "company", entityId: "c-3" }),
+    );
+
+    expect(result).toMatchObject({ success: true, ok: false, reason: "no_candidates" });
   });
 });

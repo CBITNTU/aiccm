@@ -121,6 +121,14 @@ export interface DeploymentProfile extends PublicDeploymentProfile {
    */
   taxonomyLanguage: "en" | "zh-CN";
   /**
+   * Send page views to Vercel Web Analytics. Only the UK project has Web
+   * Analytics enabled on Vercel; the CN instance must not ship the tracking
+   * script (intake is unreliable from mainland China, and its views would
+   * pollute the UK dashboard). Read via `isWebAnalyticsEnabled()`, which also
+   * requires a production deployment.
+   */
+  webAnalytics: boolean;
+  /**
    * AI fallbacks. Runtime authority remains the DB `platform_settings`; these only
    * seed the default when no DB row exists.
    */

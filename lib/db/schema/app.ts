@@ -13,8 +13,10 @@ import {
   unique,
   primaryKey,
   index,
+  check,
   customType,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { user } from "./auth";
 import { STORAGE_EMBEDDING_DIM } from "@/lib/ai/embeddingDim";
 
@@ -154,7 +156,31 @@ export const companies = pgTable("companies", {
   // (or the calendar month start, whichever is later). Lets a superadmin reset
   // an account's usage without deleting audit rows.
   usageResetAt: timestamp("usage_reset_at", { withTimezone: true }),
-});
+  // Absolute URL into our own blob store. We always mirror the bytes — never
+  // hotlink a third party — so the URL cannot rot and we control caching.
+  logoUrl: text("logo_url"),
+  // 'upload' | 'website' | 'admin'. Load-bearing, not cosmetic: automatic
+  // discovery refuses to overwrite a logo a human uploaded.
+  logoSource: text("logo_source"),
+  logoUpdatedAt: timestamp("logo_updated_at", { withTimezone: true }),
+  // Stamped on every discovery run, success or failure, so a company whose site
+  // has no usable logo is not re-crawled by every bulk regeneration.
+  logoDiscoveryAttemptedAt: timestamp("logo_discovery_attempted_at", { withTimezone: true }),
+}, (table) => [
+  // Declared here as well as in 0017 so `drizzle-kit push` (the dev shortcut,
+  // and how the integration test database is built) produces the same shape as
+  // a migrated database. Without this the constraint and index exist only on
+  // migrated environments.
+  check(
+    "companies_logo_source_check",
+    sql`${table.logoSource} IS NULL OR ${table.logoSource} IN ('upload', 'website', 'admin')`,
+  ),
+  // The backfill and the enqueuer both ask "which companies have a website but
+  // no logo and have never been tried?".
+  index("companies_logo_pending_idx")
+    .on(table.logoDiscoveryAttemptedAt)
+    .where(sql`${table.logoUrl} IS NULL AND ${table.websiteUrl} IS NOT NULL`),
+]);
 
 // ============================================================================
 // User Roles

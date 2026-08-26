@@ -120,6 +120,13 @@
       "when": 1786300000000,
       "tag": "0016_curated_match_evidence_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786400000000,
+      "tag": "0017_company_logo",
+      "breakpoints": true
     }
   ]
 }

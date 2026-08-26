@@ -105,6 +105,7 @@ export function EditMarketsSheet({
       isSaving={saving}
       onSave={handleSave}
       saveLabel={hasChanges ? undefined : t("editMarketsSheet.noChanges")}
+      size="wide"
     >
       {isLoading && <EditSheetSkeleton />}
       <div className={isLoading ? "hidden" : "flex flex-col lg:grid lg:grid-cols-[1fr_1.5fr] gap-6 h-full"}>

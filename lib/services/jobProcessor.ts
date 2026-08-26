@@ -104,6 +104,23 @@ export async function processJob(job: {
       );
     }
 
+    case "company_logo": {
+      const meta = (job.metadata ?? {}) as { force?: boolean };
+      // Imported lazily: the logo service pulls in the blob SDK, and every
+      // other job type would otherwise pay for it on cold start.
+      const { discoverCompanyLogo } = await import(
+        "@/lib/services/companyLogoService"
+      );
+      const result = await discoverCompanyLogo(job.entityId, {
+        force: meta.force === true,
+      });
+      // `success: true` even when no logo was found. Retries exist for
+      // transient faults; "this homepage has no extractable mark" is a
+      // permanent, expected answer that should not burn three attempts and
+      // land the job in `failed`.
+      return { success: true, ...result };
+    }
+
     case "tender_matching": {
       if (!job.companyId || !job.tenderId) {
         throw new Error("Company ID and Tender ID required for matching");

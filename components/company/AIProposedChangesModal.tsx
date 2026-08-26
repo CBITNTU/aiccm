@@ -45,6 +45,7 @@ interface AIProposedChangesModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId: string;
+  companyName?: string;
   proposals: PendingChanges | null;
   /** id -> display name for the competency/market ids inside `proposals`. */
   relationNames?: Record<string, string>;
@@ -56,6 +57,7 @@ export function AIProposedChangesModal({
   open,
   onOpenChange,
   companyId,
+  companyName,
   proposals,
   relationNames = {},
   isVerified,
@@ -232,6 +234,7 @@ export function AIProposedChangesModal({
                     field={field}
                     current={change.current}
                     proposed={change.proposed}
+                    companyName={companyName}
                   />
                 </div>
               </div>

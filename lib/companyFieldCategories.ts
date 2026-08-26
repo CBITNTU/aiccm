@@ -14,6 +14,10 @@ export const REVIEWABLE_SCALAR_FIELDS = [
   "equipment",
   "pastProjects",
   "companiesHouseNumber",
+  // The logo is a brand claim on a verified profile, so a member's change is
+  // staged rather than applied. The value is the URL of an already-uploaded
+  // `pending/` blob; approving promotes it, rejecting deletes it.
+  "logoUrl",
 ] as const;
 
 export const NON_REVIEWABLE_FIELDS = [
@@ -51,6 +55,7 @@ export const FIELD_LABELS: Record<string, string> = {
   equipment: "Equipment",
   pastProjects: "Past Projects",
   companiesHouseNumber: "Companies House Number",
+  logoUrl: "Company Logo",
   contactEmail: "Contact Email",
   contactPhone: "Contact Phone",
   contactPerson: "Contact Person",

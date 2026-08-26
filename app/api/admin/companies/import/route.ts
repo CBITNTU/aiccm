@@ -370,6 +370,14 @@ export async function POST(request: NextRequest) {
                 entityId: companyId,
                 priority: 3,
               });
+              // Lowest priority of the three: a missing logo is cosmetic, and
+              // this fans out to third-party websites.
+              jobsToQueue.push({
+                jobType: "company_logo",
+                entityType: "company",
+                entityId: companyId,
+                priority: 2,
+              });
             }
           }
 

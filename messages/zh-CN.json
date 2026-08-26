@@ -887,7 +887,8 @@
         "certifications": "认证",
         "equipment": "设备",
         "pastProjects": "过往项目",
-        "companiesHouseNumber": "Companies House 编号"
+        "companiesHouseNumber": "Companies House 编号",
+        "logoUrl": "公司标志"
       }
     },
     "overview": {
@@ -2516,7 +2517,8 @@
       "operationLocations": "运营地点",
       "capabilities": "能力",
       "markets": "市场",
-      "standards": "标准"
+      "standards": "标准",
+      "logoUrl": "公司标志"
     },
     "pendingChanges": {
       "current": "当前",
@@ -2615,6 +2617,30 @@
       "done": "完成",
       "failedToLoad": "加载标准列表失败",
       "failedToSave": "保存标准失败"
+    },
+    "logo": {
+      "label": "公司标志",
+      "hint": "支持 PNG、JPEG 或 WebP，最大 2 MB。方形图片效果最佳。",
+      "upload": "上传标志",
+      "replace": "更换标志",
+      "remove": "移除标志",
+      "uploading": "上传中…",
+      "uploadSuccess": "标志已更新",
+      "uploadError": "无法上传标志",
+      "removeSuccess": "标志已移除",
+      "removeError": "无法移除标志",
+      "tooLarge": "该文件超过 2 MB",
+      "badType": "仅支持 PNG、JPEG 和 WebP 图片",
+      "tooSmall": "图片太小，请使用至少 32×32 的图片",
+      "discover": "从网站获取",
+      "discovering": "正在搜索您的网站…",
+      "discoverSuccess": "已在您的网站上找到标志",
+      "discoverNotFound": "未在您的网站上找到可用的标志",
+      "discoverNoWebsite": "请先添加网站地址",
+      "discoverError": "无法读取您的网站",
+      "sourceWebsite": "自动从您的网站获取",
+      "pendingReview": "您的新标志正在等待管理员审核",
+      "storageUnavailable": "标志存储当前不可用"
     }
   },
   "EditSheetLayout": {
@@ -3559,5 +3585,8 @@
     "banner": "正在以 {email} 的身份查看——您的操作会记录在该账户下，且不会发送任何邮件。",
     "stop": "结束以该用户身份查看",
     "stopFailed": "无法结束身份模拟，请尝试退出登录。"
+  },
+  "CompanyLogo": {
+    "alt": "{companyName} 标志"
   }
 }

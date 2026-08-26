@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Building2,
   Globe,
   Mail,
   Phone,
@@ -20,6 +19,7 @@ import {
   Clock,
 } from "lucide-react";
 import type { CompanyRecord } from "@/lib/api/types";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 import type { AnalysisUsage } from "@/hooks/useCompanyPageData";
 import {
   Tooltip,
@@ -63,9 +63,12 @@ export function CompanyHeroHeader({
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           {/* Company identity */}
           <div className="flex items-center gap-4 flex-1 min-w-0 w-full">
-            <div className="w-14 h-14 gradient-hero rounded-xl flex items-center justify-center shrink-0">
-              <Building2 className="w-7 h-7 text-white" />
-            </div>
+            <CompanyLogo
+              companyName={companyData.companyName}
+              logoUrl={companyData.logoUrl}
+              size="md"
+              fallback="icon"
+            />
             <div className="min-w-0 overflow-hidden">
               <CardTitle className="text-xl font-bold text-foreground truncate">
                 {companyData.companyName}

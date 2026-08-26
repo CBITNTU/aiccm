@@ -94,6 +94,36 @@ export async function apiCall<T>(
   return data;
 }
 
+/**
+ * Multipart sibling of `apiCall`.
+ *
+ * Deliberately separate rather than an option on apiCall: that function pins
+ * `Content-Type: application/json` and JSON.stringifies the body. For a
+ * FormData upload the browser must set Content-Type itself, because only it
+ * knows the multipart boundary — setting the header manually breaks the parse
+ * on the server.
+ */
+export async function apiUpload<T>(endpoint: string, form: FormData): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/${endpoint}`, {
+      method: "POST",
+      body: form,
+      credentials: "include",
+    });
+  } catch (err) {
+    throw new ApiError(err instanceof Error ? err.message : "Network error", 0);
+  }
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(data.error || "Upload failed", response.status, data.details, data);
+  }
+
+  return data;
+}
+
 // Typed API client methods for each endpoint
 // These provide type safety when calling API routes
 
@@ -460,6 +490,27 @@ export const api = {
       ...data,
       company: normalizeCompanyRecord(data.company),
     })),
+
+  uploadCompanyLogo: (companyId: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiUpload<{ logoUrl: string; pending: boolean }>(
+      `companies/${companyId}/logo`,
+      form,
+    );
+  },
+
+  deleteCompanyLogo: (companyId: string) =>
+    apiCall<{ logoUrl: string | null; pending: boolean }>(
+      `companies/${companyId}/logo`,
+      { method: "DELETE" },
+    ),
+
+  discoverCompanyLogo: (companyId: string) =>
+    apiCall<{ ok: boolean; logoUrl: string | null; reason: string | null }>(
+      `companies/${companyId}/logo/discover`,
+      { method: "POST" },
+    ),
 
   getCompanyProjects: (companyId: string) =>
     apiCall<{

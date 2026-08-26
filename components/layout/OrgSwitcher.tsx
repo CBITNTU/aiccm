@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Check, ChevronsUpDown, Clock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 
 interface OrgSwitcherProps {
   isCollapsed: boolean;
@@ -73,11 +74,12 @@ export function OrgSwitcher({
       className="w-full justify-between h-auto py-2 px-3"
     >
       <div className="flex items-center gap-2 min-w-0">
-        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-[10px] font-semibold text-primary">
-            {selectedOrg?.companyName?.charAt(0)?.toUpperCase() || "?"}
-          </span>
-        </div>
+        <CompanyLogo
+          companyName={selectedOrg?.companyName || "?"}
+          logoUrl={selectedOrg?.logoUrl}
+          size="xs"
+          fallback="initials"
+        />
         <div className="min-w-0 text-left">
           <p className="text-sm font-medium truncate leading-tight">
             {selectedOrg?.companyName || t("noOrganization")}
@@ -101,9 +103,12 @@ export function OrgSwitcher({
             aria-expanded={open}
             className="w-8 h-8 p-0 mx-auto flex items-center justify-center"
           >
-            <span className="text-xs font-semibold">
-              {selectedOrg?.companyName?.charAt(0)?.toUpperCase() || "?"}
-            </span>
+            <CompanyLogo
+              companyName={selectedOrg?.companyName || "?"}
+              logoUrl={selectedOrg?.logoUrl}
+              size="sm"
+              fallback="initials"
+            />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="right" sideOffset={10}>
@@ -145,11 +150,12 @@ export function OrgSwitcher({
                       }}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-[9px] font-semibold text-primary">
-                            {company.companyName?.charAt(0)?.toUpperCase()}
-                          </span>
-                        </div>
+                        <CompanyLogo
+                          companyName={company.companyName}
+                          logoUrl={company.logoUrl}
+                          size="xs"
+                          fallback="initials"
+                        />
                         <span className="truncate text-sm">
                           {company.companyName}
                         </span>
@@ -177,11 +183,12 @@ export function OrgSwitcher({
                       className="opacity-50"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className="w-5 h-5 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                          <span className="text-[9px] font-semibold text-muted-foreground">
-                            {company.companyName?.charAt(0)?.toUpperCase()}
-                          </span>
-                        </div>
+                        <CompanyLogo
+                          companyName={company.companyName}
+                          logoUrl={company.logoUrl}
+                          size="xs"
+                          fallback="initials"
+                        />
                         <span className="truncate text-sm">
                           {company.companyName}
                         </span>

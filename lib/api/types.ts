@@ -29,6 +29,11 @@ export interface CompanyRecord {
   companyName: string;
   companiesHouseNumber: string | null;
   websiteUrl: string | null;
+  /** Non-optional so every consumer can branch on it without `?.`. */
+  logoUrl: string | null;
+  /** 'upload' | 'website' | 'admin' — drives the "we found this on your site" copy. */
+  logoSource?: string | null;
+  logoUpdatedAt?: string | null;
   contactPerson: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
@@ -201,6 +206,8 @@ export function normalizeCompanyRecord(company: Record<string, unknown>): Compan
     companyName: String(company.companyName ?? ""),
     companiesHouseNumber: asStringOrNull(company.companiesHouseNumber),
     websiteUrl: asStringOrNull(company.websiteUrl),
+    logoUrl: asStringOrNull(company.logoUrl),
+    logoSource: asStringOrNull(company.logoSource),
     contactPerson: asStringOrNull(company.contactPerson),
     contactEmail: asStringOrNull(company.contactEmail),
     contactPhone: asStringOrNull(company.contactPhone),

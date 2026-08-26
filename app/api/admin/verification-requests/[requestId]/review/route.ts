@@ -17,6 +17,7 @@ import { companyColumnsNoEmbedding } from "@/lib/db/columns";
 import { localizedName, localizedCategory } from "@/lib/taxonomy/localizedName";
 import { eq, desc, and, ne, inArray } from "drizzle-orm";
 import {
+  REVIEWABLE_SCALAR_FIELDS,
   withResolvedScalarCurrents,
   type PendingChanges,
   type ReviewableScalarField,
@@ -133,12 +134,29 @@ export async function GET(
     let resolvedPendingChanges = null;
     if (verificationRequest.requestType === "change_review" && verificationRequest.pendingChangesSnapshot) {
       // Re-derive the `current` side of scalar drafts from the approved company
-      // snapshot — requests submitted before the fix stored `current: null`
+      // snapshot — requests submitted before the fix stored `current: null`.
+      //
+      // A snapshot written before a field became reviewable simply lacks the
+      // key (logoUrl, for one). The live row still holds the approved value —
+      // proposed values only land on approval — so it is the right stand-in,
+      // and filling it here fixes requests already sitting in the queue without
+      // a backfill. Tested with `in`, not `??`: a snapshot that deliberately
+      // recorded null must stay null.
+      const persistedSnapshot = (verificationRequest.companySnapshot ?? {}) as Partial<
+        Record<ReviewableScalarField, string | null>
+      >;
+      const scalarSource: Partial<Record<ReviewableScalarField, string | null>> = {
+        ...persistedSnapshot,
+      };
+      for (const field of REVIEWABLE_SCALAR_FIELDS) {
+        if (!(field in persistedSnapshot)) {
+          scalarSource[field] = companyResult[field] ?? null;
+        }
+      }
+
       const snapshot = withResolvedScalarCurrents(
         verificationRequest.pendingChangesSnapshot as PendingChanges,
-        (verificationRequest.companySnapshot ?? {}) as Partial<
-          Record<ReviewableScalarField, string | null>
-        >,
+        scalarSource,
       );
       const resolved: Record<string, unknown> = { ...snapshot };
 

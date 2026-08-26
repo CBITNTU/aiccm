@@ -38,6 +38,7 @@ import {
 } from "@/lib/companyFieldCategories";
 import { queryKeys } from "@/lib/queryKeys";
 import { formatPastProjectsValue } from "@/components/company/PastProjectsDisplay";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 import type { PendingReviewRequest, ResolvedReviewRequest } from "@/hooks/useCompanyPageData";
 import { useTranslations } from "next-intl";
 
@@ -53,6 +54,7 @@ const SCALAR_FIELD_ORDER = [
 
 interface PendingChangesBarProps {
   companyId: string;
+  companyName?: string;
   pendingChanges: PendingChanges;
   pendingReviewRequest: PendingReviewRequest | null;
   latestResolvedRequest?: ResolvedReviewRequest | null;
@@ -70,14 +72,33 @@ export function ScalarFieldDiff({
   field,
   current,
   proposed,
+  companyName,
 }: {
   field: string;
   current: string | null;
   proposed: string | null;
+  /** Only used for the logo diff's alt text; optional so non-logo call sites need not thread it. */
+  companyName?: string;
 }) {
   const t = useTranslations("CompanyPage");
   const label = getLocalizedCompanyFieldLabel(field, t);
   const isPastProjects = field === "pastProjects";
+  // A logo diff is meaningless as two blob URLs — show the images.
+  const isLogo = field === "logoUrl";
+
+  const renderValue = (value: string | null) => {
+    if (isLogo) {
+      // CompanyLogo, not a bare <img>: it falls back to a visible tile when the
+      // blob URL fails, so a broken image cannot masquerade as "no logo".
+      return value ? (
+        <CompanyLogo companyName={companyName ?? ""} logoUrl={value} size="md" fallback="icon" />
+      ) : (
+        <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>
+      );
+    }
+    if (isPastProjects) return formatPastProjectsValue(value, t);
+    return value || <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>;
+  };
 
   return (
     <div className="border border-blue-100 rounded-lg p-3 space-y-2">
@@ -86,13 +107,13 @@ export function ScalarFieldDiff({
         <div>
           <div className="text-xs text-blue-700 mb-1">{t("pendingChanges.current")}</div>
           <div className="text-sm text-foreground bg-blue-50 border border-blue-200 rounded p-2 min-h-[2rem]">
-            {isPastProjects ? formatPastProjectsValue(current, t) : (current || <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>)}
+            {renderValue(current)}
           </div>
         </div>
         <div>
           <div className="text-xs text-blue-700 mb-1">{t("pendingChanges.proposed")}</div>
           <div className="text-sm text-foreground bg-blue-100 border border-blue-300 rounded p-2 min-h-[2rem]">
-            {isPastProjects ? formatPastProjectsValue(proposed, t) : (proposed || <span className="text-muted-foreground italic">{t("pendingChanges.empty")}</span>)}
+            {renderValue(proposed)}
           </div>
         </div>
       </div>
@@ -159,6 +180,7 @@ function RelationFieldDiff({
 
 export function PendingChangesBar({
   companyId,
+  companyName,
   pendingChanges,
   pendingReviewRequest,
   latestResolvedRequest,
@@ -444,6 +466,7 @@ export function PendingChangesBar({
                     field={field}
                     current={change.current}
                     proposed={change.proposed}
+                    companyName={companyName}
                   />
                 );
               })}
@@ -457,6 +480,7 @@ export function PendingChangesBar({
                     field={field}
                     current={change.current}
                     proposed={change.proposed}
+                    companyName={companyName}
                   />
                 );
               })}

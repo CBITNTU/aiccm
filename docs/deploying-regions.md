@@ -40,6 +40,20 @@ npm run cn:migrate:prod
 
 Local migrations still use `npm run db:migrate` (reads `.env.local`).
 
+## Web analytics
+
+Vercel Web Analytics is enabled **only on the UK project (`aiccm`)**, so only the
+`uk` profile carries `webAnalytics: true` (`lib/deployment/profiles/uk.ts`). The
+root layout mounts `<Analytics />` behind `isWebAnalyticsEnabled()`, which also
+requires `VERCEL_ENV=production` — preview deploys and local dev send nothing, and
+the CN build never ships the tracking script (Vercel's intake is unreliable from
+mainland China, and its page views would land in the UK dashboard).
+
+Enabling it for another region takes **both** halves:
+
+1. Vercel dashboard → that project → **Analytics** → *Enable*.
+2. Flip `webAnalytics: true` in that region's profile under `lib/deployment/profiles/`.
+
 ## One-time CN setup
 
 ### 1. Create the CN Supabase database

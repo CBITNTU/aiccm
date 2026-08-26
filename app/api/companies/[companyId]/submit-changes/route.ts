@@ -40,6 +40,7 @@ export async function POST(
         certifications: companies.certifications,
         equipment: companies.equipment,
         pastProjects: companies.pastProjects,
+        logoUrl: companies.logoUrl,
       })
       .from(companies)
       .where(eq(companies.id, companyId))
@@ -96,6 +97,10 @@ export async function POST(
       certifications: company.certifications,
       equipment: company.equipment,
       pastProjects: company.pastProjects,
+      // Reviewable like any other scalar, so the admin diff re-derives its
+      // "current" side from here. Omitting it renders every logo change as
+      // "Current: Empty" and makes the change unreviewable.
+      logoUrl: company.logoUrl,
     };
 
     // Create review request with pendingChanges snapshot

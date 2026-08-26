@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Info, Lock, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface EditSheetLayoutProps {
   open: boolean;
@@ -27,6 +28,8 @@ interface EditSheetLayoutProps {
   onSave: () => void;
   /** Override the save button text. Defaults to "Save" or "Save as Draft" based on review context. */
   saveLabel?: string;
+  /** "default" for single-column forms; "wide" for the two-pane selector sheets. */
+  size?: "default" | "wide";
   children: ReactNode;
 }
 
@@ -41,18 +44,21 @@ export function EditSheetLayout({
   isSaving,
   onSave,
   saveLabel,
+  size = "default",
   children,
 }: EditSheetLayoutProps) {
   const t = useTranslations("EditSheetLayout");
   const requiresReview = isReviewable && isVerified;
   const defaultSaveLabel = requiresReview ? t("saveAsDraft") : t("save");
   const finalSaveLabel = saveLabel ?? defaultSaveLabel;
+  const sheetWidth =
+    size === "wide" ? "sm:max-w-lg lg:max-w-4xl xl:max-w-5xl" : "sm:max-w-xl";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="sm:max-w-lg lg:max-w-[80vw] w-full flex flex-col p-0 gap-0"
+        className={cn("w-full flex flex-col p-0 gap-0", sheetWidth)}
       >
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b space-y-1.5">

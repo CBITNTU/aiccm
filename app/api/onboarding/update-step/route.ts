@@ -341,6 +341,17 @@ export async function POST(request: NextRequest) {
             console.log(
               `Queued company_taxonomy job for new company: ${company.id}`,
             );
+
+            // Give the profile a logo on day one rather than a placeholder.
+            // Only worth queuing when there is a site to read it from.
+            if (company.websiteUrl) {
+              await enqueueJob({
+                jobType: "company_logo",
+                entityType: "company",
+                entityId: company.id,
+                priority: 5,
+              });
+            }
           } catch (queueError) {
             console.error("Failed to queue company taxonomy job:", queueError);
           }

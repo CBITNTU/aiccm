@@ -8,6 +8,7 @@ function makeCompany(overrides: Partial<CompanyRecord> = {}): CompanyRecord {
     userId: "user-1",
     companyName: "Test Co",
     companiesHouseNumber: null,
+    logoUrl: null,
     websiteUrl: null,
     contactPerson: null,
     contactEmail: null,

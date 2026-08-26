@@ -1,16 +1,12 @@
 import { NextRequest } from "next/server";
-import { apiResponse, checkSuperadminRole } from "@/lib/api";
-import {
-  requireAuth,
-  handleApiError,
-  AuthError,
-} from "@/lib/api/validation";
+import { apiResponse } from "@/lib/api";
+import { requireAuth, handleApiError } from "@/lib/api/validation";
 import {
   requireCompanyAccess,
+  requireCompanyAdmin,
   markCompanyAdminPrepared,
   suppressEmailForAdminOverride,
 } from "@/lib/api/companyAccess";
-import { getCompanyMemberRole } from "@/lib/db/queries";
 import { refreshCompanyEmbedding } from "@/lib/services/embeddingService";
 import {
   geocodeLocation,
@@ -194,27 +190,10 @@ export async function PUT(
     // Not `requireCompanyAccess`: this guard needs role granularity that
     // `CompanyAccess` cannot express — a plain `member` may not update, only a
     // company `admin` (or the owner, whom getCompanyMemberRole reports as admin).
-    const [memberRole, isSuperadmin] = await Promise.all([
-      getCompanyMemberRole(user.id, companyId),
-      checkSuperadminRole(user.id),
-    ]);
-    if (!memberRole && !isSuperadmin) {
-      throw new AuthError("No access to this company");
-    }
-    if (memberRole && memberRole !== "admin" && !isSuperadmin) {
-      throw new AuthError("Only company admins can update company details");
-    }
-
-    // A superadmin who is not a member of the company is acting on the user's
-    // behalf (typically preparing an account before approving it). Their edits
-    // are already reviewed by definition, so they write straight to the columns
-    // instead of queuing a change review — and nothing they do sends email.
-    const adminOverride = !memberRole && isSuperadmin;
+    const access = await requireCompanyAdmin(user.id, companyId);
+    const { adminOverride } = access;
     // Must be in this frame — see enableEmailSuppression's contract.
-    suppressEmailForAdminOverride(
-      { isMember: !!memberRole, adminOverride, hasAccess: true },
-      user.id,
-    );
+    suppressEmailForAdminOverride(access, user.id);
 
     const body = await request.json();
 
@@ -240,6 +219,10 @@ export async function PUT(
         equipment: companies.equipment,
         pastProjects: companies.pastProjects,
         companiesHouseNumber: companies.companiesHouseNumber,
+        // Reviewable, but written only by the dedicated logo route — a PUT must
+        // not be able to point the logo at an arbitrary URL. Projected here so
+        // the shared ReviewableScalarField indexing below stays total.
+        logoUrl: companies.logoUrl,
       })
       .from(companies)
       .where(eq(companies.id, companyId))

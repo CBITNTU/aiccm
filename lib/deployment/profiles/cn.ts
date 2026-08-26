@@ -44,5 +44,6 @@ export const cnProfile: DeploymentProfile = {
   geocodingProvider: "none",
   taxonomy: "stub",
   taxonomyLanguage: "zh-CN",
+  webAnalytics: false,
   ai: { defaultModel: "deepseek-v4-flash", matchingModel: "deepseek-v4-flash" },
 };

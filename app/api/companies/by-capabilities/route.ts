@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
         company: {
           id: companies.id,
           companyName: companies.companyName,
+          logoUrl: companies.logoUrl,
           companiesHouseNumber: companies.companiesHouseNumber,
           contactEmail: companies.contactEmail,
           contactPhone: companies.contactPhone,
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
           .select({
             id: companies.id,
             companyName: companies.companyName,
+            logoUrl: companies.logoUrl,
             companiesHouseNumber: companies.companiesHouseNumber,
             contactEmail: companies.contactEmail,
             contactPhone: companies.contactPhone,

@@ -8,6 +8,7 @@ import {
 import { db } from "@/lib/db";
 import { companies, companyVerificationRequests } from "@/lib/db/schema/app";
 import { eq, and, inArray } from "drizzle-orm";
+import type { PendingChanges } from "@/lib/companyFieldCategories";
 
 export async function DELETE(
   request: NextRequest,
@@ -47,10 +48,27 @@ export async function DELETE(
       );
     }
 
+    // Read the staged logo before clearing the draft that references it. It is
+    // a real blob object with no other owner, so discarding without this leaks.
+    const stagedLogoUrl = await db
+      .select({ pendingChanges: companies.pendingChanges })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .then(
+        (rows) =>
+          (rows[0]?.pendingChanges as PendingChanges | null)?.scalarFields?.logoUrl
+            ?.proposed ?? null,
+      );
+
     await db
       .update(companies)
       .set({ pendingChanges: null, updatedAt: new Date() })
       .where(eq(companies.id, companyId));
+
+    if (stagedLogoUrl) {
+      const { getBlobStore } = await import("@/lib/storage");
+      await getBlobStore().delete(stagedLogoUrl);
+    }
 
     // Dismiss any stale rejected/changes_requested requests since user is discarding those changes
     await db

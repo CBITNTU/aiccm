@@ -209,12 +209,14 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
         isVerified={data.isVerified}
         isEditLocked={data.isEditLocked}
         onSaved={data.applyCompanyUpdate}
+        onLogoChanged={data.refreshCompanyData}
       />
 
       {/* Floating Pending Changes Bar */}
       {hasPendingBar && data.pendingChanges && (
         <PendingChangesBar
           companyId={companyId}
+          companyName={data.companyData.companyName}
           pendingChanges={data.pendingChanges}
           pendingReviewRequest={data.pendingReviewRequest}
           latestResolvedRequest={data.latestResolvedRequest}
@@ -228,6 +230,7 @@ export function CompanyDetailPage({ companyId, basePath }: CompanyDetailPageProp
         open={data.aiModalOpen}
         onOpenChange={data.setAiModalOpen}
         companyId={companyId}
+        companyName={data.companyData.companyName}
         proposals={data.aiProposals}
         relationNames={data.aiRelationNames}
         isVerified={data.isVerified}

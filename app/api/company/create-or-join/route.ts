@@ -154,6 +154,21 @@ export async function POST(request: NextRequest) {
       // Seed the basic-match vector, matching onboarding/update-step.
       await refreshCompanyEmbedding(company.id);
 
+      // Give the profile a logo on day one. Website is required on this path,
+      // so there is always something to read. Best-effort: a queue failure must
+      // never fail company creation.
+      try {
+        const { enqueueJob } = await import("@/lib/services/queueService");
+        await enqueueJob({
+          jobType: "company_logo",
+          entityType: "company",
+          entityId: company.id,
+          priority: 5,
+        });
+      } catch (queueError) {
+        console.error("Failed to queue company logo job:", queueError);
+      }
+
       // Handle individual user converting to business
       if (profile.accountType === "individual") {
         await updateProfileByUserId(user.id, { accountType: "business" });

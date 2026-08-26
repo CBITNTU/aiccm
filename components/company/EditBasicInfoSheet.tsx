@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Info } from "lucide-react";
 import { toast } from "sonner";
 import { EditSheetLayout } from "@/components/company/EditSheetLayout";
+import { CompanyLogoField } from "@/components/company/CompanyLogoField";
 import type { CompanyRecord } from "@/lib/api/types";
 import { useUpdateCompany } from "@/hooks/useCompanyMutations";
 import type { CompanyUpdateResult } from "@/hooks/useCompanyPageData";
@@ -19,6 +20,8 @@ interface EditBasicInfoSheetProps {
   isVerified: boolean;
   isEditLocked: boolean;
   onSaved: (result: CompanyUpdateResult) => void;
+  /** Re-read the company after a logo write — see CompanyLogoField. */
+  onLogoChanged?: () => void | Promise<void>;
 }
 
 export function EditBasicInfoSheet({
@@ -28,6 +31,7 @@ export function EditBasicInfoSheet({
   isVerified,
   isEditLocked,
   onSaved,
+  onLogoChanged,
 }: EditBasicInfoSheetProps) {
   const [companyName, setCompanyName] = useState(companyData.companyName || "");
   const [email, setEmail] = useState(companyData.contactEmail || "");
@@ -85,6 +89,18 @@ export function EditBasicInfoSheet({
           <span>{t("editInfo.savesImmediately")}</span>
           <div className="h-px bg-border flex-1" />
         </div>
+
+        <CompanyLogoField
+          companyId={companyData.id}
+          companyName={companyData.companyName}
+          logoUrl={companyData.logoUrl}
+          logoSource={companyData.logoSource}
+          hasWebsite={!!companyData.websiteUrl}
+          isVerified={isVerified}
+          onLogoChanged={onLogoChanged}
+        />
+
+        <Separator />
 
         <div className="space-y-2">
           <Label htmlFor="email">{t("editInfo.contactEmail")}</Label>
